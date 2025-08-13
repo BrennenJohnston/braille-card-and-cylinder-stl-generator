@@ -466,10 +466,26 @@
 
     
     <!-- Load the real liblouis JavaScript implementation -->
-    <!-- First load the C-API build -->
-    <script src="https://unpkg.com/liblouis-build@latest"></script>
-    <!-- Then load the Easy API -->
-    <script src="https://unpkg.com/liblouis@latest/easy-api.js"></script>
+    <!-- Option 1: Try loading liblouis from CDN -->
+    <script>
+        // Create a script element to load liblouis dynamically
+        (function() {
+            // First try to load the liblouis library
+            const script1 = document.createElement('script');
+            script1.src = 'https://cdn.jsdelivr.net/npm/liblouis@latest/easy-api.js';
+            script1.onload = function() {
+                console.log('Liblouis Easy API loaded from CDN');
+            };
+            script1.onerror = function() {
+                console.log('Failed to load liblouis from CDN, trying alternate source');
+                // Try alternate source
+                const script2 = document.createElement('script');
+                script2.src = 'https://unpkg.com/liblouis@latest/easy-api.js';
+                document.head.appendChild(script2);
+            };
+            document.head.appendChild(script1);
+        })();
+    </script>
     
     <script type="module">
         import * as THREE from '/static/three.module.js';
@@ -728,15 +744,36 @@
         
         window.addEventListener('load', async () => {
             try {
-                // Initialize liblouis Easy API
-                if (window.liblouis && window.liblouisBuild) {
-                    // Set the C-API build for the Easy API
-                    window.liblouis.setLiblouisBuild(window.liblouisBuild);
+                // Wait a bit for scripts to fully load
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Check if liblouis is available
+                if (typeof liblouis !== 'undefined') {
+                    console.log('Liblouis object found:', liblouis);
                     
-                    // Get version to verify it's working
-                    const version = window.liblouis.version();
-                    console.log('Liblouis Easy API initialized successfully, version:', version);
-                    liblouisReady = true;
+                    // Try different initialization methods based on the API
+                    if (liblouis.version) {
+                        try {
+                            const version = liblouis.version();
+                            console.log('Liblouis version:', version);
+                            liblouisReady = true;
+                        } catch (e) {
+                            console.log('Version check failed:', e);
+                        }
+                    }
+                    
+                    // Check if translateString is available
+                    if (liblouis.translateString) {
+                        console.log('Liblouis translateString method available');
+                        liblouisReady = true;
+                    } else if (liblouis.translate) {
+                        console.log('Liblouis translate method available');
+                        liblouisReady = true;
+                    }
+                    
+                    if (liblouisReady) {
+                        console.log('Liblouis Easy API initialized successfully');
+                    }
                 } else {
                     console.log('Liblouis not available, using fallback translation');
                 }
@@ -751,11 +788,21 @@
         // Function to translate text using real liblouis if available
         async function translateWithLiblouis(text, grade) {
             try {
-                if (liblouisReady && window.liblouis && window.liblouis.translateString) {
+                if (liblouisReady && typeof liblouis !== 'undefined') {
                     // Use the real liblouis Easy API
                     const table = grade === 'g2' ? 'en-ueb-g2.ctb' : 'en-ueb-g1.ctb';
-                    const result = window.liblouis.translateString(table, text);
-                    return result || translateBasicBraille(text);
+                    
+                    // Try different methods based on what's available
+                    if (liblouis.translateString) {
+                        const result = liblouis.translateString(table, text);
+                        return result || translateBasicBraille(text);
+                    } else if (liblouis.translate) {
+                        const result = liblouis.translate(table, text);
+                        return result || translateBasicBraille(text);
+                    } else {
+                        console.log('No translation method found, using fallback');
+                        return translateBasicBraille(text);
+                    }
                 } else {
                     // Fallback to basic translation
                     return translateBasicBraille(text);

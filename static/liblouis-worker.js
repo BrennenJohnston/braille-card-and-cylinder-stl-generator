@@ -6,21 +6,21 @@ let liblouisReady = false;
 
 // Import liblouis scripts with error handling
 try {
-    console.log('Worker: Attempting to load liblouis scripts...');
-    importScripts('/node_modules/liblouis-build/build-no-tables-utf16.js');
+    console.log('Worker: Attempting to load liblouis scripts from static directory...');
+    importScripts('/static/liblouis/build-no-tables-utf16.js');
     console.log('Worker: Loaded build-no-tables-utf16.js');
-    importScripts('/node_modules/liblouis/easy-api.js');
+    importScripts('/static/liblouis/easy-api.js');
     console.log('Worker: Loaded easy-api.js');
 } catch (error) {
-    console.error('Worker: Failed to load liblouis scripts:', error);
-    // Try alternative paths for Vercel
+    console.error('Worker: Failed to load liblouis scripts from static:', error);
+    // Try original paths as fallback
     try {
-        console.log('Worker: Trying alternative script paths...');
-        importScripts('./node_modules/liblouis-build/build-no-tables-utf16.js');
-        importScripts('./node_modules/liblouis/easy-api.js');
-        console.log('Worker: Loaded scripts with alternative paths');
+        console.log('Worker: Trying original node_modules paths...');
+        importScripts('/node_modules/liblouis-build/build-no-tables-utf16.js');
+        importScripts('/node_modules/liblouis/easy-api.js');
+        console.log('Worker: Loaded scripts with node_modules paths');
     } catch (altError) {
-        console.error('Worker: Alternative paths also failed:', altError);
+        console.error('Worker: All paths failed:', altError);
         throw new Error('Could not load liblouis scripts: ' + error.message);
     }
 }
@@ -40,8 +40,14 @@ async function initializeLiblouis() {
             // Enable on-demand table loading - this should work in web worker
             if (liblouisInstance.enableOnDemandTableLoading) {
                 console.log('Worker: Enabling on-demand table loading...');
-                liblouisInstance.enableOnDemandTableLoading('/node_modules/liblouis-build/tables/');
-                console.log('Worker: Table loading enabled successfully');
+                try {
+                    liblouisInstance.enableOnDemandTableLoading('/static/liblouis/tables/');
+                    console.log('Worker: Table loading enabled from static directory');
+                } catch (e) {
+                    console.log('Worker: Static path failed, trying node_modules path...');
+                    liblouisInstance.enableOnDemandTableLoading('/node_modules/liblouis-build/tables/');
+                    console.log('Worker: Table loading enabled from node_modules');
+                }
             }
             
             liblouisReady = true;

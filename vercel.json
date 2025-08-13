@@ -3,17 +3,10 @@
   "builds": [
     {
       "src": "wsgi.py",
-      "use": "@vercel/python",
-      "config": {
-        "includeFiles": "node_modules/**"
-      }
+      "use": "@vercel/python"
     }
   ],
   "rewrites": [
-    {
-      "source": "/node_modules/(.*)",
-      "destination": "/node_modules/$1"
-    },
     {
       "source": "/static/(.*)",
       "destination": "/static/$1"

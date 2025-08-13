@@ -314,11 +314,15 @@ def test_liblouis_files():
     import os
     
     files_to_check = [
+        'static/liblouis/build-no-tables-utf16.js',
+        'static/liblouis/easy-api.js',
+        'static/liblouis/tables/en-us-g1.ctb',
+        'static/liblouis/tables/en-us-g2.ctb',
+        'static/liblouis/tables/unicode.dis',
+        'static/liblouis-worker.js',
+        # Also check node_modules for comparison
         'node_modules/liblouis-build/build-no-tables-utf16.js',
-        'node_modules/liblouis/easy-api.js',
-        'node_modules/liblouis-build/tables/en-us-g1.ctb',
-        'node_modules/liblouis-build/tables/en-us-g2.ctb',
-        'static/liblouis-worker.js'
+        'node_modules/liblouis/easy-api.js'
     ]
     
     results = {}

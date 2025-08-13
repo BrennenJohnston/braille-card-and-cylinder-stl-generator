@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "wsgi.py": {
-      "runtime": "@vercel/python",
+      "runtime": "python3.9",
       "includeFiles": "node_modules/**"
     }
   },

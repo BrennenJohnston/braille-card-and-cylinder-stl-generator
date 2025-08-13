@@ -466,26 +466,8 @@
 
     
     <!-- Load the real liblouis JavaScript implementation -->
-    <!-- Option 1: Try loading liblouis from CDN -->
-    <script>
-        // Create a script element to load liblouis dynamically
-        (function() {
-            // First try to load the liblouis library
-            const script1 = document.createElement('script');
-            script1.src = 'https://cdn.jsdelivr.net/npm/liblouis@latest/easy-api.js';
-            script1.onload = function() {
-                console.log('Liblouis Easy API loaded from CDN');
-            };
-            script1.onerror = function() {
-                console.log('Failed to load liblouis from CDN, trying alternate source');
-                // Try alternate source
-                const script2 = document.createElement('script');
-                script2.src = 'https://unpkg.com/liblouis@latest/easy-api.js';
-                document.head.appendChild(script2);
-            };
-            document.head.appendChild(script1);
-        })();
-    </script>
+    <script src="https://unpkg.com/liblouis-build@latest"></script>
+    <script src="https://unpkg.com/liblouis@latest/easy-api.js"></script>
     
     <script type="module">
         import * as THREE from '/static/three.module.js';
@@ -554,7 +536,7 @@
                     } catch (error) {
                         console.error('Translation failed for line', i + 1, ':', error);
                         previewHTML += `<div style="margin: 10px 0; padding: 10px; background: #fee2e2; border-radius: 5px; border: 1px solid #fecaca;">
-                            <strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → Translation failed
+                            <strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → Error: ${error.message}
                         </div>`;
                     }
                 }
@@ -773,9 +755,11 @@
                     
                     if (liblouisReady) {
                         console.log('Liblouis Easy API initialized successfully');
+                    } else {
+                        throw new Error('Liblouis API not properly loaded');
                     }
                 } else {
-                    console.log('Liblouis not available, using fallback translation');
+                    throw new Error('Liblouis not available');
                 }
             } catch (error) {
                 console.error('Failed to initialize liblouis:', error);
@@ -785,48 +769,17 @@
             animate();
         });
 
-        // Function to translate text using real liblouis if available
+        // Function to translate text using real liblouis
         async function translateWithLiblouis(text, grade) {
-            try {
-                if (liblouisReady && typeof liblouis !== 'undefined') {
-                    // Use the real liblouis Easy API
-                    const table = grade === 'g2' ? 'en-ueb-g2.ctb' : 'en-ueb-g1.ctb';
-                    
-                    // Try different methods based on what's available
-                    if (liblouis.translateString) {
-                        const result = liblouis.translateString(table, text);
-                        return result || translateBasicBraille(text);
-                    } else if (liblouis.translate) {
-                        const result = liblouis.translate(table, text);
-                        return result || translateBasicBraille(text);
-                    } else {
-                        console.log('No translation method found, using fallback');
-                        return translateBasicBraille(text);
-                    }
-                } else {
-                    // Fallback to basic translation
-                    return translateBasicBraille(text);
-                }
-            } catch (error) {
-                console.error('Liblouis translation failed, using fallback:', error);
-                return translateBasicBraille(text);
-            }
-        }
-
-        // Basic braille fallback (Grade 1 only)
-        function translateBasicBraille(text) {
-            const mapping = {
-                'a': '⠁', 'b': '⠃', 'c': '⠉', 'd': '⠙', 'e': '⠑',
-                'f': '⠋', 'g': '⠛', 'h': '⠓', 'i': '⠊', 'j': '⠚',
-                'k': '⠅', 'l': '⠇', 'm': '⠍', 'n': '⠝', 'o': '⠕',
-                'p': '⠏', 'q': '⠟', 'r': '⠗', 's': '⠎', 't': '⠞',
-                'u': '⠥', 'v': '⠧', 'w': '⠺', 'x': '⠭', 'y': '⠽',
-                'z': '⠵', ' ': '⠀', '0': '⠚', '1': '⠁', '2': '⠃',
-                '3': '⠉', '4': '⠙', '5': '⠑', '6': '⠋', '7': '⠛',
-                '8': '⠓', '9': '⠊'
-            };
+            const table = grade === 'g2' ? 'en-ueb-g2.ctb' : 'en-ueb-g1.ctb';
             
-            return text.toLowerCase().split('').map(char => mapping[char] || char).join('');
+            if (liblouis.translateString) {
+                return liblouis.translateString(table, text);
+            } else if (liblouis.translate) {
+                return liblouis.translate(table, text);
+            } else {
+                throw new Error('Liblouis translation method not available');
+            }
         }
     </script>
 </body>

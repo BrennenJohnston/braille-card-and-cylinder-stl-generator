@@ -778,11 +778,23 @@
                 if (liblouisReady && liblouisInstance) {
                     console.log('Liblouis initialized successfully');
                     
+                    // Enable on-demand table loading from our server
+                    if (liblouisInstance.enableOnDemandTableLoading) {
+                        try {
+                            liblouisInstance.enableOnDemandTableLoading('/node_modules/liblouis-build/tables/');
+                            console.log('Enabled on-demand table loading from /node_modules/liblouis-build/tables/');
+                        } catch (e) {
+                            console.error('Failed to enable on-demand table loading:', e);
+                        }
+                    } else {
+                        console.log('enableOnDemandTableLoading not available');
+                    }
+                    
                     // Test translation capability
                     if (liblouisInstance.translateString) {
                         console.log('translateString method available');
                         
-                        // Test if we can access tables
+                        // Test if we can access tables (after setting up on-demand loading)
                         try {
                             console.log('Testing table access...');
                             const testResult = liblouisInstance.translateString('en-us-g1.ctb', 'test');

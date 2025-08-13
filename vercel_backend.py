@@ -7,10 +7,17 @@ import re
 import json
 from pathlib import Path
 from flask_cors import CORS
-import requests
 
 app = Flask(__name__)
 CORS(app)
+
+# Add error handling for Vercel environment
+@app.errorhandler(Exception)
+def handle_error(e):
+    import traceback
+    print(f"Error: {str(e)}")
+    print(f"Traceback: {traceback.format_exc()}")
+    return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 class CardSettings:
     def __init__(self, **kwargs):
@@ -297,9 +304,17 @@ def create_simple_negative_plate(settings: CardSettings):
     else:
         return base_plate
 
+@app.route('/health')
+def health_check():
+    return jsonify({'status': 'ok', 'message': 'Vercel backend is running'})
+
 @app.route('/')
 def index():
-    return render_template('index.html')
+    try:
+        return render_template('index.html')
+    except Exception as e:
+        print(f"Error rendering template: {e}")
+        return jsonify({'error': 'Failed to load template'}), 500
 
 @app.route('/node_modules/<path:filename>')
 def node_modules(filename):

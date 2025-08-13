@@ -392,7 +392,7 @@
                         </label>
                         <label class="radio-option">
                             <input type="radio" name="plate_type" value="negative">
-                            <span class="radio-text">Universal Counter Plate (Recessed Dots)</span>
+                            <span class="radio-text">Counter Plate (With Holes)</span>
                         </label>
                         <div id="negative-plate-offset-container" style="display: none; margin-top: 10px;">
                             <label for="negative_plate_offset">Negative Plate Offset:</label>
@@ -460,7 +460,6 @@
                 <div class="button-group">
                     <button type="button" id="preview-braille-btn">Preview Braille Translation</button>
                     <button type="submit">Generate STL</button>
-                    <button type="button" id="download-counter-plate-btn">Download Counter Plate (With Holes)</button>
                 </div>
             </form>
             
@@ -490,7 +489,7 @@
         const form = document.getElementById('braille-form');
         const viewer = document.getElementById('viewer');
         const downloadBtn = document.getElementById('download-btn');
-        const downloadCounterPlateBtn = document.getElementById('download-counter-plate-btn');
+
         const previewBrailleBtn = document.getElementById('preview-braille-btn');
         const errorDiv = document.getElementById('error-message');
         const errorText = document.getElementById('error-text');
@@ -716,58 +715,7 @@
             }
         };
 
-        downloadCounterPlateBtn.onclick = async () => {
-            errorDiv.style.display = 'none';
-            errorText.textContent = '';
 
-            const settings = {
-                grid_columns: document.getElementById('grid_columns').value,
-                grid_rows: document.getElementById('grid_rows').value,
-                cell_spacing: document.getElementById('cell_spacing').value,
-                line_spacing: document.getElementById('line_spacing').value,
-                dot_spacing: document.getElementById('dot_spacing').value,
-                dot_base_diameter: document.getElementById('dot_base_diameter').value,
-                dot_height: document.getElementById('dot_height').value,
-                dot_hat_size: document.getElementById('dot_hat_size').value,
-                negative_plate_offset: document.getElementById('negative_plate_offset').value
-            };
-
-            try {
-                const res = await fetch('/generate_counter_plate_stl', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ settings: settings })
-                });
-
-                if (!res.ok) {
-                    let msg = 'Error generating counter plate';
-                    try {
-                        const data = await res.json();
-                        if (data.error) msg = data.error;
-                    } catch (e) {
-                        msg = `Server error: ${res.status} ${res.statusText}`;
-                    }
-                    errorText.textContent = msg;
-                    errorDiv.style.display = 'flex';
-                    return;
-                }
-                
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'universal_counter_plate.stl';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-
-            } catch (e) {
-                errorText.textContent = 'Failed to generate or download counter plate: ' + e.message;
-                errorDiv.style.display = 'flex';
-            }
-        };
 
         function loadSTL(url) {
             init3D();

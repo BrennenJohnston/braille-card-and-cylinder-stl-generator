@@ -410,8 +410,10 @@ def generate_braille_stl():
     try:
         if plate_type == 'positive':
             mesh = create_positive_plate_mesh(lines, grade, settings)
+        elif plate_type == 'negative':
+            mesh = create_simple_negative_plate(settings)
         else:
-            return jsonify({'error': 'Counter plate generation not available in Vercel version. Use positive plate only.'}), 400
+            return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
         
         # Export to STL
         stl_io = io.BytesIO()

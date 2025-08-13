@@ -113,38 +113,29 @@ def braille_to_dots(braille_char: str) -> list:
     2 5
     3 6
     """
-    # Simple dot mapping for basic braille characters
-    dot_patterns = {
-        '⠁': [1, 0, 0, 0, 0, 0],  # a
-        '⠃': [1, 1, 0, 0, 0, 0],  # b
-        '⠉': [1, 0, 0, 1, 0, 0],  # c
-        '⠙': [1, 0, 0, 1, 1, 0],  # d
-        '⠑': [1, 0, 0, 0, 1, 0],  # e
-        '⠋': [1, 1, 0, 1, 0, 0],  # f
-        '⠛': [1, 1, 0, 1, 1, 0],  # g
-        '⠓': [1, 1, 0, 0, 1, 0],  # h
-        '⠊': [0, 1, 0, 1, 0, 0],  # i
-        '⠚': [0, 1, 0, 1, 1, 0],  # j
-        '⠅': [1, 0, 1, 0, 0, 0],  # k
-        '⠇': [1, 1, 1, 0, 0, 0],  # l
-        '⠍': [1, 0, 1, 1, 0, 0],  # m
-        '⠝': [1, 0, 1, 1, 1, 0],  # n
-        '⠕': [1, 0, 1, 0, 1, 0],  # o
-        '⠏': [1, 1, 1, 1, 0, 0],  # p
-        '⠟': [1, 1, 1, 1, 1, 0],  # q
-        '⠗': [1, 1, 1, 0, 1, 0],  # r
-        '⠎': [0, 1, 1, 1, 0, 0],  # s
-        '⠞': [0, 1, 1, 1, 1, 0],  # t
-        '⠥': [1, 0, 1, 0, 0, 1],  # u
-        '⠧': [1, 1, 1, 0, 0, 1],  # v
-        '⠺': [0, 1, 0, 0, 1, 1],  # w
-        '⠭': [1, 0, 1, 1, 0, 1],  # x
-        '⠽': [1, 0, 1, 1, 1, 1],  # y
-        '⠵': [1, 0, 1, 0, 1, 1],  # z
-        '⠀': [0, 0, 0, 0, 0, 0],  # space
-    }
+    # Braille Unicode block starts at U+2800
+    # Each braille character is represented by 8 bits (dots 1-8)
+    if not braille_char or braille_char == ' ':
+        return [0, 0, 0, 0, 0, 0]  # Empty cell
     
-    return dot_patterns.get(braille_char, [0, 0, 0, 0, 0, 0])
+    # Get the Unicode code point
+    code_point = ord(braille_char)
+    
+    # Check if it's in the braille Unicode block (U+2800 to U+28FF)
+    if code_point < 0x2800 or code_point > 0x28FF:
+        return [0, 0, 0, 0, 0, 0]  # Not a braille character
+    
+    # Extract the dot pattern (bits 0-7 for dots 1-8)
+    # The bit order is dot 1, 2, 3, 4, 5, 6, 7, 8
+    dot_pattern = code_point - 0x2800
+    
+    # Convert to 6-dot pattern (dots 1-6)
+    dots = [0, 0, 0, 0, 0, 0]
+    for i in range(6):
+        if dot_pattern & (1 << i):
+            dots[i] = 1
+    
+    return dots
 
 def create_braille_dot(x, y, z, settings: CardSettings):
     """
@@ -173,7 +164,7 @@ def create_braille_dot(x, y, z, settings: CardSettings):
     cylinder.apply_translation((x, y, z))
     return cylinder
 
-def create_positive_plate_mesh(lines, grade="g2", settings=None):
+def create_positive_plate_mesh(lines, grade="g1", settings=None):
     """
     Create a standard braille mesh (positive plate with raised dots).
     Lines are processed in top-down order.
@@ -181,7 +172,7 @@ def create_positive_plate_mesh(lines, grade="g2", settings=None):
     if settings is None:
         settings = CardSettings()
 
-    grade_name = f"Grade {grade.upper()}" if grade in ["g1", "g2"] else "Grade 2"
+    grade_name = f"Grade {grade.upper()}" if grade in ["g1", "g2"] else "Grade 1"
     print(f"Creating positive plate mesh with {grade_name} characters")
     print(f"Grid: {settings.grid_columns} columns × {settings.grid_rows} rows")
     print(f"Centering grid. Auto-calculated margins: Left/Right {settings.left_margin:.2f}mm, Top/Bottom {settings.top_margin:.2f}mm")
@@ -196,7 +187,7 @@ def create_positive_plate_mesh(lines, grade="g2", settings=None):
     # Dot positioning constants
     dot_col_offsets = [-settings.dot_spacing / 2, settings.dot_spacing / 2]
     dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]
-    dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
+    dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]] # Map dot index (0-5) to [row, col]
 
     # Process each line in top-down order
     for row_num in range(settings.grid_rows):
@@ -218,7 +209,7 @@ def create_positive_plate_mesh(lines, grade="g2", settings=None):
         # Check if braille text exceeds grid capacity
         if len(braille_text) > settings.grid_columns:
             print(f"Warning: Line {row_num + 1} exceeds {settings.grid_columns} braille cells by {len(braille_text) - settings.grid_columns} cells")
-            braille_text = braille_text[:int(settings.grid_columns)]
+            braille_text = braille_text[:int(settings.grid_columns)]  # Truncate to fit
         
         # Calculate Y position for this row (top-down)
         y_pos = settings.card_height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust

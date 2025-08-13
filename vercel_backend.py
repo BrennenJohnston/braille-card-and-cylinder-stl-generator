@@ -91,18 +91,34 @@ def translate_with_liblouis_js(text: str, grade: str = "g2") -> str:
         text: Input text to translate
         grade: "g1" for Grade 1 (uncontracted) or "g2" for Grade 2 (contracted)
     """
+    print(f"DEBUG: translate_with_liblouis_js called with text='{text}', grade='{grade}'")
+    print(f"DEBUG: LIB path: {LIB}")
+    print(f"DEBUG: LOU executable: {LOU}")
+    print(f"DEBUG: Table: {TABLES.get(grade, 'en-us-g2.ctb')}")
+    
     table = TABLES.get(grade, "en-us-g2.ctb")
     env = os.environ.copy()
     env["LOUIS_TABLEPATH"] = str(LIB / "tables")
+    print(f"DEBUG: LOUIS_TABLEPATH: {env['LOUIS_TABLEPATH']}")
+    
     args = [LOU, "--forward", f"unicode.dis,{table}"]
+    print(f"DEBUG: Command args: {args}")
     
     try:
+        print(f"DEBUG: Running subprocess with input: '{text.encode('utf-8')}'")
         p = subprocess.run(args, input=text.encode("utf-8"),
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+        print(f"DEBUG: Subprocess return code: {p.returncode}")
+        print(f"DEBUG: Subprocess stdout: '{p.stdout.decode('utf-8', 'ignore')}'")
+        print(f"DEBUG: Subprocess stderr: '{p.stderr.decode('utf-8', 'ignore')}'")
+        
         if p.returncode != 0:
             raise RuntimeError(f"Liblouis translation failed: {p.stderr.decode('utf-8', 'ignore')}")
-        return p.stdout.decode("utf-8").strip()
+        result = p.stdout.decode("utf-8").strip()
+        print(f"DEBUG: Translation successful, result: '{result}'")
+        return result
     except Exception as e:
+        print(f"DEBUG: Translation failed with error: {e}")
         raise RuntimeError(f"Failed to translate text: {str(e)}")
 
 def braille_to_dots(braille_char: str) -> list:
@@ -116,18 +132,22 @@ def braille_to_dots(braille_char: str) -> list:
     # Braille Unicode block starts at U+2800
     # Each braille character is represented by 8 bits (dots 1-8)
     if not braille_char or braille_char == ' ':
+        print(f"DEBUG: Empty/space character, returning [0,0,0,0,0,0]")
         return [0, 0, 0, 0, 0, 0]  # Empty cell
     
     # Get the Unicode code point
     code_point = ord(braille_char)
+    print(f"DEBUG: Character '{braille_char}' has Unicode code point: {code_point} (0x{code_point:04X})")
     
     # Check if it's in the braille Unicode block (U+2800 to U+28FF)
     if code_point < 0x2800 or code_point > 0x28FF:
+        print(f"DEBUG: Character '{braille_char}' is not in braille Unicode block, returning [0,0,0,0,0,0]")
         return [0, 0, 0, 0, 0, 0]  # Not a braille character
     
     # Extract the dot pattern (bits 0-7 for dots 1-8)
     # The bit order is dot 1, 2, 3, 4, 5, 6, 7, 8
     dot_pattern = code_point - 0x2800
+    print(f"DEBUG: Dot pattern value: {dot_pattern}")
     
     # Convert to 6-dot pattern (dots 1-6)
     dots = [0, 0, 0, 0, 0, 0]
@@ -135,6 +155,7 @@ def braille_to_dots(braille_char: str) -> list:
         if dot_pattern & (1 << i):
             dots[i] = 1
     
+    print(f"DEBUG: Final dots array: {dots}")
     return dots
 
 def create_braille_dot(x, y, z, settings: CardSettings):
@@ -149,6 +170,7 @@ def create_braille_dot(x, y, z, settings: CardSettings):
     )
     
     # Scale the top vertices to create the cone shape (frustum)
+    # This loop iterates through all vertices and scales the top ones.
     if settings.dot_base_diameter > 0:
         scale_factor = settings.dot_top_diameter / settings.dot_base_diameter
         
@@ -200,7 +222,9 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
             
         # Translate English text to braille using liblouis
         try:
+            print(f"DEBUG: Translating '{line_text}' with grade '{grade}'")
             braille_text = translate_with_liblouis_js(line_text, grade)
+            print(f"DEBUG: Translation result: '{braille_text}'")
             print(f"Line {row_num + 1}: '{line_text}' → '{braille_text}'")
         except Exception as e:
             print(f"Warning: Failed to translate line {row_num + 1}, using original text: {e}")
@@ -220,11 +244,13 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
                 break
                 
             dots = braille_to_dots(braille_char)
+            print(f"DEBUG: Braille char '{braille_char}' → dots {dots}")
             
             # Calculate X position for this column
             x_pos = settings.left_margin + (col_num * settings.cell_spacing) + settings.braille_x_adjust
             
             # Create dots for this cell
+            dot_count = 0
             for i, dot_val in enumerate(dots):
                 if dot_val == 1:
                     dot_pos = dot_positions[i]
@@ -232,8 +258,12 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
                     dot_y = y_pos + dot_row_offsets[dot_pos[0]]
                     z = settings.card_thickness + settings.dot_height / 2
                     
+                    print(f"DEBUG: Creating dot {i+1} at ({dot_x:.2f}, {dot_y:.2f}, {z:.2f})")
                     dot_mesh = create_braille_dot(dot_x, dot_y, z, settings)
                     meshes.append(dot_mesh)
+                    dot_count += 1
+            
+            print(f"DEBUG: Created {dot_count} dots for character '{braille_char}'")
     
     print(f"Created positive plate with {len(meshes)-1} cone-shaped dots")
     return trimesh.util.concatenate(meshes)

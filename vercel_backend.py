@@ -319,10 +319,10 @@ def test_liblouis_files():
         'static/liblouis/tables/en-us-g1.ctb',
         'static/liblouis/tables/en-us-g2.ctb',
         'static/liblouis/tables/unicode.dis',
-        'static/liblouis-worker.js',
-        # Also check node_modules for comparison
-        'node_modules/liblouis-build/build-no-tables-utf16.js',
-        'node_modules/liblouis/easy-api.js'
+        'static/liblouis/tables/chardefs.cti',
+        'static/liblouis/tables/braille-patterns.cti',
+        'static/liblouis/tables/litdigits6Dots.uti',
+        'static/liblouis-worker.js'
     ]
     
     results = {}

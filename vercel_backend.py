@@ -254,6 +254,8 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
         (0, settings.card_height)
     ])
     
+    print(f"DEBUG: Base polygon area: {base_polygon.area:.2f}")
+    
     # Dot positioning constants
     dot_col_offsets = [-settings.dot_spacing / 2, settings.dot_spacing / 2]
     dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]
@@ -266,6 +268,11 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
     # Calculate hole radius based on dot dimensions plus offset
     hole_radius = (settings.recessed_dot_base_diameter / 2)
     print(f"DEBUG: Hole radius: {hole_radius:.2f}mm (based on recessed_dot_base_diameter: {settings.recessed_dot_base_diameter:.2f}mm)")
+    
+    # Ensure hole radius is reasonable (at least 0.5mm)
+    if hole_radius < 0.5:
+        print(f"WARNING: Hole radius {hole_radius:.2f}mm is very small, increasing to 0.5mm")
+        hole_radius = 0.5
     
     # Generate holes for each grid position (all cells, all dots)
     for row in range(settings.grid_rows):
@@ -286,21 +293,38 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
                 dot_x = x_pos + dot_col_offsets[dot_pos[1]]
                 dot_y = y_pos + dot_row_offsets[dot_pos[0]]
                 
-                # Create circular hole
-                hole = Point(dot_x, dot_y).buffer(hole_radius, resolution=32)
+                # Create circular hole with higher resolution
+                hole = Point(dot_x, dot_y).buffer(hole_radius, resolution=64)
                 holes.append(hole)
                 total_dots += 1
                 
                 if total_dots <= 10 or total_dots % 50 == 0:  # Log first 10 and every 50th
                     print(f"DEBUG: Hole {total_dots} at cell[{row},{col}] dot {dot_idx+1} -> mirrored cell[{mirrored_row},{mirrored_col}] at ({dot_x:.2f}, {dot_y:.2f})")
+                    print(f"DEBUG:   Hole area: {hole.area:.4f}, Hole bounds: {hole.bounds}")
     
     print(f"DEBUG: Created {total_dots} holes total (expected: {settings.grid_rows * settings.grid_columns * 6})")
     
-    # Combine all holes into one multi-polygon
-    all_holes = unary_union(holes)
+    if not holes:
+        print("ERROR: No holes were created!")
+        return create_fallback_plate(settings)
     
-    # Subtract holes from base to create the plate with holes
-    plate_with_holes = base_polygon.difference(all_holes)
+    # Combine all holes into one multi-polygon
+    try:
+        print("DEBUG: Combining holes with unary_union...")
+        all_holes = unary_union(holes)
+        print(f"DEBUG: Combined holes area: {all_holes.area:.4f}")
+        
+        # Subtract holes from base to create the plate with holes
+        print("DEBUG: Subtracting holes from base...")
+        plate_with_holes = base_polygon.difference(all_holes)
+        print(f"DEBUG: Plate with holes area: {plate_with_holes.area:.4f}")
+        print(f"DEBUG: Area removed: {base_polygon.area - plate_with_holes.area:.4f}")
+        
+    except Exception as e:
+        print(f"ERROR: Failed to combine holes or subtract from base: {e}")
+        import traceback
+        traceback.print_exc()
+        return create_fallback_plate(settings)
     
     # Extrude the 2D shape to 3D
     try:
@@ -316,14 +340,21 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
         
         print(f"DEBUG: Successfully created counter plate with {total_dots} holes using Shapely")
         print(f"DEBUG: Final mesh bounds: {final_mesh.bounds}")
+        print(f"DEBUG: Final mesh volume: {final_mesh.volume:.4f}")
         return final_mesh
     except Exception as e:
         print(f"ERROR: Failed to extrude polygon: {e}")
+        import traceback
+        traceback.print_exc()
         # Fallback to simple base plate if extrusion fails
-        print("WARNING: Returning base plate without holes")
-        base = trimesh.creation.box(extents=(settings.card_width, settings.card_height, settings.card_thickness))
-        base.apply_translation((settings.card_width/2, settings.card_height/2, settings.card_thickness/2))
-        return base
+        return create_fallback_plate(settings)
+
+def create_fallback_plate(settings: CardSettings):
+    """Create a simple fallback plate when hole creation fails"""
+    print("WARNING: Creating fallback plate without holes")
+    base = trimesh.creation.box(extents=(settings.card_width, settings.card_height, settings.card_thickness))
+    base.apply_translation((settings.card_width/2, settings.card_height/2, settings.card_thickness/2))
+    return base
 
 
 
@@ -796,6 +827,41 @@ def test_universal_counter_plate():
             'error': str(e)
         }), 500
 
+@app.route('/test-simple-counter-plate')
+def test_simple_counter_plate():
+    """Test endpoint to verify simple counter plate generation with just a few holes"""
+    try:
+        # Use minimal settings for testing
+        settings = CardSettings(
+            card_width=30,
+            card_height=20,
+            card_thickness=2.0,
+            grid_columns=2,
+            grid_rows=2,
+            dot_spacing=2.5,
+            line_spacing=8.0,
+            dot_base_diameter=2.0,
+            negative_plate_offset=0.4
+        )
+        
+        print("DEBUG: Testing simple counter plate with minimal grid (2x2)")
+        
+        # Create a simple counter plate with just 4 cells (24 holes total)
+        mesh = create_simple_negative_plate(settings)
+        
+        # Export to STL
+        stl_io = io.BytesIO()
+        mesh.export(stl_io, file_type='stl')
+        stl_io.seek(0)
+        
+        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='test_simple_counter_plate.stl')
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Simple counter plate test failed: {str(e)}',
+            'error': str(e)
+        }), 500
 
 
 @app.route('/')
@@ -812,7 +878,27 @@ def node_modules(filename):
 
 @app.route('/static/<path:filename>')
 def static_files(filename):
-    return send_from_directory('static', filename)
+    try:
+        print(f"DEBUG: Static file request for: {filename}")
+        print(f"DEBUG: Current working directory: {os.getcwd()}")
+        print(f"DEBUG: Static directory exists: {os.path.exists('static')}")
+        print(f"DEBUG: Full path exists: {os.path.exists(os.path.join('static', filename))}")
+        
+        if not os.path.exists('static'):
+            print(f"ERROR: Static directory not found")
+            return jsonify({'error': 'Static directory not found'}), 500
+            
+        if not os.path.exists(os.path.join('static', filename)):
+            print(f"ERROR: File {filename} not found in static directory")
+            return jsonify({'error': f'File {filename} not found'}), 404
+            
+        print(f"DEBUG: Serving file: {filename}")
+        return send_from_directory('static', filename)
+    except Exception as e:
+        print(f"ERROR: Failed to serve static file {filename}: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Failed to serve file: {str(e)}'}), 500
 
 @app.route('/generate_braille_stl', methods=['POST'])
 def generate_braille_stl():
@@ -839,7 +925,10 @@ def generate_braille_stl():
         if plate_type == 'positive':
             mesh = create_positive_plate_mesh(lines, grade, settings)
         elif plate_type == 'negative':
-            mesh = create_negative_plate_with_conical_holes(settings)
+            # Use the simple 2D approach instead of complex 3D boolean operations
+            # This is more reliable on Vercel and still creates proper holes
+            print("DEBUG: Using simple negative plate method for better Vercel compatibility")
+            mesh = create_simple_negative_plate(settings, lines)
         else:
             return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
         

@@ -460,6 +460,7 @@
                 <div class="button-group">
                     <button type="button" id="preview-braille-btn">Preview Braille Translation</button>
                     <button type="submit">Generate STL</button>
+                    <button type="button" id="test-counter-plate-btn" style="margin-top: 10px; background: #f39c12; color: white;">Test Simple Counter Plate</button>
                 </div>
             </form>
             
@@ -863,6 +864,38 @@
                 throw error;
             }
         }
+
+        // Test simple counter plate generation
+        document.getElementById('test-counter-plate-btn').addEventListener('click', async function() {
+            try {
+                console.log('Testing simple counter plate generation...');
+                
+                const res = await fetch('/test-simple-counter-plate');
+                
+                if (!res.ok) {
+                    let msg = 'Error generating test counter plate';
+                    try {
+                        const data = await res.json();
+                        if (data.error) msg = data.error;
+                    } catch (e) {
+                        msg = `Server error: ${res.status} ${res.statusText}`;
+                    }
+                    console.error(msg);
+                    return;
+                }
+                
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                
+                // Load the test STL in the viewer
+                loadSTL(url);
+                
+                console.log('Test counter plate loaded successfully');
+                
+            } catch (error) {
+                console.error('Test counter plate failed:', error);
+            }
+        });
     </script>
 </body>
 </html> 

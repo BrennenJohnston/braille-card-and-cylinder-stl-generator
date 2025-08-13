@@ -5,6 +5,8 @@ import io
 import os
 import re
 import json
+import subprocess
+import platform
 from pathlib import Path
 from flask_cors import CORS
 
@@ -69,12 +71,39 @@ class CardSettings:
         self.recessed_dot_top_diameter = self.dot_hat_size + (self.negative_plate_offset * 2)
         self.recessed_dot_height = self.dot_height + self.negative_plate_offset
 
+# Liblouis integration - same as main backend
+LIB = Path(__file__).parent / "third_party" / "liblouis"
+
+# Cross-platform executable name
+if platform.system() == "Windows":
+    LOU = str(LIB / "bin" / "lou_translate.exe")
+else:
+    LOU = str(LIB / "bin" / "lou_translate")
+
+# Liblouis table mapping
+TABLES = {"g1": "en-us-g1.ctb", "g2": "en-us-g2.ctb"}
+
 def translate_with_liblouis_js(text: str, grade: str = "g2") -> str:
     """
-    Server-side translation not available on Vercel.
-    Translation happens on the frontend via web worker.
+    Translate text to UEB braille using liblouis - same as main backend.
+    
+    Args:
+        text: Input text to translate
+        grade: "g1" for Grade 1 (uncontracted) or "g2" for Grade 2 (contracted)
     """
-    raise RuntimeError("Server-side liblouis translation not available on Vercel. Use frontend web worker translation.")
+    table = TABLES.get(grade, "en-us-g2.ctb")
+    env = os.environ.copy()
+    env["LOUIS_TABLEPATH"] = str(LIB / "tables")
+    args = [LOU, "--forward", f"unicode.dis,{table}"]
+    
+    try:
+        p = subprocess.run(args, input=text.encode("utf-8"),
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+        if p.returncode != 0:
+            raise RuntimeError(f"Liblouis translation failed: {p.stderr.decode('utf-8', 'ignore')}")
+        return p.stdout.decode("utf-8").strip()
+    except Exception as e:
+        raise RuntimeError(f"Failed to translate text: {str(e)}")
 
 def braille_to_dots(braille_char: str) -> list:
     """
@@ -178,10 +207,13 @@ def create_positive_plate_mesh(lines, grade="g2", settings=None):
         if not line_text:
             continue
             
-        # On Vercel, expect the frontend to handle translation via web worker
-        # For now, treat input as already-translated braille or plain text
-        braille_text = line_text
-        print(f"Line {row_num + 1}: Processing text as braille: '{braille_text}'")
+        # Translate English text to braille using liblouis
+        try:
+            braille_text = translate_with_liblouis_js(line_text, grade)
+            print(f"Line {row_num + 1}: '{line_text}' → '{braille_text}'")
+        except Exception as e:
+            print(f"Warning: Failed to translate line {row_num + 1}, using original text: {e}")
+            braille_text = line_text
         
         # Check if braille text exceeds grid capacity
         if len(braille_text) > settings.grid_columns:
@@ -276,6 +308,7 @@ def test_liblouis_files():
     import os
     
     files_to_check = [
+        # Frontend liblouis files
         'static/liblouis/build-no-tables-utf16.js',
         'static/liblouis/easy-api.js',
         'static/liblouis/tables/en-us-g1.ctb',
@@ -284,7 +317,13 @@ def test_liblouis_files():
         'static/liblouis/tables/chardefs.cti',
         'static/liblouis/tables/braille-patterns.cti',
         'static/liblouis/tables/litdigits6Dots.uti',
-        'static/liblouis-worker.js'
+        'static/liblouis-worker.js',
+        # Backend liblouis files
+        'third_party/liblouis/bin/lou_translate',
+        'third_party/liblouis/bin/lou_translate.exe',
+        'third_party/liblouis/tables/en-us-g1.ctb',
+        'third_party/liblouis/tables/en-us-g2.ctb',
+        'third_party/liblouis/tables/unicode.dis'
     ]
     
     results = {}

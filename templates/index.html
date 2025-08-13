@@ -729,20 +729,14 @@
                 // Wait a bit for scripts to fully load
                 await new Promise(resolve => setTimeout(resolve, 100));
                 
-                // Check if liblouis is available
-                if (typeof liblouis !== 'undefined') {
-                    console.log('Liblouis object found:', liblouis);
+                // Check if both liblouis-build and liblouis are available
+                if (typeof liblouisBuild !== 'undefined' && typeof liblouis !== 'undefined') {
+                    console.log('Liblouis-build found:', liblouisBuild);
+                    console.log('Liblouis Easy API found:', liblouis);
                     
-                    // Try different initialization methods based on the API
-                    if (liblouis.version) {
-                        try {
-                            const version = liblouis.version();
-                            console.log('Liblouis version:', version);
-                            liblouisReady = true;
-                        } catch (e) {
-                            console.log('Version check failed:', e);
-                        }
-                    }
+                    // Set the C-API build for the Easy API (this is required!)
+                    liblouis.setLiblouisBuild(liblouisBuild);
+                    console.log('Set liblouis build successfully');
                     
                     // Check if translateString is available
                     if (liblouis.translateString) {
@@ -760,13 +754,11 @@
                         if (liblouis.listTables) {
                             console.log('Available tables:', liblouis.listTables());
                         }
-                                                    // Note: enableOnDemandTableLoading is only available in web workers and Node.js
-                            // In browsers, tables are bundled with the build
                     } else {
                         throw new Error('Liblouis API not properly loaded');
                     }
                 } else {
-                    throw new Error('Liblouis not available');
+                    throw new Error('Liblouis-build or liblouis not available');
                 }
             } catch (error) {
                 console.error('Failed to initialize liblouis:', error);
@@ -778,13 +770,9 @@
 
         // Function to translate text using real liblouis
         async function translateWithLiblouis(text, grade) {
-            // Try different table names that might be available
-            let table;
-            if (grade === 'g2') {
-                table = 'en-ueb-g2.ctb';  // Try without tables/ prefix first
-            } else {
-                table = 'en-ueb-g1.ctb';
-            }
+            // Use the correct table names that liblouis-js provides
+            // These are the standard English braille tables
+            const table = grade === 'g2' ? 'en-us-g2.ctb' : 'en-us-g1.ctb';
             
             if (liblouis.translateString) {
                 return liblouis.translateString(table, text);

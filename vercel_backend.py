@@ -71,25 +71,39 @@ class CardSettings:
 
 def translate_with_liblouis_js(text: str, grade: str = "g2") -> str:
     """
-    Translate text to UEB braille using liblouis JavaScript build.
-    This approach uses the pre-compiled JavaScript binaries from liblouis/js-build.
+    Server-side braille translation using simple mapping.
+    Note: This is a fallback since server-side liblouis is complex in Vercel.
+    The frontend web worker provides the actual liblouis translation.
     """
     try:
-        # Use the appropriate table for the grade
-        table = "en-us-g2.ctb" if grade == "g2" else "en-us-g1.ctb"
-        
-        # For now, we'll use a simple mapping as fallback
-        # In production, you would integrate the actual liblouis JavaScript build
-        return fallback_translation(text)
+        # Use grade-appropriate mapping
+        if grade == "g2":
+            # Simple Grade 2 contractions (basic subset)
+            simple_g2_mapping = {
+                'and': '&', 'for': '=', 'of': '(', 'the': '!', 'with': 'w',
+                'ch': '*', 'sh': '%', 'th': '?', 'wh': ':', 'ed': '$', 'er': ']',
+                'ou': '^', 'ow': '[', 'st': '/', 'ing': '+', 'ar': '>', 'gh': '<'
+            }
+            
+            # Apply contractions first
+            result_text = text.lower()
+            for word, contraction in simple_g2_mapping.items():
+                result_text = result_text.replace(word, contraction)
+            
+            # Then apply character mapping
+            return apply_character_mapping(result_text)
+        else:
+            # Grade 1: character-by-character mapping
+            return apply_character_mapping(text.lower())
         
     except Exception as e:
-        print(f"Error in liblouis JS translation: {e}")
-        return fallback_translation(text)
+        print(f"Error in server translation: {e}")
+        return apply_character_mapping(text.lower())
 
-def fallback_translation(text: str) -> str:
+def apply_character_mapping(text: str) -> str:
     """
-    Fallback translation for when liblouis JS isn't available.
-    This provides basic Grade 1 braille mapping.
+    Apply basic character-to-braille mapping.
+    This provides Grade 1 braille character mapping.
     """
     simple_mapping = {
         'a': '⠁', 'b': '⠃', 'c': '⠉', 'd': '⠙', 'e': '⠑',

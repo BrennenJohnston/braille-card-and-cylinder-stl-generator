@@ -147,6 +147,41 @@ def translate_with_liblouis_js(text: str, grade: str = "g2") -> str:
     # If we get here, all executables failed
     raise RuntimeError(f"All liblouis executables failed. Tried: {LOU_FALLBACKS}")
 
+def convert_liblouis_output_to_unicode(liblouis_output: str, grade: str = "g2") -> str:
+    """
+    Convert liblouis output format (like ',br5n5') to proper braille Unicode characters.
+    This uses liblouis to convert the output back to Unicode braille.
+    """
+    print(f"DEBUG: Converting liblouis output '{liblouis_output}' to Unicode braille")
+    
+    # Use liblouis to convert the output to Unicode braille
+    # We need to use the reverse translation
+    table = TABLES.get(grade, "en-us-g2.ctb")
+    env = os.environ.copy()
+    env["LOUIS_TABLEPATH"] = str(LIB / "tables")
+    
+    # Try multiple executable names
+    for executable in LOU_FALLBACKS:
+        if os.path.exists(executable):
+            # Use --backward for reverse translation
+            args = [executable, "--backward", f"unicode.dis,{table}"]
+            
+            try:
+                p = subprocess.run(args, input=liblouis_output.encode("utf-8"),
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+                
+                if p.returncode == 0:
+                    result = p.stdout.decode("utf-8").strip()
+                    print(f"DEBUG: Converted '{liblouis_output}' → '{result}'")
+                    return result
+            except Exception as e:
+                print(f"DEBUG: Executable {executable} failed with error: {e}")
+                continue
+    
+    # If conversion fails, return original
+    print(f"DEBUG: Failed to convert liblouis output, returning original")
+    return liblouis_output
+
 def braille_to_dots(braille_char: str) -> list:
     """
     Convert a braille character to dot pattern.
@@ -155,34 +190,30 @@ def braille_to_dots(braille_char: str) -> list:
     2 5
     3 6
     """
-    # Braille Unicode block starts at U+2800
-    # Each braille character is represented by 8 bits (dots 1-8)
     if not braille_char or braille_char == ' ':
         print(f"DEBUG: Empty/space character, returning [0,0,0,0,0,0]")
         return [0, 0, 0, 0, 0, 0]  # Empty cell
     
-    # Get the Unicode code point
+    # Check if it's in the braille Unicode block (U+2800 to U+28FF)
     code_point = ord(braille_char)
     print(f"DEBUG: Character '{braille_char}' has Unicode code point: {code_point} (0x{code_point:04X})")
     
-    # Check if it's in the braille Unicode block (U+2800 to U+28FF)
-    if code_point < 0x2800 or code_point > 0x28FF:
+    if code_point >= 0x2800 and code_point <= 0x28FF:
+        # Extract the dot pattern (bits 0-7 for dots 1-8)
+        dot_pattern = code_point - 0x2800
+        print(f"DEBUG: Dot pattern value: {dot_pattern}")
+        
+        # Convert to 6-dot pattern (dots 1-6)
+        dots = [0, 0, 0, 0, 0, 0]
+        for i in range(6):
+            if dot_pattern & (1 << i):
+                dots[i] = 1
+        
+        print(f"DEBUG: Final dots array: {dots}")
+        return dots
+    else:
         print(f"DEBUG: Character '{braille_char}' is not in braille Unicode block, returning [0,0,0,0,0,0]")
-        return [0, 0, 0, 0, 0, 0]  # Not a braille character
-    
-    # Extract the dot pattern (bits 0-7 for dots 1-8)
-    # The bit order is dot 1, 2, 3, 4, 5, 6, 7, 8
-    dot_pattern = code_point - 0x2800
-    print(f"DEBUG: Dot pattern value: {dot_pattern}")
-    
-    # Convert to 6-dot pattern (dots 1-6)
-    dots = [0, 0, 0, 0, 0, 0]
-    for i in range(6):
-        if dot_pattern & (1 << i):
-            dots[i] = 1
-    
-    print(f"DEBUG: Final dots array: {dots}")
-    return dots
+        return [0, 0, 0, 0, 0, 0]
 
 def create_braille_dot(x, y, z, settings: CardSettings):
     """
@@ -246,21 +277,40 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
         if not line_text:
             continue
             
-        # Check if input is already braille (contains braille Unicode characters)
-        if any(ord(char) >= 0x2800 and ord(char) <= 0x28FF for char in line_text):
-            # Input is already braille, use it directly
+        # Check if input is already proper braille Unicode
+        has_braille_chars = any(ord(char) >= 0x2800 and ord(char) <= 0x28FF for char in line_text)
+        
+        if has_braille_chars:
+            # Input is already proper braille Unicode, use it directly
             braille_text = line_text
-            print(f"DEBUG: Input '{line_text}' is already braille, using directly")
+            print(f"DEBUG: Input '{line_text}' is already proper braille Unicode, using directly")
         else:
-            # Try to translate English text to braille using liblouis
-            try:
-                print(f"DEBUG: Translating '{line_text}' with grade '{grade}'")
-                braille_text = translate_with_liblouis_js(line_text, grade)
-                print(f"DEBUG: Translation result: '{braille_text}'")
-                print(f"Line {row_num + 1}: '{line_text}' → '{braille_text}'")
-            except Exception as e:
-                print(f"Warning: Failed to translate line {row_num + 1}, using original text: {e}")
-                braille_text = line_text
+            # Check if it looks like liblouis output format (like ',br5n5')
+            looks_like_liblouis_output = (
+                ',' in line_text and 
+                any(char.isdigit() for char in line_text) and
+                any(char.isalpha() for char in line_text)
+            )
+            
+            if looks_like_liblouis_output:
+                # Convert liblouis output to proper braille Unicode
+                try:
+                    print(f"DEBUG: Converting liblouis output '{line_text}' to Unicode braille")
+                    braille_text = convert_liblouis_output_to_unicode(line_text, grade)
+                    print(f"DEBUG: Conversion result: '{braille_text}'")
+                except Exception as e:
+                    print(f"Warning: Failed to convert liblouis output, using original: {e}")
+                    braille_text = line_text
+            else:
+                # Try to translate English text to braille using liblouis
+                try:
+                    print(f"DEBUG: Translating '{line_text}' with grade '{grade}'")
+                    braille_text = translate_with_liblouis_js(line_text, grade)
+                    print(f"DEBUG: Translation result: '{braille_text}'")
+                    print(f"Line {row_num + 1}: '{line_text}' → '{braille_text}'")
+                except Exception as e:
+                    print(f"Warning: Failed to translate line {row_num + 1}, using original text: {e}")
+                    braille_text = line_text
         
         # Check if braille text exceeds grid capacity
         if len(braille_text) > settings.grid_columns:

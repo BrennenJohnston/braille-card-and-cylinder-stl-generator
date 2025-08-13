@@ -9,6 +9,7 @@ import subprocess
 import platform
 from pathlib import Path
 from flask_cors import CORS
+import execjs  # For running JavaScript from Python
 
 app = Flask(__name__)
 CORS(app)
@@ -71,115 +72,164 @@ class CardSettings:
         self.recessed_dot_top_diameter = self.dot_hat_size + (self.negative_plate_offset * 2)
         self.recessed_dot_height = self.dot_height + self.negative_plate_offset
 
-# Liblouis integration - same as main backend
-LIB = Path(__file__).parent / "third_party" / "liblouis"
-
-# Cross-platform executable name
-if platform.system() == "Windows":
-    LOU = str(LIB / "bin" / "lou_translate.exe")
-else:
-    LOU = str(LIB / "bin" / "lou_translate")
-
-# Fallback executable names to try
-LOU_FALLBACKS = [
-    str(LIB / "bin" / "lou_translate"),
-    str(LIB / "bin" / "lou_translate.exe"),
-    str(LIB / "bin" / "lou_translate.exe"),  # Try .exe even on Linux
-]
+# Liblouis JavaScript integration - no more platform-specific executables
+LIB = Path(__file__).parent / "static" / "liblouis"
 
 # Liblouis table mapping
 TABLES = {"g1": "en-us-g1.ctb", "g2": "en-us-g2.ctb"}
 
 def translate_with_liblouis_js(text: str, grade: str = "g2") -> str:
     """
-    Translate text to UEB braille using liblouis - same as main backend.
+    Translate text to UEB braille using liblouis JavaScript library.
     
     Args:
         text: Input text to translate
         grade: "g1" for Grade 1 (uncontracted) or "g2" for Grade 2 (contracted)
     """
     print(f"DEBUG: translate_with_liblouis_js called with text='{text}', grade='{grade}'")
-    print(f"DEBUG: Platform: {platform.system()}")
-    print(f"DEBUG: LIB path: {LIB}")
-    print(f"DEBUG: LOU executable: {LOU}")
-    print(f"DEBUG: Table: {TABLES.get(grade, 'en-us-g2.ctb')}")
     
-    # Check what files actually exist
-    print(f"DEBUG: Checking if LIB path exists: {LIB.exists()}")
-    if LIB.exists():
-        print(f"DEBUG: LIB contents: {list(LIB.iterdir())}")
-        bin_dir = LIB / "bin"
-        if bin_dir.exists():
-            print(f"DEBUG: bin directory contents: {list(bin_dir.iterdir())}")
-    
-    table = TABLES.get(grade, "en-us-g2.ctb")
-    env = os.environ.copy()
-    env["LOUIS_TABLEPATH"] = str(LIB / "tables")
-    print(f"DEBUG: LOUIS_TABLEPATH: {env['LOUIS_TABLEPATH']}")
-    
-    # Try multiple executable names
-    for executable in LOU_FALLBACKS:
-        print(f"DEBUG: Trying executable: {executable}")
-        if os.path.exists(executable):
-            print(f"DEBUG: Executable exists: {executable}")
-            args = [executable, "--forward", f"unicode.dis,{table}"]
-            print(f"DEBUG: Command args: {args}")
-            
-            try:
-                print(f"DEBUG: Running subprocess with input: '{text.encode('utf-8')}'")
-                p = subprocess.run(args, input=text.encode("utf-8"),
-                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
-                print(f"DEBUG: Subprocess return code: {p.returncode}")
-                print(f"DEBUG: Subprocess stdout: '{p.stdout.decode('utf-8', 'ignore')}'")
-                print(f"DEBUG: Subprocess stderr: '{p.stderr.decode('utf-8', 'ignore')}'")
-                
-                if p.returncode != 0:
-                    print(f"DEBUG: Executable {executable} failed with return code {p.returncode}")
-                    continue
-                
-                result = p.stdout.decode("utf-8").strip()
-                print(f"DEBUG: Translation successful with {executable}, result: '{result}'")
-                return result
-            except Exception as e:
-                print(f"DEBUG: Executable {executable} failed with error: {e}")
-                continue
-    
-    # If we get here, all executables failed
-    raise RuntimeError(f"All liblouis executables failed. Tried: {LOU_FALLBACKS}")
+    try:
+        # Load the liblouis JavaScript files
+        liblouis_build_path = LIB / "build-no-tables-utf16.js"
+        easy_api_path = LIB / "easy-api.js"
+        
+        if not liblouis_build_path.exists():
+            raise RuntimeError(f"Liblouis build file not found: {liblouis_build_path}")
+        if not easy_api_path.exists():
+            raise RuntimeError(f"Liblouis easy-api file not found: {easy_api_path}")
+        
+        # Read the JavaScript files
+        with open(liblouis_build_path, 'r', encoding='utf-8') as f:
+            liblouis_build_js = f.read()
+        
+        with open(easy_api_path, 'r', encoding='utf-8') as f:
+            easy_api_js = f.read()
+        
+        # Create the JavaScript context and run liblouis
+        js_code = f"""
+        {liblouis_build_js}
+        
+        // Wait for the module to be ready
+        var liblouisBuild = null;
+        var ready = false;
+        
+        // Set up the ready callback
+        if (typeof Module !== 'undefined') {{
+            Module.onRuntimeInitialized = function() {{
+                liblouisBuild = Module;
+                ready = true;
+            }};
+        }} else {{
+            // If Module is already available
+            liblouisBuild = Module;
+            ready = true;
+        }}
+        
+        // Wait for ready
+        while (!ready) {{
+            // Wait for module to initialize
+        }}
+        
+        {easy_api_js}
+        
+        // Create the easy API instance
+        var easyapi = new LiblouisEasyApi(liblouisBuild);
+        
+        // Set the table path
+        var tablePath = "{str(LIB / 'tables')}";
+        
+        // Translate the text
+        var table = "{TABLES.get(grade, 'en-us-g2.ctb')}";
+        var result = easyapi.translateString("unicode.dis," + table, "{text}");
+        
+        result;
+        """
+        
+        # Execute the JavaScript
+        ctx = execjs.compile(js_code)
+        result = ctx.eval("result")
+        
+        print(f"DEBUG: Translation successful, result: '{result}'")
+        return result
+        
+    except Exception as e:
+        print(f"DEBUG: JavaScript liblouis translation failed: {e}")
+        raise RuntimeError(f"Failed to translate text using JavaScript liblouis: {e}")
 
 def convert_liblouis_output_to_unicode(liblouis_output: str, grade: str = "g2") -> str:
     """
     Convert liblouis output format (like ',br5n5') to proper braille Unicode characters.
-    This uses liblouis to convert the output back to Unicode braille.
+    This uses the JavaScript liblouis library to convert the output back to Unicode braille.
     """
     print(f"DEBUG: Converting liblouis output '{liblouis_output}' to Unicode braille")
     
-    # Use liblouis to convert the output to Unicode braille
-    # We need to use the reverse translation
-    table = TABLES.get(grade, "en-us-g2.ctb")
-    env = os.environ.copy()
-    env["LOUIS_TABLEPATH"] = str(LIB / "tables")
-    
-    # Try multiple executable names
-    for executable in LOU_FALLBACKS:
-        if os.path.exists(executable):
-            # Use --backward for reverse translation
-            args = [executable, "--backward", f"unicode.dis,{table}"]
-            
-            try:
-                p = subprocess.run(args, input=liblouis_output.encode("utf-8"),
-                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
-                
-                if p.returncode == 0:
-                    result = p.stdout.decode("utf-8").strip()
-                    print(f"DEBUG: Converted '{liblouis_output}' → '{result}'")
-                    return result
-            except Exception as e:
-                print(f"DEBUG: Executable {executable} failed with error: {e}")
-                continue
-    
-    # If conversion fails, raise an error - no fallbacks
-    raise RuntimeError(f"Failed to convert liblouis output '{liblouis_output}' to Unicode braille. All executables failed.")
+    try:
+        # Load the liblouis JavaScript files
+        liblouis_build_path = LIB / "build-no-tables-utf16.js"
+        easy_api_path = LIB / "easy-api.js"
+        
+        if not liblouis_build_path.exists():
+            raise RuntimeError(f"Liblouis build file not found: {liblouis_build_path}")
+        if not easy_api_path.exists():
+            raise RuntimeError(f"Liblouis easy-api file not found: {easy_api_path}")
+        
+        # Read the JavaScript files
+        with open(liblouis_build_path, 'r', encoding='utf-8') as f:
+            liblouis_build_js = f.read()
+        
+        with open(easy_api_path, 'r', encoding='utf-8') as f:
+            easy_api_js = f.read()
+        
+        # Create the JavaScript context and run liblouis in reverse
+        js_code = f"""
+        {liblouis_build_js}
+        
+        // Wait for the module to be ready
+        var liblouisBuild = null;
+        var ready = false;
+        
+        // Set up the ready callback
+        if (typeof Module !== 'undefined') {{
+            Module.onRuntimeInitialized = function() {{
+                liblouisBuild = Module;
+                ready = true;
+            }};
+        }} else {{
+            // If Module is already available
+            liblouisBuild = Module;
+            ready = true;
+        }}
+        
+        // Wait for ready
+        while (!ready) {{
+            // Wait for module to initialize
+        }}
+        
+        {easy_api_js}
+        
+        // Create the easy API instance
+        var easyapi = new LiblouisEasyApi(liblouisBuild);
+        
+        // Set the table path
+        var tablePath = "{str(LIB / 'tables')}";
+        
+        // Use the reverse translation (backward)
+        var table = "{TABLES.get(grade, 'en-us-g2.ctb')}";
+        var result = easyapi.translateString("unicode.dis," + table, "{liblouis_output}", true); // true for backward
+        
+        result;
+        """
+        
+        # Execute the JavaScript
+        ctx = execjs.compile(js_code)
+        result = ctx.eval("result")
+        
+        print(f"DEBUG: Converted '{liblouis_output}' → '{result}'")
+        return result
+        
+    except Exception as e:
+        print(f"DEBUG: JavaScript liblouis reverse translation failed: {e}")
+        raise RuntimeError(f"Failed to convert liblouis output to Unicode braille: {e}")
 
 def braille_to_dots(braille_char: str) -> list:
     """
@@ -420,12 +470,12 @@ def test_liblouis_files():
         'static/liblouis/tables/braille-patterns.cti',
         'static/liblouis/tables/litdigits6Dots.uti',
         'static/liblouis-worker.js',
-        # Backend liblouis files
-        'third_party/liblouis/bin/lou_translate',
-        'third_party/liblouis/bin/lou_translate.exe',
-        'third_party/liblouis/tables/en-us-g1.ctb',
-        'third_party/liblouis/tables/en-us-g2.ctb',
-        'third_party/liblouis/tables/unicode.dis'
+        # Backend JavaScript liblouis files (no more executables needed)
+        'static/liblouis/build-no-tables-utf16.js',
+        'static/liblouis/easy-api.js',
+        'static/liblouis/tables/en-us-g1.ctb',
+        'static/liblouis/tables/en-us-g2.ctb',
+        'static/liblouis/tables/unicode.dis'
     ]
     
     results = {}

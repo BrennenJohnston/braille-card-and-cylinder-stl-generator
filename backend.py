@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file, jsonify, render_template
+from flask import Flask, request, send_file, jsonify, render_template, send_from_directory
 import trimesh
 import numpy as np
 import io
@@ -419,6 +419,10 @@ def create_extruded_negative_plate(settings: CardSettings):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/node_modules/<path:filename>')
+def node_modules(filename):
+    return send_from_directory('node_modules', filename)
 
 @app.route('/generate_braille_stl', methods=['POST'])
 def generate_braille_stl():

@@ -1,0 +1,22 @@
+{
+	"name": "liblouis",
+	"description": "javascript bindings for liblouis",
+	"author": "Reiner Dolp",
+	"keywords": [ "braille", "transcription" ],
+	"version": "0.4.0",
+	"repository": {
+		"type": "git",
+		"url": "git://github.com/liblouis/liblouis-js.git"
+	},
+	"dependencies": {
+		"liblouis-build": "*"
+	},
+	"scripts": {
+		"test": "node ./testrunner/all.js",
+		"test-browser": "node ./testrunner/browser.js",
+		"test-node": "node ./testrunner/node.js"
+	},
+	"main": "./liblouis.js",
+	"types": "./liblouis.d.ts",
+	"license": "GPL-3.0"
+}

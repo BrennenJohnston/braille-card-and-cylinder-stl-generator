@@ -178,9 +178,8 @@ def convert_liblouis_output_to_unicode(liblouis_output: str, grade: str = "g2") 
                 print(f"DEBUG: Executable {executable} failed with error: {e}")
                 continue
     
-    # If conversion fails, return original
-    print(f"DEBUG: Failed to convert liblouis output, returning original")
-    return liblouis_output
+    # If conversion fails, raise an error - no fallbacks
+    raise RuntimeError(f"Failed to convert liblouis output '{liblouis_output}' to Unicode braille. All executables failed.")
 
 def braille_to_dots(braille_char: str) -> list:
     """

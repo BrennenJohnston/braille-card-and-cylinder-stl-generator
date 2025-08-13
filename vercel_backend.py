@@ -230,7 +230,7 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
     print(f"Created positive plate with {len(meshes)-1} cone-shaped dots")
     return trimesh.util.concatenate(meshes)
 
-def create_simple_negative_plate(settings: CardSettings):
+def create_simple_negative_plate(settings: CardSettings, lines=None):
     """
     Create a negative plate with recessed holes for Vercel compatibility.
     This creates a plate with holes that can be used as a counter plate.
@@ -247,28 +247,88 @@ def create_simple_negative_plate(settings: CardSettings):
     dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]
     dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
     
-    # Create recessed holes for each grid position
-    for row in range(settings.grid_rows):
-        for col in range(settings.grid_columns):
-            # Calculate position
-            x_pos = settings.left_margin + (col * settings.cell_spacing) + settings.braille_x_adjust
-            y_pos = settings.card_height - settings.top_margin - (row * settings.line_spacing) + settings.braille_y_adjust
+    # If we have braille lines, create holes only where dots exist
+    if lines and any(line.strip() for line in lines):
+        print(f"Creating negative plate with braille content: {lines}")
+        
+        # Process each line in top-down order
+        for row_num in range(settings.grid_rows):
+            if row_num >= len(lines):
+                break
+                
+            line_text = lines[row_num].strip()
+            if not line_text:
+                continue
+                
+            # Check if input contains proper braille Unicode (U+2800 to U+28FF)
+            has_braille_chars = any(ord(char) >= 0x2800 and ord(char) <= 0x28FF for char in line_text)
             
-            # Create recessed hole (cylinder going down from top surface)
-            # Make the hole slightly larger than the dot to ensure proper fit
-            hole_radius = (settings.dot_base_diameter / 2) + 0.1  # Add 0.1mm tolerance
-            hole_height = settings.card_thickness + 0.2  # Go completely through the plate
-            
-            recessed_hole = trimesh.creation.cylinder(
-                radius=hole_radius,
-                height=hole_height,
-                sections=16
-            )
-            
-            # Position the hole (z starts at top surface and goes down through the plate)
-            z_pos = settings.card_thickness - (hole_height / 2)
-            recessed_hole.apply_translation((x_pos, y_pos, z_pos))
-            recessed_holes.append(recessed_hole)
+            if has_braille_chars:
+                # Input is proper braille Unicode, use it directly
+                braille_text = line_text
+                print(f"DEBUG: Processing braille line '{braille_text}' for negative plate")
+                
+                # Calculate Y position for this row (top-down)
+                y_pos = settings.card_height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
+                
+                # Process each braille character in the line
+                for col_num, braille_char in enumerate(braille_text):
+                    if col_num >= settings.grid_columns:
+                        break
+                        
+                    dots = braille_to_dots(braille_char)
+                    print(f"DEBUG: Braille char '{braille_char}' → dots {dots}")
+                    
+                    # Calculate X position for this column
+                    x_pos = settings.left_margin + (col_num * settings.cell_spacing) + settings.braille_x_adjust
+                    
+                    # Create holes for each dot that exists
+                    for i, dot_val in enumerate(dots):
+                        if dot_val == 1:
+                            dot_pos = dot_positions[i]
+                            dot_x = x_pos + dot_col_offsets[dot_pos[1]]
+                            dot_y = y_pos + dot_row_offsets[dot_pos[0]]
+                            
+                            # Create recessed hole (cylinder going down from top surface)
+                            # Make the hole slightly larger than the dot to ensure proper fit
+                            hole_radius = (settings.dot_base_diameter / 2) + 0.1  # Add 0.1mm tolerance
+                            hole_height = settings.card_thickness + 0.2  # Go completely through the plate
+                            
+                            recessed_hole = trimesh.creation.cylinder(
+                                radius=hole_radius,
+                                height=hole_height,
+                                sections=16
+                            )
+                            
+                            # Position the hole (z starts at top surface and goes down through the plate)
+                            z_pos = settings.card_thickness - (hole_height / 2)
+                            recessed_hole.apply_translation((dot_x, dot_y, z_pos))
+                            recessed_holes.append(recessed_hole)
+                            print(f"DEBUG: Creating hole for dot {i+1} at ({dot_x:.2f}, {dot_y:.2f}, {z_pos:.2f})")
+            else:
+                print(f"WARNING: Line {row_num + 1} does not contain proper braille Unicode characters")
+    else:
+        print("No braille content provided, creating holes at all grid positions")
+        # Create recessed holes for each grid position (fallback)
+        for row in range(settings.grid_rows):
+            for col in range(settings.grid_columns):
+                # Calculate position
+                x_pos = settings.left_margin + (col * settings.cell_spacing) + settings.braille_x_adjust
+                y_pos = settings.card_height - settings.top_margin - (row * settings.line_spacing) + settings.braille_y_adjust
+                
+                # Create recessed hole (cylinder going down from top surface)
+                hole_radius = (settings.dot_base_diameter / 2) + 0.1
+                hole_height = settings.card_thickness + 0.2
+                
+                recessed_hole = trimesh.creation.cylinder(
+                    radius=hole_radius,
+                    height=hole_height,
+                    sections=16
+                )
+                
+                z_pos = settings.card_thickness - (hole_height / 2)
+                recessed_hole.apply_translation((x_pos, y_pos, z_pos))
+                recessed_holes.append(recessed_hole)
     
     # Combine all recessed holes
     if recessed_holes:
@@ -284,9 +344,9 @@ def create_simple_negative_plate(settings: CardSettings):
             print("Creating alternative negative plate approach...")
             
             # Alternative approach: create a plate with holes by building it from scratch
-            # Create the base plate with holes manually
             return create_alternative_negative_plate(settings)
     else:
+        print("No holes to create, returning base plate")
         return base_plate
 
 def create_alternative_negative_plate(settings: CardSettings):
@@ -411,7 +471,7 @@ def generate_braille_stl():
         if plate_type == 'positive':
             mesh = create_positive_plate_mesh(lines, grade, settings)
         elif plate_type == 'negative':
-            mesh = create_simple_negative_plate(settings)
+            mesh = create_simple_negative_plate(settings, lines)
         else:
             return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
         
@@ -431,7 +491,9 @@ def generate_braille_stl():
                     filename = sanitized
                 break
         
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=f'{filename}_braille.stl')
+        # Add plate type to filename
+        plate_suffix = 'counter_plate' if plate_type == 'negative' else 'braille'
+        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=f'{filename}_{plate_suffix}.stl')
         
     except Exception as e:
         return jsonify({'error': f'Failed to generate STL: {str(e)}'}), 500
@@ -442,11 +504,12 @@ def generate_counter_plate_stl():
     Counter plate generation with simplified approach for Vercel.
     """
     data = request.get_json()
+    lines = data.get('lines', ['', '', '', ''])
     settings_data = data.get('settings', {})
     settings = CardSettings(**settings_data)
     
     try:
-        mesh = create_simple_negative_plate(settings)
+        mesh = create_simple_negative_plate(settings, lines)
         
         # Export to STL
         stl_io = io.BytesIO()

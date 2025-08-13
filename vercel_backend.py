@@ -5,8 +5,6 @@ import io
 import os
 import re
 import json
-import subprocess
-import platform
 from pathlib import Path
 from flask_cors import CORS
 import execjs  # For running JavaScript from Python

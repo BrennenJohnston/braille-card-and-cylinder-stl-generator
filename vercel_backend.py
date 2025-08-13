@@ -385,19 +385,28 @@ def create_negative_plate_with_conical_holes(settings: CardSettings):
 
     print(f"DEBUG: Created {total_dots} conical cutters for boolean subtraction.")
 
-    # Combine all cutters into a single mesh for one boolean operation
+    # Optimize boolean operations: union all cones first, then single difference
     if cutters:
-        combined_cutters = trimesh.util.concatenate(cutters)
-        
-        # Perform the boolean subtraction
         try:
-            final_mesh = plate.difference(combined_cutters, engine='blender') # Using blender engine for robustness
-            print("DEBUG: Boolean subtraction successful.")
+            # First, union all the cone cutters together using manifold engine
+            print(f"DEBUG: Unioning {len(cutters)} cone cutters...")
+            if len(cutters) == 1:
+                combined_cutters = cutters[0]
+            else:
+                combined_cutters = trimesh.boolean.union(cutters, engine='manifold')
+            
+            print("DEBUG: Cones unioned successfully. Performing plate subtraction...")
+            
+            # Then subtract the unified cones from the plate
+            final_mesh = trimesh.boolean.difference([plate, combined_cutters], engine='manifold')
+            print("DEBUG: Boolean subtraction successful using manifold engine.")
             return final_mesh
+            
         except Exception as e:
-            print(f"ERROR: Boolean subtraction failed: {e}")
-            print("WARNING: Returning base plate without holes.")
-            return plate
+            print(f"ERROR: Boolean operations with manifold failed: {e}")
+            print("WARNING: Falling back to simple cylindrical holes.")
+            # Fallback to the simple approach if manifold fails
+            return create_simple_negative_plate(settings)
     else:
         print("WARNING: No cutters were generated. Returning base plate.")
         return plate
@@ -473,6 +482,73 @@ def test_boolean_operation():
         return jsonify({
             'status': 'error',
             'message': f'Boolean operation test failed: {str(e)}',
+            'error': str(e)
+        }), 500
+
+@app.route('/test-manifold-cone-operations')
+def test_manifold_cone_operations():
+    """Test endpoint to verify manifold engine works with cone-shaped boolean operations"""
+    try:
+        # Create a test card base
+        base = trimesh.creation.box(extents=(20, 20, 2))
+        base.apply_translation((10, 10, 1))
+        
+        # Create a test cone similar to what we use for braille dots
+        cone = trimesh.creation.cylinder(radius=1.0, height=1.5, sections=16)
+        
+        # Scale top to create frustum (cone shape)
+        scale_factor = 0.4  # Top radius smaller than base
+        top_surface_z = cone.vertices[:, 2].max()
+        is_top_vertex = np.isclose(cone.vertices[:, 2], top_surface_z)
+        cone.vertices[is_top_vertex, :2] *= scale_factor
+        
+        # Position the cone
+        cone.apply_translation((10, 10, 0.75))
+        
+        # Test manifold engine specifically
+        try:
+            result_manifold = base.difference(cone, engine='manifold')
+            manifold_success = True
+            manifold_volume = float(result_manifold.volume)
+            manifold_error = None
+        except Exception as e:
+            manifold_success = False
+            manifold_volume = None
+            manifold_error = str(e)
+        
+        # Test default engine for comparison
+        try:
+            result_default = base.difference(cone)
+            default_success = True
+            default_volume = float(result_default.volume)
+            default_error = None
+        except Exception as e:
+            default_success = False
+            default_volume = None
+            default_error = str(e)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Manifold cone operation test completed',
+            'base_volume': float(base.volume),
+            'cone_volume': float(cone.volume),
+            'manifold': {
+                'success': manifold_success,
+                'volume': manifold_volume,
+                'error': manifold_error
+            },
+            'default': {
+                'success': default_success,
+                'volume': default_volume,
+                'error': default_error
+            },
+            'engines_available': ['manifold' if manifold_success else 'manifold_failed', 'default' if default_success else 'default_failed']
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Manifold cone operation test failed: {str(e)}',
             'error': str(e)
         }), 500
 

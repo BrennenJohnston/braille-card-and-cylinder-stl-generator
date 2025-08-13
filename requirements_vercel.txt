@@ -1,0 +1,4 @@
+flask==2.3.3
+trimesh==3.23.5
+numpy==1.24.3
+flask-cors==4.0.0

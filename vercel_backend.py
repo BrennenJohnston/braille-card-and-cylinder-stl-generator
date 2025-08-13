@@ -322,6 +322,87 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
 
 
 
+def create_negative_plate_with_conical_holes(settings: CardSettings):
+    """
+    Create a negative plate with recessed conical holes using 3D boolean subtraction.
+    This method is more geometrically accurate but may be slower.
+    """
+    print("DEBUG: Starting negative plate creation with conical holes (3D boolean subtraction)")
+
+    # Create the base plate
+    plate = trimesh.creation.box(extents=(settings.card_width, settings.card_height, settings.card_thickness))
+    plate.apply_translation((settings.card_width / 2, settings.card_height / 2, settings.card_thickness / 2))
+
+    # Dot positioning constants
+    dot_col_offsets = [-settings.dot_spacing / 2, settings.dot_spacing / 2]
+    dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]
+    dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
+
+    # Create cone cutters for ALL possible dot positions
+    cutters = []
+    total_dots = 0
+
+    # Recessed dot parameters
+    recessed_base_radius = settings.recessed_dot_base_diameter / 2
+    recessed_top_radius = settings.recessed_dot_top_diameter / 2
+    recessed_height = settings.recessed_dot_height
+
+    # Generate cones for each grid position
+    for row in range(settings.grid_rows):
+        mirrored_row = settings.grid_rows - 1 - row
+        y_pos = settings.card_height - settings.top_margin - (mirrored_row * settings.line_spacing) + settings.braille_y_adjust
+
+        for col in range(settings.grid_columns):
+            mirrored_col = settings.grid_columns - 1 - col
+            x_pos = settings.left_margin + (mirrored_col * settings.cell_spacing) + settings.braille_x_adjust
+
+            for dot_idx in range(6):
+                dot_pos = dot_positions[dot_idx]
+                dot_x = x_pos + dot_col_offsets[dot_pos[1]]
+                dot_y = y_pos + dot_row_offsets[dot_pos[0]]
+                
+                # Create a cone (frustum) cutter
+                # We create it pointing up, then translate it
+                cone_cutter = trimesh.creation.cylinder(
+                    radius=recessed_base_radius,
+                    height=recessed_height,
+                    sections=16
+                )
+
+                # Scale top to create frustum
+                if recessed_base_radius > 0:
+                    scale_factor = recessed_top_radius / recessed_base_radius
+                    top_surface_z = cone_cutter.vertices[:, 2].max()
+                    is_top_vertex = np.isclose(cone_cutter.vertices[:, 2], top_surface_z)
+                    cone_cutter.vertices[is_top_vertex, :2] *= scale_factor
+
+                # Position the cutter to go through the plate
+                z_pos = (recessed_height / 2) - settings.negative_plate_offset
+                cone_cutter.apply_translation((dot_x, dot_y, z_pos))
+                
+                cutters.append(cone_cutter)
+                total_dots += 1
+
+    print(f"DEBUG: Created {total_dots} conical cutters for boolean subtraction.")
+
+    # Combine all cutters into a single mesh for one boolean operation
+    if cutters:
+        combined_cutters = trimesh.util.concatenate(cutters)
+        
+        # Perform the boolean subtraction
+        try:
+            final_mesh = plate.difference(combined_cutters, engine='blender') # Using blender engine for robustness
+            print("DEBUG: Boolean subtraction successful.")
+            return final_mesh
+        except Exception as e:
+            print(f"ERROR: Boolean subtraction failed: {e}")
+            print("WARNING: Returning base plate without holes.")
+            return plate
+    else:
+        print("WARNING: No cutters were generated. Returning base plate.")
+        return plate
+
+
 @app.route('/health')
 def health_check():
     return jsonify({'status': 'ok', 'message': 'Vercel backend is running'})
@@ -438,7 +519,7 @@ def generate_braille_stl():
         if plate_type == 'positive':
             mesh = create_positive_plate_mesh(lines, grade, settings)
         elif plate_type == 'negative':
-            mesh = create_simple_negative_plate(settings, lines)
+            mesh = create_negative_plate_with_conical_holes(settings)
         else:
             return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
         

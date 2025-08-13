@@ -332,6 +332,7 @@ def create_negative_plate_with_conical_holes(settings: CardSettings):
     # Create the base plate
     plate = trimesh.creation.box(extents=(settings.card_width, settings.card_height, settings.card_thickness))
     plate.apply_translation((settings.card_width / 2, settings.card_height / 2, settings.card_thickness / 2))
+    print(f"DEBUG: Base plate bounds: {plate.bounds}")
 
     # Dot positioning constants
     dot_col_offsets = [-settings.dot_spacing / 2, settings.dot_spacing / 2]
@@ -377,8 +378,14 @@ def create_negative_plate_with_conical_holes(settings: CardSettings):
                     cone_cutter.vertices[is_top_vertex, :2] *= scale_factor
 
                 # Position the cutter to go through the plate
-                z_pos = (recessed_height / 2) - settings.negative_plate_offset
+                # The cone should extend from below the plate (z < 0) to above it (z > card_thickness)
+                # to ensure proper intersection for boolean subtraction
+                z_pos = -settings.negative_plate_offset  # Start below the plate
                 cone_cutter.apply_translation((dot_x, dot_y, z_pos))
+                
+                # Debug: Log first few cone positions to verify placement
+                if total_dots < 5:
+                    print(f"DEBUG: Cone {total_dots + 1} at ({dot_x:.2f}, {dot_y:.2f}, {z_pos:.2f}) - bounds: {cone_cutter.bounds}")
                 
                 cutters.append(cone_cutter)
                 total_dots += 1
@@ -400,6 +407,8 @@ def create_negative_plate_with_conical_holes(settings: CardSettings):
             # Then subtract the unified cones from the plate
             final_mesh = trimesh.boolean.difference([plate, combined_cutters], engine='manifold')
             print("DEBUG: Boolean subtraction successful using manifold engine.")
+            print(f"DEBUG: Final mesh bounds: {final_mesh.bounds}")
+            print(f"DEBUG: Final mesh volume: {final_mesh.volume:.4f} (original: {plate.volume:.4f})")
             return final_mesh
             
         except Exception as e:
@@ -549,6 +558,80 @@ def test_manifold_cone_operations():
         return jsonify({
             'status': 'error',
             'message': f'Manifold cone operation test failed: {str(e)}',
+            'error': str(e)
+        }), 500
+
+@app.route('/test-cone-positioning')
+def test_cone_positioning():
+    """Test endpoint to verify cone positioning and intersection with plate"""
+    try:
+        # Use the same settings as the main application
+        settings = CardSettings()
+        
+        # Create a test plate (smaller for testing)
+        plate = trimesh.creation.box(extents=(30, 20, 2))
+        plate.apply_translation((15, 10, 1))
+        print(f"DEBUG: Test plate bounds: {plate.bounds}")
+        
+        # Create a few test cones with the same logic as the main function
+        cutters = []
+        recessed_base_radius = settings.recessed_dot_base_diameter / 2
+        recessed_top_radius = settings.recessed_dot_top_diameter / 2
+        recessed_height = settings.recessed_dot_height
+        
+        # Create cones at specific test positions
+        test_positions = [(15, 10), (20, 15), (10, 5)]  # Center and corners
+        
+        for i, (x, y) in enumerate(test_positions):
+            cone = trimesh.creation.cylinder(
+                radius=recessed_base_radius,
+                height=recessed_height,
+                sections=16
+            )
+            
+            # Scale top to create frustum
+            if recessed_base_radius > 0:
+                scale_factor = recessed_top_radius / recessed_base_radius
+                top_surface_z = cone.vertices[:, 2].max()
+                is_top_vertex = np.isclose(cone.vertices[:, 2], top_surface_z)
+                cone.vertices[is_top_vertex, :2] *= scale_factor
+            
+            # Position the cone to intersect the plate
+            z_pos = -settings.negative_plate_offset
+            cone.apply_translation((x, y, z_pos))
+            
+            print(f"DEBUG: Test cone {i+1} at ({x}, {y}, {z_pos}) - bounds: {cone.bounds}")
+            cutters.append(cone)
+        
+        # Test boolean operation
+        if len(cutters) == 1:
+            combined_cutters = cutters[0]
+        else:
+            combined_cutters = trimesh.boolean.union(cutters, engine='manifold')
+        
+        print(f"DEBUG: Combined cutters bounds: {combined_cutters.bounds}")
+        
+        # Perform subtraction
+        result = trimesh.boolean.difference([plate, combined_cutters], engine='manifold')
+        print(f"DEBUG: Result bounds: {result.bounds}")
+        print(f"DEBUG: Result volume: {result.volume:.4f} (original: {plate.volume:.4f})")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Cone positioning test completed',
+            'plate_bounds': plate.bounds.tolist(),
+            'plate_volume': float(plate.volume),
+            'cone_count': len(cutters),
+            'combined_cutters_bounds': combined_cutters.bounds.tolist(),
+            'result_bounds': result.bounds.tolist(),
+            'result_volume': float(result.volume),
+            'volume_difference': float(plate.volume - result.volume)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Cone positioning test failed: {str(e)}',
             'error': str(e)
         }), 500
 

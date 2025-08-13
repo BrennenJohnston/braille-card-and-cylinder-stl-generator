@@ -92,33 +92,34 @@ self.onmessage = async function(e) {
                 
                 console.log('Worker: Translating text:', text, 'with table:', tableName);
                 
-                // Try different table formats
-                const tableFormats = [
-                    tableName,
-                    'unicode.dis,' + tableName
-                ];
+                // Use the correct table format to get Unicode braille output
+                // The 'unicode.dis' table must come first to ensure Unicode output
+                const tableFormat = 'unicode.dis,' + tableName;
                 
-                let result = null;
-                let lastError = null;
+                console.log('Worker: Using table format:', tableFormat);
                 
-                for (const table of tableFormats) {
-                    try {
-                        console.log('Worker: Trying table format:', table);
-                        result = liblouisInstance.translateString(table, text);
-                        if (result) {
-                            console.log('Worker: Translation successful with table:', table);
-                            break;
-                        }
-                    } catch (e) {
-                        console.log('Worker: Translation failed with table:', table, 'Error:', e.message);
-                        lastError = e;
+                try {
+                    result = liblouisInstance.translateString(tableFormat, text);
+                    console.log('Worker: Translation successful:', result);
+                    
+                    // Verify the result contains proper braille Unicode characters
+                    const hasBrailleChars = result.split('').some(char => {
+                        const code = char.charCodeAt(0);
+                        return code >= 0x2800 && code <= 0x28FF;
+                    });
+                    
+                    if (hasBrailleChars) {
+                        console.log('Worker: Result contains proper braille Unicode characters');
+                        self.postMessage({ id, type: 'translate', result: { success: true, translation: result } });
+                    } else {
+                        console.log('Worker: Result does not contain braille Unicode, trying alternative approach');
+                        // If we still get liblouis format, try to convert it using the library's internal methods
+                        // This is a fallback - ideally the unicode.dis table should give us Unicode directly
+                        throw new Error('Translation result is not in Unicode braille format');
                     }
-                }
-                
-                if (result) {
-                    self.postMessage({ id, type: 'translate', result: { success: true, translation: result } });
-                } else {
-                    throw lastError || new Error('All table formats failed');
+                } catch (e) {
+                    console.log('Worker: Translation failed:', e.message);
+                    throw e;
                 }
                 break;
                 

@@ -377,6 +377,10 @@
                             <span class="radio-text">Grade 2 (Contracted - Uses abbreviations and contractions)</span>
                         </label>
                     </div>
+                    <div class="grade-info" style="margin-top: 8px; font-size: 0.9em; color: #666; font-style: italic;">
+                        <span id="grade1-info" style="display: none;">Grade 1: Each character = 1 braille cell</span>
+                        <span id="grade2-info">Grade 2: Uses contractions (e.g., "the" = 1 cell, "and" = 1 cell) - check limits after translation</span>
+                    </div>
                 </div>
 
                 <div class="grade-selection">
@@ -414,6 +418,9 @@
                         <div>
                             <label for="grid_columns">Number of Braille Cells (Characters):</label>
                             <input type="number" id="grid_columns" name="grid_columns" value="13">
+                            <div style="font-size: 0.85em; color: #666; margin-top: 2px;">
+                                Note: In Grade 2, contractions may make braille shorter than original text
+                            </div>
                         </div>
                         <div>
                             <label for="grid_rows">Number of Braille Lines:</label>
@@ -500,6 +507,22 @@
         document.querySelectorAll('input[name="plate_type"]').forEach(radio => {
             radio.addEventListener('change', function() {
                 negativePlateOffsetContainer.style.display = this.value === 'negative' ? 'block' : 'none';
+            });
+        });
+
+        // Handle grade selection changes to show appropriate info
+        document.querySelectorAll('input[name="grade"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const grade1Info = document.getElementById('grade1-info');
+                const grade2Info = document.getElementById('grade2-info');
+                
+                if (this.value === 'g1') {
+                    grade1Info.style.display = 'inline';
+                    grade2Info.style.display = 'none';
+                } else {
+                    grade1Info.style.display = 'none';
+                    grade2Info.style.display = 'inline';
+                }
             });
         });
 
@@ -629,6 +652,19 @@
                 errorText.textContent = 'Please enter text in at least one line.';
                 errorDiv.style.display = 'flex';
                 return;
+            }
+            
+            // Validate braille character limits AFTER translation
+            const gridColumns = parseInt(document.getElementById('grid_columns').value);
+            for (let i = 0; i < translatedLines.length; i++) {
+                const brailleLine = translatedLines[i];
+                if (brailleLine && brailleLine.length > gridColumns) {
+                    const over = brailleLine.length - gridColumns;
+                    errorText.textContent = `Line ${i + 1} exceeds ${gridColumns} braille cells by ${over} cells after translation. Please shorten your text.`;
+                    errorDiv.style.display = 'flex';
+                    errorDiv.className = 'error-message';
+                    return;
+                }
             }
             
             // Show loading message during translation

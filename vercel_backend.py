@@ -357,11 +357,8 @@ def generate_braille_stl():
     if all(not line.strip() for line in lines):
         return jsonify({'error': 'Please enter text in at least one line'}), 400
     
-    # Validate each line length
-    for i, line in enumerate(lines):
-        if len(line.strip()) > settings.grid_columns:
-            over = len(line.strip()) - settings.grid_columns
-            return jsonify({'error': f'Line {i+1} exceeds {settings.grid_columns} braille cells by {over} cells. Please shorten your text.'}), 400
+    # Character limit validation is now done on frontend after braille translation
+    # Backend expects lines to already be within limits
     
     try:
         if plate_type == 'positive':

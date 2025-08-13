@@ -308,6 +308,38 @@ def create_simple_negative_plate(settings: CardSettings):
 def health_check():
     return jsonify({'status': 'ok', 'message': 'Vercel backend is running'})
 
+@app.route('/test-liblouis-files')
+def test_liblouis_files():
+    """Test endpoint to verify liblouis files are accessible"""
+    import os
+    
+    files_to_check = [
+        'node_modules/liblouis-build/build-no-tables-utf16.js',
+        'node_modules/liblouis/easy-api.js',
+        'node_modules/liblouis-build/tables/en-us-g1.ctb',
+        'node_modules/liblouis-build/tables/en-us-g2.ctb',
+        'static/liblouis-worker.js'
+    ]
+    
+    results = {}
+    for file_path in files_to_check:
+        try:
+            exists = os.path.exists(file_path)
+            if exists:
+                size = os.path.getsize(file_path)
+                results[file_path] = {'exists': True, 'size': size}
+            else:
+                results[file_path] = {'exists': False, 'size': 0}
+        except Exception as e:
+            results[file_path] = {'exists': False, 'error': str(e)}
+    
+    return jsonify({
+        'status': 'file_check_complete',
+        'files': results,
+        'working_directory': os.getcwd(),
+        'directory_contents': os.listdir('.')
+    })
+
 @app.route('/')
 def index():
     try:

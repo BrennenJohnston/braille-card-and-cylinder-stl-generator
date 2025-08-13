@@ -754,6 +754,19 @@
             try {
                 // Initialize liblouis web worker
                 console.log('Initializing liblouis web worker...');
+                
+                // Test if worker file is accessible first
+                try {
+                    const workerResponse = await fetch('/static/liblouis-worker.js');
+                    if (!workerResponse.ok) {
+                        throw new Error(`Worker file not accessible: ${workerResponse.status}`);
+                    }
+                    console.log('Worker file is accessible');
+                } catch (fetchError) {
+                    console.error('Worker file test failed:', fetchError);
+                    throw new Error('Cannot access worker file: ' + fetchError.message);
+                }
+                
                 liblouisWorker = new Worker('/static/liblouis-worker.js');
                 
                 // Handle worker messages
@@ -788,9 +801,18 @@
             } catch (error) {
                 console.error('Failed to initialize liblouis worker:', error);
                 
-                // Fallback to main thread approach if worker fails
-                console.log('Falling back to main thread liblouis...');
-                // You could add the old initialization code here as fallback
+                // Fallback: disable liblouis and show error message
+                console.log('Web worker failed - disabling liblouis translation');
+                liblouisReady = false;
+                liblouisWorker = null;
+                
+                // Show user that translation is disabled
+                const errorDiv = document.getElementById('error-message');
+                const errorText = document.getElementById('error-text');
+                if (errorDiv && errorText) {
+                    errorText.textContent = 'Web worker failed to initialize. Braille translation preview is disabled on this deployment.';
+                    errorDiv.style.display = 'flex';
+                }
             }
             
             init3D();
@@ -800,7 +822,7 @@
         // Function to translate text using liblouis web worker
         async function translateWithLiblouis(text, grade) {
             if (!liblouisReady || !liblouisWorker) {
-                throw new Error('Liblouis worker not initialized');
+                throw new Error('Liblouis worker not initialized - translation preview unavailable on this deployment');
             }
             
             try {

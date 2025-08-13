@@ -4,9 +4,26 @@
 let liblouisInstance = null;
 let liblouisReady = false;
 
-// Import liblouis scripts
-importScripts('/node_modules/liblouis-build/build-no-tables-utf16.js');
-importScripts('/node_modules/liblouis/easy-api.js');
+// Import liblouis scripts with error handling
+try {
+    console.log('Worker: Attempting to load liblouis scripts...');
+    importScripts('/node_modules/liblouis-build/build-no-tables-utf16.js');
+    console.log('Worker: Loaded build-no-tables-utf16.js');
+    importScripts('/node_modules/liblouis/easy-api.js');
+    console.log('Worker: Loaded easy-api.js');
+} catch (error) {
+    console.error('Worker: Failed to load liblouis scripts:', error);
+    // Try alternative paths for Vercel
+    try {
+        console.log('Worker: Trying alternative script paths...');
+        importScripts('./node_modules/liblouis-build/build-no-tables-utf16.js');
+        importScripts('./node_modules/liblouis/easy-api.js');
+        console.log('Worker: Loaded scripts with alternative paths');
+    } catch (altError) {
+        console.error('Worker: Alternative paths also failed:', altError);
+        throw new Error('Could not load liblouis scripts: ' + error.message);
+    }
+}
 
 // Initialize liblouis in the worker
 async function initializeLiblouis() {

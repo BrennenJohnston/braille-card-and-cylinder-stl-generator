@@ -335,7 +335,7 @@
             <div class="info-panel">
                 <p><strong>For Business Cards:</strong> 3.5 in × 2 in</p>
                 <p><strong>Enter English text in up to 4 lines</strong> (The program will automatically translate to braille)</p>
-                <p><strong>Real Liblouis Translation:</strong> Uses professional braille translation library</p>
+                <p><strong>Translation Engine:</strong> Liblouis - Professional open-source braille translator</p>
             </div>
             
             <form id="braille-form">
@@ -465,8 +465,11 @@
     
 
     
-    <!-- Load the real liblouis JavaScript build -->
-    <script src="https://unpkg.com/liblouis-js@latest/dist/liblouis.js"></script>
+    <!-- Load the real liblouis JavaScript implementation -->
+    <!-- First load the C-API build -->
+    <script src="https://unpkg.com/liblouis-build@latest"></script>
+    <!-- Then load the Easy API -->
+    <script src="https://unpkg.com/liblouis@latest/easy-api.js"></script>
     
     <script type="module">
         import * as THREE from '/static/three.module.js';
@@ -721,12 +724,19 @@
         }
         
         // Initialize liblouis and 3D viewer on page load
+        let liblouisReady = false;
+        
         window.addEventListener('load', async () => {
             try {
-                // Initialize liblouis if available
-                if (window.liblouis) {
-                    console.log('Liblouis JavaScript build loaded successfully');
-                    // You can now use window.liblouis.translate() for real braille translation
+                // Initialize liblouis Easy API
+                if (window.liblouis && window.liblouisBuild) {
+                    // Set the C-API build for the Easy API
+                    window.liblouis.setLiblouisBuild(window.liblouisBuild);
+                    
+                    // Get version to verify it's working
+                    const version = window.liblouis.version();
+                    console.log('Liblouis Easy API initialized successfully, version:', version);
+                    liblouisReady = true;
                 } else {
                     console.log('Liblouis not available, using fallback translation');
                 }
@@ -741,10 +751,11 @@
         // Function to translate text using real liblouis if available
         async function translateWithLiblouis(text, grade) {
             try {
-                if (window.liblouis && window.liblouis.translate) {
-                    // Use the real liblouis JavaScript build
+                if (liblouisReady && window.liblouis && window.liblouis.translateString) {
+                    // Use the real liblouis Easy API
                     const table = grade === 'g2' ? 'en-ueb-g2.ctb' : 'en-ueb-g1.ctb';
-                    return await window.liblouis.translate(text, table);
+                    const result = window.liblouis.translateString(table, text);
+                    return result || translateBasicBraille(text);
                 } else {
                     // Fallback to basic translation
                     return translateBasicBraille(text);

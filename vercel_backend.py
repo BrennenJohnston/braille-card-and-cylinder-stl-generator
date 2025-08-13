@@ -7,6 +7,8 @@ import re
 import json
 from pathlib import Path
 from flask_cors import CORS
+from shapely.geometry import Polygon, Point
+from shapely.ops import unary_union
 
 app = Flask(__name__)
 CORS(app)
@@ -232,181 +234,93 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
 
 def create_simple_negative_plate(settings: CardSettings, lines=None):
     """
-    Create a negative plate with recessed holes for Vercel compatibility.
-    This creates a plate with holes that can be used as a counter plate.
+    Create a negative plate with recessed holes using 2D Shapely operations for Vercel compatibility.
+    This creates a counter plate with holes for ALL possible dot positions (312 holes total).
+    The plate mirrors the embossing plate positions.
     """
-    print(f"DEBUG: Starting negative plate creation with settings: {settings.__dict__}")
+    print(f"DEBUG: Starting negative plate creation with Shapely approach")
+    print(f"DEBUG: Settings: grid {settings.grid_columns}x{settings.grid_rows}, dot spacing: {settings.dot_spacing}")
     
-    # Create base plate
-    base_plate = trimesh.creation.box(extents=(settings.card_width, settings.card_height, settings.card_thickness))
-    base_plate.apply_translation((settings.card_width/2, settings.card_height/2, settings.card_thickness/2))
-    print(f"DEBUG: Created base plate with dimensions: {base_plate.bounds}")
-    
-    # Create recessed holes as cylinders
-    recessed_holes = []
+    # Create base rectangle for the card
+    base_polygon = Polygon([
+        (0, 0),
+        (settings.card_width, 0),
+        (settings.card_width, settings.card_height),
+        (0, settings.card_height)
+    ])
     
     # Dot positioning constants
     dot_col_offsets = [-settings.dot_spacing / 2, settings.dot_spacing / 2]
     dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]
     dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
     
-    # If we have braille lines, create holes only where dots exist
-    if lines and any(line.strip() for line in lines):
-        print(f"DEBUG: Creating negative plate with braille content: {lines}")
+    # Create holes for ALL possible dot positions (counter plate needs all 312 holes)
+    holes = []
+    total_dots = 0
+    
+    # Calculate hole radius based on dot dimensions plus offset
+    hole_radius = (settings.recessed_dot_base_diameter / 2)
+    print(f"DEBUG: Hole radius: {hole_radius:.2f}mm (based on recessed_dot_base_diameter: {settings.recessed_dot_base_diameter:.2f}mm)")
+    
+    # Generate holes for each grid position (all cells, all dots)
+    for row in range(settings.grid_rows):
+        # Calculate Y position for this row (top-down, but mirrored for counter plate)
+        # For counter plate: Row 0 on embossing plate -> Row 3 on counter plate
+        mirrored_row = settings.grid_rows - 1 - row
+        y_pos = settings.card_height - settings.top_margin - (mirrored_row * settings.line_spacing) + settings.braille_y_adjust
         
-        # Process each line in top-down order
-        for row_num in range(settings.grid_rows):
-            if row_num >= len(lines):
-                break
-                
-            line_text = lines[row_num].strip()
-            if not line_text:
-                continue
-                
-            # Check if input contains proper braille Unicode (U+2800 to U+28FF)
-            has_braille_chars = any(ord(char) >= 0x2800 and ord(char) <= 0x28FF for char in line_text)
+        for col in range(settings.grid_columns):
+            # Calculate X position for this column (mirrored for counter plate)
+            # For counter plate: Col 0 on embossing plate -> Col 12 on counter plate
+            mirrored_col = settings.grid_columns - 1 - col
+            x_pos = settings.left_margin + (mirrored_col * settings.cell_spacing) + settings.braille_x_adjust
             
-            if has_braille_chars:
-                # Input is proper braille Unicode, use it directly
-                braille_text = line_text
-                print(f"DEBUG: Processing braille line '{braille_text}' for negative plate")
+            # Create holes for ALL 6 dots in this cell
+            for dot_idx in range(6):
+                dot_pos = dot_positions[dot_idx]
+                dot_x = x_pos + dot_col_offsets[dot_pos[1]]
+                dot_y = y_pos + dot_row_offsets[dot_pos[0]]
                 
-                # Calculate Y position for this row (top-down)
-                y_pos = settings.card_height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
+                # Create circular hole
+                hole = Point(dot_x, dot_y).buffer(hole_radius, resolution=32)
+                holes.append(hole)
+                total_dots += 1
                 
-                # Process each braille character in the line
-                for col_num, braille_char in enumerate(braille_text):
-                    if col_num >= settings.grid_columns:
-                        break
-                        
-                    dots = braille_to_dots(braille_char)
-                    print(f"DEBUG: Braille char '{braille_char}' → dots {dots}")
-                    
-                    # Calculate X position for this column
-                    x_pos = settings.left_margin + (col_num * settings.cell_spacing) + settings.braille_x_adjust
-                    
-                    # Create holes for each dot that exists
-                    for i, dot_val in enumerate(dots):
-                        if dot_val == 1:
-                            dot_pos = dot_positions[i]
-                            dot_x = x_pos + dot_col_offsets[dot_pos[1]]
-                            dot_y = y_pos + dot_row_offsets[dot_pos[0]]
-                            
-                            # Create recessed hole (cylinder going down from top surface)
-                            # Make the hole significantly larger than the dot to ensure proper boolean operation
-                            hole_radius = (settings.dot_base_diameter / 2) + 0.5  # Increased tolerance to 0.5mm
-                            hole_height = settings.card_thickness + 1.0  # Increased height to ensure complete penetration
-                            
-                            print(f"DEBUG: Creating hole with radius {hole_radius:.2f}mm, height {hole_height:.2f}mm")
-                            
-                            # Create a tall cylinder that definitely goes through the plate
-                            recessed_hole = trimesh.creation.cylinder(
-                                radius=hole_radius,
-                                height=hole_height,
-                                sections=32  # Increased sections for smoother holes
-                            )
-                            
-                            # Position the hole to start above the plate and go completely through
-                            # This ensures the hole definitely intersects with the plate
-                            z_pos = settings.card_thickness + (hole_height / 2)
-                            recessed_hole.apply_translation((dot_x, dot_y, z_pos))
-                            recessed_holes.append(recessed_hole)
-                            print(f"DEBUG: Created hole for dot {i+1} at ({dot_x:.2f}, {dot_y:.2f}, {z_pos:.2f})")
-            else:
-                print(f"WARNING: Line {row_num + 1} does not contain proper braille Unicode characters")
-    else:
-        print("DEBUG: No braille content provided, creating holes at all grid positions")
-        # Create recessed holes for each grid position (fallback)
-        for row in range(settings.grid_rows):
-            for col in range(settings.grid_columns):
-                # Calculate position
-                x_pos = settings.left_margin + (col * settings.cell_spacing) + settings.braille_x_adjust
-                y_pos = settings.card_height - settings.top_margin - (row * settings.line_spacing) + settings.braille_y_adjust
-                
-                # Create recessed hole (cylinder going down from top surface)
-                hole_radius = (settings.dot_base_diameter / 2) + 0.5  # Increased tolerance
-                hole_height = settings.card_thickness + 1.0  # Increased height
-                
-                recessed_hole = trimesh.creation.cylinder(
-                    radius=hole_radius,
-                    height=hole_height,
-                    sections=32
-                )
-                
-                # Position the hole to start above the plate and go completely through
-                z_pos = settings.card_thickness + (hole_height / 2)
-                recessed_hole.apply_translation((x_pos, y_pos, z_pos))
-                recessed_holes.append(recessed_hole)
-                print(f"DEBUG: Created fallback hole at ({x_pos:.2f}, {y_pos:.2f}, {z_pos:.2f})")
+                if total_dots <= 10 or total_dots % 50 == 0:  # Log first 10 and every 50th
+                    print(f"DEBUG: Hole {total_dots} at cell[{row},{col}] dot {dot_idx+1} -> mirrored cell[{mirrored_row},{mirrored_col}] at ({dot_x:.2f}, {dot_y:.2f})")
     
-    print(f"DEBUG: Created {len(recessed_holes)} holes total")
+    print(f"DEBUG: Created {total_dots} holes total (expected: {settings.grid_rows * settings.grid_columns * 6})")
     
-    # Combine all recessed holes
-    if recessed_holes:
-        try:
-            recessed_holes_combined = trimesh.util.concatenate(recessed_holes)
-            print(f"DEBUG: Combined holes into single mesh with bounds: {recessed_holes_combined.bounds}")
-            
-            # Perform boolean difference to create actual holes
-            print("DEBUG: Attempting boolean subtraction...")
-            final_mesh = base_plate.difference(recessed_holes_combined)
-            print(f"DEBUG: Boolean subtraction successful! Final mesh bounds: {final_mesh.bounds}")
-            print(f"Successfully created negative plate with {len(recessed_holes)} holes")
-            return final_mesh
-            
-        except Exception as e:
-            print(f"ERROR: Boolean subtraction failed: {e}")
-            print("DEBUG: Attempting alternative negative plate approach...")
-            
-            # Alternative approach: create a plate with holes by building it from scratch
-            return create_alternative_negative_plate(settings)
-    else:
-        print("WARNING: No holes to create, returning base plate")
-        return base_plate
-
-def create_alternative_negative_plate(settings: CardSettings):
-    """
-    Alternative method to create negative plate when boolean operations fail.
-    This creates a plate with holes by building it from individual components.
-    """
-    print("DEBUG: Using alternative negative plate creation method")
+    # Combine all holes into one multi-polygon
+    all_holes = unary_union(holes)
     
-    # Create the base plate
-    base_plate = trimesh.creation.box(extents=(settings.card_width, settings.card_height, settings.card_thickness))
-    base_plate.apply_translation((settings.card_width/2, settings.card_height/2, settings.card_thickness/2))
+    # Subtract holes from base to create the plate with holes
+    plate_with_holes = base_polygon.difference(all_holes)
     
-    # Create a large cylinder that covers the entire grid area
-    grid_width = (settings.grid_columns - 1) * settings.cell_spacing
-    grid_height = (settings.grid_rows - 1) * settings.line_spacing
-    
-    # Create a large hole that covers the entire braille area
-    large_hole = trimesh.creation.cylinder(
-        radius=max(grid_width, grid_height) / 2 + 2,  # Slightly larger than grid
-        height=settings.card_thickness + 1.0,  # Increased height
-        sections=32
-    )
-    
-    # Position the large hole to start above the plate and go completely through
-    center_x = settings.left_margin + (grid_width / 2)
-    center_y = settings.card_height - settings.top_margin - (grid_height / 2)
-    z_pos = settings.card_thickness + (large_hole.bounds[1][2] - large_hole.bounds[0][2]) / 2
-    large_hole.apply_translation((center_x, center_y, z_pos))
-    
-    print(f"DEBUG: Alternative method - created large hole with radius {max(grid_width, grid_height) / 2 + 2:.2f}mm")
-    print(f"DEBUG: Alternative method - hole positioned at ({center_x:.2f}, {center_y:.2f}, {z_pos:.2f})")
-    
+    # Extrude the 2D shape to 3D
     try:
-        # Try to subtract the large hole
-        print("DEBUG: Alternative method - attempting boolean subtraction...")
-        final_mesh = base_plate.difference(large_hole)
-        print("DEBUG: Alternative method - boolean subtraction successful!")
-        print("Successfully created negative plate with large hole")
+        # Handle both Polygon and MultiPolygon results
+        if hasattr(plate_with_holes, 'geoms'):
+            # It's a MultiPolygon - take the largest polygon (should be the main plate)
+            largest_polygon = max(plate_with_holes.geoms, key=lambda p: p.area)
+            final_mesh = trimesh.creation.extrude_polygon(largest_polygon, height=settings.card_thickness)
+            print(f"DEBUG: MultiPolygon detected, using largest polygon with area {largest_polygon.area:.2f}")
+        else:
+            # It's a single Polygon
+            final_mesh = trimesh.creation.extrude_polygon(plate_with_holes, height=settings.card_thickness)
+        
+        print(f"DEBUG: Successfully created counter plate with {total_dots} holes using Shapely")
+        print(f"DEBUG: Final mesh bounds: {final_mesh.bounds}")
         return final_mesh
     except Exception as e:
-        print(f"ERROR: Alternative method also failed: {e}")
-        # Last resort: return the base plate with a note
-        print("WARNING: Returning base plate - holes could not be created")
-        return base_plate
+        print(f"ERROR: Failed to extrude polygon: {e}")
+        # Fallback to simple base plate if extrusion fails
+        print("WARNING: Returning base plate without holes")
+        base = trimesh.creation.box(extents=(settings.card_width, settings.card_height, settings.card_thickness))
+        base.apply_translation((settings.card_width/2, settings.card_height/2, settings.card_thickness/2))
+        return base
+
+
 
 @app.route('/health')
 def health_check():

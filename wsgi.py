@@ -1,4 +1,4 @@
-from backend import app
+from vercel_backend import app
 
 # For Vercel deployment
 app.debug = False

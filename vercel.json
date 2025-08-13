@@ -6,7 +6,20 @@
       "use": "@vercel/python"
     }
   ],
+  "functions": {
+    "wsgi.py": {
+      "includeFiles": [
+        "node_modules/**",
+        "static/**",
+        "templates/**"
+      ]
+    }
+  },
   "rewrites": [
+    {
+      "source": "/node_modules/(.*)",
+      "destination": "/node_modules/$1"
+    },
     {
       "source": "/static/(.*)",
       "destination": "/static/$1"

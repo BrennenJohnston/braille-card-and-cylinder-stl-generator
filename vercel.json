@@ -16,12 +16,6 @@
       "dest": "/wsgi.py"
     }
   ],
-  "functions": {
-    "wsgi.py": {
-      "runtime": "python3.9",
-      "maxDuration": 30
-    }
-  },
   "rewrites": [
     {
       "source": "/(.*)",

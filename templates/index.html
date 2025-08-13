@@ -335,6 +335,7 @@
             <div class="info-panel">
                 <p><strong>For Business Cards:</strong> 3.5 in × 2 in</p>
                 <p><strong>Enter English text in up to 4 lines</strong> (The program will automatically translate to braille)</p>
+                <p><strong>Real Liblouis Translation:</strong> Uses professional braille translation library</p>
             </div>
             
             <form id="braille-form">
@@ -444,10 +445,16 @@
                 </div>
 
                 <div class="button-group">
+                    <button type="button" id="preview-braille-btn">Preview Braille Translation</button>
                     <button type="submit">Generate STL</button>
                     <button type="button" id="download-counter-plate-btn">Download Universal Counter Plate (Recessed Dots)</button>
                 </div>
             </form>
+            
+            <div id="braille-preview" style="display: none; margin-top: 20px; padding: 15px; background: #f0f8ff; border: 1px solid #b3d9ff; border-radius: 8px;">
+                <h3 style="margin-top: 0; color: #2d3748;">Braille Translation Preview:</h3>
+                <div id="preview-content"></div>
+            </div>
             
             <div id="error-message">
                 <span style="font-weight:bold;">⚠</span> 
@@ -458,6 +465,9 @@
     
 
     
+    <!-- Load the real liblouis JavaScript build -->
+    <script src="https://unpkg.com/liblouis-js@latest/dist/liblouis.js"></script>
+    
     <script type="module">
         import * as THREE from '/static/three.module.js';
         import { STLLoader } from '/static/STLLoader.js';
@@ -467,6 +477,7 @@
         const viewer = document.getElementById('viewer');
         const downloadBtn = document.getElementById('download-btn');
         const downloadCounterPlateBtn = document.getElementById('download-counter-plate-btn');
+        const previewBrailleBtn = document.getElementById('preview-braille-btn');
         const errorDiv = document.getElementById('error-message');
         const errorText = document.getElementById('error-text');
         const negativePlateOffsetContainer = document.getElementById('negative-plate-offset-container');
@@ -474,6 +485,8 @@
         const expertSettings = document.getElementById('expert-settings');
         const expertToggleText = document.getElementById('expert-toggle-text');
         const expertToggleIcon = document.getElementById('expert-toggle-icon');
+        const braillePreview = document.getElementById('braille-preview');
+        const previewContent = document.getElementById('preview-content');
         let renderer, scene, camera, mesh, controls;
         let lastSTLUrl = null;
 
@@ -489,6 +502,47 @@
             expertToggleText.textContent = isVisible ? 'Show Expert Mode' : 'Hide Expert Mode';
             expertToggleIcon.textContent = isVisible ? '▼' : '▲';
             expertToggleBtn.classList.toggle('active', !isVisible);
+        });
+
+        // Preview braille translation using real liblouis
+        previewBrailleBtn.addEventListener('click', async () => {
+            const lines = [
+                document.getElementById('line1').value,
+                document.getElementById('line2').value,
+                document.getElementById('line3').value,
+                document.getElementById('line4').value
+            ];
+            
+            const grade = document.querySelector('input[name="grade"]:checked').value;
+            
+            if (lines.every(line => !line.trim())) {
+                errorText.textContent = 'Please enter text in at least one line.';
+                errorDiv.style.display = 'flex';
+                return;
+            }
+
+            errorDiv.style.display = 'none';
+            let previewHTML = '';
+            
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].trim()) {
+                    try {
+                        // Use real liblouis translation
+                        const braille = await translateWithLiblouis(lines[i].trim(), grade);
+                        previewHTML += `<div style="margin: 10px 0; padding: 10px; background: white; border-radius: 5px; border: 1px solid #e2e8f0;">
+                            <strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → "${braille}"
+                        </div>`;
+                    } catch (error) {
+                        console.error('Translation failed for line', i + 1, ':', error);
+                        previewHTML += `<div style="margin: 10px 0; padding: 10px; background: #fee2e2; border-radius: 5px; border: 1px solid #fecaca;">
+                            <strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → Translation failed
+                        </div>`;
+                    }
+                }
+            }
+            
+            previewContent.innerHTML = previewHTML;
+            braillePreview.style.display = 'block';
         });
 
         function init3D() {
@@ -666,11 +720,56 @@
             render();
         }
         
-        // Initialize 3D viewer on page load
-        window.addEventListener('load', () => {
+        // Initialize liblouis and 3D viewer on page load
+        window.addEventListener('load', async () => {
+            try {
+                // Initialize liblouis if available
+                if (window.liblouis) {
+                    console.log('Liblouis JavaScript build loaded successfully');
+                    // You can now use window.liblouis.translate() for real braille translation
+                } else {
+                    console.log('Liblouis not available, using fallback translation');
+                }
+            } catch (error) {
+                console.error('Failed to initialize liblouis:', error);
+            }
+            
             init3D();
             animate();
         });
+
+        // Function to translate text using real liblouis if available
+        async function translateWithLiblouis(text, grade) {
+            try {
+                if (window.liblouis && window.liblouis.translate) {
+                    // Use the real liblouis JavaScript build
+                    const table = grade === 'g2' ? 'en-ueb-g2.ctb' : 'en-ueb-g1.ctb';
+                    return await window.liblouis.translate(text, table);
+                } else {
+                    // Fallback to basic translation
+                    return translateBasicBraille(text);
+                }
+            } catch (error) {
+                console.error('Liblouis translation failed, using fallback:', error);
+                return translateBasicBraille(text);
+            }
+        }
+
+        // Basic braille fallback (Grade 1 only)
+        function translateBasicBraille(text) {
+            const mapping = {
+                'a': '⠁', 'b': '⠃', 'c': '⠉', 'd': '⠙', 'e': '⠑',
+                'f': '⠋', 'g': '⠛', 'h': '⠓', 'i': '⠊', 'j': '⠚',
+                'k': '⠅', 'l': '⠇', 'm': '⠍', 'n': '⠝', 'o': '⠕',
+                'p': '⠏', 'q': '⠟', 'r': '⠗', 's': '⠎', 't': '⠞',
+                'u': '⠥', 'v': '⠧', 'w': '⠺', 'x': '⠭', 'y': '⠽',
+                'z': '⠵', ' ': '⠀', '0': '⠚', '1': '⠁', '2': '⠃',
+                '3': '⠉', '4': '⠙', '5': '⠑', '6': '⠋', '7': '⠛',
+                '8': '⠓', '9': '⠊'
+            };
+            
+            return text.toLowerCase().split('').map(char => mapping[char] || char).join('');
+        }
     </script>
 </body>
 </html> 

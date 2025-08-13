@@ -723,42 +723,47 @@
         
         // Initialize liblouis and 3D viewer on page load
         let liblouisReady = false;
+        let liblouisInstance = null;
         
         window.addEventListener('load', async () => {
             try {
                 // Wait a bit for scripts to fully load
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 500));
                 
-                // Check if both liblouis-build and liblouis are available
-                if (typeof liblouisBuild !== 'undefined' && typeof liblouis !== 'undefined') {
-                    console.log('Liblouis-build found:', liblouisBuild);
-                    console.log('Liblouis Easy API found:', liblouis);
+                console.log('Checking for liblouis availability...');
+                console.log('window.liblouis:', typeof window.liblouis);
+                console.log('window.liblouisBuild:', typeof window.liblouisBuild);
+                console.log('window.LiblouisEasyApi:', typeof window.LiblouisEasyApi);
+                
+                // Try different approaches based on what's available
+                if (typeof window.LiblouisEasyApi !== 'undefined' && typeof window.liblouisBuild !== 'undefined') {
+                    console.log('Using LiblouisEasyApi class approach');
+                    liblouisInstance = new window.LiblouisEasyApi(window.liblouisBuild);
+                    console.log('LiblouisEasyApi instance created');
+                    liblouisReady = true;
+                } else if (typeof window.liblouis !== 'undefined') {
+                    console.log('Using global liblouis object');
+                    liblouisInstance = window.liblouis;
                     
-                    // Set the C-API build for the Easy API (this is required!)
-                    liblouis.setLiblouisBuild(liblouisBuild);
-                    console.log('Set liblouis build successfully');
+                    // Check what methods are available
+                    console.log('Available liblouis methods:', Object.keys(liblouisInstance));
                     
-                    // Check if translateString is available
-                    if (liblouis.translateString) {
-                        console.log('Liblouis translateString method available');
-                        liblouisReady = true;
-                    } else if (liblouis.translate) {
-                        console.log('Liblouis translate method available');
+                    if (liblouisInstance.translateString || liblouisInstance.translate) {
                         liblouisReady = true;
                     }
+                }
+                
+                if (liblouisReady && liblouisInstance) {
+                    console.log('Liblouis initialized successfully');
                     
-                    if (liblouisReady) {
-                        console.log('Liblouis Easy API initialized successfully');
-                        // Debug: Check what's available
-                        console.log('Available liblouis methods:', Object.keys(liblouis));
-                        if (liblouis.listTables) {
-                            console.log('Available tables:', liblouis.listTables());
-                        }
-                    } else {
-                        throw new Error('Liblouis API not properly loaded');
+                    // Test translation capability
+                    if (liblouisInstance.translateString) {
+                        console.log('translateString method available');
+                    } else if (liblouisInstance.translate) {
+                        console.log('translate method available');
                     }
                 } else {
-                    throw new Error('Liblouis-build or liblouis not available');
+                    throw new Error('Could not initialize liblouis');
                 }
             } catch (error) {
                 console.error('Failed to initialize liblouis:', error);
@@ -770,14 +775,18 @@
 
         // Function to translate text using real liblouis
         async function translateWithLiblouis(text, grade) {
+            if (!liblouisReady || !liblouisInstance) {
+                throw new Error('Liblouis not initialized');
+            }
+            
             // Use the correct table names that liblouis-js provides
             // These are the standard English braille tables
             const table = grade === 'g2' ? 'en-us-g2.ctb' : 'en-us-g1.ctb';
             
-            if (liblouis.translateString) {
-                return liblouis.translateString(table, text);
-            } else if (liblouis.translate) {
-                return liblouis.translate(table, text);
+            if (liblouisInstance.translateString) {
+                return liblouisInstance.translateString(table, text);
+            } else if (liblouisInstance.translate) {
+                return liblouisInstance.translate(table, text);
             } else {
                 throw new Error('Liblouis translation method not available');
             }

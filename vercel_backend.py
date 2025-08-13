@@ -246,15 +246,21 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
         if not line_text:
             continue
             
-        # Translate English text to braille using liblouis
-        try:
-            print(f"DEBUG: Translating '{line_text}' with grade '{grade}'")
-            braille_text = translate_with_liblouis_js(line_text, grade)
-            print(f"DEBUG: Translation result: '{braille_text}'")
-            print(f"Line {row_num + 1}: '{line_text}' → '{braille_text}'")
-        except Exception as e:
-            print(f"Warning: Failed to translate line {row_num + 1}, using original text: {e}")
+        # Check if input is already braille (contains braille Unicode characters)
+        if any(ord(char) >= 0x2800 and ord(char) <= 0x28FF for char in line_text):
+            # Input is already braille, use it directly
             braille_text = line_text
+            print(f"DEBUG: Input '{line_text}' is already braille, using directly")
+        else:
+            # Try to translate English text to braille using liblouis
+            try:
+                print(f"DEBUG: Translating '{line_text}' with grade '{grade}'")
+                braille_text = translate_with_liblouis_js(line_text, grade)
+                print(f"DEBUG: Translation result: '{braille_text}'")
+                print(f"Line {row_num + 1}: '{line_text}' → '{braille_text}'")
+            except Exception as e:
+                print(f"Warning: Failed to translate line {row_num + 1}, using original text: {e}")
+                braille_text = line_text
         
         # Check if braille text exceeds grid capacity
         if len(braille_text) > settings.grid_columns:

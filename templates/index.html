@@ -204,6 +204,12 @@
             gap: 0.5em;
         }
         
+        #error-message.info {
+            color: #1e40af;
+            background: #dbeafe;
+            border: 1px solid #93c5fd;
+        }
+        
         .expert-mode-toggle {
             margin-top: 1em;
             text-align: center;
@@ -583,6 +589,29 @@
             
             const plateType = document.querySelector('input[name="plate_type"]:checked').value;
             const grade = document.querySelector('input[name="grade"]:checked').value;
+            
+            // Translate text to braille before sending to backend
+            const translatedLines = [];
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line) {
+                    try {
+                        console.log(`Translating line ${i + 1}: '${line}' to braille...`);
+                        const brailleText = await translateWithLiblouis(line, grade);
+                        console.log(`Line ${i + 1} translated: '${line}' → '${brailleText}'`);
+                        translatedLines.push(brailleText);
+                    } catch (error) {
+                        console.error(`Failed to translate line ${i + 1}:`, error);
+                        // Fallback to original text if translation fails
+                        translatedLines.push(line);
+                    }
+                } else {
+                    translatedLines.push('');
+                }
+            }
+            
+            console.log('Original lines:', lines);
+            console.log('Translated lines:', translatedLines);
             const settings = {
                 grid_columns: document.getElementById('grid_columns').value,
                 grid_rows: document.getElementById('grid_rows').value,
@@ -602,11 +631,19 @@
                 return;
             }
             
+            // Show loading message during translation
+            errorText.textContent = 'Translating text to braille...';
+            errorDiv.style.display = 'flex';
+            errorDiv.className = 'error-message info';
+            
             const res = await fetch('/generate_braille_stl', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lines: lines, grade: grade, plate_type: plateType, settings: settings })
+                body: JSON.stringify({ lines: translatedLines, grade: grade, plate_type: plateType, settings: settings })
             });
+            
+            // Hide loading message
+            errorDiv.style.display = 'none';
             
             if (!res.ok) {
                 let msg = 'Error generating STL';
@@ -618,6 +655,7 @@
                 }
                 errorText.textContent = msg;
                 errorDiv.style.display = 'flex';
+                errorDiv.className = 'error-message'; // Reset to error style
                 return;
             }
             
@@ -638,6 +676,7 @@
             } catch (e) {
                 errorText.textContent = 'Failed to process STL file: ' + e.message;
                 errorDiv.style.display = 'flex';
+                errorDiv.className = 'error-message'; // Reset to error style
             }
         };
 

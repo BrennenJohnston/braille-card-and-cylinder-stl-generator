@@ -88,7 +88,7 @@ self.onmessage = async function(e) {
                 }
                 
                 const { text, grade } = data;
-                const tableName = grade === 'g2' ? 'en-us-g2.ctb' : 'en-us-g1.ctb';
+                const tableName = grade === 'g2' ? 'en-ueb-g2.ctb' : 'en-ueb-g1.ctb';
                 
                 console.log('Worker: Translating text:', text, 'with table:', tableName);
                 

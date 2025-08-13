@@ -294,8 +294,8 @@ def test_liblouis_files():
         # Frontend liblouis files (web worker)
         'static/liblouis/build-no-tables-utf16.js',
         'static/liblouis/easy-api.js',
-        'static/liblouis/tables/en-us-g1.ctb',
-        'static/liblouis/tables/en-us-g2.ctb',
+        'static/liblouis/tables/en-ueb-g1.ctb',
+        'static/liblouis/tables/en-ueb-g2.ctb',
         'static/liblouis/tables/unicode.dis',
         'static/liblouis/tables/chardefs.cti',
         'static/liblouis/tables/braille-patterns.cti',

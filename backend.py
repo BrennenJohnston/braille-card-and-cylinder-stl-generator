@@ -72,7 +72,7 @@ else:
     LOU = str(LIB / "bin" / "lou_translate")
 
 # Liblouis table mapping
-TABLES = {"g1": "en-ueb-g1.ctb", "g2": "en-ueb-g2.ctb"}
+TABLES = {"g1": "en-us-g1.ctb", "g2": "en-us-g2.ctb"}
 
 def translate_with_liblouis(text: str, grade: str = "g2") -> str:
     """
@@ -83,7 +83,7 @@ def translate_with_liblouis(text: str, grade: str = "g2") -> str:
         grade: "g1" for Grade 1 (uncontracted) or "g2" for Grade 2 (contracted)
     """
 
-    table = TABLES.get(grade, "en-ueb-g2.ctb")
+    table = TABLES.get(grade, "en-us-g2.ctb")
     env = os.environ.copy()
     env["LOUIS_TABLEPATH"] = str(LIB / "tables")
     args = [LOU, "--forward", f"unicode.dis,{table}"]
@@ -423,6 +423,10 @@ def index():
 @app.route('/node_modules/<path:filename>')
 def node_modules(filename):
     return send_from_directory('node_modules', filename)
+
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory('static', filename)
 
 @app.route('/generate_braille_stl', methods=['POST'])
 def generate_braille_stl():

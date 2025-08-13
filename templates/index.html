@@ -721,155 +721,102 @@
             render();
         }
         
-        // Initialize liblouis and 3D viewer on page load
+        // Initialize liblouis web worker and 3D viewer on page load
+        let liblouisWorker = null;
         let liblouisReady = false;
-        let liblouisInstance = null;
+        let workerMessageId = 0;
+        let pendingWorkerMessages = new Map();
+        
+        // Function to send message to worker and get response
+        function sendWorkerMessage(type, data = {}) {
+            return new Promise((resolve, reject) => {
+                if (!liblouisWorker) {
+                    reject(new Error('Worker not initialized'));
+                    return;
+                }
+                
+                const id = ++workerMessageId;
+                pendingWorkerMessages.set(id, { resolve, reject });
+                
+                liblouisWorker.postMessage({ id, type, data });
+                
+                // Timeout after 10 seconds
+                setTimeout(() => {
+                    if (pendingWorkerMessages.has(id)) {
+                        pendingWorkerMessages.delete(id);
+                        reject(new Error('Worker message timeout'));
+                    }
+                }, 10000);
+            });
+        }
         
         window.addEventListener('load', async () => {
             try {
-                // Wait a bit for scripts to fully load
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Initialize liblouis web worker
+                console.log('Initializing liblouis web worker...');
+                liblouisWorker = new Worker('/static/liblouis-worker.js');
                 
-                console.log('Checking for liblouis availability...');
-                console.log('window.liblouis:', typeof window.liblouis);
-                console.log('window.liblouisBuild:', typeof window.liblouisBuild);
-                console.log('window.LiblouisEasyApi:', typeof window.LiblouisEasyApi);
-                
-                // Try different approaches based on what's available
-                if (typeof window.liblouis !== 'undefined' && typeof window.liblouisBuild !== 'undefined') {
-                    console.log('Both liblouis and liblouisBuild found');
-                    console.log('liblouisBuild object:', window.liblouisBuild);
-                    console.log('liblouis object:', window.liblouis);
+                // Handle worker messages
+                liblouisWorker.onmessage = function(e) {
+                    const { id, type, result } = e.data;
                     
-                    // Try to set the build explicitly
-                    if (window.liblouis.setLiblouisBuild) {
-                        try {
-                            window.liblouis.setLiblouisBuild(window.liblouisBuild);
-                            console.log('Successfully set liblouis build');
-                            liblouisInstance = window.liblouis;
-                            liblouisReady = true;
-                        } catch (e) {
-                            console.error('Failed to set liblouis build:', e);
-                        }
-                    } else {
-                        console.log('setLiblouisBuild not available, trying direct use');
-                        liblouisInstance = window.liblouis;
-                        if (liblouisInstance.translateString || liblouisInstance.translate) {
-                            liblouisReady = true;
-                        }
-                    }
-                } else if (typeof window.LiblouisEasyApi !== 'undefined' && typeof window.liblouisBuild !== 'undefined') {
-                    console.log('Using LiblouisEasyApi class approach');
-                    liblouisInstance = new window.LiblouisEasyApi(window.liblouisBuild);
-                    console.log('LiblouisEasyApi instance created');
-                    liblouisReady = true;
-                } else if (typeof window.liblouis !== 'undefined') {
-                    console.log('Using global liblouis object only');
-                    liblouisInstance = window.liblouis;
-                    
-                    // Check what methods are available
-                    console.log('Available liblouis methods:', Object.keys(liblouisInstance));
-                    
-                    if (liblouisInstance.translateString || liblouisInstance.translate) {
-                        liblouisReady = true;
-                    }
-                }
-                
-                if (liblouisReady && liblouisInstance) {
-                    console.log('Liblouis initialized successfully');
-                    
-                    // Test if table files are accessible via HTTP first
-                    fetch('/node_modules/liblouis-build/tables/en-us-g1.ctb')
-                        .then(response => {
-                            console.log('Table file HTTP test:', response.status, response.statusText);
-                            if (response.ok) {
-                                console.log('Table file is accessible via HTTP');
-                            } else {
-                                console.error('Table file not accessible via HTTP');
-                            }
-                        })
-                        .catch(e => console.error('HTTP test failed:', e));
-                    
-                    // Enable on-demand table loading from our server
-                    if (liblouisInstance.enableOnDemandTableLoading) {
-                        try {
-                            liblouisInstance.enableOnDemandTableLoading('/node_modules/liblouis-build/tables/');
-                            console.log('Enabled on-demand table loading from /node_modules/liblouis-build/tables/');
-                        } catch (e) {
-                            console.error('Failed to enable on-demand table loading:', e);
-                        }
-                    } else {
-                        console.log('enableOnDemandTableLoading not available');
-                    }
-                    
-                    // Test translation capability
-                    if (liblouisInstance.translateString) {
-                        console.log('translateString method available');
+                    if (pendingWorkerMessages.has(id)) {
+                        const { resolve, reject } = pendingWorkerMessages.get(id);
+                        pendingWorkerMessages.delete(id);
                         
-                        // Test if we can access tables (after setting up on-demand loading)
-                        const testFormats = ['en-us-g1.ctb', 'tables/en-us-g1.ctb', '/node_modules/liblouis-build/tables/en-us-g1.ctb'];
-                        for (const tableFormat of testFormats) {
-                            try {
-                                console.log('Testing table access with format:', tableFormat);
-                                const testResult = liblouisInstance.translateString(tableFormat, 'test');
-                                console.log('Test translation result with', tableFormat, ':', testResult);
-                                break; // Success, stop trying other formats
-                            } catch (e) {
-                                console.log('Test translation failed with', tableFormat, ':', e.message);
-                            }
+                        if (result.success) {
+                            resolve(result);
+                        } else {
+                            reject(new Error(result.error));
                         }
-                    } else if (liblouisInstance.translate) {
-                        console.log('translate method available');
                     }
-                    
-                    // Try to list available tables if possible
-                    if (liblouisInstance.listTables) {
-                        console.log('Available tables:', liblouisInstance.listTables());
-                    } else {
-                        console.log('listTables method not available');
-                    }
+                };
+                
+                liblouisWorker.onerror = function(error) {
+                    console.error('Worker error:', error);
+                };
+                
+                // Initialize liblouis in the worker
+                const initResult = await sendWorkerMessage('init');
+                if (initResult.success) {
+                    liblouisReady = true;
+                    console.log('Liblouis web worker initialized successfully');
                 } else {
-                    throw new Error('Could not initialize liblouis');
+                    throw new Error('Failed to initialize liblouis worker: ' + initResult.error);
                 }
+                
             } catch (error) {
-                console.error('Failed to initialize liblouis:', error);
+                console.error('Failed to initialize liblouis worker:', error);
+                
+                // Fallback to main thread approach if worker fails
+                console.log('Falling back to main thread liblouis...');
+                // You could add the old initialization code here as fallback
             }
             
             init3D();
             animate();
         });
 
-        // Function to translate text using real liblouis
+        // Function to translate text using liblouis web worker
         async function translateWithLiblouis(text, grade) {
-            if (!liblouisReady || !liblouisInstance) {
-                throw new Error('Liblouis not initialized');
+            if (!liblouisReady || !liblouisWorker) {
+                throw new Error('Liblouis worker not initialized');
             }
             
-            // Try different table path formats
-            const tableFormats = [
-                grade === 'g2' ? 'en-us-g2.ctb' : 'en-us-g1.ctb',
-                grade === 'g2' ? 'tables/en-us-g2.ctb' : 'tables/en-us-g1.ctb',
-                grade === 'g2' ? '/node_modules/liblouis-build/tables/en-us-g2.ctb' : '/node_modules/liblouis-build/tables/en-us-g1.ctb'
-            ];
-            
-            for (const table of tableFormats) {
-                try {
-                    console.log('Trying table format:', table);
-                    if (liblouisInstance.translateString) {
-                        const result = liblouisInstance.translateString(table, text);
-                        console.log('Translation successful with table:', table);
-                        return result;
-                    } else if (liblouisInstance.translate) {
-                        const result = liblouisInstance.translate(table, text);
-                        console.log('Translation successful with table:', table);
-                        return result;
-                    }
-                } catch (e) {
-                    console.log('Failed with table format:', table, 'Error:', e.message);
+            try {
+                console.log('Sending translation request to worker:', text, 'grade:', grade);
+                const result = await sendWorkerMessage('translate', { text, grade });
+                
+                if (result.success && result.translation) {
+                    console.log('Translation successful:', result.translation);
+                    return result.translation;
+                } else {
+                    throw new Error('Translation failed: ' + (result.error || 'Unknown error'));
                 }
+            } catch (error) {
+                console.error('Worker translation failed:', error);
+                throw error;
             }
-            
-            throw new Error('All table formats failed');
         }
     </script>
 </body>

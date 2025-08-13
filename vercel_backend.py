@@ -69,7 +69,7 @@ def translate_with_liblouis_js(text: str, grade: str = "g2") -> str:
     """
     try:
         # Use the appropriate table for the grade
-        table = "en-ueb-g2.ctb" if grade == "g2" else "en-ueb-g1.ctb"
+        table = "en-us-g2.ctb" if grade == "g2" else "en-us-g1.ctb"
         
         # For now, we'll use a simple mapping as fallback
         # In production, you would integrate the actual liblouis JavaScript build

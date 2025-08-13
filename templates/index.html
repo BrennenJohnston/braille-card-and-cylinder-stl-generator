@@ -755,6 +755,11 @@
                     
                     if (liblouisReady) {
                         console.log('Liblouis Easy API initialized successfully');
+                        // Debug: Check what's available
+                        console.log('Available liblouis methods:', Object.keys(liblouis));
+                        if (liblouis.listTables) {
+                            console.log('Available tables:', liblouis.listTables());
+                        }
                     } else {
                         throw new Error('Liblouis API not properly loaded');
                     }
@@ -771,7 +776,8 @@
 
         // Function to translate text using real liblouis
         async function translateWithLiblouis(text, grade) {
-            const table = grade === 'g2' ? 'en-ueb-g2.ctb' : 'en-ueb-g1.ctb';
+            // Use the most basic table names that should be available
+            const table = grade === 'g2' ? 'en-g2.ctb' : 'en-g1.ctb';
             
             if (liblouis.translateString) {
                 return liblouis.translateString(table, text);

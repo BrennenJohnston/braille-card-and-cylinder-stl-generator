@@ -71,59 +71,10 @@ class CardSettings:
 
 def translate_with_liblouis_js(text: str, grade: str = "g2") -> str:
     """
-    Server-side braille translation using simple mapping.
-    Note: This is a fallback since server-side liblouis is complex in Vercel.
-    The frontend web worker provides the actual liblouis translation.
+    Server-side translation not available on Vercel.
+    Translation happens on the frontend via web worker.
     """
-    try:
-        # Use grade-appropriate mapping
-        if grade == "g2":
-            # Simple Grade 2 contractions (basic subset)
-            simple_g2_mapping = {
-                'and': '&', 'for': '=', 'of': '(', 'the': '!', 'with': 'w',
-                'ch': '*', 'sh': '%', 'th': '?', 'wh': ':', 'ed': '$', 'er': ']',
-                'ou': '^', 'ow': '[', 'st': '/', 'ing': '+', 'ar': '>', 'gh': '<'
-            }
-            
-            # Apply contractions first
-            result_text = text.lower()
-            for word, contraction in simple_g2_mapping.items():
-                result_text = result_text.replace(word, contraction)
-            
-            # Then apply character mapping
-            return apply_character_mapping(result_text)
-        else:
-            # Grade 1: character-by-character mapping
-            return apply_character_mapping(text.lower())
-        
-    except Exception as e:
-        print(f"Error in server translation: {e}")
-        return apply_character_mapping(text.lower())
-
-def apply_character_mapping(text: str) -> str:
-    """
-    Apply basic character-to-braille mapping.
-    This provides Grade 1 braille character mapping.
-    """
-    simple_mapping = {
-        'a': '⠁', 'b': '⠃', 'c': '⠉', 'd': '⠙', 'e': '⠑',
-        'f': '⠋', 'g': '⠛', 'h': '⠓', 'i': '⠊', 'j': '⠚',
-        'k': '⠅', 'l': '⠇', 'm': '⠍', 'n': '⠝', 'o': '⠕',
-        'p': '⠏', 'q': '⠟', 'r': '⠗', 's': '⠎', 't': '⠞',
-        'u': '⠥', 'v': '⠧', 'w': '⠺', 'x': '⠭', 'y': '⠽',
-        'z': '⠵', ' ': '⠀', '0': '⠚', '1': '⠁', '2': '⠃',
-        '3': '⠉', '4': '⠙', '5': '⠑', '6': '⠋', '7': '⠛',
-        '8': '⠓', '9': '⠊'
-    }
-    
-    result = ""
-    for char in text.lower():
-        if char in simple_mapping:
-            result += simple_mapping[char]
-        else:
-            result += char
-    
-    return result
+    raise RuntimeError("Server-side liblouis translation not available on Vercel. Use frontend web worker translation.")
 
 def braille_to_dots(braille_char: str) -> list:
     """
@@ -227,13 +178,10 @@ def create_positive_plate_mesh(lines, grade="g2", settings=None):
         if not line_text:
             continue
             
-        # Translate English text to braille using liblouis JS
-        try:
-            braille_text = translate_with_liblouis_js(line_text, grade)
-            print(f"Line {row_num + 1}: '{line_text}' → '{braille_text}'")
-        except Exception as e:
-            print(f"Warning: Failed to translate line {row_num + 1}, using original text: {e}")
-            braille_text = line_text
+        # On Vercel, expect the frontend to handle translation via web worker
+        # For now, treat input as already-translated braille or plain text
+        braille_text = line_text
+        print(f"Line {row_num + 1}: Processing text as braille: '{braille_text}'")
         
         # Check if braille text exceeds grid capacity
         if len(braille_text) > settings.grid_columns:

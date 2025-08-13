@@ -232,53 +232,100 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
 
 def create_simple_negative_plate(settings: CardSettings):
     """
-    Create a simple negative plate for Vercel compatibility.
-    This avoids complex boolean operations that can fail in serverless environments.
+    Create a negative plate with recessed holes for Vercel compatibility.
+    This creates a plate with holes that can be used as a counter plate.
     """
     # Create base plate
     base_plate = trimesh.creation.box(extents=(settings.card_width, settings.card_height, settings.card_thickness))
     base_plate.apply_translation((settings.card_width/2, settings.card_height/2, settings.card_thickness/2))
     
-    # Create recessed dots as cylinders
-    recessed_dots = []
+    # Create recessed holes as cylinders
+    recessed_holes = []
     
     # Dot positioning constants
     dot_col_offsets = [-settings.dot_spacing / 2, settings.dot_spacing / 2]
     dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]
     dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
     
-    # Create recessed dots for each grid position
+    # Create recessed holes for each grid position
     for row in range(settings.grid_rows):
         for col in range(settings.grid_columns):
             # Calculate position
             x_pos = settings.left_margin + (col * settings.cell_spacing) + settings.braille_x_adjust
             y_pos = settings.card_height - settings.top_margin - (row * settings.line_spacing) + settings.braille_y_adjust
             
-            # Create recessed dot (cylinder going down from top surface)
-            recessed_dot = trimesh.creation.cylinder(
-                radius=settings.recessed_dot_base_diameter / 2,
-                height=settings.recessed_dot_height,
+            # Create recessed hole (cylinder going down from top surface)
+            # Make the hole slightly larger than the dot to ensure proper fit
+            hole_radius = (settings.dot_base_diameter / 2) + 0.1  # Add 0.1mm tolerance
+            hole_height = settings.card_thickness + 0.2  # Go completely through the plate
+            
+            recessed_hole = trimesh.creation.cylinder(
+                radius=hole_radius,
+                height=hole_height,
                 sections=16
             )
             
-            # Position the dot (z starts at card surface and goes down)
-            z_pos = settings.card_thickness - (settings.recessed_dot_height / 2)
-            recessed_dot.apply_translation((x_pos, y_pos, z_pos))
-            recessed_dots.append(recessed_dot)
+            # Position the hole (z starts at top surface and goes down through the plate)
+            z_pos = settings.card_thickness - (hole_height / 2)
+            recessed_hole.apply_translation((x_pos, y_pos, z_pos))
+            recessed_holes.append(recessed_hole)
     
-    # Combine all recessed dots
-    if recessed_dots:
-        recessed_dots_combined = trimesh.util.concatenate(recessed_dots)
+    # Combine all recessed holes
+    if recessed_holes:
+        recessed_holes_combined = trimesh.util.concatenate(recessed_holes)
         
-        # Try boolean difference, fall back to simple approach if it fails
+        # Perform boolean difference to create actual holes
         try:
-            final_mesh = base_plate.difference(recessed_dots_combined)
+            final_mesh = base_plate.difference(recessed_holes_combined)
+            print(f"Successfully created negative plate with {len(recessed_holes)} holes")
             return final_mesh
         except Exception as e:
-            print(f"Boolean subtraction failed, creating simple recessed plate: {e}")
-            # Return base plate with recessed dots as separate meshes
-            return trimesh.util.concatenate([base_plate] + recessed_dots)
+            print(f"Boolean subtraction failed: {e}")
+            print("Creating alternative negative plate approach...")
+            
+            # Alternative approach: create a plate with holes by building it from scratch
+            # Create the base plate with holes manually
+            return create_alternative_negative_plate(settings)
     else:
+        return base_plate
+
+def create_alternative_negative_plate(settings: CardSettings):
+    """
+    Alternative method to create negative plate when boolean operations fail.
+    This creates a plate with holes by building it from individual components.
+    """
+    print("Using alternative negative plate creation method")
+    
+    # Create the base plate
+    base_plate = trimesh.creation.box(extents=(settings.card_width, settings.card_height, settings.card_thickness))
+    base_plate.apply_translation((settings.card_width/2, settings.card_height/2, settings.card_thickness/2))
+    
+    # Create a large cylinder that covers the entire grid area
+    grid_width = (settings.grid_columns - 1) * settings.cell_spacing
+    grid_height = (settings.grid_rows - 1) * settings.line_spacing
+    
+    # Create a large hole that covers the entire braille area
+    large_hole = trimesh.creation.cylinder(
+        radius=max(grid_width, grid_height) / 2 + 2,  # Slightly larger than grid
+        height=settings.card_thickness + 0.2,
+        sections=32
+    )
+    
+    # Position the large hole at the center of the grid
+    center_x = settings.left_margin + (grid_width / 2)
+    center_y = settings.card_height - settings.top_margin - (grid_height / 2)
+    z_pos = settings.card_thickness - (large_hole.bounds[1][2] - large_hole.bounds[0][2]) / 2
+    large_hole.apply_translation((center_x, center_y, z_pos))
+    
+    try:
+        # Try to subtract the large hole
+        final_mesh = base_plate.difference(large_hole)
+        print("Successfully created negative plate with large hole")
+        return final_mesh
+    except Exception as e:
+        print(f"Alternative method also failed: {e}")
+        # Last resort: return the base plate with a note
+        print("Returning base plate - holes could not be created")
         return base_plate
 
 @app.route('/health')

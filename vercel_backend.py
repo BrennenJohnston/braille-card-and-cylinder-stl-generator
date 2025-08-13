@@ -80,6 +80,13 @@ if platform.system() == "Windows":
 else:
     LOU = str(LIB / "bin" / "lou_translate")
 
+# Fallback executable names to try
+LOU_FALLBACKS = [
+    str(LIB / "bin" / "lou_translate"),
+    str(LIB / "bin" / "lou_translate.exe"),
+    str(LIB / "bin" / "lou_translate.exe"),  # Try .exe even on Linux
+]
+
 # Liblouis table mapping
 TABLES = {"g1": "en-us-g1.ctb", "g2": "en-us-g2.ctb"}
 
@@ -92,34 +99,53 @@ def translate_with_liblouis_js(text: str, grade: str = "g2") -> str:
         grade: "g1" for Grade 1 (uncontracted) or "g2" for Grade 2 (contracted)
     """
     print(f"DEBUG: translate_with_liblouis_js called with text='{text}', grade='{grade}'")
+    print(f"DEBUG: Platform: {platform.system()}")
     print(f"DEBUG: LIB path: {LIB}")
     print(f"DEBUG: LOU executable: {LOU}")
     print(f"DEBUG: Table: {TABLES.get(grade, 'en-us-g2.ctb')}")
+    
+    # Check what files actually exist
+    print(f"DEBUG: Checking if LIB path exists: {LIB.exists()}")
+    if LIB.exists():
+        print(f"DEBUG: LIB contents: {list(LIB.iterdir())}")
+        bin_dir = LIB / "bin"
+        if bin_dir.exists():
+            print(f"DEBUG: bin directory contents: {list(bin_dir.iterdir())}")
     
     table = TABLES.get(grade, "en-us-g2.ctb")
     env = os.environ.copy()
     env["LOUIS_TABLEPATH"] = str(LIB / "tables")
     print(f"DEBUG: LOUIS_TABLEPATH: {env['LOUIS_TABLEPATH']}")
     
-    args = [LOU, "--forward", f"unicode.dis,{table}"]
-    print(f"DEBUG: Command args: {args}")
+    # Try multiple executable names
+    for executable in LOU_FALLBACKS:
+        print(f"DEBUG: Trying executable: {executable}")
+        if os.path.exists(executable):
+            print(f"DEBUG: Executable exists: {executable}")
+            args = [executable, "--forward", f"unicode.dis,{table}"]
+            print(f"DEBUG: Command args: {args}")
+            
+            try:
+                print(f"DEBUG: Running subprocess with input: '{text.encode('utf-8')}'")
+                p = subprocess.run(args, input=text.encode("utf-8"),
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+                print(f"DEBUG: Subprocess return code: {p.returncode}")
+                print(f"DEBUG: Subprocess stdout: '{p.stdout.decode('utf-8', 'ignore')}'")
+                print(f"DEBUG: Subprocess stderr: '{p.stderr.decode('utf-8', 'ignore')}'")
+                
+                if p.returncode != 0:
+                    print(f"DEBUG: Executable {executable} failed with return code {p.returncode}")
+                    continue
+                
+                result = p.stdout.decode("utf-8").strip()
+                print(f"DEBUG: Translation successful with {executable}, result: '{result}'")
+                return result
+            except Exception as e:
+                print(f"DEBUG: Executable {executable} failed with error: {e}")
+                continue
     
-    try:
-        print(f"DEBUG: Running subprocess with input: '{text.encode('utf-8')}'")
-        p = subprocess.run(args, input=text.encode("utf-8"),
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
-        print(f"DEBUG: Subprocess return code: {p.returncode}")
-        print(f"DEBUG: Subprocess stdout: '{p.stdout.decode('utf-8', 'ignore')}'")
-        print(f"DEBUG: Subprocess stderr: '{p.stderr.decode('utf-8', 'ignore')}'")
-        
-        if p.returncode != 0:
-            raise RuntimeError(f"Liblouis translation failed: {p.stderr.decode('utf-8', 'ignore')}")
-        result = p.stdout.decode("utf-8").strip()
-        print(f"DEBUG: Translation successful, result: '{result}'")
-        return result
-    except Exception as e:
-        print(f"DEBUG: Translation failed with error: {e}")
-        raise RuntimeError(f"Failed to translate text: {str(e)}")
+    # If we get here, all executables failed
+    raise RuntimeError(f"All liblouis executables failed. Tried: {LOU_FALLBACKS}")
 
 def braille_to_dots(braille_char: str) -> list:
     """

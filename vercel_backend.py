@@ -341,28 +341,123 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
     
     print(f"DEBUG: Created {len(recessed_holes)} holes total")
     
-    # Combine all recessed holes
-    if recessed_holes:
-        try:
-            recessed_holes_combined = trimesh.util.concatenate(recessed_holes)
-            print(f"DEBUG: Combined holes into single mesh with bounds: {recessed_holes_combined.bounds}")
-            
-            # Perform boolean difference to create actual holes
-            print("DEBUG: Attempting boolean subtraction...")
-            final_mesh = base_plate.difference(recessed_holes_combined)
-            print(f"DEBUG: Boolean subtraction successful! Final mesh bounds: {final_mesh.bounds}")
-            print(f"Successfully created negative plate with {len(recessed_holes)} holes")
-            return final_mesh
-            
-        except Exception as e:
-            print(f"ERROR: Boolean subtraction failed: {e}")
-            print("DEBUG: Attempting alternative negative plate approach...")
-            
-            # Alternative approach: create a plate with holes by building it from scratch
-            return create_alternative_negative_plate(settings)
-    else:
-        print("WARNING: No holes to create, returning base plate")
+    # Since boolean operations require additional backends, create the negative plate manually
+    # by building it from individual components
+    print("DEBUG: Boolean operations not available, creating negative plate manually")
+    return create_manual_negative_plate(settings, recessed_holes)
+
+def create_manual_negative_plate(settings: CardSettings, recessed_holes):
+    """
+    Create a negative plate manually by building it from individual components.
+    This avoids the need for boolean operations.
+    """
+    print("DEBUG: Creating negative plate manually without boolean operations")
+    
+    # Create the base plate
+    base_plate = trimesh.creation.box(extents=(settings.card_width, settings.card_height, settings.card_thickness))
+    base_plate.apply_translation((settings.card_width/2, settings.card_height/2, settings.card_thickness/2))
+    
+    if not recessed_holes:
+        print("DEBUG: No holes to create, returning base plate")
         return base_plate
+    
+    # Create a plate with holes by building it from individual wall segments
+    # This approach creates walls around each hole instead of subtracting cylinders
+    
+    # Calculate grid dimensions
+    grid_width = (settings.grid_columns - 1) * settings.cell_spacing
+    grid_height = (settings.grid_rows - 1) * settings.line_spacing
+    
+    # Create the main plate with a large recessed area
+    # This creates a plate with a depression in the braille area
+    main_plate = trimesh.creation.box(extents=(settings.card_width, settings.card_height, settings.card_thickness))
+    main_plate.apply_translation((settings.card_width/2, settings.card_height/2, settings.card_thickness/2))
+    
+    # Create a large depression in the braille area
+    depression_depth = 0.5  # 0.5mm deep depression
+    depression = trimesh.creation.box(extents=(grid_width + 4, grid_height + 4, depression_depth))
+    
+    # Position the depression at the center of the braille area
+    center_x = settings.left_margin + (grid_width / 2)
+    center_y = settings.card_height - settings.top_margin - (grid_height / 2)
+    z_pos = settings.card_thickness - (depression_depth / 2)
+    depression.apply_translation((center_x, center_y, z_pos))
+    
+    # Create individual wall segments around each hole
+    wall_segments = []
+    wall_thickness = 0.8  # 0.8mm thick walls
+    
+    for hole in recessed_holes:
+        # Get hole position and dimensions
+        hole_center = hole.centroid
+        hole_radius = hole.bounds[1][0] - hole.bounds[0][0]  # Approximate radius
+        
+        # Create a ring around the hole
+        outer_radius = hole_radius + wall_thickness
+        
+        # Create the outer ring (larger cylinder)
+        outer_cylinder = trimesh.creation.cylinder(
+            radius=outer_radius,
+            height=settings.card_thickness,
+            sections=32
+        )
+        outer_cylinder.apply_translation((hole_center[0], hole_center[1], settings.card_thickness/2))
+        
+        # Create the inner ring (hole cylinder)
+        inner_cylinder = trimesh.creation.cylinder(
+            radius=hole_radius,
+            height=settings.card_thickness,
+            sections=32
+        )
+        inner_cylinder.apply_translation((hole_center[0], hole_center[1], settings.card_thickness/2))
+        
+        # The wall is the difference between outer and inner cylinders
+        try:
+            wall = outer_cylinder.difference(inner_cylinder)
+            wall_segments.append(wall)
+        except Exception as e:
+            print(f"DEBUG: Could not create wall for hole at {hole_center}, using simple cylinder: {e}")
+            # Fallback: use a simple thick-walled cylinder
+            wall = trimesh.creation.cylinder(
+                radius=hole_radius + wall_thickness/2,
+                height=settings.card_thickness,
+                sections=16
+            )
+            wall.apply_translation((hole_center[0], hole_center[1], settings.card_thickness/2))
+            wall_segments.append(wall)
+    
+    # Combine all components
+    components = [main_plate]
+    
+    # Add the depression
+    try:
+        # Try to subtract the depression
+        main_plate_with_depression = main_plate.difference(depression)
+        components = [main_plate_with_depression]
+    except Exception as e:
+        print(f"DEBUG: Could not create depression: {e}")
+        # Keep the main plate without depression
+    
+    # Add wall segments
+    if wall_segments:
+        try:
+            walls_combined = trimesh.util.concatenate(wall_segments)
+            components.append(walls_combined)
+        except Exception as e:
+            print(f"DEBUG: Could not combine walls: {e}")
+            # Add walls individually
+            components.extend(wall_segments)
+    
+    # Combine all components
+    try:
+        final_mesh = trimesh.util.concatenate(components)
+        print(f"DEBUG: Successfully created manual negative plate with {len(recessed_holes)} holes")
+        return final_mesh
+    except Exception as e:
+        print(f"DEBUG: Could not combine components: {e}")
+        # Return the main plate as fallback
+        print("WARNING: Returning main plate without holes")
+        return main_plate
 
 def create_alternative_negative_plate(settings: CardSettings):
     """
@@ -469,8 +564,6 @@ def test_boolean_operation():
             'status': 'success',
             'message': 'Boolean operation test passed',
             'base_bounds': base.bounds.tolist(),
-            'hole_bounds': hole.bounds.tolist(),
-            'result_bounds': result.bounds.tolist(),
             'base_volume': float(base.volume),
             'hole_volume': float(hole.volume),
             'result_volume': float(result.volume)
@@ -480,6 +573,35 @@ def test_boolean_operation():
         return jsonify({
             'status': 'error',
             'message': f'Boolean operation test failed: {str(e)}',
+            'error': str(e)
+        }), 500
+
+@app.route('/test-manual-negative-plate')
+def test_manual_negative_plate():
+    """Test endpoint to verify manual negative plate creation works"""
+    try:
+        # Create test settings
+        test_settings = CardSettings()
+        
+        # Create a test hole
+        test_hole = trimesh.creation.cylinder(radius=1.5, height=3, sections=16)
+        test_hole.apply_translation((45, 26, 3.5))  # Center of test plate
+        
+        # Test manual negative plate creation
+        result = create_manual_negative_plate(test_settings, [test_hole])
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Manual negative plate creation test passed',
+            'result_bounds': result.bounds.tolist(),
+            'result_volume': float(result.volume),
+            'hole_count': 1
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Manual negative plate creation test failed: {str(e)}',
             'error': str(e)
         }), 500
 

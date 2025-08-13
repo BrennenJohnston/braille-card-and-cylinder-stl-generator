@@ -461,6 +461,7 @@
                     <button type="button" id="preview-braille-btn">Preview Braille Translation</button>
                     <button type="submit">Generate STL</button>
                     <button type="button" id="test-counter-plate-btn" style="margin-top: 10px; background: #f39c12; color: white;">Test Simple Counter Plate</button>
+                    <button type="button" id="test-text-counter-plate-btn" style="margin-top: 10px; background: #e74c3c; color: white;">Test Text Counter Plate</button>
                 </div>
             </form>
             
@@ -894,6 +895,38 @@
                 
             } catch (error) {
                 console.error('Test counter plate failed:', error);
+            }
+        });
+
+        // Test text-based counter plate generation
+        document.getElementById('test-text-counter-plate-btn').addEventListener('click', async function() {
+            try {
+                console.log('Testing text-based counter plate generation...');
+                
+                const res = await fetch('/test-text-counter-plate');
+                
+                if (!res.ok) {
+                    let msg = 'Error generating text counter plate';
+                    try {
+                        const data = await res.json();
+                        if (data.error) msg = data.error;
+                    } catch (e) {
+                        msg = `Server error: ${res.status} ${res.statusText}`;
+                    }
+                    console.error(msg);
+                    return;
+                }
+                
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                
+                // Load the test STL in the viewer
+                loadSTL(url);
+                
+                console.log('Text counter plate loaded successfully');
+                
+            } catch (error) {
+                console.error('Text counter plate failed:', error);
             }
         });
     </script>

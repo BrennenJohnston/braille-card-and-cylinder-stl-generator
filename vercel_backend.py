@@ -240,8 +240,7 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
 def create_simple_negative_plate(settings: CardSettings, lines=None):
     """
     Create a negative plate with recessed holes using 2D Shapely operations for Vercel compatibility.
-    This creates a counter plate with holes for ALL possible dot positions (312 holes total).
-    The plate mirrors the embossing plate positions.
+    This creates a counter plate with holes that match the embossing plate dimensions and positioning.
     """
     print(f"DEBUG: Starting negative plate creation with Shapely approach")
     print(f"DEBUG: Settings: grid {settings.grid_columns}x{settings.grid_rows}, dot spacing: {settings.dot_spacing}")
@@ -256,57 +255,83 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
     
     print(f"DEBUG: Base polygon area: {base_polygon.area:.2f}")
     
-    # Dot positioning constants
+    # Dot positioning constants (same as embossing plate)
     dot_col_offsets = [-settings.dot_spacing / 2, settings.dot_spacing / 2]
     dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]
     dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
     
-    # Create holes for ALL possible dot positions (counter plate needs all 312 holes)
+    # Create holes for the actual text content (not all possible positions)
     holes = []
     total_dots = 0
     
     # Calculate hole radius based on dot dimensions plus offset
+    # Counter plate holes should be slightly larger than embossing dots for proper alignment
     hole_radius = (settings.recessed_dot_base_diameter / 2)
-    print(f"DEBUG: Hole radius: {hole_radius:.2f}mm (based on recessed_dot_base_diameter: {settings.recessed_dot_base_diameter:.2f}mm)")
+    
+    # Add a small clearance factor to ensure holes are large enough
+    clearance_factor = 0.1  # 0.1mm additional clearance
+    hole_radius += clearance_factor
+    
+    print(f"DEBUG: Hole radius: {hole_radius:.2f}mm (base: {settings.recessed_dot_base_diameter/2:.2f}mm + clearance: {clearance_factor:.2f}mm)")
+    print(f"DEBUG: Embossing dot radius: {settings.dot_base_diameter/2:.2f}mm")
+    print(f"DEBUG: Hole-to-dot ratio: {hole_radius/(settings.dot_base_diameter/2):.2f}")
     
     # Ensure hole radius is reasonable (at least 0.5mm)
     if hole_radius < 0.5:
         print(f"WARNING: Hole radius {hole_radius:.2f}mm is very small, increasing to 0.5mm")
         hole_radius = 0.5
     
-    # Generate holes for each grid position (all cells, all dots)
-    for row in range(settings.grid_rows):
-        # Calculate Y position for this row (top-down, but mirrored for counter plate)
-        # For counter plate: Row 0 on embossing plate -> Row 3 on counter plate
-        mirrored_row = settings.grid_rows - 1 - row
-        y_pos = settings.card_height - settings.top_margin - (mirrored_row * settings.line_spacing) + settings.braille_y_adjust
-        
-        for col in range(settings.grid_columns):
-            # Calculate X position for this column (mirrored for counter plate)
-            # For counter plate: Col 0 on embossing plate -> Col 12 on counter plate
-            mirrored_col = settings.grid_columns - 1 - col
-            x_pos = settings.left_margin + (mirrored_col * settings.cell_spacing) + settings.braille_x_adjust
-            
-            # Create holes for ALL 6 dots in this cell
-            for dot_idx in range(6):
-                dot_pos = dot_positions[dot_idx]
-                dot_x = x_pos + dot_col_offsets[dot_pos[1]]
-                dot_y = y_pos + dot_row_offsets[dot_pos[0]]
+    # Process each line to create holes that match the embossing plate
+    for row_num in range(settings.grid_rows):
+        if lines and row_num < len(lines):
+            line_text = lines[row_num].strip()
+            if not line_text:
+                continue
                 
-                # Create circular hole with higher resolution
-                hole = Point(dot_x, dot_y).buffer(hole_radius, resolution=64)
-                holes.append(hole)
-                total_dots += 1
+            # Check if input contains proper braille Unicode
+            has_braille_chars = any(ord(char) >= 0x2800 and ord(char) <= 0x28FF for char in line_text)
+            if not has_braille_chars:
+                print(f"WARNING: Line {row_num + 1} does not contain proper braille Unicode, skipping")
+                continue
                 
-                if total_dots <= 10 or total_dots % 50 == 0:  # Log first 10 and every 50th
-                    print(f"DEBUG: Hole {total_dots} at cell[{row},{col}] dot {dot_idx+1} -> mirrored cell[{mirrored_row},{mirrored_col}] at ({dot_x:.2f}, {dot_y:.2f})")
-                    print(f"DEBUG:   Hole area: {hole.area:.4f}, Hole bounds: {hole.bounds}")
+            # Calculate Y position for this row (same as embossing plate)
+            y_pos = settings.card_height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
+            print(f"DEBUG: Row {row_num}: Y position = {settings.card_height} - {settings.top_margin} - ({row_num} * {settings.line_spacing}) + {settings.braille_y_adjust} = {y_pos:.2f}mm")
+                
+            # Process each braille character in the line
+            for col_num, braille_char in enumerate(line_text):
+                if col_num >= settings.grid_columns:
+                    break
+                        
+                # Calculate X position for this column (same as embossing plate)
+                x_pos = settings.left_margin + (col_num * settings.cell_spacing) + settings.braille_x_adjust
+                print(f"DEBUG: Cell[{row_num},{col_num}]: X position = {settings.left_margin} + ({col_num} * {settings.cell_spacing}) + {settings.braille_x_adjust} = {x_pos:.2f}mm")
+                    
+                # Create holes for the dots that are present in this braille character
+                dots = braille_to_dots(braille_char)
+                print(f"DEBUG: Creating holes for char '{braille_char}' → dots {dots} at cell[{row_num},{col_num}]")
+                    
+                for dot_idx, dot_val in enumerate(dots):
+                    if dot_val == 1:  # Only create holes for dots that are present
+                        dot_pos = dot_positions[dot_idx]
+                        dot_x = x_pos + dot_col_offsets[dot_pos[1]]
+                        dot_y = y_pos + dot_row_offsets[dot_pos[0]]
+                        
+                        print(f"DEBUG: Dot {dot_idx+1}: offset[{dot_pos[0]},{dot_pos[1]}] → ({dot_x:.2f}, {dot_y:.2f})")
+                        
+                        # Create circular hole with higher resolution
+                        hole = Point(dot_x, dot_y).buffer(hole_radius, resolution=64)
+                        holes.append(hole)
+                        total_dots += 1
+                        
+                        print(f"DEBUG: Hole {total_dots} for dot {dot_idx+1} at ({dot_x:.2f}, {dot_y:.2f})")
     
-    print(f"DEBUG: Created {total_dots} holes total (expected: {settings.grid_rows * settings.grid_columns * 6})")
+    print(f"DEBUG: Created {total_dots} holes total for actual text content")
     
     if not holes:
-        print("ERROR: No holes were created!")
-        return create_fallback_plate(settings)
+        print("WARNING: No holes were created! Creating a plate with all possible holes as fallback")
+        # Fallback: create holes for all possible positions
+        return create_universal_counter_plate_fallback(settings)
     
     # Combine all holes into one multi-polygon
     try:
@@ -347,6 +372,71 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
         import traceback
         traceback.print_exc()
         # Fallback to simple base plate if extrusion fails
+        return create_fallback_plate(settings)
+
+def create_universal_counter_plate_fallback(settings: CardSettings):
+    """Create a counter plate with all possible holes as fallback when text-based holes fail"""
+    print("DEBUG: Creating universal counter plate fallback with all possible holes")
+    
+    # Create base rectangle for the card
+    base_polygon = Polygon([
+        (0, 0),
+        (settings.card_width, 0),
+        (settings.card_width, settings.card_height),
+        (0, settings.card_height)
+    ])
+    
+    # Dot positioning constants
+    dot_col_offsets = [-settings.dot_spacing / 2, settings.dot_spacing / 2]
+    dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]
+    dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
+    
+    # Create holes for ALL possible dot positions (312 holes total)
+    holes = []
+    total_dots = 0
+    
+    # Calculate hole radius
+    hole_radius = max(0.5, (settings.recessed_dot_base_diameter / 2))
+    
+    # Generate holes for each grid position (all cells, all dots)
+    for row in range(settings.grid_rows):
+        # Calculate Y position for this row (same as embossing plate)
+        y_pos = settings.card_height - settings.top_margin - (row * settings.line_spacing) + settings.braille_y_adjust
+        
+        for col in range(settings.grid_columns):
+            # Calculate X position for this column (same as embossing plate)
+            x_pos = settings.left_margin + (col * settings.cell_spacing) + settings.braille_x_adjust
+            
+            # Create holes for ALL 6 dots in this cell
+            for dot_idx in range(6):
+                dot_pos = dot_positions[dot_idx]
+                dot_x = x_pos + dot_col_offsets[dot_pos[1]]
+                dot_y = y_pos + dot_row_offsets[dot_pos[0]]
+                
+                # Create circular hole
+                hole = Point(dot_x, dot_y).buffer(hole_radius, resolution=64)
+                holes.append(hole)
+                total_dots += 1
+    
+    print(f"DEBUG: Fallback: Created {total_dots} holes total for all possible positions")
+    
+    # Combine and subtract holes
+    try:
+        all_holes = unary_union(holes)
+        plate_with_holes = base_polygon.difference(all_holes)
+        
+        # Extrude to 3D
+        if hasattr(plate_with_holes, 'geoms'):
+            largest_polygon = max(plate_with_holes.geoms, key=lambda p: p.area)
+            final_mesh = trimesh.creation.extrude_polygon(largest_polygon, height=settings.card_thickness)
+        else:
+            final_mesh = trimesh.creation.extrude_polygon(plate_with_holes, height=settings.card_thickness)
+        
+        print(f"DEBUG: Fallback counter plate created successfully")
+        return final_mesh
+        
+    except Exception as e:
+        print(f"ERROR: Fallback counter plate creation failed: {e}")
         return create_fallback_plate(settings)
 
 def create_fallback_plate(settings: CardSettings):
@@ -831,22 +921,15 @@ def test_universal_counter_plate():
 def test_simple_counter_plate():
     """Test endpoint to verify simple counter plate generation with just a few holes"""
     try:
-        # Use minimal settings for testing
-        settings = CardSettings(
-            card_width=30,
-            card_height=20,
-            card_thickness=2.0,
-            grid_columns=2,
-            grid_rows=2,
-            dot_spacing=2.5,
-            line_spacing=8.0,
-            dot_base_diameter=2.0,
-            negative_plate_offset=0.4
-        )
+        # Use the same settings as the main application for consistency
+        settings = CardSettings()
         
-        print("DEBUG: Testing simple counter plate with minimal grid (2x2)")
+        print("DEBUG: Testing simple counter plate with main application settings")
+        print(f"DEBUG: Grid: {settings.grid_columns}x{settings.grid_rows}")
+        print(f"DEBUG: Card dimensions: {settings.card_width}x{settings.card_height}x{settings.card_thickness}mm")
+        print(f"DEBUG: Dot spacing: {settings.dot_spacing}mm, Line spacing: {settings.line_spacing}mm")
         
-        # Create a simple counter plate with just 4 cells (24 holes total)
+        # Create a test counter plate with the same settings as the main app
         mesh = create_simple_negative_plate(settings)
         
         # Export to STL
@@ -854,12 +937,48 @@ def test_simple_counter_plate():
         mesh.export(stl_io, file_type='stl')
         stl_io.seek(0)
         
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='test_simple_counter_plate.stl')
+        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='test_counter_plate.stl')
         
     except Exception as e:
         return jsonify({
             'status': 'error',
             'message': f'Simple counter plate test failed: {str(e)}',
+            'error': str(e)
+        }), 500
+
+@app.route('/test-text-counter-plate')
+def test_text_counter_plate():
+    """Test endpoint to verify counter plate generation with actual text content"""
+    try:
+        # Use the same settings as the main application
+        settings = CardSettings()
+        
+        # Create test text lines with braille Unicode
+        test_lines = [
+            "⠠⠃⠗⠢⠝⠢",  # "Brennen" in braille
+            "⠠⠚⠕⠓⠝⠌⠕⠝",  # "Johnston" in braille
+            "",  # Empty line
+            ""   # Empty line
+        ]
+        
+        print("DEBUG: Testing text-based counter plate generation")
+        print(f"DEBUG: Test text: {test_lines}")
+        print(f"DEBUG: Grid: {settings.grid_columns}x{settings.grid_rows}")
+        
+        # Create a counter plate based on the actual text content
+        mesh = create_simple_negative_plate(settings, test_lines)
+        
+        # Export to STL
+        stl_io = io.BytesIO()
+        mesh.export(stl_io, file_type='stl')
+        stl_io.seek(0)
+        
+        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='test_text_counter_plate.stl')
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Text counter plate test failed: {str(e)}',
             'error': str(e)
         }), 500
 

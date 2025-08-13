@@ -736,13 +736,35 @@
                 console.log('window.LiblouisEasyApi:', typeof window.LiblouisEasyApi);
                 
                 // Try different approaches based on what's available
-                if (typeof window.LiblouisEasyApi !== 'undefined' && typeof window.liblouisBuild !== 'undefined') {
+                if (typeof window.liblouis !== 'undefined' && typeof window.liblouisBuild !== 'undefined') {
+                    console.log('Both liblouis and liblouisBuild found');
+                    console.log('liblouisBuild object:', window.liblouisBuild);
+                    console.log('liblouis object:', window.liblouis);
+                    
+                    // Try to set the build explicitly
+                    if (window.liblouis.setLiblouisBuild) {
+                        try {
+                            window.liblouis.setLiblouisBuild(window.liblouisBuild);
+                            console.log('Successfully set liblouis build');
+                            liblouisInstance = window.liblouis;
+                            liblouisReady = true;
+                        } catch (e) {
+                            console.error('Failed to set liblouis build:', e);
+                        }
+                    } else {
+                        console.log('setLiblouisBuild not available, trying direct use');
+                        liblouisInstance = window.liblouis;
+                        if (liblouisInstance.translateString || liblouisInstance.translate) {
+                            liblouisReady = true;
+                        }
+                    }
+                } else if (typeof window.LiblouisEasyApi !== 'undefined' && typeof window.liblouisBuild !== 'undefined') {
                     console.log('Using LiblouisEasyApi class approach');
                     liblouisInstance = new window.LiblouisEasyApi(window.liblouisBuild);
                     console.log('LiblouisEasyApi instance created');
                     liblouisReady = true;
                 } else if (typeof window.liblouis !== 'undefined') {
-                    console.log('Using global liblouis object');
+                    console.log('Using global liblouis object only');
                     liblouisInstance = window.liblouis;
                     
                     // Check what methods are available
@@ -759,8 +781,24 @@
                     // Test translation capability
                     if (liblouisInstance.translateString) {
                         console.log('translateString method available');
+                        
+                        // Test if we can access tables
+                        try {
+                            console.log('Testing table access...');
+                            const testResult = liblouisInstance.translateString('en-us-g1.ctb', 'test');
+                            console.log('Test translation result:', testResult);
+                        } catch (e) {
+                            console.error('Test translation failed:', e);
+                        }
                     } else if (liblouisInstance.translate) {
                         console.log('translate method available');
+                    }
+                    
+                    // Try to list available tables if possible
+                    if (liblouisInstance.listTables) {
+                        console.log('Available tables:', liblouisInstance.listTables());
+                    } else {
+                        console.log('listTables method not available');
                     }
                 } else {
                     throw new Error('Could not initialize liblouis');

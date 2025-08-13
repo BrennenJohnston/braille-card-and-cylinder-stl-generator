@@ -8,11 +8,7 @@
   ],
   "functions": {
     "wsgi.py": {
-      "includeFiles": [
-        "node_modules/**",
-        "static/**",
-        "templates/**"
-      ]
+      "includeFiles": "node_modules/**"
     }
   },
   "rewrites": [

@@ -760,6 +760,8 @@
                         if (liblouis.listTables) {
                             console.log('Available tables:', liblouis.listTables());
                         }
+                                                    // Note: enableOnDemandTableLoading is only available in web workers and Node.js
+                            // In browsers, tables are bundled with the build
                     } else {
                         throw new Error('Liblouis API not properly loaded');
                     }
@@ -776,8 +778,13 @@
 
         // Function to translate text using real liblouis
         async function translateWithLiblouis(text, grade) {
-            // Use the most basic table names that should be available
-            const table = grade === 'g2' ? 'en-g2.ctb' : 'en-g1.ctb';
+            // Try different table names that might be available
+            let table;
+            if (grade === 'g2') {
+                table = 'en-ueb-g2.ctb';  // Try without tables/ prefix first
+            } else {
+                table = 'en-ueb-g1.ctb';
+            }
             
             if (liblouis.translateString) {
                 return liblouis.translateString(table, text);

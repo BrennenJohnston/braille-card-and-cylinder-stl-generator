@@ -70,6 +70,11 @@ class CardSettings:
         self.recessed_dot_base_diameter = self.dot_base_diameter + (self.negative_plate_offset * 2)
         self.recessed_dot_top_diameter = self.dot_hat_size + (self.negative_plate_offset * 2)
         self.recessed_dot_height = self.dot_height + self.negative_plate_offset
+        
+        # Counter plate specific parameters (can be adjusted independently)
+        self.counter_plate_dot_base_diameter = self.dot_base_diameter + (self.negative_plate_offset * 2)
+        self.counter_plate_dot_top_diameter = self.dot_hat_size + (self.negative_plate_offset * 2)
+        self.counter_plate_dot_height = self.dot_height + self.negative_plate_offset
 
 def translate_with_liblouis_js(text: str, grade: str = "g2") -> str:
     """
@@ -421,6 +426,126 @@ def create_negative_plate_with_conical_holes(settings: CardSettings):
         return plate
 
 
+def create_universal_counter_plate(settings: CardSettings):
+    """
+    Create a universal counter plate with recessed conical holes for ALL possible dot positions.
+    This function is completely independent of text input and generates a plate with 312 holes.
+    
+    The counter plate has its own parametric controls for:
+    - Counter plate dot base diameter
+    - Counter plate dot height  
+    - Counter plate dot flat top diameter
+    """
+    print("DEBUG: Starting universal counter plate creation with conical holes")
+    print(f"DEBUG: Grid: {settings.grid_columns}x{settings.grid_rows} = {settings.grid_columns * settings.grid_rows * 6} total holes")
+
+    # Create the base plate
+    plate = trimesh.creation.box(extents=(settings.card_width, settings.card_height, settings.card_thickness))
+    plate.apply_translation((settings.card_width / 2, settings.card_height / 2, settings.card_thickness / 2))
+    print(f"DEBUG: Base plate bounds: {plate.bounds}")
+    print(f"DEBUG: Base plate volume: {plate.volume:.4f}")
+
+    # Dot positioning constants (same as emboss plate)
+    dot_col_offsets = [-settings.dot_spacing / 2, settings.dot_spacing / 2]
+    dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]
+    dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
+
+    # Create cone cutters for ALL possible dot positions (312 total)
+    cutters = []
+    total_dots = 0
+
+    # Counter plate specific parameters (can be adjusted independently)
+    counter_dot_base_radius = settings.counter_plate_dot_base_diameter / 2
+    counter_dot_top_radius = settings.counter_plate_dot_top_diameter / 2
+    counter_dot_height = settings.counter_plate_dot_height
+
+    print(f"DEBUG: Counter plate dot parameters:")
+    print(f"DEBUG:   Base radius: {counter_dot_base_radius:.3f}mm")
+    print(f"DEBUG:   Top radius: {counter_dot_top_radius:.3f}mm") 
+    print(f"DEBUG:   Height: {counter_dot_height:.3f}mm")
+
+    # Generate cones for each grid position
+    for row in range(settings.grid_rows):
+        # Mirror row for counter plate (row 0 -> row 3, row 1 -> row 2, etc.)
+        mirrored_row = settings.grid_rows - 1 - row
+        y_pos = settings.card_height - settings.top_margin - (mirrored_row * settings.line_spacing) + settings.braille_y_adjust
+
+        for col in range(settings.grid_columns):
+            # Mirror column for counter plate (col 0 -> col 12, col 1 -> col 11, etc.)
+            mirrored_col = settings.grid_columns - 1 - col
+            x_pos = settings.left_margin + (mirrored_col * settings.cell_spacing) + settings.braille_x_adjust
+
+            # Create holes for ALL 6 dots in this cell
+            for dot_idx in range(6):
+                dot_pos = dot_positions[dot_idx]
+                dot_x = x_pos + dot_col_offsets[dot_pos[1]]
+                dot_y = y_pos + dot_row_offsets[dot_pos[0]]
+                
+                # Create a cone (frustum) cutter
+                cone_cutter = trimesh.creation.cylinder(
+                    radius=counter_dot_base_radius,
+                    height=counter_dot_height,
+                    sections=16
+                )
+
+                # Scale top to create frustum (cone shape)
+                if counter_dot_base_radius > 0:
+                    scale_factor = counter_dot_top_radius / counter_dot_base_radius
+                    top_surface_z = cone_cutter.vertices[:, 2].max()
+                    is_top_vertex = np.isclose(cone_cutter.vertices[:, 2], top_surface_z)
+                    cone_cutter.vertices[is_top_vertex, :2] *= scale_factor
+
+                # Position the cutter to ensure it goes completely through the plate
+                # Start below the plate and extend above it
+                z_pos = -counter_dot_height  # Start well below the plate
+                cone_cutter.apply_translation((dot_x, dot_y, z_pos))
+                
+                # Debug: Log first few cone positions and bounds
+                if total_dots < 5:
+                    print(f"DEBUG: Cone {total_dots + 1} at ({dot_x:.2f}, {dot_y:.2f}, {z_pos:.2f})")
+                    print(f"DEBUG:   Cone bounds: {cone_cutter.bounds}")
+                    print(f"DEBUG:   Cone extends from Z={cone_cutter.bounds[0][2]:.3f} to Z={cone_cutter.bounds[1][2]:.3f}")
+                
+                cutters.append(cone_cutter)
+                total_dots += 1
+
+    print(f"DEBUG: Created {total_dots} conical cutters for boolean subtraction.")
+    print(f"DEBUG: Expected total: {settings.grid_rows * settings.grid_columns * 6}")
+
+    # Perform boolean operations
+    if cutters:
+        try:
+            # First, union all the cone cutters together
+            print(f"DEBUG: Unioning {len(cutters)} cone cutters...")
+            if len(cutters) == 1:
+                combined_cutters = cutters[0]
+            else:
+                combined_cutters = trimesh.boolean.union(cutters, engine='manifold')
+            
+            print("DEBUG: Cones unioned successfully.")
+            print(f"DEBUG: Combined cutters bounds: {combined_cutters.bounds}")
+            
+            # Then subtract the unified cones from the plate
+            print("DEBUG: Performing plate subtraction...")
+            final_mesh = trimesh.boolean.difference([plate, combined_cutters], engine='manifold')
+            
+            print("DEBUG: Boolean subtraction successful using manifold engine.")
+            print(f"DEBUG: Final mesh bounds: {final_mesh.bounds}")
+            print(f"DEBUG: Final mesh volume: {final_mesh.volume:.4f} (original: {plate.volume:.4f})")
+            print(f"DEBUG: Volume removed: {plate.volume - final_mesh.volume:.4f}")
+            
+            return final_mesh
+            
+        except Exception as e:
+            print(f"ERROR: Boolean operations with manifold failed: {e}")
+            print("WARNING: Falling back to simple cylindrical holes.")
+            # Fallback to the simple approach if manifold fails
+            return create_simple_negative_plate(settings)
+    else:
+        print("WARNING: No cutters were generated. Returning base plate.")
+        return plate
+
+
 @app.route('/health')
 def health_check():
     return jsonify({'status': 'ok', 'message': 'Vercel backend is running'})
@@ -635,6 +760,42 @@ def test_cone_positioning():
             'error': str(e)
         }), 500
 
+@app.route('/test-universal-counter-plate')
+def test_universal_counter_plate():
+    """Test endpoint to verify universal counter plate generation"""
+    try:
+        # Use the same settings as the main application
+        settings = CardSettings()
+        
+        print("DEBUG: Testing universal counter plate generation...")
+        mesh = create_universal_counter_plate(settings)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Universal counter plate test completed',
+            'mesh_bounds': mesh.bounds.tolist(),
+            'mesh_volume': float(mesh.volume),
+            'expected_holes': settings.grid_rows * settings.grid_columns * 6,
+            'settings': {
+                'card_width': settings.card_width,
+                'card_height': settings.card_height,
+                'card_thickness': settings.card_thickness,
+                'grid_columns': settings.grid_columns,
+                'grid_rows': settings.grid_rows,
+                'dot_base_diameter': settings.dot_base_diameter,
+                'dot_height': settings.dot_height,
+                'dot_hat_size': settings.dot_hat_size,
+                'negative_plate_offset': settings.negative_plate_offset
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Universal counter plate test failed: {str(e)}',
+            'error': str(e)
+        }), 500
+
 
 
 @app.route('/')
@@ -727,6 +888,30 @@ def generate_counter_plate_stl():
         
     except Exception as e:
         return jsonify({'error': f'Failed to generate counter plate: {str(e)}'}), 500
+
+@app.route('/generate_universal_counter_plate', methods=['POST'])
+def generate_universal_counter_plate_route():
+    """
+    Generate a universal counter plate with recessed conical holes for ALL possible dot positions.
+    This endpoint does NOT require any text input - it generates a plate with 312 holes.
+    """
+    data = request.get_json()
+    settings_data = data.get('settings', {})
+    settings = CardSettings(**settings_data)
+    
+    try:
+        print("DEBUG: Generating universal counter plate (no text input required)")
+        mesh = create_universal_counter_plate(settings)
+        
+        # Export to STL
+        stl_io = io.BytesIO()
+        mesh.export(stl_io, file_type='stl')
+        stl_io.seek(0)
+        
+        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='universal_counter_plate.stl')
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to generate universal counter plate: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

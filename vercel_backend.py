@@ -235,9 +235,12 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
     Create a negative plate with recessed holes for Vercel compatibility.
     This creates a plate with holes that can be used as a counter plate.
     """
+    print(f"DEBUG: Starting negative plate creation with settings: {settings.__dict__}")
+    
     # Create base plate
     base_plate = trimesh.creation.box(extents=(settings.card_width, settings.card_height, settings.card_thickness))
     base_plate.apply_translation((settings.card_width/2, settings.card_height/2, settings.card_thickness/2))
+    print(f"DEBUG: Created base plate with dimensions: {base_plate.bounds}")
     
     # Create recessed holes as cylinders
     recessed_holes = []
@@ -249,7 +252,7 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
     
     # If we have braille lines, create holes only where dots exist
     if lines and any(line.strip() for line in lines):
-        print(f"Creating negative plate with braille content: {lines}")
+        print(f"DEBUG: Creating negative plate with braille content: {lines}")
         
         # Process each line in top-down order
         for row_num in range(settings.grid_rows):
@@ -290,25 +293,29 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
                             dot_y = y_pos + dot_row_offsets[dot_pos[0]]
                             
                             # Create recessed hole (cylinder going down from top surface)
-                            # Make the hole slightly larger than the dot to ensure proper fit
-                            hole_radius = (settings.dot_base_diameter / 2) + 0.1  # Add 0.1mm tolerance
-                            hole_height = settings.card_thickness + 0.2  # Go completely through the plate
+                            # Make the hole significantly larger than the dot to ensure proper boolean operation
+                            hole_radius = (settings.dot_base_diameter / 2) + 0.5  # Increased tolerance to 0.5mm
+                            hole_height = settings.card_thickness + 1.0  # Increased height to ensure complete penetration
                             
+                            print(f"DEBUG: Creating hole with radius {hole_radius:.2f}mm, height {hole_height:.2f}mm")
+                            
+                            # Create a tall cylinder that definitely goes through the plate
                             recessed_hole = trimesh.creation.cylinder(
                                 radius=hole_radius,
                                 height=hole_height,
-                                sections=16
+                                sections=32  # Increased sections for smoother holes
                             )
                             
-                            # Position the hole (z starts at top surface and goes down through the plate)
-                            z_pos = settings.card_thickness - (hole_height / 2)
+                            # Position the hole to start above the plate and go completely through
+                            # This ensures the hole definitely intersects with the plate
+                            z_pos = settings.card_thickness + (hole_height / 2)
                             recessed_hole.apply_translation((dot_x, dot_y, z_pos))
                             recessed_holes.append(recessed_hole)
-                            print(f"DEBUG: Creating hole for dot {i+1} at ({dot_x:.2f}, {dot_y:.2f}, {z_pos:.2f})")
+                            print(f"DEBUG: Created hole for dot {i+1} at ({dot_x:.2f}, {dot_y:.2f}, {z_pos:.2f})")
             else:
                 print(f"WARNING: Line {row_num + 1} does not contain proper braille Unicode characters")
     else:
-        print("No braille content provided, creating holes at all grid positions")
+        print("DEBUG: No braille content provided, creating holes at all grid positions")
         # Create recessed holes for each grid position (fallback)
         for row in range(settings.grid_rows):
             for col in range(settings.grid_columns):
@@ -317,36 +324,44 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
                 y_pos = settings.card_height - settings.top_margin - (row * settings.line_spacing) + settings.braille_y_adjust
                 
                 # Create recessed hole (cylinder going down from top surface)
-                hole_radius = (settings.dot_base_diameter / 2) + 0.1
-                hole_height = settings.card_thickness + 0.2
+                hole_radius = (settings.dot_base_diameter / 2) + 0.5  # Increased tolerance
+                hole_height = settings.card_thickness + 1.0  # Increased height
                 
                 recessed_hole = trimesh.creation.cylinder(
                     radius=hole_radius,
                     height=hole_height,
-                    sections=16
+                    sections=32
                 )
                 
-                z_pos = settings.card_thickness - (hole_height / 2)
+                # Position the hole to start above the plate and go completely through
+                z_pos = settings.card_thickness + (hole_height / 2)
                 recessed_hole.apply_translation((x_pos, y_pos, z_pos))
                 recessed_holes.append(recessed_hole)
+                print(f"DEBUG: Created fallback hole at ({x_pos:.2f}, {y_pos:.2f}, {z_pos:.2f})")
+    
+    print(f"DEBUG: Created {len(recessed_holes)} holes total")
     
     # Combine all recessed holes
     if recessed_holes:
-        recessed_holes_combined = trimesh.util.concatenate(recessed_holes)
-        
-        # Perform boolean difference to create actual holes
         try:
+            recessed_holes_combined = trimesh.util.concatenate(recessed_holes)
+            print(f"DEBUG: Combined holes into single mesh with bounds: {recessed_holes_combined.bounds}")
+            
+            # Perform boolean difference to create actual holes
+            print("DEBUG: Attempting boolean subtraction...")
             final_mesh = base_plate.difference(recessed_holes_combined)
+            print(f"DEBUG: Boolean subtraction successful! Final mesh bounds: {final_mesh.bounds}")
             print(f"Successfully created negative plate with {len(recessed_holes)} holes")
             return final_mesh
+            
         except Exception as e:
-            print(f"Boolean subtraction failed: {e}")
-            print("Creating alternative negative plate approach...")
+            print(f"ERROR: Boolean subtraction failed: {e}")
+            print("DEBUG: Attempting alternative negative plate approach...")
             
             # Alternative approach: create a plate with holes by building it from scratch
             return create_alternative_negative_plate(settings)
     else:
-        print("No holes to create, returning base plate")
+        print("WARNING: No holes to create, returning base plate")
         return base_plate
 
 def create_alternative_negative_plate(settings: CardSettings):
@@ -354,7 +369,7 @@ def create_alternative_negative_plate(settings: CardSettings):
     Alternative method to create negative plate when boolean operations fail.
     This creates a plate with holes by building it from individual components.
     """
-    print("Using alternative negative plate creation method")
+    print("DEBUG: Using alternative negative plate creation method")
     
     # Create the base plate
     base_plate = trimesh.creation.box(extents=(settings.card_width, settings.card_height, settings.card_thickness))
@@ -367,25 +382,30 @@ def create_alternative_negative_plate(settings: CardSettings):
     # Create a large hole that covers the entire braille area
     large_hole = trimesh.creation.cylinder(
         radius=max(grid_width, grid_height) / 2 + 2,  # Slightly larger than grid
-        height=settings.card_thickness + 0.2,
+        height=settings.card_thickness + 1.0,  # Increased height
         sections=32
     )
     
-    # Position the large hole at the center of the grid
+    # Position the large hole to start above the plate and go completely through
     center_x = settings.left_margin + (grid_width / 2)
     center_y = settings.card_height - settings.top_margin - (grid_height / 2)
-    z_pos = settings.card_thickness - (large_hole.bounds[1][2] - large_hole.bounds[0][2]) / 2
+    z_pos = settings.card_thickness + (large_hole.bounds[1][2] - large_hole.bounds[0][2]) / 2
     large_hole.apply_translation((center_x, center_y, z_pos))
+    
+    print(f"DEBUG: Alternative method - created large hole with radius {max(grid_width, grid_height) / 2 + 2:.2f}mm")
+    print(f"DEBUG: Alternative method - hole positioned at ({center_x:.2f}, {center_y:.2f}, {z_pos:.2f})")
     
     try:
         # Try to subtract the large hole
+        print("DEBUG: Alternative method - attempting boolean subtraction...")
         final_mesh = base_plate.difference(large_hole)
+        print("DEBUG: Alternative method - boolean subtraction successful!")
         print("Successfully created negative plate with large hole")
         return final_mesh
     except Exception as e:
-        print(f"Alternative method also failed: {e}")
+        print(f"ERROR: Alternative method also failed: {e}")
         # Last resort: return the base plate with a note
-        print("Returning base plate - holes could not be created")
+        print("WARNING: Returning base plate - holes could not be created")
         return base_plate
 
 @app.route('/health')
@@ -429,6 +449,39 @@ def test_liblouis_files():
         'working_directory': os.getcwd(),
         'directory_contents': os.listdir('.')
     })
+
+@app.route('/test-boolean-operation')
+def test_boolean_operation():
+    """Test endpoint to verify boolean operations work correctly"""
+    try:
+        # Create a simple test case
+        base = trimesh.creation.box(extents=(10, 10, 2))
+        base.apply_translation((5, 5, 1))
+        
+        # Create a test hole
+        hole = trimesh.creation.cylinder(radius=1, height=3, sections=16)
+        hole.apply_translation((5, 5, 0))
+        
+        # Try boolean subtraction
+        result = base.difference(hole)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Boolean operation test passed',
+            'base_bounds': base.bounds.tolist(),
+            'hole_bounds': hole.bounds.tolist(),
+            'result_bounds': result.bounds.tolist(),
+            'base_volume': float(base.volume),
+            'hole_volume': float(hole.volume),
+            'result_volume': float(result.volume)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Boolean operation test failed: {str(e)}',
+            'error': str(e)
+        }), 500
 
 @app.route('/')
 def index():

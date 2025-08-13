@@ -1,13 +1,8 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "wsgi.py",
-      "use": "@vercel/python"
-    }
-  ],
   "functions": {
     "wsgi.py": {
+      "runtime": "@vercel/python",
       "includeFiles": "node_modules/**"
     }
   },

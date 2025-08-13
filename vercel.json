@@ -8,11 +8,24 @@
   ],
   "routes": [
     {
+      "src": "/static/(.*)",
+      "dest": "/static/$1"
+    },
+    {
       "src": "/(.*)",
-      "dest": "wsgi.py"
+      "dest": "/wsgi.py"
     }
   ],
-  "env": {
-    "PYTHONPATH": "."
-  }
+  "functions": {
+    "wsgi.py": {
+      "runtime": "python3.9",
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/wsgi.py"
+    }
+  ]
 }

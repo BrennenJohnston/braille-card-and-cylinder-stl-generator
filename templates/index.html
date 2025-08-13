@@ -778,6 +778,18 @@
                 if (liblouisReady && liblouisInstance) {
                     console.log('Liblouis initialized successfully');
                     
+                    // Test if table files are accessible via HTTP first
+                    fetch('/node_modules/liblouis-build/tables/en-us-g1.ctb')
+                        .then(response => {
+                            console.log('Table file HTTP test:', response.status, response.statusText);
+                            if (response.ok) {
+                                console.log('Table file is accessible via HTTP');
+                            } else {
+                                console.error('Table file not accessible via HTTP');
+                            }
+                        })
+                        .catch(e => console.error('HTTP test failed:', e));
+                    
                     // Enable on-demand table loading from our server
                     if (liblouisInstance.enableOnDemandTableLoading) {
                         try {
@@ -795,12 +807,16 @@
                         console.log('translateString method available');
                         
                         // Test if we can access tables (after setting up on-demand loading)
-                        try {
-                            console.log('Testing table access...');
-                            const testResult = liblouisInstance.translateString('en-us-g1.ctb', 'test');
-                            console.log('Test translation result:', testResult);
-                        } catch (e) {
-                            console.error('Test translation failed:', e);
+                        const testFormats = ['en-us-g1.ctb', 'tables/en-us-g1.ctb', '/node_modules/liblouis-build/tables/en-us-g1.ctb'];
+                        for (const tableFormat of testFormats) {
+                            try {
+                                console.log('Testing table access with format:', tableFormat);
+                                const testResult = liblouisInstance.translateString(tableFormat, 'test');
+                                console.log('Test translation result with', tableFormat, ':', testResult);
+                                break; // Success, stop trying other formats
+                            } catch (e) {
+                                console.log('Test translation failed with', tableFormat, ':', e.message);
+                            }
                         }
                     } else if (liblouisInstance.translate) {
                         console.log('translate method available');
@@ -829,17 +845,31 @@
                 throw new Error('Liblouis not initialized');
             }
             
-            // Use the correct table names that liblouis-js provides
-            // These are the standard English braille tables
-            const table = grade === 'g2' ? 'en-us-g2.ctb' : 'en-us-g1.ctb';
+            // Try different table path formats
+            const tableFormats = [
+                grade === 'g2' ? 'en-us-g2.ctb' : 'en-us-g1.ctb',
+                grade === 'g2' ? 'tables/en-us-g2.ctb' : 'tables/en-us-g1.ctb',
+                grade === 'g2' ? '/node_modules/liblouis-build/tables/en-us-g2.ctb' : '/node_modules/liblouis-build/tables/en-us-g1.ctb'
+            ];
             
-            if (liblouisInstance.translateString) {
-                return liblouisInstance.translateString(table, text);
-            } else if (liblouisInstance.translate) {
-                return liblouisInstance.translate(table, text);
-            } else {
-                throw new Error('Liblouis translation method not available');
+            for (const table of tableFormats) {
+                try {
+                    console.log('Trying table format:', table);
+                    if (liblouisInstance.translateString) {
+                        const result = liblouisInstance.translateString(table, text);
+                        console.log('Translation successful with table:', table);
+                        return result;
+                    } else if (liblouisInstance.translate) {
+                        const result = liblouisInstance.translate(table, text);
+                        console.log('Translation successful with table:', table);
+                        return result;
+                    }
+                } catch (e) {
+                    console.log('Failed with table format:', table, 'Error:', e.message);
+                }
             }
+            
+            throw new Error('All table formats failed');
         }
     </script>
 </body>

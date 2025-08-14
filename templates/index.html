@@ -395,8 +395,8 @@
                             <span class="radio-text">Counter Plate (With Holes)</span>
                         </label>
                         <div id="negative-plate-offset-container" style="display: none; margin-top: 10px;">
-                            <label for="negative_plate_offset">Negative Plate Offset:</label>
-                            <input type="number" id="negative_plate_offset" name="negative_plate_offset" value="0.4" step="0.1">
+                            <label for="counter_plate_dot_size_offset">Counter Plate Dot Size Offset:</label>
+                            <input type="number" id="counter_plate_dot_size_offset" name="counter_plate_dot_size_offset" value="0.0" step="0.1" title="Adjusts the counter plate braille dot base diameter relative to the emboss plate diameter">
                         </div>
                     </div>
                 </div>
@@ -614,28 +614,34 @@
             const plateType = document.querySelector('input[name="plate_type"]:checked').value;
             const grade = document.querySelector('input[name="grade"]:checked').value;
             
-            // Translate text to braille before sending to backend
-            const translatedLines = [];
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (line) {
-                    try {
-                        console.log(`Translating line ${i + 1}: '${line}' to braille...`);
-                        const brailleText = await translateWithLiblouis(line, grade);
-                        console.log(`Line ${i + 1} translated: '${line}' → '${brailleText}'`);
-                        translatedLines.push(brailleText);
-                    } catch (error) {
-                        console.error(`Failed to translate line ${i + 1}:`, error);
-                        // Fallback to original text if translation fails
-                        translatedLines.push(line);
+            // Translate text to braille only for positive plates
+            let translatedLines = [];
+            if (plateType === 'positive') {
+                // Translate text to braille before sending to backend
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line) {
+                        try {
+                            console.log(`Translating line ${i + 1}: '${line}' to braille...`);
+                            const brailleText = await translateWithLiblouis(line, grade);
+                            console.log(`Line ${i + 1} translated: '${line}' → '${brailleText}'`);
+                            translatedLines.push(brailleText);
+                        } catch (error) {
+                            console.error(`Failed to translate line ${i + 1}:`, error);
+                            // Fallback to original text if translation fails
+                            translatedLines.push(line);
+                        }
+                    } else {
+                        translatedLines.push('');
                     }
-                } else {
-                    translatedLines.push('');
                 }
+                console.log('Original lines:', lines);
+                console.log('Translated lines:', translatedLines);
+            } else {
+                // Counter plates don't need text - just pass empty lines
+                translatedLines = ['', '', '', ''];
+                console.log('Counter plate selected - no text translation needed');
             }
-            
-            console.log('Original lines:', lines);
-            console.log('Translated lines:', translatedLines);
             const settings = {
                 grid_columns: document.getElementById('grid_columns').value,
                 grid_rows: document.getElementById('grid_rows').value,
@@ -645,31 +651,33 @@
                 dot_base_diameter: document.getElementById('dot_base_diameter').value,
                 dot_height: document.getElementById('dot_height').value,
                 dot_hat_size: document.getElementById('dot_hat_size').value,
-                negative_plate_offset: document.getElementById('negative_plate_offset').value
+                counter_plate_dot_size_offset: document.getElementById('counter_plate_dot_size_offset').value
             };
             
-            // Check if at least one line has content
-            if (lines.every(line => !line.trim())) {
+            // Check if at least one line has content (only for positive plates)
+            if (plateType === 'positive' && lines.every(line => !line.trim())) {
                 errorText.textContent = 'Please enter text in at least one line.';
                 errorDiv.style.display = 'flex';
                 return;
             }
             
-            // Validate braille character limits AFTER translation
-            const gridColumns = parseInt(document.getElementById('grid_columns').value);
-            for (let i = 0; i < translatedLines.length; i++) {
-                const brailleLine = translatedLines[i];
-                if (brailleLine && brailleLine.length > gridColumns) {
-                    const over = brailleLine.length - gridColumns;
-                    errorText.textContent = `Line ${i + 1} exceeds ${gridColumns} braille cells by ${over} cells after translation. Please shorten your text.`;
-                    errorDiv.style.display = 'flex';
-                    errorDiv.className = 'error-message';
-                    return;
+            // Validate braille character limits AFTER translation (only for positive plates)
+            if (plateType === 'positive') {
+                const gridColumns = parseInt(document.getElementById('grid_columns').value);
+                for (let i = 0; i < translatedLines.length; i++) {
+                    const brailleLine = translatedLines[i];
+                    if (brailleLine && brailleLine.length > gridColumns) {
+                        const over = brailleLine.length - gridColumns;
+                        errorText.textContent = `Line ${i + 1} exceeds ${gridColumns} braille cells by ${over} cells after translation. Please shorten your text.`;
+                        errorDiv.style.display = 'flex';
+                        errorDiv.className = 'error-message';
+                        return;
+                    }
                 }
             }
             
-            // Show loading message during translation
-            errorText.textContent = 'Translating text to braille...';
+            // Show loading message
+            errorText.textContent = plateType === 'positive' ? 'Translating text to braille...' : 'Generating counter plate...';
             errorDiv.style.display = 'flex';
             errorDiv.className = 'error-message info';
             

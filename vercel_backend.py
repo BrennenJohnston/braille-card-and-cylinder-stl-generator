@@ -45,11 +45,12 @@ class CardSettings:
             "braille_x_adjust": 0.0,  # Default to center
             # Counter plate specific parameters
             "hemisphere_subdivisions": 1,  # For mesh density control
+            "counter_plate_dot_size_offset": 0.0,  # Default offset from emboss dot diameter
             # Legacy parameters (for backward compatibility)
             "dot_base_diameter": 1.4,
             "dot_height": 0.8,
             "dot_hat_size": 0.4,
-            "negative_plate_offset": 0.4,
+            "negative_plate_offset": 0.4,  # Legacy name for backward compatibility
             "emboss_dot_base_diameter_mm": 1.4,
             "plate_thickness_mm": 2.0,
             "epsilon_mm": 0.001,
@@ -86,6 +87,10 @@ class CardSettings:
             self.dot_height = self.emboss_dot_height
         if 'emboss_dot_flat_hat' in kwargs:
             self.dot_hat_size = self.emboss_dot_flat_hat
+        
+        # Handle legacy parameter name for backward compatibility
+        if 'negative_plate_offset' in kwargs and 'counter_plate_dot_size_offset' not in kwargs:
+            self.counter_plate_dot_size_offset = self.negative_plate_offset
             
         # Ensure consistency between parameter names
         self.dot_top_diameter = self.emboss_dot_flat_hat
@@ -102,7 +107,8 @@ class CardSettings:
         self.counter_plate_dot_height = self.emboss_dot_height + self.negative_plate_offset
         
         # Hemispherical recess parameters (as per project brief)
-        self.hemisphere_radius = self.emboss_dot_base_diameter / 2
+        # The hemisphere radius is now affected by the counter plate dot size offset
+        self.hemisphere_radius = (self.emboss_dot_base_diameter + self.counter_plate_dot_size_offset) / 2
         self.plate_thickness = self.card_thickness
         self.epsilon = self.epsilon_mm
 
@@ -1265,8 +1271,8 @@ def generate_braille_stl():
     
     settings = CardSettings(**settings_data)
     
-    # Check for empty input
-    if all(not line.strip() for line in lines):
+    # Check for empty input only for positive plates (emboss plates require text)
+    if plate_type == 'positive' and all(not line.strip() for line in lines):
         return jsonify({'error': 'Please enter text in at least one line'}), 400
     
     # Character limit validation is now done on frontend after braille translation

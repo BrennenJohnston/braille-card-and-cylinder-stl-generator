@@ -524,9 +524,6 @@
                         <span id="expert-toggle-text">Show Expert Mode</span>
                         <span id="expert-toggle-icon">▼</span>
                     </button>
-                    <button type="button" id="test-expert-values" style="margin-left: 10px; background: #10b981; color: white; padding: 0.6em 1em; border-radius: 8px; border: none; cursor: pointer;">
-                        Test Expert Values
-                    </button>
                 </div>
 
                 <div id="expert-settings" class="expert-settings" style="display: none;">
@@ -623,7 +620,6 @@
         const infoContent = document.getElementById('info-content');
         const infoToggleText = document.getElementById('info-toggle-text');
         const infoToggleIcon = document.getElementById('info-toggle-icon');
-        const testExpertValuesBtn = document.getElementById('test-expert-values');
         let renderer, scene, camera, mesh, controls;
         let lastSTLUrl = null;
 
@@ -689,20 +685,6 @@
             }
         });
         
-        // Test function to verify all Expert Mode values can be read
-        window.testExpertModeValues = function() {
-            console.log('=== Testing Expert Mode Values ===');
-            expertInputs.forEach(inputId => {
-                const input = document.getElementById(inputId);
-                if (input) {
-                    console.log(`${inputId}: ${input.value} (type: ${typeof input.value})`);
-                } else {
-                    console.log(`${inputId}: NOT FOUND`);
-                }
-            });
-            console.log('=== End Test ===');
-        };
-        
         // Function to get current Expert Mode values
         window.getCurrentExpertModeValues = function() {
             const values = {};
@@ -714,11 +696,6 @@
             });
             return values;
         };
-
-        // Test button for Expert Mode values
-        testExpertValuesBtn.addEventListener('click', () => {
-            window.testExpertModeValues();
-        });
 
         // Preview braille translation using real liblouis
         previewBrailleBtn.addEventListener('click', async () => {
@@ -871,22 +848,8 @@
             errorDiv.style.display = 'flex';
             errorDiv.className = 'error-message info';
             
-            // Debug: Log the complete request payload
-            const requestPayload = { lines: translatedLines, grade: grade, plate_type: plateType, settings: settings };
-            console.log('=== Request Payload ===');
-            console.log('Request payload:', requestPayload);
-            console.log('Settings object:', settings);
-            console.log('Settings type:', typeof settings);
-            console.log('Settings keys:', Object.keys(settings));
-            console.log('=== End Request Payload ===');
-            
-            // Debug: Show current Expert Mode values
-            console.log('=== Current Expert Mode Values ===');
-            const currentValues = window.getCurrentExpertModeValues();
-            Object.entries(currentValues).forEach(([key, value]) => {
-                console.log(`${key}: ${value}`);
-            });
-            console.log('=== End Current Values ===');
+            // Debug: Log the settings being sent
+            console.log('Expert Mode Settings:', settings);
             
             const res = await fetch('/generate_braille_stl', {
                 method: 'POST',

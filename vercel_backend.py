@@ -63,12 +63,10 @@ class CardSettings:
             # Treat None, empty string or string with only whitespace as "use default"
             if raw_val is None or (isinstance(raw_val, str) and raw_val.strip() == ""):
                 val = default_val
-                print(f"DEBUG: Using default for {key}: {val}")
             else:
                 # Attempt to cast to float – this will still raise if an invalid value
                 # is supplied, which is desirable as it surfaces bad input early.
                 val = float(raw_val)
-                print(f"DEBUG: Using provided value for {key}: {raw_val} -> {val}")
 
             setattr(self, key, val)
         
@@ -1267,19 +1265,11 @@ def generate_braille_stl():
     grade = data.get('grade', 'g2')
     settings_data = data.get('settings', {})
     
-    # Debug: Log the received settings
-    print(f"DEBUG: Received settings data: {settings_data}")
-    print(f"DEBUG: Settings data type: {type(settings_data)}")
-    print(f"DEBUG: Settings data keys: {list(settings_data.keys()) if isinstance(settings_data, dict) else 'Not a dict'}")
-    
     # Validate input
     if not isinstance(lines, list) or len(lines) != 4:
         return jsonify({'error': 'Invalid input: must provide exactly 4 lines'}), 400
     
     settings = CardSettings(**settings_data)
-    
-    # Debug: Log the processed settings
-    print(f"DEBUG: Processed settings: emboss_dot_base_diameter={settings.emboss_dot_base_diameter}, emboss_dot_height={settings.emboss_dot_height}, emboss_dot_flat_hat={settings.emboss_dot_flat_hat}")
     
     # Check for empty input only for positive plates (emboss plates require text)
     if plate_type == 'positive' and all(not line.strip() for line in lines):

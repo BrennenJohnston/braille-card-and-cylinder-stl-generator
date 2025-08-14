@@ -149,6 +149,29 @@
             outline: none;
             background: #fff;
         }
+        
+        /* Ensure number inputs are properly styled and functional */
+        input[type="number"] {
+            flex: 1;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 0.8em;
+            font-size: 1em;
+            font-family: inherit;
+            background: #f9fafb;
+            transition: border 0.2s;
+            min-width: 80px;
+        }
+        
+        input[type="number"]:focus {
+            border: 1.5px solid #3182ce;
+            outline: none;
+            background: #fff;
+        }
+        
+        input[type="number"]:hover {
+            border-color: #a0aec0;
+        }
         .button-group {
             display: flex;
             flex-direction: column;
@@ -254,6 +277,23 @@
             margin-top: 1.5em;
             padding-top: 1.5em;
             border-top: 1px solid #e2e8f0;
+        }
+        
+        /* Ensure Expert Mode inputs are properly spaced and visible */
+        .expert-settings .grade-selection {
+            margin-bottom: 1em;
+        }
+        
+        .expert-settings input[type="number"] {
+            margin-top: 0.3em;
+            margin-bottom: 0.5em;
+        }
+        
+        .expert-settings label {
+            display: block;
+            margin-bottom: 0.3em;
+            font-weight: 500;
+            color: #374151;
         }
         .expert-mode-toggle {
             margin-top: 1em;
@@ -484,6 +524,9 @@
                         <span id="expert-toggle-text">Show Expert Mode</span>
                         <span id="expert-toggle-icon">▼</span>
                     </button>
+                    <button type="button" id="test-expert-values" style="margin-left: 10px; background: #10b981; color: white; padding: 0.6em 1em; border-radius: 8px; border: none; cursor: pointer;">
+                        Test Expert Values
+                    </button>
                 </div>
 
                 <div id="expert-settings" class="expert-settings" style="display: none;">
@@ -502,7 +545,7 @@
                         </div>
                         <div>
                             <label for="cell_spacing">Braille Cell Spacing:</label>
-                            <input type="number" id="cell_spacing" name="cell_spacing" value="7.0" step="0.1">
+                            <input type="number" id="cell_spacing" name="cell_spacing" value="6.5" step="0.1">
                         </div>
                         <div>
                             <label for="line_spacing">Braille Line Spacing:</label>
@@ -517,16 +560,16 @@
                     <div class="grade-selection">
                         <label class="grade-label">Dot Dimensions</label>
                         <div>
-                            <label for="dot_base_diameter">Dot diameter:</label>
-                            <input type="number" id="dot_base_diameter" name="dot_base_diameter" value="1.0" step="0.1">
+                            <label for="emboss_dot_base_diameter">Dot diameter:</label>
+                            <input type="number" id="emboss_dot_base_diameter" name="emboss_dot_base_diameter" value="1.0" step="0.1">
                         </div>
                         <div>
-                            <label for="dot_height">Dot height:</label>
-                            <input type="number" id="dot_height" name="dot_height" value="0.8" step="0.1">
+                            <label for="emboss_dot_height">Dot height:</label>
+                            <input type="number" id="emboss_dot_height" name="emboss_dot_height" value="0.8" step="0.1">
                         </div>
                         <div>
-                            <label for="dot_hat_size">Flat hat diameter:</label>
-                            <input type="number" id="dot_hat_size" name="dot_hat_size" value="0.4" step="0.1">
+                            <label for="emboss_dot_flat_hat">Flat hat diameter:</label>
+                            <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1">
                         </div>
                     </div>
                 </div>
@@ -580,6 +623,7 @@
         const infoContent = document.getElementById('info-content');
         const infoToggleText = document.getElementById('info-toggle-text');
         const infoToggleIcon = document.getElementById('info-toggle-icon');
+        const testExpertValuesBtn = document.getElementById('test-expert-values');
         let renderer, scene, camera, mesh, controls;
         let lastSTLUrl = null;
 
@@ -619,6 +663,61 @@
             infoToggleText.textContent = isVisible ? 'More Information and Instructions' : 'Hide Information';
             infoToggleIcon.textContent = isVisible ? '▼' : '▲';
             infoToggleBtn.classList.toggle('active', !isVisible);
+        });
+
+        // Add real-time debugging for Expert Mode parametric dials
+        const expertInputs = [
+            'emboss_dot_base_diameter',
+            'emboss_dot_height', 
+            'emboss_dot_flat_hat',
+            'grid_columns',
+            'grid_rows',
+            'cell_spacing',
+            'line_spacing',
+            'dot_spacing'
+        ];
+        
+        expertInputs.forEach(inputId => {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.addEventListener('input', (e) => {
+                    console.log(`Expert Mode Input Changed: ${inputId} = ${e.target.value}`);
+                });
+                
+                // Also log the initial values
+                console.log(`Initial value for ${inputId}: ${input.value}`);
+            }
+        });
+        
+        // Test function to verify all Expert Mode values can be read
+        window.testExpertModeValues = function() {
+            console.log('=== Testing Expert Mode Values ===');
+            expertInputs.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    console.log(`${inputId}: ${input.value} (type: ${typeof input.value})`);
+                } else {
+                    console.log(`${inputId}: NOT FOUND`);
+                }
+            });
+            console.log('=== End Test ===');
+        };
+        
+        // Function to get current Expert Mode values
+        window.getCurrentExpertModeValues = function() {
+            const values = {};
+            expertInputs.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    values[inputId] = input.value;
+                }
+            });
+            return values;
+        };
+
+        // Test button for Expert Mode values
+        testExpertValuesBtn.addEventListener('click', () => {
+            window.testExpertModeValues();
         });
 
         // Preview braille translation using real liblouis
@@ -734,11 +833,16 @@
                 cell_spacing: document.getElementById('cell_spacing').value,
                 line_spacing: document.getElementById('line_spacing').value,
                 dot_spacing: document.getElementById('dot_spacing').value,
-                dot_base_diameter: document.getElementById('dot_base_diameter').value,
-                dot_height: document.getElementById('dot_height').value,
-                dot_hat_size: document.getElementById('dot_hat_size').value,
+                emboss_dot_base_diameter: document.getElementById('emboss_dot_base_diameter').value,
+                emboss_dot_height: document.getElementById('emboss_dot_height').value,
+                emboss_dot_flat_hat: document.getElementById('emboss_dot_flat_hat').value,
                 counter_plate_dot_size_offset: document.getElementById('counter_plate_dot_size_offset').value
             };
+            
+            // Debug: Log the settings being sent
+            console.log('Expert Mode Settings:', settings);
+            console.log('Settings object keys:', Object.keys(settings));
+            console.log('Settings object values:', Object.values(settings));
             
             // Check if at least one line has content (only for positive plates)
             if (plateType === 'positive' && lines.every(line => !line.trim())) {
@@ -766,6 +870,23 @@
             errorText.textContent = plateType === 'positive' ? 'Translating text to braille...' : 'Generating counter plate...';
             errorDiv.style.display = 'flex';
             errorDiv.className = 'error-message info';
+            
+            // Debug: Log the complete request payload
+            const requestPayload = { lines: translatedLines, grade: grade, plate_type: plateType, settings: settings };
+            console.log('=== Request Payload ===');
+            console.log('Request payload:', requestPayload);
+            console.log('Settings object:', settings);
+            console.log('Settings type:', typeof settings);
+            console.log('Settings keys:', Object.keys(settings));
+            console.log('=== End Request Payload ===');
+            
+            // Debug: Show current Expert Mode values
+            console.log('=== Current Expert Mode Values ===');
+            const currentValues = window.getCurrentExpertModeValues();
+            Object.entries(currentValues).forEach(([key, value]) => {
+                console.log(`${key}: ${value}`);
+            });
+            console.log('=== End Current Values ===');
             
             const res = await fetch('/generate_braille_stl', {
                 method: 'POST',

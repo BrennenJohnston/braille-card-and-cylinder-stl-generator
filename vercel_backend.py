@@ -5,6 +5,7 @@ import io
 import os
 import re
 import json
+from datetime import datetime
 from pathlib import Path
 from flask_cors import CORS
 from shapely.geometry import Polygon, Point
@@ -23,24 +24,33 @@ def handle_error(e):
 
 class CardSettings:
     def __init__(self, **kwargs):
-        # Default values from OpenSCAD script
+        # Default values matching project brief
         defaults = {
+            # Card parameters
             "card_width": 90,
             "card_height": 52,
             "card_thickness": 2.0,
+            # Grid parameters
             "grid_columns": 13,
             "grid_rows": 4,
-            "cell_spacing": 7.0,
+            "cell_spacing": 6.5,  # Project brief default
             "line_spacing": 12.0,
             "dot_spacing": 2.5,
-            "dot_base_diameter": 2.0,
-            "dot_hat_size": 0.8,
-            "dot_height": 1.4,
-            "braille_y_adjust": 0.4,
-            "braille_x_adjust": 0.1,
+            # Emboss plate dot parameters (as per project brief)
+            "emboss_dot_base_diameter": 1.4,  # Project brief default
+            "emboss_dot_height": 0.8,  # Project brief default
+            "emboss_dot_flat_hat": 0.4,  # Project brief default (cone top diameter)
+            # Offset adjustments
+            "braille_y_adjust": 0.0,  # Default to center
+            "braille_x_adjust": 0.0,  # Default to center
+            # Counter plate specific parameters
+            "hemisphere_subdivisions": 1,  # For mesh density control
+            # Legacy parameters (for backward compatibility)
+            "dot_base_diameter": 1.4,
+            "dot_height": 0.8,
+            "dot_hat_size": 0.4,
             "negative_plate_offset": 0.4,
-            # New parameters for hemispherical recesses
-            "emboss_dot_base_diameter_mm": 2.0,
+            "emboss_dot_base_diameter_mm": 1.4,
             "plate_thickness_mm": 2.0,
             "epsilon_mm": 0.001,
         }
@@ -64,25 +74,36 @@ class CardSettings:
         self.grid_rows = int(self.grid_rows)
         
         # Calculated properties
-        self.dot_top_diameter = self.dot_hat_size
         self.grid_width = (self.grid_columns - 1) * self.cell_spacing
         self.left_margin = (self.card_width - self.grid_width) / 2
         self.grid_height = (self.grid_rows - 1) * self.line_spacing
         self.top_margin = (self.card_height - self.grid_height) / 2
         
-        # Recessed dot parameters (adjusted by offset)
-        self.recessed_dot_base_diameter = self.dot_base_diameter + (self.negative_plate_offset * 2)
-        self.recessed_dot_top_diameter = self.dot_hat_size + (self.negative_plate_offset * 2)
-        self.recessed_dot_height = self.dot_height + self.negative_plate_offset
+        # Map new parameter names to legacy ones for backward compatibility
+        if 'emboss_dot_base_diameter' in kwargs:
+            self.dot_base_diameter = self.emboss_dot_base_diameter
+        if 'emboss_dot_height' in kwargs:
+            self.dot_height = self.emboss_dot_height
+        if 'emboss_dot_flat_hat' in kwargs:
+            self.dot_hat_size = self.emboss_dot_flat_hat
+            
+        # Ensure consistency between parameter names
+        self.dot_top_diameter = self.emboss_dot_flat_hat
+        self.emboss_dot_base_diameter_mm = self.emboss_dot_base_diameter
         
-        # Counter plate specific parameters (can be adjusted independently)
-        self.counter_plate_dot_base_diameter = self.dot_base_diameter + (self.negative_plate_offset * 2)
-        self.counter_plate_dot_top_diameter = self.dot_hat_size + (self.negative_plate_offset * 2)
-        self.counter_plate_dot_height = self.dot_height + self.negative_plate_offset
+        # Recessed dot parameters (adjusted by offset) - for legacy functions
+        self.recessed_dot_base_diameter = self.emboss_dot_base_diameter + (self.negative_plate_offset * 2)
+        self.recessed_dot_top_diameter = self.emboss_dot_flat_hat + (self.negative_plate_offset * 2)
+        self.recessed_dot_height = self.emboss_dot_height + self.negative_plate_offset
         
-        # Hemispherical recess parameters
-        self.hemisphere_radius = self.emboss_dot_base_diameter_mm / 2
-        self.plate_thickness = self.plate_thickness_mm
+        # Counter plate specific parameters (not used in hemisphere approach)
+        self.counter_plate_dot_base_diameter = self.emboss_dot_base_diameter + (self.negative_plate_offset * 2)
+        self.counter_plate_dot_top_diameter = self.emboss_dot_flat_hat + (self.negative_plate_offset * 2)
+        self.counter_plate_dot_height = self.emboss_dot_height + self.negative_plate_offset
+        
+        # Hemispherical recess parameters (as per project brief)
+        self.hemisphere_radius = self.emboss_dot_base_diameter / 2
+        self.plate_thickness = self.card_thickness
         self.epsilon = self.epsilon_mm
 
 def translate_with_liblouis_js(text: str, grade: str = "g2") -> str:
@@ -135,18 +156,19 @@ def braille_to_dots(braille_char: str) -> list:
 def create_braille_dot(x, y, z, settings: CardSettings):
     """
     Create a cone-shaped braille dot with specified dimensions from settings.
+    Uses the project brief parameter names.
     """
     # Create a cylinder with the base diameter
     cylinder = trimesh.creation.cylinder(
-        radius=settings.dot_base_diameter / 2,
-        height=settings.dot_height,
+        radius=settings.emboss_dot_base_diameter / 2,
+        height=settings.emboss_dot_height,
         sections=16
     )
     
     # Scale the top vertices to create the cone shape (frustum)
-    # This loop iterates through all vertices and scales the top ones.
-    if settings.dot_base_diameter > 0:
-        scale_factor = settings.dot_top_diameter / settings.dot_base_diameter
+    # This creates a cone with flat top (as per project brief)
+    if settings.emboss_dot_base_diameter > 0:
+        scale_factor = settings.emboss_dot_flat_hat / settings.emboss_dot_base_diameter
         
         # Apply scaling to vertices that are on the top surface of the cylinder
         top_surface_z = cylinder.vertices[:, 2].max()
@@ -234,7 +256,7 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
                     dot_pos = dot_positions[i]
                     dot_x = x_pos + dot_col_offsets[dot_pos[1]]
                     dot_y = y_pos + dot_row_offsets[dot_pos[0]]
-                    z = settings.card_thickness + settings.dot_height / 2
+                    z = settings.card_thickness + settings.emboss_dot_height / 2
                     
                     print(f"DEBUG: Creating dot {i+1} at ({dot_x:.2f}, {dot_y:.2f}, {z:.2f})")
                     dot_mesh = create_braille_dot(dot_x, dot_y, z, settings)
@@ -485,12 +507,10 @@ def create_negative_plate_with_conical_holes(settings: CardSettings):
 
     # Generate cones for each grid position
     for row in range(settings.grid_rows):
-        mirrored_row = settings.grid_rows - 1 - row
-        y_pos = settings.card_height - settings.top_margin - (mirrored_row * settings.line_spacing) + settings.braille_y_adjust
+        y_pos = settings.card_height - settings.top_margin - (row * settings.line_spacing) + settings.braille_y_adjust
 
         for col in range(settings.grid_columns):
-            mirrored_col = settings.grid_columns - 1 - col
-            x_pos = settings.left_margin + (mirrored_col * settings.cell_spacing) + settings.braille_x_adjust
+            x_pos = settings.left_margin + (col * settings.cell_spacing) + settings.braille_x_adjust
 
             for dot_idx in range(6):
                 dot_pos = dot_positions[dot_idx]
@@ -596,14 +616,12 @@ def create_universal_counter_plate(settings: CardSettings):
 
     # Generate cones for each grid position
     for row in range(settings.grid_rows):
-        # Mirror row for counter plate (row 0 -> row 3, row 1 -> row 2, etc.)
-        mirrored_row = settings.grid_rows - 1 - row
-        y_pos = settings.card_height - settings.top_margin - (mirrored_row * settings.line_spacing) + settings.braille_y_adjust
+        # Calculate Y position for this row (same as embossing plate)
+        y_pos = settings.card_height - settings.top_margin - (row * settings.line_spacing) + settings.braille_y_adjust
 
         for col in range(settings.grid_columns):
-            # Mirror column for counter plate (col 0 -> col 12, col 1 -> col 11, etc.)
-            mirrored_col = settings.grid_columns - 1 - col
-            x_pos = settings.left_margin + (mirrored_col * settings.cell_spacing) + settings.braille_x_adjust
+            # Calculate X position for this column (same as embossing plate)
+            x_pos = settings.left_margin + (col * settings.cell_spacing) + settings.braille_x_adjust
 
             # Create holes for ALL 6 dots in this cell
             for dot_idx in range(6):
@@ -723,14 +741,12 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
     
     # Generate spheres for each grid position
     for row in range(params.grid_rows):
-        # Mirror row for counter plate (row 0 -> row 3, row 1 -> row 2, etc.)
-        mirrored_row = params.grid_rows - 1 - row
-        y_pos = params.card_height - params.top_margin - (mirrored_row * params.line_spacing) + params.braille_y_adjust
+        # Calculate Y position for this row (same as embossing plate)
+        y_pos = params.card_height - params.top_margin - (row * params.line_spacing) + params.braille_y_adjust
         
         for col in range(params.grid_columns):
-            # Mirror column for counter plate (col 0 -> col 12, col 1 -> col 11, etc.)
-            mirrored_col = params.grid_columns - 1 - col
-            x_pos = params.left_margin + (mirrored_col * params.cell_spacing) + params.braille_x_adjust
+            # Calculate X position for this column (same as embossing plate)
+            x_pos = params.left_margin + (col * params.cell_spacing) + params.braille_x_adjust
             
             # Create spheres for ALL 6 dots in this cell
             for dot_idx in range(6):
@@ -738,9 +754,9 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
                 dot_x = x_pos + dot_col_offsets[dot_pos[1]]
                 dot_y = y_pos + dot_row_offsets[dot_pos[0]]
                 
-                # Create an icosphere with radius = emboss_dot_base_diameter_mm / 2
-                # Use subdivisions=1 or 2 to keep triangle count low
-                sphere = trimesh.creation.icosphere(subdivisions=1, radius=params.hemisphere_radius)
+                # Create an icosphere with radius = emboss_dot_base_diameter / 2
+                # Use hemisphere_subdivisions parameter to control mesh density
+                sphere = trimesh.creation.icosphere(subdivisions=params.hemisphere_subdivisions, radius=params.hemisphere_radius)
                 
                 # Position the sphere center at z = TH + ε so the lower hemisphere sits inside the slab
                 # and the equator coincides with the top surface
@@ -1260,17 +1276,71 @@ def generate_braille_stl():
         if plate_type == 'positive':
             mesh = create_positive_plate_mesh(lines, grade, settings)
         elif plate_type == 'negative':
-            # Use the simple 2D approach instead of complex 3D boolean operations
-            # This is more reliable on Vercel and still creates proper holes
-            print("DEBUG: Using simple negative plate method for better Vercel compatibility")
-            mesh = create_simple_negative_plate(settings, lines)
+            # Counter plate uses hemispherical recesses as per project brief
+            # It does NOT depend on text input - always creates ALL 6 dots per cell
+            print("DEBUG: Generating counter plate with hemispherical recesses (all positions)")
+            mesh = build_counter_plate_hemispheres(settings)
         else:
             return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
+        
+        # Verify mesh is watertight and manifold
+        if not mesh.is_watertight:
+            print(f"WARNING: Generated {plate_type} plate mesh is not watertight!")
+            # Try to fix the mesh
+            mesh.fill_holes()
+            if mesh.is_watertight:
+                print("INFO: Mesh holes filled successfully")
+            else:
+                print("ERROR: Could not make mesh watertight")
+        
+        if not mesh.is_winding_consistent:
+            print(f"WARNING: Generated {plate_type} plate mesh has inconsistent winding!")
+            mesh.fix_normals()
+            print("INFO: Fixed mesh normals")
         
         # Export to STL
         stl_io = io.BytesIO()
         mesh.export(stl_io, file_type='stl')
         stl_io.seek(0)
+        
+        # Create JSON config dump for reproducibility
+        config_dump = {
+            "timestamp": datetime.now().isoformat(),
+            "plate_type": plate_type,
+            "grade": grade if plate_type == 'positive' else "n/a",
+            "text_lines": lines if plate_type == 'positive' else ["Counter plate - all positions"],
+            "settings": {
+                # Card parameters
+                "card_width": settings.card_width,
+                "card_height": settings.card_height,
+                "card_thickness": settings.card_thickness,
+                # Grid parameters
+                "grid_columns": settings.grid_columns,
+                "grid_rows": settings.grid_rows,
+                "cell_spacing": settings.cell_spacing,
+                "line_spacing": settings.line_spacing,
+                "dot_spacing": settings.dot_spacing,
+                # Emboss plate dot parameters
+                "emboss_dot_base_diameter": settings.emboss_dot_base_diameter,
+                "emboss_dot_height": settings.emboss_dot_height,
+                "emboss_dot_flat_hat": settings.emboss_dot_flat_hat,
+                # Offsets
+                "braille_x_adjust": settings.braille_x_adjust,
+                "braille_y_adjust": settings.braille_y_adjust,
+                # Counter plate specific
+                "hemisphere_subdivisions": settings.hemisphere_subdivisions if plate_type == 'negative' else "n/a"
+            },
+            "mesh_info": {
+                "vertices": len(mesh.vertices),
+                "faces": len(mesh.faces),
+                "is_watertight": bool(mesh.is_watertight),
+                "volume": float(mesh.volume)
+            }
+        }
+        
+        # Save config as JSON
+        config_json = json.dumps(config_dump, indent=2)
+        print(f"DEBUG: Config dump:\n{config_json}")
         
         # Create filename from first non-empty line
         filename = 'braille_card'
@@ -1285,6 +1355,9 @@ def generate_braille_stl():
         
         # Add plate type to filename
         plate_suffix = 'counter_plate' if plate_type == 'negative' else 'braille'
+        
+        # For now, just return the STL file. In production, you might want to
+        # return a zip file containing both the STL and the JSON config
         return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=f'{filename}_{plate_suffix}.stl')
         
     except Exception as e:
@@ -1293,15 +1366,21 @@ def generate_braille_stl():
 @app.route('/generate_counter_plate_stl', methods=['POST'])
 def generate_counter_plate_stl():
     """
-    Counter plate generation with simplified approach for Vercel.
+    Generate counter plate with hemispherical recesses as per project brief.
+    Counter plate does NOT depend on text input - it always creates ALL 6 dots per cell.
     """
     data = request.get_json()
-    lines = data.get('lines', ['', '', '', ''])
     settings_data = data.get('settings', {})
     settings = CardSettings(**settings_data)
     
     try:
-        mesh = create_simple_negative_plate(settings, lines)
+        print("DEBUG: Generating counter plate with hemispherical recesses (all positions)")
+        mesh = build_counter_plate_hemispheres(settings)
+        
+        # Verify mesh is watertight
+        if not mesh.is_watertight:
+            print("WARNING: Counter plate mesh is not watertight, attempting to fix...")
+            mesh.fill_holes()
         
         # Export to STL
         stl_io = io.BytesIO()
@@ -1316,16 +1395,21 @@ def generate_counter_plate_stl():
 @app.route('/generate_universal_counter_plate', methods=['POST'])
 def generate_universal_counter_plate_route():
     """
-    Generate a universal counter plate with recessed conical holes for ALL possible dot positions.
-    This endpoint does NOT require any text input - it generates a plate with 312 holes.
+    Generate a universal counter plate with hemispherical recesses for ALL possible dot positions.
+    This endpoint does NOT require any text input - it generates a plate with recesses at all 312 dot positions.
     """
     data = request.get_json()
     settings_data = data.get('settings', {})
     settings = CardSettings(**settings_data)
     
     try:
-        print("DEBUG: Generating universal counter plate (no text input required)")
-        mesh = create_universal_counter_plate(settings)
+        print("DEBUG: Generating universal counter plate with hemispherical recesses (no text input required)")
+        mesh = build_counter_plate_hemispheres(settings)
+        
+        # Verify mesh is watertight
+        if not mesh.is_watertight:
+            print("WARNING: Universal counter plate mesh is not watertight, attempting to fix...")
+            mesh.fill_holes()
         
         # Export to STL
         stl_io = io.BytesIO()

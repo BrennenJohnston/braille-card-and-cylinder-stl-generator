@@ -39,6 +39,10 @@ class CardSettings:
             "braille_y_adjust": 0.4,
             "braille_x_adjust": 0.1,
             "negative_plate_offset": 0.4,
+            # New parameters for hemispherical recesses
+            "emboss_dot_base_diameter_mm": 2.0,
+            "plate_thickness_mm": 2.0,
+            "epsilon_mm": 0.001,
         }
         
         # Set attributes from kwargs or defaults, while being tolerant of "empty" inputs
@@ -75,6 +79,11 @@ class CardSettings:
         self.counter_plate_dot_base_diameter = self.dot_base_diameter + (self.negative_plate_offset * 2)
         self.counter_plate_dot_top_diameter = self.dot_hat_size + (self.negative_plate_offset * 2)
         self.counter_plate_dot_height = self.dot_height + self.negative_plate_offset
+        
+        # Hemispherical recess parameters
+        self.hemisphere_radius = self.emboss_dot_base_diameter_mm / 2
+        self.plate_thickness = self.plate_thickness_mm
+        self.epsilon = self.epsilon_mm
 
 def translate_with_liblouis_js(text: str, grade: str = "g2") -> str:
     """
@@ -667,6 +676,129 @@ def create_universal_counter_plate(settings: CardSettings):
         return plate
 
 
+def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
+    """
+    Create a counter plate with true hemispherical recesses using trimesh with Manifold backend.
+    
+    This function generates a full braille grid and creates hemispherical recesses at EVERY dot position,
+    regardless of grade-2 translation. The hemisphere diameter exactly equals the Embossing Plate's
+    "braille dot base diameter" parameter.
+    
+    Args:
+        params: CardSettings object containing all layout and geometry parameters
+        
+    Returns:
+        Trimesh object representing the counter plate with hemispherical recesses
+        
+    Technical details:
+    - Plate thickness: TH (mm). Top surface is z=TH, bottom is z=0.
+    - Hemisphere radius r = emboss_dot_base_diameter_mm / 2.
+    - For each dot center (x, y) in the braille grid, creates an icosphere with radius r
+      and translates its center to (x, y, TH + ε) so the lower hemisphere sits inside the slab
+      and the equator coincides with the top surface.
+    - Subtracts all spheres in one operation using trimesh.boolean.difference with engine='manifold'.
+    - Generates dot centers from a full grid using the same layout parameters as the Embossing Plate.
+    - Always places all 6 dots per cell (does not consult per-character translation).
+    """
+    print("DEBUG: Starting hemispherical counter plate creation with Manifold backend")
+    print(f"DEBUG: Grid: {params.grid_columns}x{params.grid_rows} = {params.grid_columns * params.grid_rows * 6} total recesses")
+    print(f"DEBUG: Hemisphere radius: {params.hemisphere_radius:.3f}mm")
+    print(f"DEBUG: Plate thickness: {params.plate_thickness:.3f}mm")
+    
+    # Create the base plate as a box aligned to z=[0, TH], x=[0, W], y=[0, H]
+    plate_mesh = trimesh.creation.box(extents=(params.card_width, params.card_height, params.plate_thickness))
+    plate_mesh.apply_translation((params.card_width/2, params.card_height/2, params.plate_thickness/2))
+    
+    print(f"DEBUG: Base plate bounds: {plate_mesh.bounds}")
+    print(f"DEBUG: Base plate volume: {plate_mesh.volume:.4f}")
+    
+    # Dot positioning constants (same as embossing plate)
+    dot_col_offsets = [-params.dot_spacing / 2, params.dot_spacing / 2]
+    dot_row_offsets = [params.dot_spacing, 0, -params.dot_spacing]
+    dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]  # Map dot index (0-5) to [row, col]
+    
+    # Create icospheres for ALL possible dot positions
+    sphere_meshes = []
+    total_spheres = 0
+    
+    # Generate spheres for each grid position
+    for row in range(params.grid_rows):
+        # Mirror row for counter plate (row 0 -> row 3, row 1 -> row 2, etc.)
+        mirrored_row = params.grid_rows - 1 - row
+        y_pos = params.card_height - params.top_margin - (mirrored_row * params.line_spacing) + params.braille_y_adjust
+        
+        for col in range(params.grid_columns):
+            # Mirror column for counter plate (col 0 -> col 12, col 1 -> col 11, etc.)
+            mirrored_col = params.grid_columns - 1 - col
+            x_pos = params.left_margin + (mirrored_col * params.cell_spacing) + params.braille_x_adjust
+            
+            # Create spheres for ALL 6 dots in this cell
+            for dot_idx in range(6):
+                dot_pos = dot_positions[dot_idx]
+                dot_x = x_pos + dot_col_offsets[dot_pos[1]]
+                dot_y = y_pos + dot_row_offsets[dot_pos[0]]
+                
+                # Create an icosphere with radius = emboss_dot_base_diameter_mm / 2
+                # Use subdivisions=1 or 2 to keep triangle count low
+                sphere = trimesh.creation.icosphere(subdivisions=1, radius=params.hemisphere_radius)
+                
+                # Position the sphere center at z = TH + ε so the lower hemisphere sits inside the slab
+                # and the equator coincides with the top surface
+                z_pos = params.plate_thickness + params.epsilon
+                sphere.apply_translation((dot_x, dot_y, z_pos))
+                
+                # Debug: Log first few sphere positions
+                if total_spheres < 5:
+                    print(f"DEBUG: Sphere {total_spheres + 1} at ({dot_x:.2f}, {dot_y:.2f}, {z_pos:.3f})")
+                    print(f"DEBUG:   Sphere bounds: {sphere.bounds}")
+                    print(f"DEBUG:   Sphere extends from Z={sphere.bounds[0][2]:.3f} to Z={sphere.bounds[1][2]:.3f}")
+                
+                sphere_meshes.append(sphere)
+                total_spheres += 1
+    
+    print(f"DEBUG: Created {total_spheres} icospheres for hemispherical recesses")
+    print(f"DEBUG: Expected total: {params.grid_rows * params.grid_columns * 6}")
+    
+    if not sphere_meshes:
+        print("WARNING: No spheres were generated. Returning base plate.")
+        return plate_mesh
+    
+    # Perform boolean operations using Manifold backend
+    try:
+        # Union all spheres together (optional; Manifold can take a list)
+        print(f"DEBUG: Unioning {len(sphere_meshes)} spheres...")
+        if len(sphere_meshes) == 1:
+            union_spheres = sphere_meshes[0]
+        else:
+            union_spheres = trimesh.boolean.union(sphere_meshes, engine='manifold')
+        
+        print("DEBUG: Spheres unioned successfully.")
+        print(f"DEBUG: Combined spheres bounds: {union_spheres.bounds}")
+        
+        # Subtract the unified spheres from the plate in one operation
+        print("DEBUG: Performing plate subtraction with Manifold...")
+        counter_plate_mesh = trimesh.boolean.difference([plate_mesh, union_spheres], engine='manifold')
+        
+        print("DEBUG: Boolean subtraction successful using Manifold engine.")
+        print(f"DEBUG: Final mesh bounds: {counter_plate_mesh.bounds}")
+        print(f"DEBUG: Final mesh volume: {counter_plate_mesh.volume:.4f} (original: {plate_mesh.volume:.4f})")
+        print(f"DEBUG: Volume removed: {plate_mesh.volume - counter_plate_mesh.volume:.4f}")
+        
+        # Verify the mesh is watertight
+        if counter_plate_mesh.is_watertight:
+            print("DEBUG: Final mesh is watertight ✓")
+        else:
+            print("WARNING: Final mesh is not watertight!")
+        
+        return counter_plate_mesh
+        
+    except Exception as e:
+        print(f"ERROR: Boolean operations with Manifold failed: {e}")
+        print("WARNING: Falling back to simple negative plate method.")
+        # Fallback to the simple approach if Manifold fails
+        return create_simple_negative_plate(params)
+
+
 @app.route('/health')
 def health_check():
     return jsonify({'status': 'ok', 'message': 'Vercel backend is running'})
@@ -983,6 +1115,90 @@ def test_text_counter_plate():
         }), 500
 
 
+@app.route('/test-hemispherical-counter-plate')
+def test_hemispherical_counter_plate():
+    """Test endpoint to verify hemispherical counter plate generation with Manifold backend"""
+    try:
+        # Use the same settings as the main application
+        settings = CardSettings()
+        
+        print("DEBUG: Testing hemispherical counter plate generation with Manifold backend...")
+        print(f"DEBUG: Grid: {settings.grid_columns}x{settings.grid_rows} = {settings.grid_columns * settings.grid_rows * 6} total recesses")
+        print(f"DEBUG: Hemisphere radius: {settings.hemisphere_radius:.3f}mm")
+        print(f"DEBUG: Plate thickness: {settings.plate_thickness:.3f}mm")
+        
+        # Create the hemispherical counter plate
+        mesh = build_counter_plate_hemispheres(settings)
+        
+        # Export to STL
+        stl_io = io.BytesIO()
+        mesh.export(stl_io, file_type='stl')
+        stl_io.seek(0)
+        
+        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='test_hemispherical_counter_plate.stl')
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Hemispherical counter plate test failed: {str(e)}',
+            'error': str(e)
+        }), 500
+
+
+@app.route('/test-hemispherical-counter-plate-info')
+def test_hemispherical_counter_plate_info():
+    """Test endpoint to verify hemispherical counter plate properties without downloading"""
+    try:
+        # Use the same settings as the main application
+        settings = CardSettings()
+        
+        print("DEBUG: Testing hemispherical counter plate generation with Manifold backend...")
+        print(f"DEBUG: Grid: {settings.grid_columns}x{settings.grid_rows} = {settings.grid_columns * settings.grid_rows * 6} total recesses")
+        print(f"DEBUG: Hemisphere radius: {settings.hemisphere_radius:.3f}mm")
+        print(f"DEBUG: Plate thickness: {settings.plate_thickness:.3f}mm")
+        
+        # Create the hemispherical counter plate
+        mesh = build_counter_plate_hemispheres(settings)
+        
+        # Analyze the mesh to verify it has the expected properties
+        expected_recesses = settings.grid_rows * settings.grid_columns * 6
+        expected_volume_removed = expected_recesses * (4/3 * np.pi * settings.hemisphere_radius**3) / 2  # Half sphere volume
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Hemispherical counter plate test completed',
+            'mesh_properties': {
+                'bounds': mesh.bounds.tolist(),
+                'volume': float(mesh.volume),
+                'is_watertight': bool(mesh.is_watertight),
+                'vertex_count': len(mesh.vertices),
+                'face_count': len(mesh.faces)
+            },
+            'expected_properties': {
+                'total_recesses': expected_recesses,
+                'hemisphere_radius_mm': float(settings.hemisphere_radius),
+                'plate_thickness_mm': float(settings.plate_thickness),
+                'expected_volume_removed': float(expected_volume_removed)
+            },
+            'settings': {
+                'card_width': settings.card_width,
+                'card_height': settings.card_height,
+                'grid_columns': settings.grid_columns,
+                'grid_rows': settings.grid_rows,
+                'emboss_dot_base_diameter_mm': settings.emboss_dot_base_diameter_mm,
+                'plate_thickness_mm': settings.plate_thickness_mm,
+                'epsilon_mm': settings.epsilon_mm
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Hemispherical counter plate test failed: {str(e)}',
+            'error': str(e)
+        }), 500
+
+
 @app.route('/')
 def index():
     try:
@@ -1120,6 +1336,44 @@ def generate_universal_counter_plate_route():
         
     except Exception as e:
         return jsonify({'error': f'Failed to generate universal counter plate: {str(e)}'}), 500
+
+
+@app.route('/generate_hemispherical_counter_plate', methods=['POST'])
+def generate_hemispherical_counter_plate_route():
+    """
+    Generate a counter plate with true hemispherical recesses using trimesh with Manifold backend.
+    
+    This endpoint creates a plate with hemispherical recesses at EVERY dot position in the braille grid,
+    regardless of text content. The hemisphere diameter exactly equals the Embossing Plate's
+    "braille dot base diameter" parameter.
+    
+    The counter plate has its own parametric controls for:
+    - emboss_dot_base_diameter_mm (drives hemisphere radius)
+    - plate_thickness_mm (TH)
+    - All layout parameters (num_lines, cells_per_line, spacing, margins, offsets)
+    """
+    data = request.get_json()
+    settings_data = data.get('settings', {})
+    settings = CardSettings(**settings_data)
+    
+    try:
+        print("DEBUG: Generating hemispherical counter plate with Manifold backend")
+        print(f"DEBUG: Grid: {settings.grid_columns}x{settings.grid_rows} = {settings.grid_columns * settings.grid_rows * 6} total recesses")
+        print(f"DEBUG: Hemisphere radius: {settings.hemisphere_radius:.3f}mm")
+        print(f"DEBUG: Plate thickness: {settings.plate_thickness:.3f}mm")
+        
+        # Create the hemispherical counter plate
+        mesh = build_counter_plate_hemispheres(settings)
+        
+        # Export to STL
+        stl_io = io.BytesIO()
+        mesh.export(stl_io, file_type='stl')
+        stl_io.seek(0)
+        
+        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='hemispherical_counter_plate.stl')
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to generate hemispherical counter plate: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

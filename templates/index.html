@@ -294,6 +294,60 @@
             padding-top: 1.5em;
             border-top: 1px solid #e2e8f0;
         }
+        
+        .info-dropdown {
+            margin-bottom: 1.5em;
+        }
+        
+        .info-toggle-btn {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 0.8em 1em;
+            font-size: 0.95em;
+            font-weight: 600;
+            color: #4a5568;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        
+        .info-toggle-btn:hover {
+            background: #e2e8f0;
+            border-color: #cbd5e1;
+        }
+        
+        .info-toggle-btn.active {
+            background: #3182ce;
+            color: #fff;
+            border-color: #3182ce;
+        }
+        
+        .info-toggle-btn.active #info-toggle-text {
+            color: #fff;
+        }
+        
+        .info-toggle-btn.active #info-toggle-icon {
+            transform: rotate(180deg);
+        }
+        
+        .info-content {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1em;
+            margin-top: 0.5em;
+            font-size: 0.9em;
+            color: #4a5568;
+        }
+        
+        .info-content p {
+            margin: 0.3em 0;
+        }
+        
         @media (max-width: 1100px) {
             .main-layout {
                 flex-direction: column;
@@ -340,19 +394,28 @@
             
             <div class="info-panel">
                 <p><strong>Program Description:</strong> Creates two matching STLs for a standard 3.5″ × 2″ card: <strong>Embossing Plate</strong> (cone dots) and <strong>Universal Counter Plate</strong> (hemispherical recessed dots).</p>
-                <p><strong>Instructions:</strong></p>
-                <ol style="margin: 0.3em 0; padding-left: 1.5em;">
-                    <li>Enter up to <strong>4 lines</strong> of English text, then click <strong>"Generate STL."</strong> The app auto-translates to <strong>Unified English Braille (UEB)</strong>.</li>
-                    <li>Review the 3D preview. If it looks correct, click <strong>"Download STL."</strong></li>
-                    <li>Click <strong>"Universal Counter Plate"</strong> and repeat the steps to generate and download the matching counter plate (if you haven't printed one yet).</li>
-                    <li>Need specific dimensions? Open <strong>Expert Mode</strong> to adjust card size, spacing, and dot parameters.</li>
-                </ol>
-                <p><strong>Acknowledgements:</strong></p>
-                <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                    <li>Code authored by <strong>Claude 4.1 Opus</strong>.</li>
-                    <li>Powered by <a href="https://liblouis.io/" target="_blank" style="color: #3182ce; text-decoration: none;"><strong>Liblouis</strong></a>, an open-source professional braille translator.</li>
-                    <li>Extra thanks to <strong>Tobi Weinberg</strong> for the substantial time and effort he volunteered to help start this project and see it through.</li>
-                </ul>
+            </div>
+            
+            <div class="info-dropdown">
+                <button type="button" id="info-toggle" class="info-toggle-btn">
+                    <span id="info-toggle-text">More Information and Instructions</span>
+                    <span id="info-toggle-icon">▼</span>
+                </button>
+                <div id="info-content" class="info-content" style="display: none;">
+                    <p><strong>Instructions:</strong></p>
+                    <ol style="margin: 0.3em 0; padding-left: 1.5em;">
+                        <li>Enter up to <strong>4 lines</strong> of English text, then click <strong>"Generate STL."</strong> The app auto-translates to <strong>Unified English Braille (UEB)</strong>.</li>
+                        <li>Review the 3D preview. If it looks correct, click <strong>"Download STL."</strong></li>
+                        <li>Click <strong>"Universal Counter Plate"</strong> and repeat the steps to generate and download the matching counter plate (if you haven't printed one yet).</li>
+                        <li>Need specific dimensions? Open <strong>Expert Mode</strong> to adjust card size, spacing, and dot parameters.</li>
+                    </ol>
+                    <p><strong>Acknowledgements:</strong></p>
+                    <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                        <li>Code authored by <strong>Claude 4.1 Opus</strong>.</li>
+                        <li>Powered by <a href="https://liblouis.io/" target="_blank" style="color: #3182ce; text-decoration: none;"><strong>Liblouis</strong></a>, an open-source professional braille translator.</li>
+                        <li>Extra thanks to <strong>Tobi Weinberg</strong> for the substantial time and effort he volunteered to help start this project and see it through.</li>
+                    </ul>
+                </div>
             </div>
             
             <form id="braille-form">
@@ -513,6 +576,10 @@
         const expertToggleIcon = document.getElementById('expert-toggle-icon');
         const braillePreview = document.getElementById('braille-preview');
         const previewContent = document.getElementById('preview-content');
+        const infoToggleBtn = document.getElementById('info-toggle');
+        const infoContent = document.getElementById('info-content');
+        const infoToggleText = document.getElementById('info-toggle-text');
+        const infoToggleIcon = document.getElementById('info-toggle-icon');
         let renderer, scene, camera, mesh, controls;
         let lastSTLUrl = null;
 
@@ -544,6 +611,14 @@
             expertToggleText.textContent = isVisible ? 'Show Expert Mode' : 'Hide Expert Mode';
             expertToggleIcon.textContent = isVisible ? '▼' : '▲';
             expertToggleBtn.classList.toggle('active', !isVisible);
+        });
+
+        infoToggleBtn.addEventListener('click', () => {
+            const isVisible = infoContent.style.display !== 'none';
+            infoContent.style.display = isVisible ? 'none' : 'block';
+            infoToggleText.textContent = isVisible ? 'More Information and Instructions' : 'Hide Information';
+            infoToggleIcon.textContent = isVisible ? '▼' : '▲';
+            infoToggleBtn.classList.toggle('active', !isVisible);
         });
 
         // Preview braille translation using real liblouis

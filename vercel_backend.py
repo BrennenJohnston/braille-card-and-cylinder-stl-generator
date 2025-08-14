@@ -39,7 +39,7 @@ class CardSettings:
             # Emboss plate dot parameters (as per project brief)
             "emboss_dot_base_diameter": 1.0,  # Updated default: 1.0 mm
             "emboss_dot_height": 0.8,  # Project brief default: 0.8 mm
-            "emboss_dot_flat_hat": 1.0,  # Updated default: 1.0 mm
+            "emboss_dot_flat_hat": 0.4,  # Updated default: 0.4 mm
             # Offset adjustments
             "braille_y_adjust": 0.0,  # Default to center
             "braille_x_adjust": 0.0,  # Default to center
@@ -49,7 +49,7 @@ class CardSettings:
             # Legacy parameters (for backward compatibility)
             "dot_base_diameter": 1.0,  # Updated default: 1.0 mm
             "dot_height": 0.8,  # Project brief default: 0.8 mm
-            "dot_hat_size": 1.0,  # Updated default: 1.0 mm
+            "dot_hat_size": 0.4,  # Updated default: 0.4 mm
             "negative_plate_offset": 0.4,  # Legacy name for backward compatibility
             "emboss_dot_base_diameter_mm": 1.0,  # Updated default: 1.0 mm
             "plate_thickness_mm": 2.0,

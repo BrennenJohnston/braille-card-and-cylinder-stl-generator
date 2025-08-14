@@ -336,12 +336,23 @@
             <button id="download-btn">Download STL</button>
         </div>
         <div class="form-section">
-            <h1>English to Braille STL Generator</h1>
+            <h1>Braille Business Card STL Generator</h1>
             
             <div class="info-panel">
-                <p><strong>For Business Cards:</strong> 3.5 in × 2 in</p>
-                <p><strong>Enter English text in up to 4 lines</strong> (The program will automatically translate to braille)</p>
-                <p><strong>Translation Engine:</strong> Liblouis - Professional open-source braille translator</p>
+                <p><strong>Program Description:</strong> Creates two matching STLs for a standard 3.5″ × 2″ card: <strong>Embossing Plate</strong> (cone dots) and <strong>Universal Counter Plate</strong> (hemispherical recessed dots).</p>
+                <p><strong>Instructions:</strong></p>
+                <ol style="margin: 0.3em 0; padding-left: 1.5em;">
+                    <li>Enter up to <strong>4 lines</strong> of English text, then click <strong>"Generate STL."</strong> The app auto-translates to <strong>Unified English Braille (UEB)</strong>.</li>
+                    <li>Review the 3D preview. If it looks correct, click <strong>"Download STL."</strong></li>
+                    <li>Click <strong>"Universal Counter Plate"</strong> and repeat the steps to generate and download the matching counter plate (if you haven't printed one yet).</li>
+                    <li>Need specific dimensions? Open <strong>Expert Mode</strong> to adjust card size, spacing, and dot parameters.</li>
+                </ol>
+                <p><strong>Acknowledgements:</strong></p>
+                <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                    <li>Code authored by <strong>Claude 4.1 Opus</strong>.</li>
+                    <li>Powered by <a href="https://liblouis.io/" target="_blank" style="color: #3182ce; text-decoration: none;"><strong>Liblouis</strong></a>, an open-source professional braille translator.</li>
+                    <li>Extra thanks to <strong>Tobi Weinberg</strong> for the substantial time and effort he volunteered to help start this project and see it through.</li>
+                </ul>
             </div>
             
             <form id="braille-form">

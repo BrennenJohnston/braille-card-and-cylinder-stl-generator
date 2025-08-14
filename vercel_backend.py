@@ -37,9 +37,9 @@ class CardSettings:
             "line_spacing": 12.0,
             "dot_spacing": 2.5,
             # Emboss plate dot parameters (as per project brief)
-            "emboss_dot_base_diameter": 1.4,  # Project brief default
-            "emboss_dot_height": 0.8,  # Project brief default
-            "emboss_dot_flat_hat": 0.4,  # Project brief default (cone top diameter)
+            "emboss_dot_base_diameter": 1.0,  # Updated default: 1.0 mm
+            "emboss_dot_height": 0.8,  # Project brief default: 0.8 mm
+            "emboss_dot_flat_hat": 1.0,  # Updated default: 1.0 mm
             # Offset adjustments
             "braille_y_adjust": 0.0,  # Default to center
             "braille_x_adjust": 0.0,  # Default to center
@@ -47,11 +47,11 @@ class CardSettings:
             "hemisphere_subdivisions": 1,  # For mesh density control
             "counter_plate_dot_size_offset": 0.0,  # Default offset from emboss dot diameter
             # Legacy parameters (for backward compatibility)
-            "dot_base_diameter": 1.4,
-            "dot_height": 0.8,
-            "dot_hat_size": 0.4,
+            "dot_base_diameter": 1.0,  # Updated default: 1.0 mm
+            "dot_height": 0.8,  # Project brief default: 0.8 mm
+            "dot_hat_size": 1.0,  # Updated default: 1.0 mm
             "negative_plate_offset": 0.4,  # Legacy name for backward compatibility
-            "emboss_dot_base_diameter_mm": 1.4,
+            "emboss_dot_base_diameter_mm": 1.0,  # Updated default: 1.0 mm
             "plate_thickness_mm": 2.0,
             "epsilon_mm": 0.001,
         }

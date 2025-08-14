@@ -518,9 +518,7 @@
                     </div>
                 </div>
 
-                <div class="grade-selection">
-                    <label class="grade-label">Plate Adjustments (Changes apply to both Emboss and Counter Plate)</label>
-                </div>
+
 
                 <div class="expert-mode-toggle">
                     <button type="button" id="expert-toggle" class="expert-toggle-btn">
@@ -530,8 +528,11 @@
                 </div>
 
                 <div id="expert-settings" class="expert-settings" style="display: none;">
+                    <div style="font-size: 0.9em; color: #666; font-style: italic; margin-bottom: 1em; text-align: center;">
+                        Any changes made here will affect both plates.
+                    </div>
                     <div class="grade-selection">
-                        <label class="grade-label">Braille Dimensions</label>
+                        <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
                         <div>
                             <label for="grid_columns">Number of Braille Cells (Characters):</label>
                             <input type="number" id="grid_columns" name="grid_columns" value="13">
@@ -558,7 +559,7 @@
                     </div>
 
                     <div class="grade-selection">
-                        <label class="grade-label">Dot Dimensions</label>
+                        <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Dot Dimensions</label>
                         <div>
                             <label for="emboss_dot_base_diameter">Dot diameter:</label>
                             <input type="number" id="emboss_dot_base_diameter" name="emboss_dot_base_diameter" value="1.0" step="0.1">

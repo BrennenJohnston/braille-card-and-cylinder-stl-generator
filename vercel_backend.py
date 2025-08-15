@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file, jsonify, render_template, send_from_directory
+from flask import Flask, request, send_file, jsonify, render_template, send_from_directory, redirect
 import trimesh
 import numpy as np
 import io
@@ -1170,7 +1170,20 @@ def index():
 
 @app.route('/node_modules/<path:filename>')
 def node_modules(filename):
-    return send_from_directory('node_modules', filename)
+    """Redirect node_modules requests to static files for Vercel deployment"""
+    # Map common node_modules paths to static equivalents
+    if filename.startswith('liblouis-build/') or filename.startswith('liblouis/'):
+        # Remove the 'liblouis-build/' or 'liblouis/' prefix and redirect to static
+        static_path = filename.replace('liblouis-build/', 'liblouis/').replace('liblouis/', 'liblouis/')
+        return redirect(f'/static/{static_path}')
+    
+    # For other node_modules requests, return 404
+    return jsonify({'error': 'node_modules not available on deployment'}), 404
+
+@app.route('/favicon.ico')
+def favicon():
+    """Handle favicon requests to prevent 404 errors"""
+    return '', 204  # Return empty response with "No Content" status
 
 @app.route('/static/<path:filename>')
 def static_files(filename):

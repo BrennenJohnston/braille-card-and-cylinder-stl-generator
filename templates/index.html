@@ -1085,6 +1085,11 @@
                 </div>
             </div>
             
+            <div id="error-message" role="alert" aria-live="assertive" aria-atomic="true">
+                <span style="font-weight:bold;" aria-hidden="true">⚠</span> 
+                <span id="error-text"></span>
+            </div>
+            
             <form id="braille-form" aria-labelledby="main-heading">
                 <div class="line-input-group">
                     <fieldset class="line-input-fieldset">
@@ -1291,11 +1296,6 @@
             <div id="braille-preview" class="braille-preview" style="display: none;" role="region" aria-label="Braille translation preview">
                 <h3 class="preview-heading">Braille Translation Preview:</h3>
                 <div id="preview-content"></div>
-            </div>
-            
-            <div id="error-message" role="alert" aria-live="assertive" aria-atomic="true">
-                <span style="font-weight:bold;" aria-hidden="true">⚠</span> 
-                <span id="error-text"></span>
             </div>
         </div>
     </div>

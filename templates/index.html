@@ -508,13 +508,13 @@
         
         .main-layout {
             display: flex;
-            flex-direction: row;
-            gap: 2.5em;
+            flex-direction: column;
+            gap: 2em;
             background: var(--bg-primary);
             border-radius: 22px;
             box-shadow: 0 8px 32px var(--shadow-light);
             padding: 2.5em 2.5em 2.5em 2.5em;
-            max-width: 1100px;
+            max-width: 1400px;
             width: 100%;
             margin: 0;
         }
@@ -522,7 +522,6 @@
         /* Mobile layout optimization */
         @media (max-width: 768px) {
             .main-layout {
-                flex-direction: column;
                 padding: 1.5em;
                 border-radius: 16px;
                 gap: 1.5em;
@@ -537,17 +536,88 @@
                 gap: 1em;
             }
         }
-        .viewer-section {
-            flex: 2 1 0%;
+        
+        /* Title Section - Full Width at Top */
+        .title-section {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 1.5em;
+            width: 100%;
+        }
+        
+        .title-section h1 {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.1;
+        }
+        
+        .title-line-1 {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #8B5CF6; /* High contrast approved violet */
+        }
+        
+        .title-line-2 {
+            font-size: 1.6em;
+            font-weight: 600;
+            color: #8B5CF6; /* High contrast approved violet */
+            margin-top: 0.1em;
+        }
+        
+        /* Top Accessibility Controls */
+        .accessibility-controls-top {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-end;
+            margin-left: 1rem;
+        }
+        
+        /* Content Area - Two Column Layout */
+        .content-area {
+            display: flex;
+            gap: 2.5em;
+            width: 100%;
+        }
+        
+        /* Left Column - Preview Section (45% width) */
+        .preview-section {
+            flex: 0 0 45%;
             display: flex;
             flex-direction: column;
             align-items: flex-start;
             justify-content: flex-start;
         }
+        
+        /* Right Column - Form Section (55% width) */
+        .form-section {
+            flex: 0 0 55%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            min-width: 320px;
+        }
+        
+        /* Mobile layout - stack columns */
+        @media (max-width: 768px) {
+            .content-area {
+                flex-direction: column;
+                gap: 1.5em;
+            }
+            
+            .preview-section,
+            .form-section {
+                flex: none;
+                width: 100%;
+            }
+        }
+
         #viewer {
             width: 100%;
             min-width: 320px;
-            max-width: 700px;
+            max-width: 100%;
             height: 420px;
             border-radius: 18px;
             border: 2px solid var(--border-primary);
@@ -583,14 +653,7 @@
         #viewer:focus-within, #viewer:active {
             box-shadow: 0 8px 32px var(--shadow-medium);
         }
-        .form-section {
-            flex: 1 1 0%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            min-width: 320px;
-            max-width: 400px;
-        }
+
         h1 {
             font-size: 2.2em;
             font-weight: 700;
@@ -1178,56 +1241,7 @@
             }
         }
         
-        /* Title Section Layout */
-        .title-section {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            margin-bottom: 1.5em;
-            width: 100%;
-        }
-        
-        .title-section h1 {
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            line-height: 1.1;
-        }
-        
-        .title-line-1 {
-            font-size: 1.8em;
-            font-weight: 700;
-            color: #8B5CF6; /* High contrast approved violet */
-        }
-        
-        .title-line-2 {
-            font-size: 1.6em;
-            font-weight: 600;
-            color: #8B5CF6; /* High contrast approved violet */
-            margin-top: 0.1em;
-        }
-        
-        /* Inline Accessibility Controls */
-        .accessibility-controls-inline {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            align-items: flex-end;
-            margin-left: 1rem;
-        }
-        
-        /* Form Section Accessibility Controls */
-        .accessibility-controls-form {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            align-items: center;
-            margin-bottom: 1.5em;
-            padding: 1em;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-primary);
-            border-radius: 8px;
-        }
+
         
         /* Plate Selection Row Layout */
         .plate-selection-row {
@@ -1338,7 +1352,7 @@
                 font-size: 1.3em;
             }
             
-            .accessibility-controls-inline {
+            .accessibility-controls-top {
                 margin-left: 0;
                 align-items: center;
             }
@@ -1364,55 +1378,15 @@
 
     
     <div class="main-layout" role="main" id="main-content">
-        <!-- Title moved above the viewer -->
+        <!-- Title Section at the top -->
         <div class="title-section">
             <h1 id="main-heading">
                 <span class="title-line-1">Braille Business</span>
                 <span class="title-line-2">Card STL Generator</span>
             </h1>
-        </div>
-        
-        <div class="viewer-section" role="region" aria-label="3D STL Preview">
-            <div id="viewer" role="img" aria-label="3D preview of braille business card STL file" tabindex="0"></div>
             
-            <!-- Plate Type Selection moved to left of buttons -->
-            <div class="plate-selection-row">
-                <div class="grade-selection plate-type-selection">
-                    <fieldset>
-                        <legend class="grade-label">Select Plate to Generate</legend>
-                        <div class="radio-group" role="radiogroup" aria-required="true">
-                            <label class="radio-option">
-                                <input type="radio" name="plate_type" value="positive" checked aria-describedby="emboss-plate-desc">
-                                <span class="radio-text">Embossing Plate</span>
-                            </label>
-                            <span id="emboss-plate-desc" class="sr-only">Creates raised braille dots for embossing cards</span>
-                            <label class="radio-option">
-                                <input type="radio" name="plate_type" value="negative" aria-describedby="counter-plate-desc">
-                                <span class="radio-text">Universal Counter Plate</span>
-                            </label>
-                            <span id="counter-plate-desc" class="sr-only">Creates recessed dots to support embossing process</span>
-                            <div id="negative-plate-offset-container" style="display: none; margin-top: 10px;" role="group" aria-label="Counter plate settings">
-                                <label for="counter_plate_dot_size_offset">Counter Dot Diameter Offset (mm):</label>
-                                <input type="number" id="counter_plate_dot_size_offset" name="counter_plate_dot_size_offset" value="0.0" step="0.1" aria-describedby="offset-help" title="Adjusts the counter plate braille dot base diameter relative to the emboss plate diameter">
-                                <div id="offset-help" class="offset-note" style="font-size: 0.85em; margin-top: 2px;">
-                                    Adds or subtracts from the Universal Counter Plate's recessed dot diameter. The dot size mirrors the Embossing Plate's Dot Base Diameter by default.
-                                </div>
-                            </div>
-                        </div>
-                    </fieldset>
-                </div>
-                
-                <div class="button-row">
-                    <button type="button" id="generate-stl-btn" aria-label="Generate STL file from entered text">Generate STL</button>
-                    <button id="download-btn" aria-label="Download generated STL file" aria-disabled="true">Download STL</button>
-                </div>
-            </div>
-        </div>
-        <div class="form-section" role="region" aria-label="Braille Card Configuration">
-            <!-- Title removed from here since it's now above the viewer -->
-            
-            <!-- Accessibility Controls moved above Program Description -->
-            <div class="accessibility-controls-form" role="group" aria-label="Accessibility controls">
+            <!-- Accessibility Controls in top right -->
+            <div class="accessibility-controls-top" role="group" aria-label="Accessibility controls">
                 <!-- Font Size Controls -->
                 <div class="font-size-controls" role="group" aria-label="Font size adjustment">
                     <button id="font-decrease" class="font-size-btn" aria-label="Decrease font size" title="Decrease font size">
@@ -1438,136 +1412,262 @@
                     <span class="theme-text">High Contrast</span>
                 </button>
             </div>
-            
-            <div class="info-panel">
-                <p><strong>Program Description:</strong> Creates two matching STLs for a standard 3.5″ × 2″ card: <strong>Embossing Plate</strong> (cone dots) and <strong>Universal Counter Plate</strong> (hemispherical recessed dots).</p>
-            </div>
-            
-            <div class="info-dropdown">
-                <button type="button" id="info-toggle" class="info-toggle-btn">
-                    <span id="info-toggle-text">More Information and Instructions</span>
-                    <span id="info-toggle-icon">▼</span>
-                </button>
-                <div id="info-content" class="info-content" style="display: none;">
-                    <p><strong>Instructions:</strong></p>
-                    <ol style="margin: 0.3em 0; padding-left: 1.5em;">
-                        <li>Enter up to <strong>4 lines</strong> of English text, then click <strong>"Generate STL."</strong> The app auto-translates to <strong>Unified English Braille (UEB)</strong>.</li>
-                        <li>Review the 3D preview. If it looks correct, click <strong>"Download STL."</strong></li>
-                        <li>Click <strong>"Universal Counter Plate"</strong> and repeat the steps to generate and download the matching counter plate (if you haven't printed one yet).</li>
-                        <li>Need specific dimensions? Open <strong>Expert Mode</strong> to adjust card size, spacing, and dot parameters.</li>
-                    </ol>
-                    <p><strong>Acknowledgements:</strong></p>
-                    <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                        <li>Code authored by <strong>Claude 4.1 Opus</strong>.</li>
-                        <li>Powered by <a href="https://liblouis.io/" target="_blank" style="color: #3182ce; text-decoration: none;"><strong>Liblouis</strong></a>, an open-source professional braille translator.</li>
-                        <li>Extra thanks to <strong>Tobi Weinberg</strong> for the substantial time and effort he volunteered to help start this project and see it through.</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div id="error-message" role="alert" aria-live="assertive" aria-atomic="true">
-                <span style="font-weight:bold;" aria-hidden="true">⚠</span> 
-                <span id="error-text"></span>
-            </div>
-            
-            <form id="braille-form" aria-labelledby="main-heading">
-                <!-- Language Selection moved above text input -->
-
+        </div>
+        
+        <!-- Main Content Area - Two Column Layout -->
+        <div class="content-area">
+            <!-- Left Column - STL Preview Section (45% width) -->
+            <div class="preview-section" role="region" aria-label="3D STL Preview">
+                <div id="viewer" role="img" aria-label="3D preview of braille business card STL file" tabindex="0"></div>
                 
-                <div class="line-input-group">
-                    <fieldset class="line-input-fieldset">
-                        <legend class="grade-label">Enter Text for Braille Translation</legend>
-                        <div class="line-input">
-                            <label for="line1" class="line-label">Line 1</label>
-                            <input type="text" id="line1" name="line1" placeholder="Enter English text here..." maxlength="50" aria-describedby="line1-help">
-                            <span id="line1-help" class="sr-only">Maximum 50 characters for line 1</span>
-                        </div>
-                        <div class="line-input">
-                            <label for="line2" class="line-label">Line 2</label>
-                            <input type="text" id="line2" name="line2" placeholder="Enter English text here..." maxlength="50" aria-describedby="line2-help">
-                            <span id="line2-help" class="sr-only">Maximum 50 characters for line 2</span>
-                        </div>
-                        <div class="line-input">
-                            <label for="line3" class="line-label">Line 3</label>
-                            <input type="text" id="line3" name="line3" placeholder="Enter English text here..." maxlength="50" aria-describedby="line3-help">
-                            <span id="line3-help" class="sr-only">Maximum 50 characters for line 3</span>
-                        </div>
-                        <div class="line-input">
-                            <label for="line4" class="line-label">Line 4</label>
-                            <input type="text" id="line4" name="line4" placeholder="Enter English text here..." maxlength="50" aria-describedby="line4-help">
-                            <span id="line4-help" class="sr-only">Maximum 50 characters for line 4</span>
-                        </div>
-                    </fieldset>
-                </div>
-
-
-
-
-
-                <div class="expert-mode-toggle">
-                    <button type="button" id="expert-toggle" class="expert-toggle-btn">
-                        <span id="expert-toggle-text">Show Expert Mode</span>
-                        <span id="expert-toggle-icon">▼</span>
-                    </button>
-                </div>
-
-                <div id="expert-settings" class="expert-settings" style="display: none;">
-                    <div class="expert-info" role="note" aria-label="Expert mode information">
-                        Any changes made here will affect both plates.
-                    </div>
-                    <div class="grade-selection">
-                        <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
-                        <div>
-                            <label for="grid_columns">Number of Braille Cells (Characters):</label>
-                            <input type="number" id="grid_columns" name="grid_columns" value="13">
-                        </div>
-                        <div>
-                            <label for="grid_rows">Number of Braille Lines:</label>
-                            <input type="number" id="grid_rows" name="grid_rows" value="4">
-                        </div>
-                        <div>
-                            <label for="cell_spacing">Braille Cell Spacing:</label>
-                            <input type="number" id="cell_spacing" name="cell_spacing" value="6.5" step="0.1">
-                        </div>
-                        <div>
-                            <label for="line_spacing">Braille Line Spacing:</label>
-                            <input type="number" id="line_spacing" name="line_spacing" value="12.0" step="0.1">
-                        </div>
-                        <div>
-                            <label for="dot_spacing">Braille Dot Spacing:</label>
-                            <input type="number" id="dot_spacing" name="dot_spacing" value="2.5" step="0.1">
-                        </div>
-                    </div>
-
-                    <div class="grade-selection">
-                        <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Dot Dimensions</label>
-                        <div>
-                            <label for="emboss_dot_base_diameter">Dot diameter:</label>
-                            <input type="number" id="emboss_dot_base_diameter" name="emboss_dot_base_diameter" value="1.0" step="0.1">
-                        </div>
-                        <div>
-                            <label for="emboss_dot_height">Dot height:</label>
-                            <input type="number" id="emboss_dot_height" name="emboss_dot_height" value="0.8" step="0.1">
-                        </div>
-                        <div>
-                            <label for="emboss_dot_flat_hat">Flat hat diameter:</label>
-                            <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1">
-                        </div>
+                <!-- Plate Type Selection and Action Buttons -->
+                <div class="plate-selection-row">
+                    <div class="grade-selection plate-type-selection">
+                        <fieldset>
+                            <legend class="grade-label">Select Plate to Generate</legend>
+                            <div class="radio-group" role="radiogroup" aria-required="true">
+                                <label class="radio-option">
+                                    <input type="radio" name="plate_type" value="positive" checked aria-describedby="emboss-plate-desc">
+                                    <span class="radio-text">Embossing Plate</span>
+                                </label>
+                                <span id="emboss-plate-desc" class="sr-only">Creates raised braille dots for embossing cards</span>
+                                <label class="radio-option">
+                                    <input type="radio" name="plate_type" value="negative" aria-describedby="counter-plate-desc">
+                                    <span class="radio-text">Universal Counter Plate</span>
+                                </label>
+                                <span id="counter-plate-desc" class="sr-only">Creates recessed dots to support embossing process</span>
+                                <div id="negative-plate-offset-container" style="display: none; margin-top: 10px;" role="group" aria-label="Counter plate settings">
+                                    <label for="counter_plate_dot_size_offset">Counter Dot Diameter Offset (mm):</label>
+                                    <input type="number" id="counter_plate_dot_size_offset" name="counter_plate_dot_size_offset" value="0.0" step="0.1" aria-describedby="offset-help" title="Adjusts the counter plate braille dot base diameter relative to the emboss plate diameter">
+                                    <div id="offset-help" class="offset-note" style="font-size: 0.85em; margin-top: 2px;">
+                                        Adds or subtracts from the Universal Counter Plate's recessed dot diameter. The dot size mirrors the Embossing Plate's Dot Base Diameter by default.
+                                    </div>
+                                </div>
+                            </div>
+                        </fieldset>
                     </div>
                     
-                    <div style="margin-top: 1.5em; text-align: center;">
-                        <button type="button" id="preview-braille-btn">Preview Braille Translation</button>
+                    <div class="button-row">
+                        <button type="button" id="generate-stl-btn" aria-label="Generate STL file from entered text">Generate STL</button>
+                        <button id="download-btn" aria-label="Download generated STL file" aria-disabled="true">Download STL</button>
                     </div>
                 </div>
-
-                <div class="button-group">
-                    <!-- Test buttons removed as they are no longer needed -->
-                </div>
-            </form>
+            </div>
             
-            <div id="braille-preview" class="braille-preview" style="display: none;" role="region" aria-label="Braille translation preview">
-                <h3 class="preview-heading">Braille Translation Preview:</h3>
-                <div id="preview-content"></div>
+            <!-- Right Column - Form Controls Section (55% width) -->
+            <div class="form-section" role="region" aria-label="Braille Card Configuration">
+                <div class="info-panel">
+                    <p><strong>Program Description:</strong> Creates two matching STLs for a standard 3.5″ × 2″ card: <strong>Embossing Plate</strong> (cone dots) and <strong>Universal Counter Plate</strong> (hemispherical recessed dots).</p>
+                </div>
+                
+                <div class="info-dropdown">
+                    <button type="button" id="info-toggle" class="info-toggle-btn">
+                        <span id="info-toggle-text">More Information and Instructions</span>
+                        <span id="info-toggle-icon">▼</span>
+                    </button>
+                    <div id="info-content" class="info-content" style="display: none;">
+                        <p><strong>Instructions:</strong></p>
+                        <ol style="margin: 0.3em 0; padding-left: 1.5em;">
+                            <li>Enter up to <strong>4 lines</strong> of English text, then click <strong>"Generate STL."</strong> The app auto-translates to <strong>Unified English Braille (UEB)</strong>.</li>
+                            <li>Review the 3D preview. If it looks correct, click <strong>"Download STL."</strong></li>
+                            <li>Click <strong>"Universal Counter Plate"</strong> and repeat the steps to generate and download the matching counter plate (if you haven't printed one yet).</li>
+                            <li>Need specific dimensions? Open <strong>Expert Mode</strong> to adjust card size, spacing, and dot parameters.</li>
+                        </ol>
+                        <p><strong>Acknowledgements:</strong></p>
+                        <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                            <li>Code authored by <strong>Claude 4.1 Opus</strong>.</li>
+                            <li>Powered by <a href="https://liblouis.io/" target="_blank" style="color: #3182ce; text-decoration: none;"><strong>Liblouis</strong></a>, an open-source professional braille translator.</li>
+                            <li>Extra thanks to <strong>Tobi Weinberg</strong> for the substantial time and effort he volunteered to help start this project and see it through.</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div id="error-message" role="alert" aria-live="assertive" aria-atomic="true">
+                    <span style="font-weight:bold;" aria-hidden="true">⚠</span> 
+                    <span id="error-text"></span>
+                </div>
+                
+                <form id="braille-form" aria-labelledby="main-heading">
+                    <!-- Language Selection -->
+                    <div class="grade-selection">
+                        <fieldset>
+                            <legend class="grade-label">Select Language:</legend>
+                            <div style="margin-bottom: 0.8em;">
+                                <select id="language-table" name="language_table" class="language-select" aria-describedby="language-help">
+                                    <!-- English options -->
+                                    <optgroup label="English">
+                                        <option value="en-ueb-g2.ctb" selected>English, U.S., contracted (UEB grade 2)</option>
+                                        <option value="en-ueb-g1.ctb">English, U.S., uncontracted (UEB grade 1)</option>
+                                        <option value="en-us-g2.ctb">English, U.S., contracted (EBAE grade 2)</option>
+                                        <option value="en-us-g1.ctb">English, U.S., uncontracted (EBAE grade 1)</option>
+                                        <option value="en-GB-g2.ctb">English, U.K., contracted (grade 2)</option>
+                                        <option value="en-gb-g1.utb">English, U.K., uncontracted (grade 1)</option>
+                                        <option value="en_CA.ctb">English, Canada, computer braille</option>
+                                    </optgroup>
+                                    <!-- Major European languages -->
+                                    <optgroup label="European Languages">
+                                        <option value="Fr-Fr-g2.ctb">French, France, contracted (grade 2)</option>
+                                        <option value="fr-fr-g1.utb">French, France, uncontracted (grade 1)</option>
+                                        <option value="de-de-g2.ctb">German, Germany, contracted (grade 2)</option>
+                                        <option value="de-de-g1.ctb">German, Germany, uncontracted (grade 1)</option>
+                                        <option value="Es-Es-g1.utb">Spanish, Spain, uncontracted</option>
+                                        <option value="it-it-comp8.utb">Italian, computer braille (8-dot)</option>
+                                        <option value="it-it-comp6.utb">Italian, computer braille (6-dot)</option>
+                                        <option value="pt-pt-g2.ctb">Portuguese, Portugal, contracted (grade 2)</option>
+                                        <option value="pt-pt-g1.utb">Portuguese, Portugal, uncontracted (grade 1)</option>
+                                        <option value="nl-NL-g0.utb">Dutch, Netherlands, uncontracted</option>
+                                        <option value="da-dk-g26.ctb">Danish, contracted (6-dot)</option>
+                                        <option value="da-dk-g16.ctb">Danish, uncontracted (6-dot)</option>
+                                        <option value="sv-1996.ctb">Swedish (1996 standard)</option>
+                                        <option value="no-no-g2.ctb">Norwegian, contracted (grade 2)</option>
+                                        <option value="no-no-g1.ctb">Norwegian, uncontracted (grade 1)</option>
+                                        <option value="fi-fi.ctb">Finnish, 6-dot</option>
+                                    </optgroup>
+                                    <!-- Other European languages -->
+                                    <optgroup label="Other European">
+                                        <option value="pl-pl-comp8.ctb">Polish, computer braille (8-dot)</option>
+                                        <option value="Pl-Pl-g1.utb">Polish, uncontracted</option>
+                                        <option value="cs-g1.ctb">Czech, uncontracted</option>
+                                        <option value="sk-sk-g1.utb">Slovak, uncontracted</option>
+                                        <option value="hu-hu-g2.ctb">Hungarian, contracted (grade 2)</option>
+                                        <option value="hu-hu-g1.ctb">Hungarian, uncontracted (grade 1)</option>
+                                        <option value="ro.ctb">Romanian</option>
+                                        <option value="bg.ctb">Bulgarian</option>
+                                        <option value="hr.ctb">Croatian</option>
+                                        <option value="sl-si-comp8.ctb">Slovenian, computer braille (8-dot)</option>
+                                        <option value="sl-si-g1.utb">Slovenian, uncontracted</option>
+                                        <option value="sr-g1.ctb">Serbian</option>
+                                        <option value="el.ctb">Greek</option>
+                                        <option value="tr.ctb">Turkish, contracted</option>
+                                        <option value="tr-g1.ctb">Turkish, uncontracted (grade 1)</option>
+                                        <option value="ru-litbrl.ctb">Russian, literary</option>
+                                        <option value="ru-ru-g1.utb">Russian, uncontracted</option>
+                                    </optgroup>
+                                    <!-- Asian languages -->
+                                    <optgroup label="Asian Languages">
+                                        <option value="zh-tw.ctb">Chinese, Taiwan (traditional)</option>
+                                        <option value="zh-chn.ctb">Chinese, China (simplified)</option>
+                                        <option value="ko-g2.ctb">Korean, contracted (grade 2)</option>
+                                        <option value="ko-g1.ctb">Korean, uncontracted (grade 1)</option>
+                                        <option value="vi.ctb">Vietnamese, contracted</option>
+                                        <option value="vi-g1.ctb">Vietnamese, uncontracted (grade 1)</option>
+                                        <option value="hi-in-g1.utb">Hindi, India</option>
+                                        <option value="ar-ar-g1.utb">Arabic</option>
+                                        <option value="he.ctb">Hebrew</option>
+                                        <option value="fa-ir-g1.utb">Persian/Farsi, Iran</option>
+                                    </optgroup>
+                                    <!-- Other languages -->
+                                    <optgroup label="Other Languages">
+                                        <option value="afr-za-g1.ctb">Afrikaans, South Africa</option>
+                                        <option value="cy-cy-g2.ctb">Welsh, contracted (grade 2)</option>
+                                        <option value="cy-cy-g1.utb">Welsh, uncontracted (grade 1)</option>
+                                        <option value="ga-g2.ctb">Irish, contracted (grade 2)</option>
+                                        <option value="ga-g1.utb">Irish, uncontracted (grade 1)</option>
+                                        <option value="gd.ctb">Scottish Gaelic</option>
+                                        <option value="is.ctb">Icelandic</option>
+                                        <option value="mt.ctb">Maltese</option>
+                                        <option value="eo-g1.ctb">Esperanto</option>
+                                    </optgroup>
+                                </select>
+                                <div id="language-help" class="grade-note" style="margin-top: 6px; font-size: 0.85em;">
+                                    English, U.S., contracted (UEB grade 2) is the default standard for all U.S. English braille translations. Only select another language or grade for special use cases.<br>
+                                    <span style="margin-top: 4px; display: inline-block;">Note: Contracted braille uses contractions, so check character limits after translation.</span>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                    
+                    <div class="line-input-group">
+                        <fieldset class="line-input-fieldset">
+                            <legend class="grade-label">Enter Text for Braille Translation</legend>
+                            <div class="line-input">
+                                <label for="line1" class="line-label">Line 1</label>
+                                <input type="text" id="line1" name="line1" placeholder="Enter English text here..." maxlength="50" aria-describedby="line1-help">
+                                <span id="line1-help" class="sr-only">Maximum 50 characters for line 1</span>
+                            </div>
+                            <div class="line-input">
+                                <label for="line2" class="line-label">Line 2</label>
+                                <input type="text" id="line2" name="line2" placeholder="Enter English text here..." maxlength="50" aria-describedby="line2-help">
+                                <span id="line2-help" class="sr-only">Maximum 50 characters for line 2</span>
+                            </div>
+                            <div class="line-input">
+                                <label for="line3" class="line-label">Line 3</label>
+                                <input type="text" id="line3" name="line3" placeholder="Enter English text here..." maxlength="50" aria-describedby="line3-help">
+                                <span id="line3-help" class="sr-only">Maximum 50 characters for line 3</span>
+                            </div>
+                            <div class="line-input">
+                                <label for="line4" class="line-label">Line 4</label>
+                                <input type="text" id="line4" name="line4" placeholder="Enter English text here..." maxlength="50" aria-describedby="line4-help">
+                                <span id="line4-help" class="sr-only">Maximum 50 characters for line 4</span>
+                            </div>
+                        </fieldset>
+                    </div>
+
+                    <div class="expert-mode-toggle">
+                        <button type="button" id="expert-toggle" class="expert-toggle-btn">
+                            <span id="expert-toggle-text">Show Expert Mode</span>
+                            <span id="expert-toggle-icon">▼</span>
+                        </button>
+                    </div>
+
+                    <div id="expert-settings" class="expert-settings" style="display: none;">
+                        <div class="expert-info" role="note" aria-label="Expert mode information">
+                            Any changes made here will affect both plates.
+                        </div>
+                        <div class="grade-selection">
+                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
+                            <div>
+                                <label for="grid_columns">Number of Braille Cells (Characters):</label>
+                                <input type="number" id="grid_columns" name="grid_columns" value="13">
+                            </div>
+                            <div>
+                                <label for="grid_rows">Number of Braille Lines:</label>
+                                <input type="number" id="grid_rows" name="grid_rows" value="4">
+                            </div>
+                            <div>
+                                <label for="cell_spacing">Braille Cell Spacing:</label>
+                                <input type="number" id="cell_spacing" name="cell_spacing" value="6.5" step="0.1">
+                            </div>
+                            <div>
+                                <label for="line_spacing">Braille Line Spacing:</label>
+                                <input type="number" id="line_spacing" name="line_spacing" value="12.0" step="0.1">
+                            </div>
+                            <div>
+                                <label for="dot_spacing">Braille Dot Spacing:</label>
+                                <input type="number" id="dot_spacing" name="dot_spacing" value="2.5" step="0.1">
+                            </div>
+                        </div>
+
+                        <div class="grade-selection">
+                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Dot Dimensions</label>
+                            <div>
+                                <label for="emboss_dot_base_diameter">Dot diameter:</label>
+                                <input type="number" id="emboss_dot_base_diameter" name="emboss_dot_base_diameter" value="1.0" step="0.1">
+                            </div>
+                            <div>
+                                <label for="emboss_dot_height">Dot height:</label>
+                                <input type="number" id="emboss_dot_height" name="emboss_dot_height" value="0.8" step="0.1">
+                            </div>
+                            <div>
+                                <label for="emboss_dot_flat_hat">Flat hat diameter:</label>
+                                <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1">
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 1.5em; text-align: center;">
+                            <button type="button" id="preview-braille-btn">Preview Braille Translation</button>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <!-- Test buttons removed as they are no longer needed -->
+                    </div>
+                </form>
+                
+                <div id="braille-preview" class="braille-preview" style="display: none;" role="region" aria-label="Braille translation preview">
+                    <h3 class="preview-heading">Braille Translation Preview:</h3>
+                    <div id="preview-content"></div>
+                </div>
             </div>
         </div>
     </div>

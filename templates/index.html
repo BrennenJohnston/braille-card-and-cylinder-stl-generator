@@ -83,141 +83,142 @@
         [data-theme="high-contrast"] {
             --bg-gradient-start: #000000;
             --bg-gradient-end: #000000;
-            --bg-primary: #0201fe; /* Blue instead of black */
-            --bg-secondary: #0201fe; /* Blue instead of black */
-            --bg-tertiary: #0201fe; /* Blue instead of black */
-            --bg-input: #0201fe; /* Blue instead of black */
-            --text-primary: #fdfe00; /* Yellow instead of white */
-            --text-secondary: #fdfe00; /* Yellow instead of white */
-            --text-tertiary: #fdfe00; /* Yellow instead of white */
+            --bg-primary: #000000; /* Keep black background */
+            --bg-secondary: #1a1a1a; /* Keep dark background */
+            --bg-tertiary: #2a2a2a; /* Keep dark background */
+            --bg-input: #1a1a1a; /* Keep dark background for inputs */
+            --text-primary: #02fe05; /* Green instead of white */
+            --text-secondary: #02fe05; /* Green instead of white */
+            --text-tertiary: #02fe05; /* Green instead of white */
             --border-primary: #ffff00;
             --border-secondary: #00ffff;
             --border-focus: #ff00ff;
-            --btn-primary-bg: #02fe05; /* Green instead of yellow */
-            --btn-primary-hover-bg: #02fe05; /* Green instead of white */
-            --btn-success-bg: #02fe05; /* Green instead of green */
-            --btn-success-hover-bg: #02fe05; /* Green instead of green */
+            --btn-primary-bg: #02fe05; /* Green */
+            --btn-primary-hover-bg: #02fe05; /* Green */
+            --btn-success-bg: #02fe05; /* Green */
+            --btn-success-hover-bg: #02fe05; /* Green */
             --btn-secondary-bg: #ff6600;
             --btn-tertiary-bg: #ff6600;
             --error-bg: #ff0000;
             --error-border: #ff0000;
-            --error-text: #fdfe00; /* Yellow instead of white */
+            --error-text: #02fe05; /* Green instead of white */
             --info-bg: #0000ff;
             --info-border: #0000ff;
-            --info-text: #fdfe00; /* Yellow instead of white */
+            --info-text: #02fe05; /* Green instead of white */
             --shadow-light: none;
             --shadow-medium: none;
             --stl-mesh-color: #00ffff;
-            --stl-background: #0201fe; /* Blue instead of black */
+            --stl-background: #000000; /* Keep black background */
             --stl-ambient-light: #333333;
-            --stl-directional-light: #fdfe00; /* Yellow instead of white */
+            --stl-directional-light: #02fe05; /* Green instead of white */
         }
 
         /* High contrast mode specific button styling */
         [data-theme="high-contrast"] button[type="submit"],
         [data-theme="high-contrast"] #generate-stl-btn {
-            background: #02fe05 !important; /* Green instead of green */
-            color: #0201fe !important; /* Blue instead of black */
-            border: 2px solid #0201fe !important; /* Blue instead of black */
+            background: #02fe05 !important; /* Green background */
+            color: #000000 !important; /* Black text */
+            border: 2px solid #000000 !important; /* Black border */
         }
 
         [data-theme="high-contrast"] button[type="submit"]:hover,
         [data-theme="high-contrast"] #generate-stl-btn:hover {
-            background: #02fe05 !important; /* Green instead of green */
-            color: #0201fe !important; /* Blue instead of black */
-            border: 2px solid #ffff00 !important; /* Yellow instead of yellow */
+            background: #02fe05 !important; /* Green background */
+            color: #000000 !important; /* Black text */
+            border: 2px solid #ffff00 !important; /* Yellow border on hover */
         }
 
         [data-theme="high-contrast"] #download-btn.ready {
-            background: #02fe05 !important; /* Green instead of green */
-            color: #0201fe !important; /* Blue instead of black */
-            border: 2px solid #0201fe !important; /* Blue instead of black */
+            background: #02fe05 !important; /* Green background */
+            color: #000000 !important; /* Black text */
+            border: 2px solid #000000 !important; /* Black border */
         }
 
         [data-theme="high-contrast"] #download-btn.ready:hover {
-            background: #02fe05 !important; /* Green instead of green */
-            color: #0201fe !important; /* Blue instead of black */
-            border: 2px solid #ffff00 !important; /* Yellow instead of yellow */
+            background: #02fe05 !important; /* Green background */
+            color: #000000 !important; /* Black text */
+            border: 2px solid #ffff00 !important; /* Yellow border on hover */
         }
 
         [data-theme="high-contrast"] #download-btn:not(.ready) {
             background: #ff6600 !important;
-            color: #0201fe !important; /* Blue instead of black */
-            border: 2px solid #0201fe !important; /* Blue instead of black */
+            color: #000000 !important; /* Black text */
+            border: 2px solid #000000 !important; /* Black border */
         }
 
         [data-theme="high-contrast"] #download-counter-plate-btn {
             background: #ff6600 !important;
-            color: #0201fe !important; /* Blue instead of black */
-            border: 2px solid #0201fe !important; /* Blue instead of black */
+            color: #000000 !important; /* Black text */
+            border: 2px solid #000000 !important; /* Black border */
         }
 
         [data-theme="high-contrast"] #download-counter-plate-btn:hover {
             background: #ff8800 !important;
-            color: #0201fe !important; /* Blue instead of black */
-            border: 2px solid #ffff00 !important; /* Yellow instead of yellow */
+            color: #000000 !important; /* Black text */
+            border: 2px solid #ffff00 !important; /* Yellow border on hover */
         }
 
         [data-theme="high-contrast"] .expert-toggle-btn,
         [data-theme="high-contrast"] .info-toggle-btn {
-            background: #0201fe !important; /* Blue instead of black */
-            color: #ffff00 !important; /* Yellow instead of yellow */
-            border: 2px solid #ffff00 !important; /* Yellow instead of yellow */
+            background: #1a1a1a !important; /* Dark background */
+            color: #ffff00 !important; /* Yellow text */
+            border: 2px solid #ffff00 !important; /* Yellow border */
         }
 
         [data-theme="high-contrast"] .expert-toggle-btn:hover,
         [data-theme="high-contrast"] .info-toggle-btn:hover {
-            background: #0201fe !important; /* Blue instead of black */
-            color: #ffff00 !important; /* Yellow instead of yellow */
-            border: 2px solid #ffff00 !important; /* Yellow instead of yellow */
+            background: #000000 !important; /* Black background on hover */
+            color: #ffff00 !important; /* Yellow text */
+            border: 2px solid #ffff00 !important; /* Yellow border */
         }
 
         [data-theme="high-contrast"] .expert-toggle-btn.active,
         [data-theme="high-contrast"] .info-toggle-btn.active {
-            background: #0201fe !important; /* Blue instead of black */
-            color: #ffff00 !important; /* Yellow instead of yellow */
-            border: 2px solid #ffff00 !important; /* Yellow instead of yellow */
+            background: #000000 !important; /* Black background when active */
+            color: #ffff00 !important; /* Yellow text */
+            border: 2px solid #ffff00 !important; /* Yellow border */
         }
 
         [data-theme="high-contrast"] .font-size-btn {
-            background: #0201fe !important; /* Blue instead of black */
-            color: #ffff00 !important; /* Yellow instead of yellow */
-            border: 2px solid #ffff00 !important; /* Yellow instead of yellow */
+            background: #1a1a1a !important; /* Dark background */
+            color: #ffff00 !important; /* Yellow text */
+            border: 2px solid #ffff00 !important; /* Yellow border */
         }
 
         [data-theme="high-contrast"] .font-size-btn:hover {
-            background: #ffff00 !important; /* Yellow instead of yellow */
-            color: #0201fe !important; /* Blue instead of black */
-            border: 2px solid #0201fe !important; /* Blue instead of black */
+            background: #ffff00 !important; /* Yellow background on hover */
+            color: #000000 !important; /* Black text on hover */
+            border: 2px solid #000000 !important; /* Black border on hover */
         }
 
         [data-theme="high-contrast"] .font-size-btn.reset-btn {
-            background: #0201fe !important; /* Blue instead of black */
-            color: #00ffff !important; /* Cyan instead of cyan */
-            border: 2px solid #00ffff !important; /* Cyan instead of cyan */
+            background: #2a2a2a !important; /* Darker background */
+            color: #00ffff !important; /* Cyan text */
+            border: 2px solid #00ffff !important; /* Cyan border */
         }
 
         [data-theme="high-contrast"] .font-size-display {
-            background: #0201fe !important; /* Blue instead of black */
-            color: #ffff00 !important; /* Yellow instead of yellow */
-            border: 2px solid #ffff00 !important; /* Yellow instead of yellow */
+            background: #1a1a1a !important; /* Dark background */
+            color: #ffff00 !important; /* Yellow text */
+            border: 2px solid #ffff00 !important; /* Yellow border */
         }
 
         [data-theme="high-contrast"] .theme-toggle-btn {
-            background: #0201fe !important; /* Blue instead of black */
-            color: #ffff00 !important; /* Yellow instead of yellow */
-            border: 2px solid #ffff00 !important; /* Yellow instead of yellow */
+            background: #1a1a1a !important; /* Dark background */
+            color: #ffff00 !important; /* Yellow text */
+            border: 2px solid #ffff00 !important; /* Yellow border */
         }
 
         [data-theme="high-contrast"] .theme-toggle-btn:hover {
-            background: #ffff00 !important; /* Yellow instead of yellow */
-            color: #0201fe !important; /* Blue instead of black */
-            border: 2px solid #0201fe !important; /* Blue instead of black */
+            background: #ffff00 !important; /* Yellow background on hover */
+            color: #000000 !important; /* Black text on hover */
+            border: 2px solid #000000 !important; /* Black border on hover */
         }
 
         /* Apply transition to theme changes */
         * {
             transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+            box-sizing: border-box; /* Ensure all elements include padding/borders in width */
         }
 
         /* Skip Link for Keyboard Navigation */
@@ -477,6 +478,8 @@
             max-width: 1400px;
             width: 100%;
             margin: 0;
+            overflow-x: hidden; /* Prevent horizontal overflow */
+            box-sizing: border-box; /* Include padding in width calculation */
         }
         
         /* Mobile layout optimization */
@@ -555,15 +558,19 @@
             flex-direction: column;
             align-items: flex-start;
             justify-content: flex-start;
+            overflow: visible; /* Ensure rounded corners aren't cut off */
+            padding-right: 1em; /* Add padding to prevent cutoff */
         }
         
         /* Right Column - Form Section (55% width) */
         .form-section {
-            flex: 0 0 55%;
+            flex: 0 0 calc(55% - 2em); /* Subtract padding to prevent overflow */
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
             min-width: 320px;
+            max-width: calc(55% - 2em); /* Prevent form from extending past background */
+            overflow-x: hidden; /* Prevent horizontal overflow */
         }
         
         /* Mobile layout - stack columns */
@@ -581,9 +588,9 @@
         }
 
         #viewer {
-            width: 100%;
+            width: calc(100% - 2px); /* Account for border width */
             min-width: 320px;
-            max-width: 100%;
+            max-width: calc(100% - 2px);
             height: 420px;
             border-radius: 18px;
             border: 2px solid var(--border-primary);
@@ -597,6 +604,8 @@
             touch-action: pan-x pan-y pinch-zoom;
             -webkit-user-select: none;
             user-select: none;
+            overflow: hidden; /* Ensure content doesn't overflow rounded corners */
+            box-sizing: border-box; /* Include border in size calculation */
         }
         
         /* Mobile viewer optimizations */
@@ -1336,41 +1345,41 @@
 
         [data-theme="high-contrast"] input[type="text"],
         [data-theme="high-contrast"] input[type="number"] {
-            background: #0201fe !important; /* Blue instead of black */
-            color: #fdfe00 !important; /* Yellow instead of white */
-            border: 2px solid #ffff00 !important; /* Yellow instead of yellow */
+            background: #0201fe !important; /* Blue background for inputs */
+            color: #fdfe00 !important; /* Yellow text */
+            border: 2px solid #ffff00 !important; /* Yellow border */
         }
 
         [data-theme="high-contrast"] input[type="text"]:focus,
         [data-theme="high-contrast"] input[type="number"]:focus {
-            background: #0201fe !important; /* Blue instead of black */
-            color: #fdfe00 !important; /* Yellow instead of white */
-            border: 2px solid #ff00ff !important; /* Magenta instead of magenta */
+            background: #0201fe !important; /* Blue background for inputs */
+            color: #fdfe00 !important; /* Yellow text */
+            border: 2px solid #ff00ff !important; /* Magenta border on focus */
         }
 
         [data-theme="high-contrast"] .info-panel,
         [data-theme="high-contrast"] .grade-selection,
         [data-theme="high-contrast"] .info-content {
-            background: #0201fe !important; /* Blue instead of black */
-            color: #ffff00 !important; /* Yellow instead of yellow */
-            border: 2px solid #ffff00 !important; /* Yellow instead of yellow */
+            background: #1a1a1a !important; /* Dark background for panels */
+            color: #ffff00 !important; /* Yellow text */
+            border: 2px solid #ffff00 !important; /* Yellow border */
         }
 
         [data-theme="high-contrast"] .braille-preview {
-            background: #0201fe !important; /* Blue instead of black */
-            color: #ffff00 !important; /* Yellow instead of yellow */
-            border: 2px solid #ffff00 !important; /* Yellow instead of yellow */
+            background: #1a1a1a !important; /* Dark background */
+            color: #ffff00 !important; /* Yellow text */
+            border: 2px solid #ffff00 !important; /* Yellow border */
         }
 
         [data-theme="high-contrast"] .preview-line-success {
-            background: #0201fe !important; /* Blue instead of black */
-            color: #fdfe00 !important; /* Yellow instead of white */
-            border: 2px solid #00ffff !important; /* Cyan instead of cyan */
+            background: #2a2a2a !important; /* Darker background */
+            color: #02fe05 !important; /* Green text for success */
+            border: 2px solid #00ffff !important; /* Cyan border */
         }
 
         [data-theme="high-contrast"] .preview-line-error {
             background: #ff0000 !important;
-            color: #fdfe00 !important; /* Yellow instead of white */
+            color: #02fe05 !important; /* Green text */
             border: 2px solid #ff0000 !important;
         }
 

@@ -130,6 +130,76 @@
             outline-offset: 2px;
         }
 
+        /* Accessibility Controls */
+        .accessibility-controls {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-end;
+        }
+
+        /* Font Size Controls */
+        .font-size-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            background: var(--bg-primary);
+            border: 2px solid var(--border-primary);
+            border-radius: 8px;
+            padding: 0.4em 0.6em;
+            box-shadow: 0 2px 8px var(--shadow-light);
+        }
+
+        .font-size-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-secondary);
+            border-radius: 6px;
+            padding: 0.4em 0.6em;
+            font-size: 0.9em;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 2.5em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .font-size-btn:hover {
+            background: var(--bg-tertiary);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px var(--shadow-medium);
+        }
+
+        .font-size-btn:focus {
+            outline: 3px solid var(--border-focus);
+            outline-offset: 2px;
+        }
+
+        .font-size-btn.reset-btn {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-size: 0.8em;
+        }
+
+        .font-size-display {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-secondary);
+            border-radius: 6px;
+            padding: 0.4em 0.6em;
+            font-size: 0.85em;
+            font-weight: 600;
+            color: var(--text-primary);
+            min-width: 3.5em;
+            text-align: center;
+            user-select: none;
+        }
+
         /* Theme Toggle Button */
         .theme-controls {
             position: fixed;
@@ -183,6 +253,31 @@
         *:focus-visible {
             outline: 3px solid var(--border-focus) !important;
             outline-offset: 2px !important;
+        }
+
+        /* Responsive font size controls for mobile */
+        @media (max-width: 768px) {
+            .accessibility-controls {
+                top: 0.5rem;
+                right: 0.5rem;
+            }
+            
+            .font-size-controls {
+                padding: 0.3em 0.4em;
+                gap: 0.2rem;
+            }
+            
+            .font-size-btn {
+                padding: 0.3em 0.4em;
+                min-width: 2em;
+                font-size: 0.8em;
+            }
+            
+            .font-size-display {
+                padding: 0.3em 0.4em;
+                min-width: 3em;
+                font-size: 0.8em;
+            }
         }
 
         /* Screen reader only content */
@@ -677,11 +772,31 @@
     <!-- Skip Navigation Link for Keyboard Users -->
     <a href="#main-content" class="skip-link" tabindex="0">Skip to main content</a>
     
-    <!-- Theme Toggle Button -->
-    <div class="theme-controls" role="group" aria-label="Theme selection">
+    <!-- Accessibility Controls -->
+    <div class="accessibility-controls" role="group" aria-label="Accessibility controls">
+        <!-- Font Size Controls -->
+        <div class="font-size-controls" role="group" aria-label="Font size adjustment">
+            <button id="font-decrease" class="font-size-btn" aria-label="Decrease font size" title="Decrease font size">
+                <span aria-hidden="true">A-</span>
+                <span class="sr-only">Decrease font size</span>
+            </button>
+            <span class="font-size-display" aria-label="Current font size">
+                <span id="current-font-size">100</span>%
+            </span>
+            <button id="font-increase" class="font-size-btn" aria-label="Increase font size" title="Increase font size">
+                <span aria-hidden="true">A+</span>
+                <span class="sr-only">Increase font size</span>
+            </button>
+            <button id="font-reset" class="font-size-btn reset-btn" aria-label="Reset font size to default" title="Reset font size to default">
+                <span aria-hidden="true">⟲</span>
+                <span class="sr-only">Reset font size</span>
+            </button>
+        </div>
+        
+        <!-- Theme Toggle Button -->
         <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme" title="Toggle between light, dark, and high contrast themes">
-            <span class="theme-icon" aria-hidden="true">🌞</span>
-            <span class="theme-text">Light</span>
+            <span class="theme-icon" aria-hidden="true">⚡</span>
+            <span class="theme-text">High Contrast</span>
         </button>
     </div>
     
@@ -882,16 +997,16 @@
         import { OrbitControls } from '/static/OrbitControls.js';
 
         // Theme switching functionality
-        const themes = ['light', 'dark', 'high-contrast'];
+        const themes = ['high-contrast', 'dark', 'light'];
         const themeIcons = {
-            'light': '🌞',
+            'high-contrast': '⚡',
             'dark': '🌙',
-            'high-contrast': '⚡'
+            'light': '🌞'
         };
         const themeNames = {
-            'light': 'Light',
+            'high-contrast': 'High Contrast',
             'dark': 'Dark',
-            'high-contrast': 'High Contrast'
+            'light': 'Light'
         };
         
         let currentThemeIndex = 0;
@@ -899,6 +1014,9 @@
         if (savedTheme && themes.includes(savedTheme)) {
             currentThemeIndex = themes.indexOf(savedTheme);
             applyTheme(savedTheme);
+        } else {
+            // Default to high contrast mode if no saved preference
+            applyTheme('high-contrast');
         }
 
         function applyTheme(theme) {
@@ -930,6 +1048,59 @@
         document.getElementById('theme-toggle').addEventListener('click', () => {
             currentThemeIndex = (currentThemeIndex + 1) % themes.length;
             applyTheme(themes[currentThemeIndex]);
+        });
+
+        // Initialize with high contrast theme on first load
+        if (!localStorage.getItem('preferred-theme')) {
+            applyTheme('high-contrast');
+        }
+
+        // Font size adjustment functionality
+        const fontSizes = [75, 87.5, 100, 112.5, 125, 150, 175, 200];
+        let currentFontSizeIndex = 2; // Start at 100%
+        
+        // Load saved font size preference
+        const savedFontSize = localStorage.getItem('preferred-font-size');
+        if (savedFontSize) {
+            currentFontSizeIndex = fontSizes.indexOf(parseInt(savedFontSize));
+            if (currentFontSizeIndex === -1) currentFontSizeIndex = 2;
+        }
+        
+        function applyFontSize(sizeIndex) {
+            const size = fontSizes[sizeIndex];
+            document.documentElement.style.fontSize = size + '%';
+            document.getElementById('current-font-size').textContent = size;
+            currentFontSizeIndex = sizeIndex;
+            localStorage.setItem('preferred-font-size', size);
+            
+            // Announce font size change to screen readers
+            const announcement = document.createElement('div');
+            announcement.className = 'sr-only';
+            announcement.setAttribute('role', 'status');
+            announcement.setAttribute('aria-live', 'polite');
+            announcement.textContent = `Font size changed to ${size}%`;
+            document.body.appendChild(announcement);
+            setTimeout(() => announcement.remove(), 1000);
+        }
+        
+        // Initialize font size
+        applyFontSize(currentFontSizeIndex);
+        
+        // Font size control event listeners
+        document.getElementById('font-decrease').addEventListener('click', () => {
+            if (currentFontSizeIndex > 0) {
+                applyFontSize(currentFontSizeIndex - 1);
+            }
+        });
+        
+        document.getElementById('font-increase').addEventListener('click', () => {
+            if (currentFontSizeIndex < fontSizes.length - 1) {
+                applyFontSize(currentFontSizeIndex + 1);
+            }
+        });
+        
+        document.getElementById('font-reset').addEventListener('click', () => {
+            applyFontSize(2); // Reset to 100%
         });
 
         const form = document.getElementById('braille-form');

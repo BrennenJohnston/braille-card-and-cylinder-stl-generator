@@ -6,8 +6,250 @@
     <title>Braille Business Card STL Generator</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
+        /* Theme CSS Variables */
+        :root {
+            /* Light mode colors */
+            --bg-gradient-start: #e0e7ff;
+            --bg-gradient-end: #f6f8fa;
+            --bg-primary: #fff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --bg-input: #f9fafb;
+            --text-primary: #2d3748;
+            --text-secondary: #4a5568;
+            --text-tertiary: #666;
+            --border-primary: #e2e8f0;
+            --border-secondary: #cbd5e1;
+            --border-focus: #3182ce;
+            --btn-primary-bg: linear-gradient(90deg, #3182ce 60%, #63b3ed 100%);
+            --btn-primary-hover-bg: linear-gradient(90deg, #2563eb 60%, #4299e1 100%);
+            --btn-success-bg: #10b981;
+            --btn-success-hover-bg: #059669;
+            --btn-secondary-bg: #9ca3af;
+            --btn-tertiary-bg: #6b7280;
+            --error-bg: #fee2e2;
+            --error-border: #fecaca;
+            --error-text: #b91c1c;
+            --info-bg: #dbeafe;
+            --info-border: #93c5fd;
+            --info-text: #1e40af;
+            --shadow-light: rgba(49,130,206,0.10);
+            --shadow-medium: rgba(49,130,206,0.18);
+            --stl-mesh-color: #6699cc;
+        }
+
+        /* Dark mode colors */
+        [data-theme="dark"] {
+            --bg-gradient-start: #1a202c;
+            --bg-gradient-end: #2d3748;
+            --bg-primary: #2d3748;
+            --bg-secondary: #374151;
+            --bg-tertiary: #4a5568;
+            --bg-input: #374151;
+            --text-primary: #f7fafc;
+            --text-secondary: #e2e8f0;
+            --text-tertiary: #cbd5e1;
+            --border-primary: #4a5568;
+            --border-secondary: #718096;
+            --border-focus: #63b3ed;
+            --btn-primary-bg: linear-gradient(90deg, #4299e1 60%, #63b3ed 100%);
+            --btn-primary-hover-bg: linear-gradient(90deg, #3182ce 60%, #4299e1 100%);
+            --btn-success-bg: #059669;
+            --btn-success-hover-bg: #047857;
+            --btn-secondary-bg: #718096;
+            --btn-tertiary-bg: #4a5568;
+            --error-bg: #742a2a;
+            --error-border: #9b2c2c;
+            --error-text: #fed7d7;
+            --info-bg: #2c5282;
+            --info-border: #3182ce;
+            --info-text: #bee3f8;
+            --shadow-light: rgba(0,0,0,0.3);
+            --shadow-medium: rgba(0,0,0,0.5);
+            --stl-mesh-color: #90cdf4;
+        }
+
+        /* High contrast mode */
+        [data-theme="high-contrast"] {
+            --bg-gradient-start: #000;
+            --bg-gradient-end: #000;
+            --bg-primary: #000;
+            --bg-secondary: #000;
+            --bg-tertiary: #000;
+            --bg-input: #000;
+            --text-primary: #fff;
+            --text-secondary: #fff;
+            --text-tertiary: #fff;
+            --border-primary: #fff;
+            --border-secondary: #fff;
+            --border-focus: #ffff00;
+            --btn-primary-bg: #fff;
+            --btn-primary-hover-bg: #ffff00;
+            --btn-success-bg: #00ff00;
+            --btn-success-hover-bg: #00ff00;
+            --btn-secondary-bg: #fff;
+            --btn-tertiary-bg: #fff;
+            --error-bg: #ff0000;
+            --error-border: #ff0000;
+            --error-text: #fff;
+            --info-bg: #0000ff;
+            --info-border: #0000ff;
+            --info-text: #fff;
+            --shadow-light: none;
+            --shadow-medium: none;
+            --stl-mesh-color: #ffff00;
+        }
+
+        /* High contrast mode button text colors */
+        [data-theme="high-contrast"] button {
+            color: #000 !important;
+        }
+
+        /* Apply transition to theme changes */
+        * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        /* Skip Link for Keyboard Navigation */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: var(--border-focus);
+            color: white;
+            padding: 8px 16px;
+            text-decoration: none;
+            border-radius: 0 0 8px 0;
+            z-index: 1000;
+            transition: top 0.3s;
+        }
+
+        .skip-link:focus {
+            top: 0;
+            outline: 3px solid var(--border-focus);
+            outline-offset: 2px;
+        }
+
+        /* Theme Toggle Button */
+        .theme-controls {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 999;
+        }
+
+        .theme-toggle-btn {
+            background: var(--bg-primary);
+            border: 2px solid var(--border-primary);
+            border-radius: 8px;
+            padding: 0.6em 1em;
+            font-size: 0.9em;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5em;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px var(--shadow-light);
+        }
+
+        .theme-toggle-btn:hover {
+            background: var(--bg-secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow-medium);
+        }
+
+        .theme-toggle-btn:focus {
+            outline: 3px solid var(--border-focus);
+            outline-offset: 2px;
+        }
+
+        .theme-icon {
+            font-size: 1.2em;
+        }
+
+        /* Enhanced focus indicators for all interactive elements */
+        button:focus,
+        input:focus,
+        select:focus,
+        textarea:focus,
+        a:focus {
+            outline: 3px solid var(--border-focus);
+            outline-offset: 2px;
+        }
+
+        /* Ensure proper keyboard navigation visibility */
+        *:focus-visible {
+            outline: 3px solid var(--border-focus) !important;
+            outline-offset: 2px !important;
+        }
+
+        /* Screen reader only content */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Fieldset styling */
+        fieldset {
+            border: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .line-input-fieldset {
+            margin: 0;
+        }
+
+        /* Braille preview styles */
+        .braille-preview {
+            margin-top: 20px;
+            padding: 15px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 8px;
+        }
+
+        .preview-heading {
+            margin-top: 0;
+            color: var(--text-primary);
+        }
+
+        .preview-line-success {
+            margin: 10px 0;
+            padding: 10px;
+            background: var(--bg-primary);
+            border-radius: 5px;
+            border: 1px solid var(--border-primary);
+        }
+
+        .preview-line-error {
+            margin: 10px 0;
+            padding: 10px;
+            background: var(--error-bg);
+            border-radius: 5px;
+            border: 1px solid var(--error-border);
+            color: var(--error-text);
+        }
+
+        .expert-info {
+            font-size: 0.9em;
+            color: var(--text-tertiary);
+            font-style: italic;
+            margin-bottom: 1em;
+            text-align: center;
+        }
+
         body {
-            background: linear-gradient(120deg, #e0e7ff 0%, #f6f8fa 100%);
+            background: linear-gradient(120deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
             min-height: 100vh;
             font-family: 'Inter', system-ui, Arial, sans-serif;
             margin: 0;
@@ -15,14 +257,15 @@
             align-items: flex-start;
             justify-content: flex-start;
             padding: 2em;
+            color: var(--text-primary);
         }
         .main-layout {
             display: flex;
             flex-direction: row;
             gap: 2.5em;
-            background: #fff;
+            background: var(--bg-primary);
             border-radius: 22px;
-            box-shadow: 0 8px 32px rgba(49,130,206,0.10);
+            box-shadow: 0 8px 32px var(--shadow-light);
             padding: 2.5em 2.5em 2.5em 2.5em;
             max-width: 1100px;
             width: 100%;
@@ -41,9 +284,9 @@
             max-width: 700px;
             height: 420px;
             border-radius: 18px;
-            border: 2px solid #e2e8f0;
-            background: #f1f5f9;
-            box-shadow: 0 4px 24px rgba(49,130,206,0.10);
+            border: 2px solid var(--border-primary);
+            background: var(--bg-tertiary);
+            box-shadow: 0 4px 24px var(--shadow-light);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -51,7 +294,7 @@
             transition: box-shadow 0.2s;
         }
         #viewer:focus-within, #viewer:active {
-            box-shadow: 0 8px 32px rgba(49,130,206,0.18);
+            box-shadow: 0 8px 32px var(--shadow-medium);
         }
         .form-section {
             flex: 1 1 0%;
@@ -65,31 +308,31 @@
             font-size: 2.2em;
             font-weight: 700;
             margin-bottom: 0.7em;
-            color: #2d3748;
+            color: var(--text-primary);
             text-align: left;
         }
         .info-panel {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
             border-radius: 8px;
             padding: 1em;
             margin-bottom: 1.5em;
             font-size: 0.9em;
-            color: #4a5568;
+            color: var(--text-secondary);
         }
         .info-panel p {
             margin: 0.3em 0;
         }
         .grade-selection {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
             border-radius: 8px;
             padding: 1em;
             margin-bottom: 1.5em;
         }
         .grade-label {
             font-weight: 600;
-            color: #2d3748;
+            color: var(--text-primary);
             display: block;
             margin-bottom: 0.8em;
             font-size: 0.9em;
@@ -105,7 +348,7 @@
             gap: 0.6em;
             cursor: pointer;
             font-size: 0.9em;
-            color: #4a5568;
+            color: var(--text-secondary);
         }
         .radio-option input[type="radio"] {
             margin: 0;
@@ -131,47 +374,49 @@
         }
         .line-label {
             font-weight: 600;
-            color: #2d3748;
+            color: var(--text-primary);
             min-width: 60px;
             font-size: 0.9em;
         }
         input[type="text"] {
             flex: 1;
-            border: 1.5px solid #cbd5e1;
+            border: 1.5px solid var(--border-secondary);
             border-radius: 8px;
             padding: 0.8em;
             font-size: 1em;
             font-family: inherit;
-            background: #f9fafb;
+            background: var(--bg-input);
+            color: var(--text-primary);
             transition: border 0.2s;
         }
         input[type="text"]:focus {
-            border: 1.5px solid #3182ce;
+            border: 1.5px solid var(--border-focus);
             outline: none;
-            background: #fff;
+            background: var(--bg-primary);
         }
         
         /* Ensure number inputs are properly styled and functional */
         input[type="number"] {
             flex: 1;
-            border: 1.5px solid #cbd5e1;
+            border: 1.5px solid var(--border-secondary);
             border-radius: 8px;
             padding: 0.8em;
             font-size: 1em;
             font-family: inherit;
-            background: #f9fafb;
+            background: var(--bg-input);
+            color: var(--text-primary);
             transition: border 0.2s;
             min-width: 80px;
         }
         
         input[type="number"]:focus {
-            border: 1.5px solid #3182ce;
+            border: 1.5px solid var(--border-focus);
             outline: none;
-            background: #fff;
+            background: var(--bg-primary);
         }
         
         input[type="number"]:hover {
-            border-color: #a0aec0;
+            border-color: var(--border-primary);
         }
         .button-group {
             display: flex;
@@ -189,16 +434,16 @@
             transition: background 0.2s, transform 0.1s;
         }
         button[type="submit"] {
-            background: linear-gradient(90deg, #3182ce 60%, #63b3ed 100%);
+            background: var(--btn-primary-bg);
             color: #fff;
-            box-shadow: 0 2px 8px rgba(49,130,206,0.08);
+            box-shadow: 0 2px 8px var(--shadow-light);
         }
         button[type="submit"]:hover {
-            background: linear-gradient(90deg, #2563eb 60%, #4299e1 100%);
+            background: var(--btn-primary-hover-bg);
             transform: translateY(-2px) scale(1.03);
         }
         #download-btn {
-            background: #9ca3af;
+            background: var(--btn-secondary-bg);
             color: #fff;
             cursor: not-allowed;
             opacity: 0.7;
@@ -206,25 +451,25 @@
         }
         
         #download-btn.ready {
-            background: #10b981;
+            background: var(--btn-success-bg);
             cursor: pointer;
             opacity: 1;
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+            box-shadow: 0 2px 8px var(--shadow-light);
         }
         
         #download-btn.ready:hover {
-            background: #059669;
+            background: var(--btn-success-hover-bg);
             transform: translateY(-2px) scale(1.03);
         }
         
         #generate-stl-btn {
-            background: linear-gradient(90deg, #3182ce 60%, #63b3ed 100%);
+            background: var(--btn-primary-bg);
             color: #fff;
-            box-shadow: 0 2px 8px rgba(49,130,206,0.08);
+            box-shadow: 0 2px 8px var(--shadow-light);
         }
         
         #generate-stl-btn:hover {
-            background: linear-gradient(90deg, #2563eb 60%, #4299e1 100%);
+            background: var(--btn-primary-hover-bg);
             transform: translateY(-2px) scale(1.03);
         }
         
@@ -235,17 +480,18 @@
             margin-bottom: 1em;
         }
         #download-counter-plate-btn {
-            background: #6b7280;
+            background: var(--btn-tertiary-bg);
             color: #fff;
         }
         #download-counter-plate-btn:hover {
-            background: #4b5563;
+            background: var(--btn-tertiary-bg);
+            opacity: 0.9;
             transform: translateY(-2px) scale(1.03);
         }
         #error-message {
-            color: #b91c1c;
-            background: #fee2e2;
-            border: 1px solid #fecaca;
+            color: var(--error-text);
+            background: var(--error-bg);
+            border: 1px solid var(--error-border);
             border-radius: 6px;
             padding: 0.7em 1em;
             margin-top: 0.5em;
@@ -256,9 +502,9 @@
         }
         
         #error-message.info {
-            color: #1e40af;
-            background: #dbeafe;
-            border: 1px solid #93c5fd;
+            color: var(--info-text);
+            background: var(--info-bg);
+            border: 1px solid var(--info-border);
         }
         
         .expert-mode-toggle {
@@ -267,13 +513,13 @@
         }
         
         .expert-toggle-btn {
-            background: #e2e8f0;
-            border: 1px solid #cbd5e1;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-secondary);
             border-radius: 8px;
             padding: 0.6em 1em;
             font-size: 0.9em;
             font-weight: 600;
-            color: #4a5568;
+            color: var(--text-secondary);
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -283,14 +529,14 @@
         }
         
         .expert-toggle-btn:hover {
-            background: #d1d5db;
-            border-color: #a0aec0;
+            background: var(--bg-tertiary);
+            border-color: var(--border-primary);
         }
         
         .expert-toggle-btn.active {
-            background: #3182ce;
+            background: var(--border-focus);
             color: #fff;
-            border-color: #3182ce;
+            border-color: var(--border-focus);
         }
         
         .expert-toggle-btn.active #expert-toggle-text {
@@ -304,7 +550,7 @@
         .expert-settings {
             margin-top: 1.5em;
             padding-top: 1.5em;
-            border-top: 1px solid #e2e8f0;
+            border-top: 1px solid var(--border-primary);
         }
         
         /* Ensure Expert Mode inputs are properly spaced and visible */
@@ -321,46 +567,16 @@
             display: block;
             margin-bottom: 0.3em;
             font-weight: 500;
-            color: #374151;
+            color: var(--text-primary);
         }
         .expert-mode-toggle {
             margin-top: 1em;
             text-align: center;
         }
-        .expert-toggle-btn {
-            background: #e2e8f0;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 0.6em 1em;
-            font-size: 0.9em;
-            font-weight: 600;
-            color: #4a5568;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5em;
-            transition: background 0.2s, border-color 0.2s;
-        }
-        .expert-toggle-btn:hover {
-            background: #d1d5db;
-            border-color: #a0aec0;
-        }
-        .expert-toggle-btn.active {
-            background: #3182ce;
-            color: #fff;
-            border-color: #3182ce;
-        }
-        .expert-toggle-btn.active #expert-toggle-text {
-            color: #fff;
-        }
-        .expert-toggle-btn.active #expert-toggle-icon {
-            transform: rotate(180deg);
-        }
         .expert-settings {
             margin-top: 1.5em;
             padding-top: 1.5em;
-            border-top: 1px solid #e2e8f0;
+            border-top: 1px solid var(--border-primary);
         }
         
         .info-dropdown {
@@ -368,13 +584,13 @@
         }
         
         .info-toggle-btn {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
             border-radius: 8px;
             padding: 0.8em 1em;
             font-size: 0.95em;
             font-weight: 600;
-            color: #4a5568;
+            color: var(--text-secondary);
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -384,14 +600,14 @@
         }
         
         .info-toggle-btn:hover {
-            background: #e2e8f0;
-            border-color: #cbd5e1;
+            background: var(--bg-tertiary);
+            border-color: var(--border-secondary);
         }
         
         .info-toggle-btn.active {
-            background: #3182ce;
+            background: var(--border-focus);
             color: #fff;
-            border-color: #3182ce;
+            border-color: var(--border-focus);
         }
         
         .info-toggle-btn.active #info-toggle-text {
@@ -403,13 +619,13 @@
         }
         
         .info-content {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
             border-radius: 8px;
             padding: 1em;
             margin-top: 0.5em;
             font-size: 0.9em;
-            color: #4a5568;
+            color: var(--text-secondary);
         }
         
         .info-content p {
@@ -458,16 +674,27 @@
     </style>
 </head>
 <body>
-    <div class="main-layout">
-        <div class="viewer-section">
-            <div id="viewer"></div>
+    <!-- Skip Navigation Link for Keyboard Users -->
+    <a href="#main-content" class="skip-link" tabindex="0">Skip to main content</a>
+    
+    <!-- Theme Toggle Button -->
+    <div class="theme-controls" role="group" aria-label="Theme selection">
+        <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme" title="Toggle between light, dark, and high contrast themes">
+            <span class="theme-icon" aria-hidden="true">🌞</span>
+            <span class="theme-text">Light</span>
+        </button>
+    </div>
+    
+    <div class="main-layout" role="main" id="main-content">
+        <div class="viewer-section" role="region" aria-label="3D STL Preview">
+            <div id="viewer" role="img" aria-label="3D preview of braille business card STL file" tabindex="0"></div>
             <div class="button-row">
-                <button type="button" id="generate-stl-btn">Generate STL</button>
-                <button id="download-btn">Download STL</button>
+                <button type="button" id="generate-stl-btn" aria-label="Generate STL file from entered text">Generate STL</button>
+                <button id="download-btn" aria-label="Download generated STL file" aria-disabled="true">Download STL</button>
             </div>
         </div>
-        <div class="form-section">
-            <h1>Braille Business Card STL Generator</h1>
+        <div class="form-section" role="region" aria-label="Braille Card Configuration">
+            <h1 id="main-heading">Braille Business Card STL Generator</h1>
             
             <div class="info-panel">
                 <p><strong>Program Description:</strong> Creates two matching STLs for a standard 3.5″ × 2″ card: <strong>Embossing Plate</strong> (cone dots) and <strong>Universal Counter Plate</strong> (hemispherical recessed dots).</p>
@@ -495,65 +722,77 @@
                 </div>
             </div>
             
-            <form id="braille-form">
+            <form id="braille-form" aria-labelledby="main-heading">
                 <div class="line-input-group">
-                    <label class="grade-label">Enter Text for Braille Translation</label>
-                    <div class="line-input">
-                        <span class="line-label">Line 1</span>
-                        <input type="text" id="line1" name="line1" placeholder="Enter English text here..." maxlength="50">
-                    </div>
-                    <div class="line-input">
-                        <span class="line-label">Line 2</span>
-                        <input type="text" id="line2" name="line2" placeholder="Enter English text here..." maxlength="50">
-                    </div>
-                    <div class="line-input">
-                        <span class="line-label">Line 3</span>
-                        <input type="text" id="line3" name="line3" placeholder="Enter English text here..." maxlength="50">
-                    </div>
-                    <div class="line-input">
-                        <span class="line-label">Line 4</span>
-                        <input type="text" id="line4" name="line4" placeholder="Enter English text here..." maxlength="50">
-                    </div>
+                    <fieldset class="line-input-fieldset">
+                        <legend class="grade-label">Enter Text for Braille Translation</legend>
+                        <div class="line-input">
+                            <label for="line1" class="line-label">Line 1</label>
+                            <input type="text" id="line1" name="line1" placeholder="Enter English text here..." maxlength="50" aria-describedby="line1-help">
+                            <span id="line1-help" class="sr-only">Maximum 50 characters for line 1</span>
+                        </div>
+                        <div class="line-input">
+                            <label for="line2" class="line-label">Line 2</label>
+                            <input type="text" id="line2" name="line2" placeholder="Enter English text here..." maxlength="50" aria-describedby="line2-help">
+                            <span id="line2-help" class="sr-only">Maximum 50 characters for line 2</span>
+                        </div>
+                        <div class="line-input">
+                            <label for="line3" class="line-label">Line 3</label>
+                            <input type="text" id="line3" name="line3" placeholder="Enter English text here..." maxlength="50" aria-describedby="line3-help">
+                            <span id="line3-help" class="sr-only">Maximum 50 characters for line 3</span>
+                        </div>
+                        <div class="line-input">
+                            <label for="line4" class="line-label">Line 4</label>
+                            <input type="text" id="line4" name="line4" placeholder="Enter English text here..." maxlength="50" aria-describedby="line4-help">
+                            <span id="line4-help" class="sr-only">Maximum 50 characters for line 4</span>
+                        </div>
+                    </fieldset>
                 </div>
 
                 <div class="grade-selection">
-                    <label class="grade-label">Select Translation:</label>
-                    <div class="radio-group">
+                    <fieldset>
+                        <legend class="grade-label">Select Translation:</legend>
+                        <div class="radio-group" role="radiogroup" aria-required="true">
                         <label class="radio-option">
                             <input type="radio" name="grade" value="g2" checked>
                             <span class="radio-text">English, U.S., contracted (Grade 2)</span>
-                            <div style="margin-top: 4px; font-size: 0.85em; color: #666; font-style: italic;">(UEB): Uses modern contractions, so check limits after translation</div>
+                            <div style="margin-top: 4px; font-size: 0.85em; color: var(--text-tertiary); font-style: italic;">(UEB): Uses modern contractions, so check limits after translation</div>
                         </label>
                         <label class="radio-option">
                             <input type="radio" name="grade" value="g1">
                             <span class="radio-text">English, U.S., uncontracted (Grade 1)</span>
                         </label>
-                    </div>
-                    <div class="grade-info" style="margin-top: 8px; font-size: 0.9em; color: #666; font-style: italic;">
-                        <span id="grade1-info" style="display: none;">Uncontracted should be used in special circumstances only. Contracted is the default option.</span>
-                        <span id="grade2-info" style="display: none;">Grade 2 (contracted) is the default and recommended option for most use cases.</span>
-                    </div>
+                        </div>
+                        <div class="grade-info" style="margin-top: 8px; font-size: 0.9em; color: var(--text-tertiary); font-style: italic;" role="note">
+                            <span id="grade1-info" style="display: none;" aria-live="polite">Uncontracted should be used in special circumstances only. Contracted is the default option.</span>
+                            <span id="grade2-info" style="display: none;" aria-live="polite">Grade 2 (contracted) is the default and recommended option for most use cases.</span>
+                        </div>
+                    </fieldset>
                 </div>
 
                 <div class="grade-selection">
-                    <label class="grade-label">Select Plate to Generate</label>
-                    <div class="radio-group">
-                        <label class="radio-option">
-                            <input type="radio" name="plate_type" value="positive" checked>
-                            <span class="radio-text">Embossing Plate</span>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="plate_type" value="negative">
-                            <span class="radio-text">Universal Counter Plate</span>
-                        </label>
-                        <div id="negative-plate-offset-container" style="display: none; margin-top: 10px;">
-                            <label for="counter_plate_dot_size_offset">Counter Dot Diameter Offset (mm):</label>
-                            <input type="number" id="counter_plate_dot_size_offset" name="counter_plate_dot_size_offset" value="0.0" step="0.1" title="Adjusts the counter plate braille dot base diameter relative to the emboss plate diameter">
-                            <div style="font-size: 0.85em; color: #666; margin-top: 2px; font-style: italic;">
-                                Adds or subtracts from the Universal Counter Plate's recessed dot diameter. The dot size mirrors the Embossing Plate's Dot Base Diameter by default.
+                    <fieldset>
+                        <legend class="grade-label">Select Plate to Generate</legend>
+                        <div class="radio-group" role="radiogroup" aria-required="true">
+                            <label class="radio-option">
+                                <input type="radio" name="plate_type" value="positive" checked aria-describedby="emboss-plate-desc">
+                                <span class="radio-text">Embossing Plate</span>
+                            </label>
+                            <span id="emboss-plate-desc" class="sr-only">Creates raised braille dots for embossing cards</span>
+                            <label class="radio-option">
+                                <input type="radio" name="plate_type" value="negative" aria-describedby="counter-plate-desc">
+                                <span class="radio-text">Universal Counter Plate</span>
+                            </label>
+                            <span id="counter-plate-desc" class="sr-only">Creates recessed dots to support embossing process</span>
+                            <div id="negative-plate-offset-container" style="display: none; margin-top: 10px;" role="group" aria-label="Counter plate settings">
+                                <label for="counter_plate_dot_size_offset">Counter Dot Diameter Offset (mm):</label>
+                                <input type="number" id="counter_plate_dot_size_offset" name="counter_plate_dot_size_offset" value="0.0" step="0.1" aria-describedby="offset-help" title="Adjusts the counter plate braille dot base diameter relative to the emboss plate diameter">
+                                <div id="offset-help" style="font-size: 0.85em; color: var(--text-tertiary); margin-top: 2px; font-style: italic;">
+                                    Adds or subtracts from the Universal Counter Plate's recessed dot diameter. The dot size mirrors the Embossing Plate's Dot Base Diameter by default.
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </fieldset>
                 </div>
 
 
@@ -566,7 +805,7 @@
                 </div>
 
                 <div id="expert-settings" class="expert-settings" style="display: none;">
-                    <div style="font-size: 0.9em; color: #666; font-style: italic; margin-bottom: 1em; text-align: center;">
+                    <div class="expert-info" role="note" aria-label="Expert mode information">
                         Any changes made here will affect both plates.
                     </div>
                     <div class="grade-selection">
@@ -619,13 +858,13 @@
                 </div>
             </form>
             
-            <div id="braille-preview" style="display: none; margin-top: 20px; padding: 15px; background: #f0f8ff; border: 1px solid #b3d9ff; border-radius: 8px;">
-                <h3 style="margin-top: 0; color: #2d3748;">Braille Translation Preview:</h3>
+            <div id="braille-preview" class="braille-preview" style="display: none;" role="region" aria-label="Braille translation preview">
+                <h3 class="preview-heading">Braille Translation Preview:</h3>
                 <div id="preview-content"></div>
             </div>
             
-            <div id="error-message">
-                <span style="font-weight:bold;">⚠</span> 
+            <div id="error-message" role="alert" aria-live="assertive" aria-atomic="true">
+                <span style="font-weight:bold;" aria-hidden="true">⚠</span> 
                 <span id="error-text"></span>
             </div>
         </div>
@@ -641,6 +880,57 @@
         import * as THREE from '/static/three.module.js';
         import { STLLoader } from '/static/STLLoader.js';
         import { OrbitControls } from '/static/OrbitControls.js';
+
+        // Theme switching functionality
+        const themes = ['light', 'dark', 'high-contrast'];
+        const themeIcons = {
+            'light': '🌞',
+            'dark': '🌙',
+            'high-contrast': '⚡'
+        };
+        const themeNames = {
+            'light': 'Light',
+            'dark': 'Dark',
+            'high-contrast': 'High Contrast'
+        };
+        
+        let currentThemeIndex = 0;
+        const savedTheme = localStorage.getItem('preferred-theme');
+        if (savedTheme && themes.includes(savedTheme)) {
+            currentThemeIndex = themes.indexOf(savedTheme);
+            applyTheme(savedTheme);
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = themeToggle.querySelector('.theme-icon');
+            const themeText = themeToggle.querySelector('.theme-text');
+            
+            themeIcon.textContent = themeIcons[theme];
+            themeText.textContent = themeNames[theme];
+            
+            // Update aria-label for current state
+            themeToggle.setAttribute('aria-label', `Current theme: ${themeNames[theme]}. Click to switch theme`);
+            
+            // Save preference
+            localStorage.setItem('preferred-theme', theme);
+            
+            // Announce theme change to screen readers
+            const announcement = document.createElement('div');
+            announcement.className = 'sr-only';
+            announcement.setAttribute('role', 'status');
+            announcement.setAttribute('aria-live', 'polite');
+            announcement.textContent = `Theme changed to ${themeNames[theme]}`;
+            document.body.appendChild(announcement);
+            setTimeout(() => announcement.remove(), 1000);
+        }
+
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+            currentThemeIndex = (currentThemeIndex + 1) % themes.length;
+            applyTheme(themes[currentThemeIndex]);
+        });
 
         const form = document.getElementById('braille-form');
         const viewer = document.getElementById('viewer');
@@ -768,12 +1058,12 @@
                     try {
                         // Use real liblouis translation
                         const braille = await translateWithLiblouis(lines[i].trim(), grade);
-                        previewHTML += `<div style="margin: 10px 0; padding: 10px; background: white; border-radius: 5px; border: 1px solid #e2e8f0;">
+                        previewHTML += `<div class="preview-line-success">
                             <strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → "${braille}"
                         </div>`;
                     } catch (error) {
                         console.error('Translation failed for line', i + 1, ':', error);
-                        previewHTML += `<div style="margin: 10px 0; padding: 10px; background: #fee2e2; border-radius: 5px; border: 1px solid #fecaca;">
+                        previewHTML += `<div class="preview-line-error">
                             <strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → Error: ${error.message}
                         </div>`;
                     }
@@ -896,6 +1186,7 @@
             
             // Reset download button state
             downloadBtn.classList.remove('ready');
+            downloadBtn.setAttribute('aria-disabled', 'true');
             
             // Debug: Log the settings being sent
             console.log('Expert Mode Settings:', settings);
@@ -922,6 +1213,7 @@
                 errorDiv.className = 'error-message'; // Reset to error style
                 // Reset download button state on error
                 downloadBtn.classList.remove('ready');
+                downloadBtn.setAttribute('aria-disabled', 'true');
                 return;
             }
             
@@ -931,6 +1223,7 @@
                 lastSTLUrl = URL.createObjectURL(blob);
                 loadSTL(lastSTLUrl);
                 downloadBtn.classList.add('ready');
+                downloadBtn.setAttribute('aria-disabled', 'false');
                 downloadBtn.onclick = () => {
                     const a = document.createElement('a');
                     a.href = lastSTLUrl;
@@ -945,6 +1238,7 @@
                 errorDiv.className = 'error-message'; // Reset to error style
                 // Reset download button state on error
                 downloadBtn.classList.remove('ready');
+                downloadBtn.setAttribute('aria-disabled', 'true');
             }
         };
 
@@ -956,8 +1250,11 @@
             loader.load(url, function (geometry) {
                 geometry.center();
                 if (mesh) scene.remove(mesh);
+                // Get theme-appropriate mesh color
+                const meshColorVar = getComputedStyle(document.documentElement).getPropertyValue('--stl-mesh-color').trim();
+                const meshColor = meshColorVar || '#6699cc';
                 const material = new THREE.MeshPhongMaterial({ 
-                    color: 0x6699cc, 
+                    color: meshColor, 
                     specular: 0x111111, 
                     shininess: 200 
                 });

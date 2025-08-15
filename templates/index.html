@@ -3,6 +3,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Braille Business Card STL Generator</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
@@ -287,6 +291,20 @@
             gap: 0.5rem;
             align-items: flex-end;
         }
+        
+        /* Mobile accessibility controls */
+        @media (max-width: 768px) {
+            .accessibility-controls {
+                top: 0.5rem;
+                right: 0.5rem;
+                gap: 0.4rem;
+                position: fixed;
+                background: var(--bg-primary);
+                padding: 0.5rem;
+                border-radius: 12px;
+                box-shadow: 0 2px 8px var(--shadow-medium);
+            }
+        }
 
         /* Font Size Controls */
         .font-size-controls {
@@ -401,28 +419,25 @@
             outline-offset: 2px !important;
         }
 
-        /* Responsive font size controls for mobile */
+        /* Mobile-optimized scroll containers */
         @media (max-width: 768px) {
-            .accessibility-controls {
-                top: 0.5rem;
-                right: 0.5rem;
+            .main-layout {
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                max-height: calc(100vh - 1em);
             }
             
-            .font-size-controls {
-                padding: 0.3em 0.4em;
-                gap: 0.2rem;
-            }
-            
-            .font-size-btn {
-                padding: 0.3em 0.4em;
-                min-width: 2em;
-                font-size: 0.8em;
-            }
-            
-            .font-size-display {
-                padding: 0.3em 0.4em;
-                min-width: 3em;
-                font-size: 0.8em;
+            /* Sticky generate button on mobile */
+            .button-row {
+                position: sticky;
+                bottom: 0;
+                background: var(--bg-primary);
+                padding: 1em 0;
+                margin: 0 -1em;
+                padding-left: 1em;
+                padding-right: 1em;
+                box-shadow: 0 -2px 8px var(--shadow-light);
+                z-index: 10;
             }
         }
 
@@ -536,6 +551,18 @@
             justify-content: flex-start;
             padding: 2em;
             color: var(--text-primary);
+            -webkit-text-size-adjust: 100%;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        
+        /* Mobile-specific body adjustments */
+        @media (max-width: 768px) {
+            body {
+                padding: 0.5em;
+                min-height: 100vh;
+                overflow-x: hidden;
+            }
         }
         .main-layout {
             display: flex;
@@ -548,6 +575,25 @@
             max-width: 1100px;
             width: 100%;
             margin: 0;
+        }
+        
+        /* Mobile layout optimization */
+        @media (max-width: 768px) {
+            .main-layout {
+                flex-direction: column;
+                padding: 1.5em;
+                border-radius: 16px;
+                gap: 1.5em;
+                box-shadow: 0 4px 16px var(--shadow-light);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .main-layout {
+                padding: 1em;
+                border-radius: 12px;
+                gap: 1em;
+            }
         }
         .viewer-section {
             flex: 2 1 0%;
@@ -570,6 +616,27 @@
             justify-content: center;
             margin: 0 0 1.5em 0;
             transition: box-shadow 0.2s;
+            touch-action: pan-x pan-y pinch-zoom;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        /* Mobile viewer optimizations */
+        @media (max-width: 768px) {
+            #viewer {
+                height: 280px;
+                min-width: unset;
+                width: 100%;
+                max-width: 100%;
+                border-radius: 12px;
+                margin: 0 0 1em 0;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            #viewer {
+                height: 240px;
+            }
         }
         #viewer:focus-within, #viewer:active {
             box-shadow: 0 8px 32px var(--shadow-medium);
@@ -588,6 +655,22 @@
             margin-bottom: 0.7em;
             color: var(--text-primary);
             text-align: left;
+        }
+        
+        /* Mobile heading optimization */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8em;
+                margin-bottom: 0.5em;
+                text-align: center;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.5em;
+                line-height: 1.3;
+            }
         }
         .info-panel {
             background: var(--bg-secondary);
@@ -608,6 +691,14 @@
             padding: 1em;
             margin-bottom: 1.5em;
         }
+        
+        /* Mobile grade selection optimization */
+        @media (max-width: 768px) {
+            .grade-selection {
+                padding: 1.2em;
+                margin-bottom: 1.2em;
+            }
+        }
         .grade-label {
             font-weight: 600;
             color: var(--text-primary);
@@ -627,6 +718,24 @@
             cursor: pointer;
             font-size: 0.9em;
             color: var(--text-secondary);
+            padding: 0.5em 0;
+            margin: -0.5em 0;
+        }
+        
+        /* Mobile radio option optimization */
+        @media (max-width: 768px) {
+            .radio-option {
+                padding: 0.8em 0;
+                font-size: 1em;
+                gap: 0.8em;
+            }
+            
+            .radio-option input[type="radio"] {
+                width: 20px;
+                height: 20px;
+                min-width: 20px;
+                min-height: 20px;
+            }
         }
         .radio-option input[type="radio"] {
             margin: 0;
@@ -650,6 +759,21 @@
             align-items: center;
             gap: 0.8em;
         }
+        
+        /* Mobile line input optimization */
+        @media (max-width: 768px) {
+            .line-input {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.5em;
+            }
+            
+            .line-label {
+                font-size: 0.95em;
+                font-weight: 600;
+                margin-bottom: 0.2em;
+            }
+        }
         .line-label {
             font-weight: 600;
             color: var(--text-primary);
@@ -666,6 +790,17 @@
             background: var(--bg-input);
             color: var(--text-primary);
             transition: border 0.2s;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        /* Mobile-friendly input styles */
+        @media (max-width: 768px) {
+            input[type="text"] {
+                padding: 1em;
+                font-size: 16px; /* Prevents zoom on iOS */
+                min-height: 48px;
+            }
         }
         input[type="text"]:focus {
             border: 1.5px solid var(--border-focus);
@@ -685,6 +820,27 @@
             color: var(--text-primary);
             transition: border 0.2s;
             min-width: 80px;
+            -webkit-appearance: none;
+            -moz-appearance: textfield;
+            appearance: none;
+        }
+        
+        /* Remove spinner buttons */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        /* Mobile-friendly number input styles */
+        @media (max-width: 768px) {
+            input[type="number"] {
+                padding: 1em;
+                font-size: 16px; /* Prevents zoom on iOS */
+                min-height: 48px;
+                width: 100%;
+                min-width: unset;
+            }
         }
         
         input[type="number"]:focus {
@@ -709,6 +865,23 @@
             color: var(--text-primary);
             transition: border 0.2s;
             cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8"><path fill="%23666" d="M0 0l6 6 6-6z"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 0.8em center;
+            background-size: 12px;
+            padding-right: 2.5em;
+        }
+        
+        /* Mobile select optimization */
+        @media (max-width: 768px) {
+            .language-select {
+                padding: 1em;
+                padding-right: 3em;
+                font-size: 16px;
+                min-height: 48px;
+            }
         }
         
         .language-select:focus {
@@ -760,6 +933,20 @@
             transition: background 0.2s, transform 0.1s;
             line-height: 1.2;
             white-space: nowrap;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        
+        /* Mobile-friendly button styles */
+        @media (max-width: 768px) {
+            button {
+                padding: 1em 1.2em;
+                font-size: 1.1em;
+                min-height: 48px;
+                min-width: 48px;
+            }
         }
         button[type="submit"] {
             background: var(--btn-primary-bg);
@@ -806,6 +993,32 @@
             gap: 1em;
             align-items: center;
             margin-bottom: 1em;
+            flex-wrap: wrap;
+        }
+        
+        /* Mobile button row optimization */
+        @media (max-width: 768px) {
+            .button-row {
+                gap: 0.8em;
+                justify-content: stretch;
+            }
+            
+            .button-row button {
+                flex: 1;
+                min-width: 140px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .button-row {
+                flex-direction: column;
+                gap: 0.8em;
+            }
+            
+            .button-row button {
+                width: 100%;
+                min-width: unset;
+            }
         }
 
         /* Specific button sizing for better text fit */
@@ -869,6 +1082,7 @@
             justify-content: center;
             gap: 0.5em;
             transition: background 0.2s, border-color 0.2s;
+            width: 100%;
         }
         
         .expert-toggle-btn:hover {
@@ -975,43 +1189,50 @@
             margin: 0.3em 0;
         }
         
-        @media (max-width: 1100px) {
-            body {
-                padding: 1em;
-            }
-            .main-layout {
-                flex-direction: column;
-                padding: 1.2em 0.5em 1.5em 0.5em;
-                max-width: 98vw;
-                gap: 1.5em;
-            }
+        /* Additional mobile optimizations */
+        @media (max-width: 768px) {
             .viewer-section, .form-section {
-                max-width: 98vw;
+                max-width: 100%;
                 min-width: unset;
             }
-            #viewer {
-                max-width: 98vw;
-                min-width: 0;
-                height: 320px;
+            
+            .info-panel, .info-content {
+                padding: 1.2em;
+                font-size: 0.95em;
+            }
+            
+            .info-toggle-btn, .expert-toggle-btn {
+                padding: 1em;
+                font-size: 1em;
+                min-height: 48px;
+            }
+            
+            #error-message {
+                padding: 1em;
+                font-size: 0.95em;
+                margin: 0.8em 0;
+            }
+            
+            .button-group {
+                gap: 0.8em;
+            }
+            
+            /* Ensure scroll behavior is smooth on mobile */
+            html {
+                scroll-behavior: smooth;
+                -webkit-overflow-scrolling: touch;
             }
         }
-        @media (max-width: 700px) {
-            body {
-                padding: 0.5em;
+        
+        /* Extra small devices */
+        @media (max-width: 480px) {
+            .expert-settings input[type="number"] {
+                width: 100%;
             }
-            .main-layout {
-                padding: 0.5em 0.1em 1em 0.1em;
-            }
-            #viewer {
-                height: 220px;
-            }
-            .line-input {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 0.3em;
-            }
-            .line-label {
-                min-width: unset;
+            
+            .font-size-controls {
+                transform: scale(0.9);
+                transform-origin: top right;
             }
         }
     </style>
@@ -1587,8 +1808,14 @@
         });
 
         function init3D() {
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            // Mobile-optimized renderer settings
+            const isMobile = window.innerWidth <= 768;
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: !isMobile, // Disable antialiasing on mobile for performance
+                powerPreference: isMobile ? "low-power" : "high-performance"
+            });
             renderer.setSize(viewer.clientWidth, viewer.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 2 : 3));
             viewer.innerHTML = '';
             viewer.appendChild(renderer.domElement);
             
@@ -1606,6 +1833,20 @@
             camera.lookAt(0, 0, 0);
             controls = new OrbitControls(camera, renderer.domElement);
             controls.target.set(0, 0, 0);
+            
+            // Mobile-optimized controls
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.rotateSpeed = isMobile ? 0.5 : 1.0;
+            controls.zoomSpeed = isMobile ? 0.8 : 1.2;
+            controls.panSpeed = isMobile ? 0.5 : 0.8;
+            
+            // Touch-specific settings
+            controls.touches = {
+                ONE: THREE.TOUCH.ROTATE,
+                TWO: THREE.TOUCH.DOLLY_PAN
+            };
+            
             controls.update();
             
             // Theme-appropriate lighting
@@ -1613,6 +1854,16 @@
             light.position.set(0, 0, 100).normalize();
             scene.add(light);
             scene.add(new THREE.AmbientLight(new THREE.Color(stlAmbientLight)));
+            
+            // Handle window resize for mobile orientation changes
+            window.addEventListener('resize', onWindowResize, false);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = viewer.clientWidth / viewer.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(viewer.clientWidth, viewer.clientHeight);
+            render();
         }
 
         function render() {
@@ -1826,6 +2077,34 @@
                         reject(new Error('Worker message timeout'));
                     }
                 }, 10000);
+            });
+        }
+        
+        // Mobile-specific utilities
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+        
+        // Prevent double-tap zoom on mobile
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (event) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, { passive: false });
+        
+        // Handle mobile keyboard visibility
+        if (isMobileDevice()) {
+            const inputs = document.querySelectorAll('input[type="text"], input[type="number"], select');
+            inputs.forEach(input => {
+                input.addEventListener('focus', () => {
+                    // Scroll input into view when keyboard appears
+                    setTimeout(() => {
+                        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 300);
+                });
             });
         }
         

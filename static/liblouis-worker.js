@@ -87,14 +87,22 @@ self.onmessage = async function(e) {
                     throw new Error('Liblouis not initialized');
                 }
                 
-                const { text, grade } = data;
-                const tableName = grade === 'g2' ? 'en-ueb-g2.ctb' : 'en-ueb-g1.ctb';
+                const { text, grade, tableName } = data;
                 
-                console.log('Worker: Translating text:', text, 'with table:', tableName);
+                // Use the provided table name or fall back to default English UEB tables
+                let selectedTable;
+                if (tableName) {
+                    selectedTable = tableName;
+                } else {
+                    // Default to English UEB if no table specified
+                    selectedTable = grade === 'g2' ? 'en-ueb-g2.ctb' : 'en-ueb-g1.ctb';
+                }
+                
+                console.log('Worker: Translating text:', text, 'with table:', selectedTable);
                 
                 // Use the correct table format to get Unicode braille output
                 // The 'unicode.dis' table must come first to ensure Unicode output
-                const tableFormat = 'unicode.dis,' + tableName;
+                const tableFormat = 'unicode.dis,' + selectedTable;
                 
                 console.log('Worker: Using table format:', tableFormat);
                 

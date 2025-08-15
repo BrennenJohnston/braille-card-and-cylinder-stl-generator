@@ -696,6 +696,54 @@
         input[type="number"]:hover {
             border-color: var(--border-primary);
         }
+        
+        /* Language select dropdown styling */
+        .language-select {
+            width: 100%;
+            border: 1.5px solid var(--border-secondary);
+            border-radius: 8px;
+            padding: 0.8em;
+            font-size: 1em;
+            font-family: inherit;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            transition: border 0.2s;
+            cursor: pointer;
+        }
+        
+        .language-select:focus {
+            border: 1.5px solid var(--border-focus);
+            outline: none;
+            background: var(--bg-primary);
+        }
+        
+        .language-select:hover {
+            border-color: var(--border-primary);
+        }
+        
+        /* High contrast mode select styling */
+        [data-theme="high-contrast"] .language-select {
+            background: #1a1a1a !important;
+            color: #ffffff !important;
+            border: 2px solid #ffff00 !important;
+        }
+        
+        [data-theme="high-contrast"] .language-select:focus {
+            background: #2a2a2a !important;
+            color: #ffffff !important;
+            border: 2px solid #ff00ff !important;
+        }
+        
+        [data-theme="high-contrast"] .language-select option {
+            background: #1a1a1a !important;
+            color: #ffffff !important;
+        }
+        
+        [data-theme="high-contrast"] .language-select optgroup {
+            background: #2a2a2a !important;
+            color: #ffff00 !important;
+            font-weight: bold;
+        }
         .button-group {
             display: flex;
             flex-direction: column;
@@ -1066,16 +1114,85 @@
 
                 <div class="grade-selection">
                     <fieldset>
-                        <legend class="grade-label">Select Translation:</legend>
+                        <legend class="grade-label">Select Language:</legend>
+                        <div style="margin-bottom: 0.8em;">
+                            <select id="language-table" name="language_table" class="language-select" aria-describedby="language-help">
+                                <!-- English options -->
+                                <optgroup label="English">
+                                    <option value="en-ueb-g2.ctb,en-ueb-g1.ctb" selected>English (Unified) - U.S. Standard</option>
+                                    <option value="en-us-g2.ctb,en-us-g1.ctb">English (U.S.) - EBAE</option>
+                                    <option value="en-GB-g2.ctb,en-gb-g1.utb">English (U.K.)</option>
+                                    <option value="en_CA.tbl,en_CA.tbl">English (Canada)</option>
+                                </optgroup>
+                                <!-- Major European languages -->
+                                <optgroup label="European Languages">
+                                    <option value="Fr-Fr-g2.ctb,fr-fr-g1.utb">French (France)</option>
+                                    <option value="de-de-g2.ctb,de-de-g1.ctb">German (Germany)</option>
+                                    <option value="Es-Es-g1.utb,Es-Es-g1.utb">Spanish (Spain)</option>
+                                    <option value="it-it-comp8.utb,it-it-comp6.utb">Italian</option>
+                                    <option value="pt-pt-g2.ctb,pt-pt-g1.utb">Portuguese (Portugal)</option>
+                                    <option value="nl-NL-g0.utb,nl-NL-g0.utb">Dutch (Netherlands)</option>
+                                    <option value="da-dk-g26.ctb,da-dk-g16.ctb">Danish</option>
+                                    <option value="sv-1996.ctb,sv-1996.ctb">Swedish</option>
+                                    <option value="no-no-g2.ctb,no-no-g1.ctb">Norwegian</option>
+                                    <option value="fi-fi.ctb,fi-fi.ctb">Finnish</option>
+                                </optgroup>
+                                <!-- Other European languages -->
+                                <optgroup label="Other European">
+                                    <option value="pl-pl-comp8.ctb,Pl-Pl-g1.utb">Polish</option>
+                                    <option value="cs-g1.ctb,cs-g1.ctb">Czech</option>
+                                    <option value="sk-sk-g1.utb,sk-sk-g1.utb">Slovak</option>
+                                    <option value="hu-hu-g2.ctb,hu-hu-g1.ctb">Hungarian</option>
+                                    <option value="ro.ctb,ro.ctb">Romanian</option>
+                                    <option value="bg.ctb,bg.ctb">Bulgarian</option>
+                                    <option value="hr.ctb,hr.ctb">Croatian</option>
+                                    <option value="sl-si-comp8.ctb,sl-si-g1.utb">Slovenian</option>
+                                    <option value="sr-g1.ctb,sr-g1.ctb">Serbian</option>
+                                    <option value="el.ctb,el.ctb">Greek</option>
+                                    <option value="tr.ctb,tr-g1.ctb">Turkish</option>
+                                    <option value="ru-litbrl.ctb,ru-ru-g1.utb">Russian</option>
+                                </optgroup>
+                                <!-- Asian languages -->
+                                <optgroup label="Asian Languages">
+                                    <option value="zh-tw.ctb,zh-tw.ctb">Chinese (Traditional)</option>
+                                    <option value="zh-chn.ctb,zh-chn.ctb">Chinese (Simplified)</option>
+                                    <option value="ko-g2.ctb,ko-g1.ctb">Korean</option>
+                                    <option value="vi.ctb,vi-g1.ctb">Vietnamese</option>
+                                    <option value="hi-in-g1.utb,hi-in-g1.utb">Hindi</option>
+                                    <option value="ar-ar-g1.utb,ar-ar-g1.utb">Arabic</option>
+                                    <option value="he.ctb,he.ctb">Hebrew</option>
+                                    <option value="fa-ir-g1.utb,fa-ir-g1.utb">Persian/Farsi</option>
+                                </optgroup>
+                                <!-- Other languages -->
+                                <optgroup label="Other Languages">
+                                    <option value="afr-za-g1.ctb,afr-za-g1.ctb">Afrikaans</option>
+                                    <option value="cy-cy-g2.ctb,cy-cy-g1.utb">Welsh</option>
+                                    <option value="ga-g2.ctb,ga-g1.utb">Irish</option>
+                                    <option value="gd.ctb,gd.ctb">Scottish Gaelic</option>
+                                    <option value="is.ctb,is.ctb">Icelandic</option>
+                                    <option value="mt.ctb,mt.ctb">Maltese</option>
+                                    <option value="eo-g1.ctb,eo-g1.ctb">Esperanto</option>
+                                </optgroup>
+                            </select>
+                            <div id="language-help" class="grade-note" style="margin-top: 6px; font-size: 0.85em;">
+                                English (Unified) is the default standard for all U.S. English braille translations. Only select another language for special use cases.
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+
+                <div class="grade-selection">
+                    <fieldset>
+                        <legend class="grade-label">Select Translation Grade:</legend>
                         <div class="radio-group" role="radiogroup" aria-required="true">
                         <label class="radio-option">
                             <input type="radio" name="grade" value="g2" checked>
-                            <span class="radio-text">English, U.S., contracted (Grade 2)</span>
-                            <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">(UEB): Uses modern contractions, so check limits after translation</div>
+                            <span class="radio-text">Contracted (Grade 2)</span>
+                            <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">Uses contractions, so check character limits after translation</div>
                         </label>
                         <label class="radio-option">
                             <input type="radio" name="grade" value="g1">
-                            <span class="radio-text">English, U.S., uncontracted (Grade 1)</span>
+                            <span class="radio-text">Uncontracted (Grade 1)</span>
                         </label>
                         </div>
                         <div class="grade-info" style="margin-top: 8px; font-size: 0.9em;" role="note">
@@ -1453,6 +1570,9 @@
             ];
             
             const grade = document.querySelector('input[name="grade"]:checked').value;
+            const languageSelect = document.getElementById('language-table');
+            const selectedTables = languageSelect.value.split(',');
+            const tableName = grade === 'g2' ? selectedTables[0] : selectedTables[1];
             
             if (lines.every(line => !line.trim())) {
                 errorText.textContent = 'Please enter text in at least one line.';
@@ -1466,8 +1586,8 @@
             for (let i = 0; i < lines.length; i++) {
                 if (lines[i].trim()) {
                     try {
-                        // Use real liblouis translation
-                        const braille = await translateWithLiblouis(lines[i].trim(), grade);
+                        // Use real liblouis translation with selected table
+                        const braille = await translateWithLiblouis(lines[i].trim(), grade, tableName);
                         previewHTML += `<div class="preview-line-success">
                             <strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → "${braille}"
                         </div>`;
@@ -1532,6 +1652,9 @@
             
             const plateType = document.querySelector('input[name="plate_type"]:checked').value;
             const grade = document.querySelector('input[name="grade"]:checked').value;
+            const languageSelect = document.getElementById('language-table');
+            const selectedTables = languageSelect.value.split(',');
+            const tableName = grade === 'g2' ? selectedTables[0] : selectedTables[1];
             
             // Translate text to braille only for positive plates
             let translatedLines = [];
@@ -1541,8 +1664,8 @@
                     const line = lines[i].trim();
                     if (line) {
                         try {
-                            console.log(`Translating line ${i + 1}: '${line}' to braille...`);
-                            const brailleText = await translateWithLiblouis(line, grade);
+                            console.log(`Translating line ${i + 1}: '${line}' to braille using table: ${tableName}...`);
+                            const brailleText = await translateWithLiblouis(line, grade, tableName);
                             console.log(`Line ${i + 1} translated: '${line}' → '${brailleText}'`);
                             translatedLines.push(brailleText);
                         } catch (error) {
@@ -1796,14 +1919,14 @@
         });
 
         // Function to translate text using liblouis web worker
-        async function translateWithLiblouis(text, grade) {
+        async function translateWithLiblouis(text, grade, tableName = null) {
             if (!liblouisReady || !liblouisWorker) {
                 throw new Error('Liblouis worker not initialized - translation preview unavailable on this deployment');
             }
             
             try {
-                console.log('Sending translation request to worker:', text, 'grade:', grade);
-                const result = await sendWorkerMessage('translate', { text, grade });
+                console.log('Sending translation request to worker:', text, 'grade:', grade, 'table:', tableName);
+                const result = await sendWorkerMessage('translate', { text, grade, tableName });
                 
                 if (result.success && result.translation) {
                     console.log('Translation successful:', result.translation);

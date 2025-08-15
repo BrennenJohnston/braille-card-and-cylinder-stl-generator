@@ -115,35 +115,17 @@
 
         /* High contrast mode specific button styling */
         [data-theme="high-contrast"] button[type="submit"],
-        [data-theme="high-contrast"] #generate-stl-btn {
+        [data-theme="high-contrast"] #action-btn {
             background: #02fe05 !important; /* Green background */
             color: #000000 !important; /* Black text */
             border: 2px solid #000000 !important; /* Black border */
         }
 
         [data-theme="high-contrast"] button[type="submit"]:hover,
-        [data-theme="high-contrast"] #generate-stl-btn:hover {
+        [data-theme="high-contrast"] #action-btn:hover {
             background: #02fe05 !important; /* Green background */
             color: #000000 !important; /* Black text */
             border: 2px solid #ffff00 !important; /* Yellow border on hover */
-        }
-
-        [data-theme="high-contrast"] #download-btn.ready {
-            background: #02fe05 !important; /* Green background */
-            color: #000000 !important; /* Black text */
-            border: 2px solid #000000 !important; /* Black border */
-        }
-
-        [data-theme="high-contrast"] #download-btn.ready:hover {
-            background: #02fe05 !important; /* Green background */
-            color: #000000 !important; /* Black text */
-            border: 2px solid #ffff00 !important; /* Yellow border on hover */
-        }
-
-        [data-theme="high-contrast"] #download-btn:not(.ready) {
-            background: #ff6600 !important;
-            color: #000000 !important; /* Black text */
-            border: 2px solid #000000 !important; /* Black border */
         }
 
         [data-theme="high-contrast"] #download-counter-plate-btn {
@@ -928,34 +910,34 @@
             background: var(--btn-primary-hover-bg);
             transform: translateY(-2px) scale(1.03);
         }
-        #download-btn {
-            background: var(--btn-secondary-bg);
-            color: #fff;
-            cursor: not-allowed;
-            opacity: 0.7;
+        
+        /* Action button state styles */
+        #action-btn {
             transition: all 0.3s ease;
+            min-width: 140px;
+            text-align: center;
+            font-size: 0.95em;
         }
         
-        #download-btn.ready {
-            background: var(--btn-success-bg);
-            cursor: pointer;
-            opacity: 1;
-            box-shadow: 0 2px 8px var(--shadow-light);
-        }
-        
-        #download-btn.ready:hover {
-            background: var(--btn-success-hover-bg);
-            transform: translateY(-2px) scale(1.03);
-        }
-        
-        #generate-stl-btn {
+        #action-btn.generate-state {
             background: var(--btn-primary-bg);
             color: #fff;
             box-shadow: 0 2px 8px var(--shadow-light);
         }
         
-        #generate-stl-btn:hover {
+        #action-btn.generate-state:hover {
             background: var(--btn-primary-hover-bg);
+            transform: translateY(-2px) scale(1.03);
+        }
+        
+        #action-btn.download-state {
+            background: var(--btn-success-bg);
+            color: #fff;
+            box-shadow: 0 2px 8px var(--shadow-light);
+        }
+        
+        #action-btn.download-state:hover {
+            background: var(--btn-success-hover-bg);
             transform: translateY(-2px) scale(1.03);
         }
         
@@ -992,20 +974,7 @@
             }
         }
 
-        /* Specific button sizing for better text fit */
-        #generate-stl-btn,
-        #download-btn {
-            min-width: 120px;
-            text-align: center;
-        }
 
-        #generate-stl-btn {
-            font-size: 0.95em;
-        }
-
-        #download-btn {
-            font-size: 0.95em;
-        }
         #download-counter-plate-btn {
             background: var(--btn-tertiary-bg);
             color: #fff;
@@ -1484,8 +1453,7 @@
                     </div>
                     
                     <div class="button-row">
-                        <button type="button" id="generate-stl-btn" aria-label="Generate STL file from entered text">Generate STL</button>
-                        <button id="download-btn" aria-label="Download generated STL file" aria-disabled="true">Download STL</button>
+                        <button type="button" id="action-btn" class="generate-state" aria-label="Generate STL file from entered text" data-state="generate">Generate STL</button>
                     </div>
                 </div>
             </div>
@@ -1888,16 +1856,44 @@
 
         const form = document.getElementById('braille-form');
         const viewer = document.getElementById('viewer');
-        const downloadBtn = document.getElementById('download-btn');
-        const generateStlBtn = document.getElementById('generate-stl-btn');
+        const actionBtn = document.getElementById('action-btn');
+        let lastGeneratedSTLUrl = null;
 
         const previewBrailleBtn = document.getElementById('preview-braille-btn');
         const errorDiv = document.getElementById('error-message');
         const errorText = document.getElementById('error-text');
         
-        // Add event handler for the Generate STL button in viewer section
-        generateStlBtn.addEventListener('click', () => {
-            form.dispatchEvent(new Event('submit'));
+        // Function to reset button to generate state
+        function resetToGenerateState() {
+            actionBtn.textContent = 'Generate STL';
+            actionBtn.className = 'generate-state';
+            actionBtn.setAttribute('data-state', 'generate');
+            actionBtn.setAttribute('aria-label', 'Generate STL file from entered text');
+        }
+        
+        // Function to set button to download state
+        function setToDownloadState() {
+            actionBtn.textContent = 'Download STL';
+            actionBtn.className = 'download-state';
+            actionBtn.setAttribute('data-state', 'download');
+            actionBtn.setAttribute('aria-label', 'Download generated STL file');
+        }
+        
+        // Add event handler for the action button
+        actionBtn.addEventListener('click', () => {
+            if (actionBtn.getAttribute('data-state') === 'generate') {
+                form.dispatchEvent(new Event('submit'));
+            } else if (actionBtn.getAttribute('data-state') === 'download') {
+                // Download the generated STL
+                if (lastGeneratedSTLUrl) {
+                    const a = document.createElement('a');
+                    a.href = lastGeneratedSTLUrl;
+                    a.download = 'braille_card.stl';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+            }
         });
         const negativePlateOffsetContainer = document.getElementById('negative-plate-offset-container');
         const expertToggleBtn = document.getElementById('expert-toggle');
@@ -1918,6 +1914,57 @@
         });
 
 
+
+        // Add event listeners to reset button state when inputs change
+        function addInputChangeListeners() {
+            // Text input fields
+            const textInputs = ['line1', 'line2', 'line3', 'line4'];
+            textInputs.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.addEventListener('input', resetToGenerateState);
+                }
+            });
+            
+            // Language selection
+            const languageSelect = document.getElementById('language-table');
+            if (languageSelect) {
+                languageSelect.addEventListener('change', resetToGenerateState);
+            }
+            
+            // Plate type radio buttons
+            document.querySelectorAll('input[name="plate_type"]').forEach(radio => {
+                radio.addEventListener('change', resetToGenerateState);
+            });
+            
+            // Counter plate offset
+            const counterPlateOffset = document.getElementById('counter_plate_dot_size_offset');
+            if (counterPlateOffset) {
+                counterPlateOffset.addEventListener('input', resetToGenerateState);
+            }
+            
+            // Expert mode parametric dials
+            const expertInputs = [
+                'emboss_dot_base_diameter',
+                'emboss_dot_height', 
+                'emboss_dot_flat_hat',
+                'grid_columns',
+                'grid_rows',
+                'cell_spacing',
+                'line_spacing',
+                'dot_spacing'
+            ];
+            
+            expertInputs.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.addEventListener('input', resetToGenerateState);
+                }
+            });
+        }
+        
+        // Initialize input change listeners
+        addInputChangeListeners();
 
         expertToggleBtn.addEventListener('click', () => {
             const isVisible = expertSettings.style.display !== 'none';
@@ -2165,9 +2212,8 @@
             errorDiv.style.display = 'flex';
             errorDiv.className = 'error-message info';
             
-            // Reset download button state
-            downloadBtn.classList.remove('ready');
-            downloadBtn.setAttribute('aria-disabled', 'true');
+            // Disable button during generation
+            actionBtn.disabled = true;
             
             // Debug: Log the settings being sent
             console.log('Expert Mode Settings:', settings);
@@ -2192,9 +2238,9 @@
                 errorText.textContent = msg;
                 errorDiv.style.display = 'flex';
                 errorDiv.className = 'error-message'; // Reset to error style
-                // Reset download button state on error
-                downloadBtn.classList.remove('ready');
-                downloadBtn.setAttribute('aria-disabled', 'true');
+                // Re-enable button on error
+                actionBtn.disabled = false;
+                resetToGenerateState();
                 return;
             }
             
@@ -2202,24 +2248,20 @@
                 const blob = await res.blob();
                 if (lastSTLUrl) URL.revokeObjectURL(lastSTLUrl);
                 lastSTLUrl = URL.createObjectURL(blob);
+                // Store the generated STL URL for download
+                lastGeneratedSTLUrl = lastSTLUrl;
                 loadSTL(lastSTLUrl);
-                downloadBtn.classList.add('ready');
-                downloadBtn.setAttribute('aria-disabled', 'false');
-                downloadBtn.onclick = () => {
-                    const a = document.createElement('a');
-                    a.href = lastSTLUrl;
-                    a.download = 'braille_card.stl';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                };
+                
+                // Change button to download state after successful generation
+                actionBtn.disabled = false;
+                setToDownloadState();
             } catch (e) {
                 errorText.textContent = 'Failed to process STL file: ' + e.message;
                 errorDiv.style.display = 'flex';
                 errorDiv.className = 'error-message'; // Reset to error style
-                // Reset download button state on error
-                downloadBtn.classList.remove('ready');
-                downloadBtn.setAttribute('aria-disabled', 'true');
+                // Re-enable button on error
+                actionBtn.disabled = false;
+                resetToGenerateState();
             }
         };
 

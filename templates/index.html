@@ -71,38 +71,175 @@
 
         /* High contrast mode */
         [data-theme="high-contrast"] {
-            --bg-gradient-start: #000;
-            --bg-gradient-end: #000;
-            --bg-primary: #000;
-            --bg-secondary: #000;
-            --bg-tertiary: #000;
-            --bg-input: #000;
-            --text-primary: #fff;
-            --text-secondary: #fff;
-            --text-tertiary: #fff;
-            --border-primary: #fff;
-            --border-secondary: #fff;
-            --border-focus: #ffff00;
-            --btn-primary-bg: #fff;
-            --btn-primary-hover-bg: #ffff00;
+            --bg-gradient-start: #000000;
+            --bg-gradient-end: #000000;
+            --bg-primary: #000000;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #2a2a2a;
+            --bg-input: #1a1a1a;
+            --text-primary: #ffffff;
+            --text-secondary: #ffff00;
+            --text-tertiary: #00ffff;
+            --border-primary: #ffff00;
+            --border-secondary: #00ffff;
+            --border-focus: #ff00ff;
+            --btn-primary-bg: #ffff00;
+            --btn-primary-hover-bg: #ffffff;
             --btn-success-bg: #00ff00;
             --btn-success-hover-bg: #00ff00;
-            --btn-secondary-bg: #fff;
-            --btn-tertiary-bg: #fff;
+            --btn-secondary-bg: #ff8800;
+            --btn-tertiary-bg: #ff8800;
             --error-bg: #ff0000;
             --error-border: #ff0000;
-            --error-text: #fff;
+            --error-text: #ffffff;
             --info-bg: #0000ff;
             --info-border: #0000ff;
-            --info-text: #fff;
+            --info-text: #ffffff;
             --shadow-light: none;
             --shadow-medium: none;
             --stl-mesh-color: #ffff00;
         }
 
-        /* High contrast mode button text colors */
-        [data-theme="high-contrast"] button {
-            color: #000 !important;
+        /* High contrast mode specific button styling */
+        [data-theme="high-contrast"] button[type="submit"],
+        [data-theme="high-contrast"] #generate-stl-btn {
+            background: #ffff00 !important;
+            color: #000000 !important;
+            border: 2px solid #000000 !important;
+        }
+
+        [data-theme="high-contrast"] button[type="submit"]:hover,
+        [data-theme="high-contrast"] #generate-stl-btn:hover {
+            background: #ffffff !important;
+            color: #000000 !important;
+            border: 2px solid #ffff00 !important;
+        }
+
+        [data-theme="high-contrast"] #download-btn.ready {
+            background: #00ff00 !important;
+            color: #000000 !important;
+            border: 2px solid #000000 !important;
+        }
+
+        [data-theme="high-contrast"] #download-btn.ready:hover {
+            background: #00ff00 !important;
+            color: #000000 !important;
+            border: 2px solid #ffff00 !important;
+        }
+
+        [data-theme="high-contrast"] #download-btn:not(.ready) {
+            background: #ff8800 !important;
+            color: #000000 !important;
+            border: 2px solid #000000 !important;
+        }
+
+        [data-theme="high-contrast"] #download-counter-plate-btn {
+            background: #ff8800 !important;
+            color: #000000 !important;
+            border: 2px solid #000000 !important;
+        }
+
+        [data-theme="high-contrast"] #download-counter-plate-btn:hover {
+            background: #ffaa00 !important;
+            color: #000000 !important;
+            border: 2px solid #ffff00 !important;
+        }
+
+        [data-theme="high-contrast"] .expert-toggle-btn,
+        [data-theme="high-contrast"] .info-toggle-btn {
+            background: #1a1a1a !important;
+            color: #ffff00 !important;
+            border: 2px solid #ffff00 !important;
+        }
+
+        [data-theme="high-contrast"] .expert-toggle-btn:hover,
+        [data-theme="high-contrast"] .info-toggle-btn:hover {
+            background: #ffff00 !important;
+            color: #000000 !important;
+            border: 2px solid #000000 !important;
+        }
+
+        [data-theme="high-contrast"] .expert-toggle-btn.active,
+        [data-theme="high-contrast"] .info-toggle-btn.active {
+            background: #ffff00 !important;
+            color: #000000 !important;
+            border: 2px solid #000000 !important;
+        }
+
+        [data-theme="high-contrast"] .font-size-btn {
+            background: #1a1a1a !important;
+            color: #ffff00 !important;
+            border: 2px solid #ffff00 !important;
+        }
+
+        [data-theme="high-contrast"] .font-size-btn:hover {
+            background: #ffff00 !important;
+            color: #000000 !important;
+            border: 2px solid #000000 !important;
+        }
+
+        [data-theme="high-contrast"] .font-size-btn.reset-btn {
+            background: #2a2a2a !important;
+            color: #00ffff !important;
+            border: 2px solid #00ffff !important;
+        }
+
+        [data-theme="high-contrast"] .font-size-display {
+            background: #1a1a1a !important;
+            color: #ffff00 !important;
+            border: 2px solid #ffff00 !important;
+        }
+
+        [data-theme="high-contrast"] .theme-toggle-btn {
+            background: #1a1a1a !important;
+            color: #ffff00 !important;
+            border: 2px solid #ffff00 !important;
+        }
+
+        [data-theme="high-contrast"] .theme-toggle-btn:hover {
+            background: #ffff00 !important;
+            color: #000000 !important;
+            border: 2px solid #000000 !important;
+        }
+
+        [data-theme="high-contrast"] input[type="text"],
+        [data-theme="high-contrast"] input[type="number"] {
+            background: #1a1a1a !important;
+            color: #ffffff !important;
+            border: 2px solid #ffff00 !important;
+        }
+
+        [data-theme="high-contrast"] input[type="text"]:focus,
+        [data-theme="high-contrast"] input[type="number"]:focus {
+            background: #2a2a2a !important;
+            color: #ffffff !important;
+            border: 2px solid #ff00ff !important;
+        }
+
+        [data-theme="high-contrast"] .info-panel,
+        [data-theme="high-contrast"] .grade-selection,
+        [data-theme="high-contrast"] .info-content {
+            background: #1a1a1a !important;
+            color: #ffff00 !important;
+            border: 2px solid #ffff00 !important;
+        }
+
+        [data-theme="high-contrast"] .braille-preview {
+            background: #1a1a1a !important;
+            color: #ffff00 !important;
+            border: 2px solid #ffff00 !important;
+        }
+
+        [data-theme="high-contrast"] .preview-line-success {
+            background: #2a2a2a !important;
+            color: #ffffff !important;
+            border: 2px solid #00ffff !important;
+        }
+
+        [data-theme="high-contrast"] .preview-line-error {
+            background: #ff0000 !important;
+            color: #ffffff !important;
+            border: 2px solid #ff0000 !important;
         }
 
         /* Apply transition to theme changes */

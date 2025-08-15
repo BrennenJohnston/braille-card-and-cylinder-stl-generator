@@ -1196,6 +1196,10 @@
         import { STLLoader } from '/static/STLLoader.js';
         import { OrbitControls } from '/static/OrbitControls.js';
 
+        // Declare 3D scene variables at module scope
+        let renderer, scene, camera, mesh, controls;
+        let lastSTLUrl = null;
+
         // Theme switching functionality
         const themes = ['high-contrast', 'dark', 'light'];
         const themeIcons = {
@@ -1255,7 +1259,7 @@
 
         // Function to update 3D scene colors when theme changes
         function update3DSceneColors() {
-            if (scene && renderer) {
+            if (typeof scene !== 'undefined' && scene && typeof renderer !== 'undefined' && renderer) {
                 const styles = getComputedStyle(document.documentElement);
                 const stlBackground = styles.getPropertyValue('--stl-background').trim() || '#f1f5f9';
                 const stlAmbientLight = styles.getPropertyValue('--stl-ambient-light').trim() || '#888888';
@@ -1364,8 +1368,6 @@
         const infoContent = document.getElementById('info-content');
         const infoToggleText = document.getElementById('info-toggle-text');
         const infoToggleIcon = document.getElementById('info-toggle-icon');
-        let renderer, scene, camera, mesh, controls;
-        let lastSTLUrl = null;
 
         document.querySelectorAll('input[name="plate_type"]').forEach(radio => {
             radio.addEventListener('change', function() {

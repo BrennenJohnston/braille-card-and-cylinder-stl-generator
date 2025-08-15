@@ -107,10 +107,10 @@
             --info-text: #02fe05; /* Green instead of white */
             --shadow-light: none;
             --shadow-medium: none;
-            --stl-mesh-color: #1aebff;
+            --stl-mesh-color: #00ffff; /* Bright cyan for high contrast */
             --stl-background: #000000; /* Keep black background */
-            --stl-ambient-light: #333333;
-            --stl-directional-light: #02fe05; /* Green instead of white */
+            --stl-ambient-light: #bbbbbb; /* Much brighter ambient light for white-ish shading */
+            --stl-directional-light: #ffffff; /* Pure white directional light for bright highlights */
         }
 
         /* High contrast mode specific button styling */
@@ -1801,9 +1801,20 @@
                     }
                 });
                 
-                // Update mesh color if it exists
+                // Update mesh color and material properties if mesh exists
                 if (mesh && mesh.material) {
+                    const currentTheme = document.documentElement.getAttribute('data-theme');
                     mesh.material.color = new THREE.Color(stlMeshColor);
+                    
+                    // Update specular properties for high contrast mode
+                    if (currentTheme === 'high-contrast') {
+                        mesh.material.specular = new THREE.Color(0xffffff); // White specular highlights
+                        mesh.material.shininess = 300; // Higher shininess for sharper highlights
+                    } else {
+                        mesh.material.specular = new THREE.Color(0x111111); // Standard specular
+                        mesh.material.shininess = 200; // Standard shininess
+                    }
+                    
                     mesh.material.needsUpdate = true;
                 }
                 
@@ -2320,11 +2331,25 @@
                 const styles = getComputedStyle(document.documentElement);
                 const meshColorVar = styles.getPropertyValue('--stl-mesh-color').trim();
                 const meshColor = meshColorVar || '#6699cc';
-                const material = new THREE.MeshPhongMaterial({ 
-                    color: new THREE.Color(meshColor), 
-                    specular: 0x111111, 
-                    shininess: 200 
-                });
+                // Enhanced material for high contrast mode
+                const currentTheme = document.documentElement.getAttribute('data-theme');
+                let material;
+                
+                if (currentTheme === 'high-contrast') {
+                    // High contrast material with enhanced specular highlights
+                    material = new THREE.MeshPhongMaterial({ 
+                        color: new THREE.Color(meshColor), 
+                        specular: 0xffffff, // White specular highlights for maximum contrast
+                        shininess: 300 // Higher shininess for sharper highlights
+                    });
+                } else {
+                    // Standard material for other themes
+                    material = new THREE.MeshPhongMaterial({ 
+                        color: new THREE.Color(meshColor), 
+                        specular: 0x111111, 
+                        shininess: 200 
+                    });
+                }
                 mesh = new THREE.Mesh(geometry, material);
                 mesh.rotation.x = 0;
                 scene.add(mesh);

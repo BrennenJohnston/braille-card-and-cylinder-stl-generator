@@ -207,6 +207,18 @@
             background: linear-gradient(90deg, #2563eb 60%, #4299e1 100%);
             transform: translateY(-2px) scale(1.03);
         }
+        
+        #generate-stl-btn {
+            background: linear-gradient(90deg, #3182ce 60%, #63b3ed 100%);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(49,130,206,0.08);
+            margin-bottom: 1em;
+        }
+        
+        #generate-stl-btn:hover {
+            background: linear-gradient(90deg, #2563eb 60%, #4299e1 100%);
+            transform: translateY(-2px) scale(1.03);
+        }
         #download-counter-plate-btn {
             background: #6b7280;
             color: #fff;
@@ -434,6 +446,7 @@
     <div class="main-layout">
         <div class="viewer-section">
             <div id="viewer"></div>
+            <button type="button" id="generate-stl-btn">Generate STL</button>
             <button id="download-btn">Download STL</button>
         </div>
         <div class="form-section">
@@ -577,11 +590,13 @@
                             <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1">
                         </div>
                     </div>
+                    
+                    <div style="margin-top: 1.5em; text-align: center;">
+                        <button type="button" id="preview-braille-btn">Preview Braille Translation</button>
+                    </div>
                 </div>
 
                 <div class="button-group">
-                    <button type="button" id="preview-braille-btn">Preview Braille Translation</button>
-                    <button type="submit">Generate STL</button>
                     <button type="button" id="test-counter-plate-btn" style="margin-top: 10px; background: #f39c12; color: white;">Test Simple Counter Plate</button>
                     <button type="button" id="test-text-counter-plate-btn" style="margin-top: 10px; background: #e74c3c; color: white;">Test Text Counter Plate</button>
                 </div>
@@ -613,10 +628,16 @@
         const form = document.getElementById('braille-form');
         const viewer = document.getElementById('viewer');
         const downloadBtn = document.getElementById('download-btn');
+        const generateStlBtn = document.getElementById('generate-stl-btn');
 
         const previewBrailleBtn = document.getElementById('preview-braille-btn');
         const errorDiv = document.getElementById('error-message');
         const errorText = document.getElementById('error-text');
+        
+        // Add event handler for the Generate STL button in viewer section
+        generateStlBtn.addEventListener('click', () => {
+            form.dispatchEvent(new Event('submit'));
+        });
         const negativePlateOffsetContainer = document.getElementById('negative-plate-offset-container');
         const expertToggleBtn = document.getElementById('expert-toggle');
         const expertSettings = document.getElementById('expert-settings');

@@ -36,6 +36,9 @@
             --shadow-light: rgba(49,130,206,0.10);
             --shadow-medium: rgba(49,130,206,0.18);
             --stl-mesh-color: #6699cc;
+            --stl-background: #f1f5f9;
+            --stl-ambient-light: #888888;
+            --stl-directional-light: #ffffff;
         }
 
         /* Dark mode colors */
@@ -67,6 +70,9 @@
             --shadow-light: rgba(0,0,0,0.3);
             --shadow-medium: rgba(0,0,0,0.5);
             --stl-mesh-color: #90cdf4;
+            --stl-background: #2d3748;
+            --stl-ambient-light: #666666;
+            --stl-directional-light: #ffffff;
         }
 
         /* High contrast mode */
@@ -1249,21 +1255,35 @@
 
         // Function to update 3D scene colors when theme changes
         function update3DSceneColors() {
-            if (scene) {
-                const stlBackground = getComputedStyle(document.documentElement).getPropertyValue('--stl-background').trim() || '#000000';
-                const stlAmbientLight = getComputedStyle(document.documentElement).getPropertyValue('--stl-ambient-light').trim() || '#888888';
-                const stlDirectionalLight = getComputedStyle(document.documentElement).getPropertyValue('--stl-directional-light').trim() || '#ffffff';
+            if (scene && renderer) {
+                const styles = getComputedStyle(document.documentElement);
+                const stlBackground = styles.getPropertyValue('--stl-background').trim() || '#f1f5f9';
+                const stlAmbientLight = styles.getPropertyValue('--stl-ambient-light').trim() || '#888888';
+                const stlDirectionalLight = styles.getPropertyValue('--stl-directional-light').trim() || '#ffffff';
+                const stlMeshColor = styles.getPropertyValue('--stl-mesh-color').trim() || '#6699cc';
                 
+                // Update scene background
                 scene.background = new THREE.Color(stlBackground);
                 
                 // Update lighting
                 scene.children.forEach(child => {
                     if (child instanceof THREE.DirectionalLight) {
-                        child.color.setHex(stlDirectionalLight.replace('#', '0x'));
+                        child.color = new THREE.Color(stlDirectionalLight);
                     } else if (child instanceof THREE.AmbientLight) {
-                        child.color.setHex(stlAmbientLight.replace('#', '0x'));
+                        child.color = new THREE.Color(stlAmbientLight);
                     }
                 });
+                
+                // Update mesh color if it exists
+                if (mesh && mesh.material) {
+                    mesh.material.color = new THREE.Color(stlMeshColor);
+                    mesh.material.needsUpdate = true;
+                }
+                
+                // Force a re-render
+                if (renderer && scene && camera) {
+                    renderer.render(scene, camera);
+                }
             }
         }
 
@@ -1468,10 +1488,11 @@
             viewer.innerHTML = '';
             viewer.appendChild(renderer.domElement);
             
-            // Get theme-appropriate colors
-            const stlBackground = getComputedStyle(document.documentElement).getPropertyValue('--stl-background').trim() || '#000000';
-            const stlAmbientLight = getComputedStyle(document.documentElement).getPropertyValue('--stl-ambient-light').trim() || '#888888';
-            const stlDirectionalLight = getComputedStyle(document.documentElement).getPropertyValue('--stl-directional-light').trim() || '#ffffff';
+            // Get theme-appropriate colors with proper fallbacks
+            const styles = getComputedStyle(document.documentElement);
+            const stlBackground = styles.getPropertyValue('--stl-background').trim() || '#f1f5f9';
+            const stlAmbientLight = styles.getPropertyValue('--stl-ambient-light').trim() || '#888888';
+            const stlDirectionalLight = styles.getPropertyValue('--stl-directional-light').trim() || '#ffffff';
             
             scene = new THREE.Scene();
             scene.background = new THREE.Color(stlBackground);
@@ -1484,10 +1505,10 @@
             controls.update();
             
             // Theme-appropriate lighting
-            const light = new THREE.DirectionalLight(stlDirectionalLight, 1);
+            const light = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), 1);
             light.position.set(0, 0, 100).normalize();
             scene.add(light);
-            scene.add(new THREE.AmbientLight(stlAmbientLight));
+            scene.add(new THREE.AmbientLight(new THREE.Color(stlAmbientLight)));
         }
 
         function render() {
@@ -1648,11 +1669,12 @@
             loader.load(url, function (geometry) {
                 geometry.center();
                 if (mesh) scene.remove(mesh);
-                // Get theme-appropriate mesh color
-                const meshColorVar = getComputedStyle(document.documentElement).getPropertyValue('--stl-mesh-color').trim();
+                // Get theme-appropriate mesh color with proper fallback
+                const styles = getComputedStyle(document.documentElement);
+                const meshColorVar = styles.getPropertyValue('--stl-mesh-color').trim();
                 const meshColor = meshColorVar || '#6699cc';
                 const material = new THREE.MeshPhongMaterial({ 
-                    color: meshColor, 
+                    color: new THREE.Color(meshColor), 
                     specular: 0x111111, 
                     shininess: 200 
                 });
@@ -1663,6 +1685,7 @@
             }, undefined, function (error) {
                 errorText.textContent = 'Failed to load STL: ' + error;
                 errorDiv.style.display = 'flex';
+                errorDiv.className = 'error-message';
             });
         }
 

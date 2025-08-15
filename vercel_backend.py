@@ -1071,70 +1071,9 @@ def test_universal_counter_plate():
             'error': str(e)
         }), 500
 
-@app.route('/test-simple-counter-plate')
-def test_simple_counter_plate():
-    """Test endpoint to verify simple counter plate generation with just a few holes"""
-    try:
-        # Use the same settings as the main application for consistency
-        settings = CardSettings()
-        
-        print("DEBUG: Testing simple counter plate with main application settings")
-        print(f"DEBUG: Grid: {settings.grid_columns}x{settings.grid_rows}")
-        print(f"DEBUG: Card dimensions: {settings.card_width}x{settings.card_height}x{settings.card_thickness}mm")
-        print(f"DEBUG: Dot spacing: {settings.dot_spacing}mm, Line spacing: {settings.line_spacing}mm")
-        
-        # Create a test counter plate with the same settings as the main app
-        mesh = create_simple_negative_plate(settings)
-        
-        # Export to STL
-        stl_io = io.BytesIO()
-        mesh.export(stl_io, file_type='stl')
-        stl_io.seek(0)
-        
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='test_counter_plate.stl')
-        
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': f'Simple counter plate test failed: {str(e)}',
-            'error': str(e)
-        }), 500
 
-@app.route('/test-text-counter-plate')
-def test_text_counter_plate():
-    """Test endpoint to verify counter plate generation with actual text content"""
-    try:
-        # Use the same settings as the main application
-        settings = CardSettings()
-        
-        # Create test text lines with braille Unicode
-        test_lines = [
-            "⠠⠃⠗⠢⠝⠢",  # "Brennen" in braille
-            "⠠⠚⠕⠓⠝⠌⠕⠝",  # "Johnston" in braille
-            "",  # Empty line
-            ""   # Empty line
-        ]
-        
-        print("DEBUG: Testing text-based counter plate generation")
-        print(f"DEBUG: Test text: {test_lines}")
-        print(f"DEBUG: Grid: {settings.grid_columns}x{settings.grid_rows}")
-        
-        # Create a counter plate based on the actual text content
-        mesh = create_simple_negative_plate(settings, test_lines)
-        
-        # Export to STL
-        stl_io = io.BytesIO()
-        mesh.export(stl_io, file_type='stl')
-        stl_io.seek(0)
-        
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='test_text_counter_plate.stl')
-        
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': f'Text counter plate test failed: {str(e)}',
-            'error': str(e)
-        }), 500
+
+
 
 
 @app.route('/test-hemispherical-counter-plate')

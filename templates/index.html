@@ -525,11 +525,11 @@
                         </label>
                         <label class="radio-option">
                             <input type="radio" name="grade" value="g2" checked>
-                            <span class="radio-text">English, U.S., uncontracted (Grade 2)</span>
+                            <span class="radio-text">English, U.S., contracted (Grade 2)</span>
                         </label>
                     </div>
                     <div class="grade-info" style="margin-top: 8px; font-size: 0.9em; color: #666; font-style: italic;">
-                        <span id="grade1-info" style="display: none;">Grade 1 (UEB): Each character = 1 braille cell</span>
+                        <span id="grade1-info" style="display: none;">Uncontracted should be used in special circumstances only. Contracted is the default option.</span>
                         <span id="grade2-info">(UEB): Uses modern contractions, so check limits after translation</span>
                     </div>
                 </div>
@@ -614,8 +614,7 @@
                 </div>
 
                 <div class="button-group">
-                    <button type="button" id="test-counter-plate-btn" style="margin-top: 10px; background: #f39c12; color: white;">Test Simple Counter Plate</button>
-                    <button type="button" id="test-text-counter-plate-btn" style="margin-top: 10px; background: #e74c3c; color: white;">Test Text Counter Plate</button>
+                    <!-- Test buttons removed as they are no longer needed -->
                 </div>
             </form>
             
@@ -1097,69 +1096,9 @@
             }
         }
 
-        // Test simple counter plate generation
-        document.getElementById('test-counter-plate-btn').addEventListener('click', async function() {
-            try {
-                console.log('Testing simple counter plate generation...');
-                
-                const res = await fetch('/test-simple-counter-plate');
-                
-                if (!res.ok) {
-                    let msg = 'Error generating test counter plate';
-                    try {
-                        const data = await res.json();
-                        if (data.error) msg = data.error;
-                    } catch (e) {
-                        msg = `Server error: ${res.status} ${res.statusText}`;
-                    }
-                    console.error(msg);
-                    return;
-                }
-                
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                
-                // Load the test STL in the viewer
-                loadSTL(url);
-                
-                console.log('Test counter plate loaded successfully');
-                
-            } catch (error) {
-                console.error('Test counter plate failed:', error);
-            }
-        });
 
-        // Test text-based counter plate generation
-        document.getElementById('test-text-counter-plate-btn').addEventListener('click', async function() {
-            try {
-                console.log('Testing text-based counter plate generation...');
-                
-                const res = await fetch('/test-text-counter-plate');
-                
-                if (!res.ok) {
-                    let msg = 'Error generating text counter plate';
-                    try {
-                        const data = await res.json();
-                        if (data.error) msg = data.error;
-                    } catch (e) {
-                        msg = `Server error: ${res.status} ${res.statusText}`;
-                    }
-                    console.error(msg);
-                    return;
-                }
-                
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                
-                // Load the test STL in the viewer
-                loadSTL(url);
-                
-                console.log('Text counter plate loaded successfully');
-                
-            } catch (error) {
-                console.error('Text counter plate failed:', error);
-            }
-        });
+
+
     </script>
 </body>
 </html> 

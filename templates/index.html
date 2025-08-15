@@ -87,8 +87,8 @@
             --btn-primary-hover-bg: #ffffff;
             --btn-success-bg: #00ff00;
             --btn-success-hover-bg: #00ff00;
-            --btn-secondary-bg: #ff8800;
-            --btn-tertiary-bg: #ff8800;
+            --btn-secondary-bg: #ff6600;
+            --btn-tertiary-bg: #ff6600;
             --error-bg: #ff0000;
             --error-border: #ff0000;
             --error-text: #ffffff;
@@ -97,7 +97,10 @@
             --info-text: #ffffff;
             --shadow-light: none;
             --shadow-medium: none;
-            --stl-mesh-color: #ffff00;
+            --stl-mesh-color: #00ffff;
+            --stl-background: #000000;
+            --stl-ambient-light: #333333;
+            --stl-directional-light: #ffffff;
         }
 
         /* High contrast mode specific button styling */
@@ -128,19 +131,19 @@
         }
 
         [data-theme="high-contrast"] #download-btn:not(.ready) {
-            background: #ff8800 !important;
+            background: #ff6600 !important;
             color: #000000 !important;
             border: 2px solid #000000 !important;
         }
 
         [data-theme="high-contrast"] #download-counter-plate-btn {
-            background: #ff8800 !important;
+            background: #ff6600 !important;
             color: #000000 !important;
             border: 2px solid #000000 !important;
         }
 
         [data-theme="high-contrast"] #download-counter-plate-btn:hover {
-            background: #ffaa00 !important;
+            background: #ff8800 !important;
             color: #000000 !important;
             border: 2px solid #ffff00 !important;
         }
@@ -493,16 +496,16 @@
         [data-theme="high-contrast"] em,
         [data-theme="high-contrast"] i,
         [data-theme="high-contrast"] [style*="font-style: italic"] {
-            color: #ff8800 !important; /* Orange for italic text */
+            color: #ff6600 !important; /* Bright orange for italic text */
             font-style: italic;
         }
 
         [data-theme="high-contrast"] .grade-info span {
-            color: #ff8800 !important; /* Orange for grade info notes */
+            color: #ff6600 !important; /* Bright orange for grade info notes */
         }
 
         [data-theme="high-contrast"] #offset-help {
-            color: #ff8800 !important; /* Orange for offset help text */
+            color: #ff6600 !important; /* Bright orange for offset help text */
         }
 
         /* Note styling classes */
@@ -514,7 +517,7 @@
 
         [data-theme="high-contrast"] .grade-note,
         [data-theme="high-contrast"] .offset-note {
-            color: #ff8800 !important; /* Orange for all note text */
+            color: #ff6600 !important; /* Bright orange for all note text */
         }
 
         body {
@@ -1234,12 +1237,35 @@
             announcement.textContent = `Theme changed to ${themeNames[theme]}`;
             document.body.appendChild(announcement);
             setTimeout(() => announcement.remove(), 1000);
+            
+            // Update 3D scene colors for new theme
+            update3DSceneColors();
         }
 
         document.getElementById('theme-toggle').addEventListener('click', () => {
             currentThemeIndex = (currentThemeIndex + 1) % themes.length;
             applyTheme(themes[currentThemeIndex]);
         });
+
+        // Function to update 3D scene colors when theme changes
+        function update3DSceneColors() {
+            if (scene) {
+                const stlBackground = getComputedStyle(document.documentElement).getPropertyValue('--stl-background').trim() || '#000000';
+                const stlAmbientLight = getComputedStyle(document.documentElement).getPropertyValue('--stl-ambient-light').trim() || '#888888';
+                const stlDirectionalLight = getComputedStyle(document.documentElement).getPropertyValue('--stl-directional-light').trim() || '#ffffff';
+                
+                scene.background = new THREE.Color(stlBackground);
+                
+                // Update lighting
+                scene.children.forEach(child => {
+                    if (child instanceof THREE.DirectionalLight) {
+                        child.color.setHex(stlDirectionalLight.replace('#', '0x'));
+                    } else if (child instanceof THREE.AmbientLight) {
+                        child.color.setHex(stlAmbientLight.replace('#', '0x'));
+                    }
+                });
+            }
+        }
 
         // Initialize with high contrast theme on first load
         if (!localStorage.getItem('preferred-theme')) {
@@ -1441,17 +1467,27 @@
             renderer.setSize(viewer.clientWidth, viewer.clientHeight);
             viewer.innerHTML = '';
             viewer.appendChild(renderer.domElement);
+            
+            // Get theme-appropriate colors
+            const stlBackground = getComputedStyle(document.documentElement).getPropertyValue('--stl-background').trim() || '#000000';
+            const stlAmbientLight = getComputedStyle(document.documentElement).getPropertyValue('--stl-ambient-light').trim() || '#888888';
+            const stlDirectionalLight = getComputedStyle(document.documentElement).getPropertyValue('--stl-directional-light').trim() || '#ffffff';
+            
             scene = new THREE.Scene();
+            scene.background = new THREE.Color(stlBackground);
+            
             camera = new THREE.PerspectiveCamera(45, viewer.clientWidth/viewer.clientHeight, 0.1, 1000);
             camera.position.set(0, 0, 120);
             camera.lookAt(0, 0, 0);
             controls = new OrbitControls(camera, renderer.domElement);
             controls.target.set(0, 0, 0);
             controls.update();
-            const light = new THREE.DirectionalLight(0xffffff, 1);
+            
+            // Theme-appropriate lighting
+            const light = new THREE.DirectionalLight(stlDirectionalLight, 1);
             light.position.set(0, 0, 100).normalize();
             scene.add(light);
-            scene.add(new THREE.AmbientLight(0x888888));
+            scene.add(new THREE.AmbientLight(stlAmbientLight));
         }
 
         function render() {

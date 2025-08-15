@@ -114,18 +114,50 @@
         }
 
         /* High contrast mode specific button styling */
-        [data-theme="high-contrast"] button[type="submit"],
-        [data-theme="high-contrast"] #action-btn {
+        [data-theme="high-contrast"] button[type="submit"] {
             background: #02fe05 !important; /* Green background */
             color: #000000 !important; /* Black text */
             border: 2px solid #000000 !important; /* Black border */
         }
 
-        [data-theme="high-contrast"] button[type="submit"]:hover,
-        [data-theme="high-contrast"] #action-btn:hover {
+        [data-theme="high-contrast"] button[type="submit"]:hover {
             background: #02fe05 !important; /* Green background */
             color: #000000 !important; /* Black text */
             border: 2px solid #ffff00 !important; /* Yellow border on hover */
+        }
+        
+        /* High contrast mode - Generate STL button state (blue) */
+        [data-theme="high-contrast"] #action-btn.generate-state {
+            background: #0201fe !important; /* Blue background for generate */
+            color: #fdfe00 !important; /* Yellow text */
+            border: 2px solid #fdfe00 !important; /* Yellow border */
+        }
+        
+        [data-theme="high-contrast"] #action-btn.generate-state:hover {
+            background: #0201fe !important; /* Blue background */
+            color: #fdfe00 !important; /* Yellow text */
+            border: 2px solid #02fe05 !important; /* Green border on hover */
+        }
+        
+        /* High contrast mode - Download STL button state (green) */
+        [data-theme="high-contrast"] #action-btn.download-state {
+            background: #02fe05 !important; /* Green background for download */
+            color: #000000 !important; /* Black text */
+            border: 2px solid #000000 !important; /* Black border */
+        }
+        
+        [data-theme="high-contrast"] #action-btn.download-state:hover {
+            background: #02fe05 !important; /* Green background */
+            color: #000000 !important; /* Black text */
+            border: 2px solid #ffff00 !important; /* Yellow border on hover */
+        }
+        
+        /* High contrast mode - Disabled/Loading state */
+        [data-theme="high-contrast"] #action-btn:disabled {
+            background: #666666 !important; /* Gray background for disabled */
+            color: #cccccc !important; /* Light gray text */
+            border: 2px solid #999999 !important; /* Gray border */
+            cursor: not-allowed !important;
         }
 
         [data-theme="high-contrast"] #download-counter-plate-btn {
@@ -1869,6 +1901,8 @@
             actionBtn.className = 'generate-state';
             actionBtn.setAttribute('data-state', 'generate');
             actionBtn.setAttribute('aria-label', 'Generate STL file from entered text');
+            actionBtn.style.opacity = '1';
+            actionBtn.disabled = false;
         }
         
         // Function to set button to download state
@@ -1877,7 +1911,12 @@
             actionBtn.className = 'download-state';
             actionBtn.setAttribute('data-state', 'download');
             actionBtn.setAttribute('aria-label', 'Download generated STL file');
+            actionBtn.style.opacity = '1';
+            actionBtn.disabled = false;
         }
+        
+        // Store the current plate type for download naming
+        let currentPlateType = 'positive';
         
         // Add event handler for the action button
         actionBtn.addEventListener('click', () => {
@@ -1888,7 +1927,9 @@
                 if (lastGeneratedSTLUrl) {
                     const a = document.createElement('a');
                     a.href = lastGeneratedSTLUrl;
-                    a.download = 'braille_card.stl';
+                    // Use appropriate filename based on plate type
+                    const plateType = document.querySelector('input[name="plate_type"]:checked').value;
+                    a.download = plateType === 'positive' ? 'braille_embossing_plate.stl' : 'braille_counter_plate.stl';
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
@@ -2020,6 +2061,8 @@
 
         // Preview braille translation using real liblouis
         previewBrailleBtn.addEventListener('click', async () => {
+            // Reset button state when previewing (user is making changes)
+            resetToGenerateState();
             const lines = [
                 document.getElementById('line1').value,
                 document.getElementById('line2').value,
@@ -2212,8 +2255,10 @@
             errorDiv.style.display = 'flex';
             errorDiv.className = 'error-message info';
             
-            // Disable button during generation
+            // Update button to show loading state
             actionBtn.disabled = true;
+            actionBtn.textContent = 'Generating...';
+            actionBtn.style.opacity = '0.7';
             
             // Debug: Log the settings being sent
             console.log('Expert Mode Settings:', settings);
@@ -2238,8 +2283,7 @@
                 errorText.textContent = msg;
                 errorDiv.style.display = 'flex';
                 errorDiv.className = 'error-message'; // Reset to error style
-                // Re-enable button on error
-                actionBtn.disabled = false;
+                // Re-enable button on error and reset to generate state
                 resetToGenerateState();
                 return;
             }
@@ -2259,8 +2303,7 @@
                 errorText.textContent = 'Failed to process STL file: ' + e.message;
                 errorDiv.style.display = 'flex';
                 errorDiv.className = 'error-message'; // Reset to error style
-                // Re-enable button on error
-                actionBtn.disabled = false;
+                // Re-enable button on error and reset to generate state
                 resetToGenerateState();
             }
         };

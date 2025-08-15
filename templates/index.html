@@ -462,8 +462,6 @@
                 padding: 0.5em;
                 min-height: 100vh;
                 overflow-x: hidden;
-                /* Set default mobile zoom to 200% */
-                font-size: 200%;
             }
         }
         
@@ -1825,11 +1823,24 @@
         const fontSizes = [75, 87.5, 100, 112.5, 125, 150, 175, 200];
         let currentFontSizeIndex = 2; // Start at 100%
         
+        // Check if mobile device
+        const isMobile = window.innerWidth <= 768;
+        
         // Load saved font size preference
         const savedFontSize = localStorage.getItem('preferred-font-size');
-        if (savedFontSize) {
+        if (savedFontSize && !isMobile) {
+            // Only use saved preference on desktop
             currentFontSizeIndex = fontSizes.indexOf(parseInt(savedFontSize));
             if (currentFontSizeIndex === -1) currentFontSizeIndex = 2;
+        } else if (isMobile) {
+            // Mobile always defaults to 200% unless user has specifically set mobile preference
+            const savedMobileFontSize = localStorage.getItem('preferred-mobile-font-size');
+            if (savedMobileFontSize) {
+                currentFontSizeIndex = fontSizes.indexOf(parseInt(savedMobileFontSize));
+                if (currentFontSizeIndex === -1) currentFontSizeIndex = 6; // Default to 200% on mobile
+            } else {
+                currentFontSizeIndex = 6; // Default to 200% on mobile
+            }
         }
         
         function applyFontSize(sizeIndex) {
@@ -1837,7 +1848,13 @@
             document.documentElement.style.fontSize = size + '%';
             document.getElementById('current-font-size').textContent = size;
             currentFontSizeIndex = sizeIndex;
-            localStorage.setItem('preferred-font-size', size);
+            
+            // Save preference with device-specific key
+            if (window.innerWidth <= 768) {
+                localStorage.setItem('preferred-mobile-font-size', size);
+            } else {
+                localStorage.setItem('preferred-font-size', size);
+            }
             
             // Announce font size change to screen readers
             const announcement = document.createElement('div');
@@ -1849,14 +1866,8 @@
             setTimeout(() => announcement.remove(), 1000);
         }
         
-        // Initialize font size - set to 200% for mobile devices
-        if (window.innerWidth <= 768) {
-            // Mobile device - set to 200% (index 6 in fontSizes array)
-            applyFontSize(6);
-        } else {
-            // Desktop - use saved preference or default
-            applyFontSize(currentFontSizeIndex);
-        }
+        // Initialize font size
+        applyFontSize(currentFontSizeIndex);
         
         // Font size control event listeners
         document.getElementById('font-decrease').addEventListener('click', () => {

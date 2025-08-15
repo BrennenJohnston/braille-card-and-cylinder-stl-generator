@@ -520,17 +520,18 @@
                     <label class="grade-label">Select Translation:</label>
                     <div class="radio-group">
                         <label class="radio-option">
-                            <input type="radio" name="grade" value="g1">
-                            <span class="radio-text">English, U.S., uncontracted (Grade 1)</span>
-                        </label>
-                        <label class="radio-option">
                             <input type="radio" name="grade" value="g2" checked>
                             <span class="radio-text">English, U.S., contracted (Grade 2)</span>
+                            <div style="margin-top: 4px; font-size: 0.85em; color: #666; font-style: italic;">(UEB): Uses modern contractions, so check limits after translation</div>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="grade" value="g1">
+                            <span class="radio-text">English, U.S., uncontracted (Grade 1)</span>
                         </label>
                     </div>
                     <div class="grade-info" style="margin-top: 8px; font-size: 0.9em; color: #666; font-style: italic;">
                         <span id="grade1-info" style="display: none;">Uncontracted should be used in special circumstances only. Contracted is the default option.</span>
-                        <span id="grade2-info">(UEB): Uses modern contractions, so check limits after translation</span>
+                        <span id="grade2-info" style="display: none;">Grade 2 (contracted) is the default and recommended option for most use cases.</span>
                     </div>
                 </div>
 
@@ -685,7 +686,7 @@
                     grade2Info.style.display = 'none';
                 } else {
                     grade1Info.style.display = 'none';
-                    grade2Info.style.display = 'inline';
+                    grade2Info.style.display = 'none'; // Grade 2 info is now inline
                 }
             });
         });

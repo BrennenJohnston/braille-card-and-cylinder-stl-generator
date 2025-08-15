@@ -556,14 +556,20 @@
         .title-line-1 {
             font-size: 1.8em;
             font-weight: 700;
-            color: #A855F7; /* Brighter vivid violet - still accessible */
+            color: var(--text-primary); /* Default theme color */
         }
         
         .title-line-2 {
             font-size: 1.6em;
             font-weight: 600;
-            color: #A855F7; /* Brighter vivid violet - still accessible */
+            color: var(--text-secondary); /* Default theme color */
             margin-top: 0.1em;
+        }
+        
+        /* High contrast mode - bright violet title */
+        [data-theme="high-contrast"] .title-line-1,
+        [data-theme="high-contrast"] .title-line-2 {
+            color: #fd01fc !important; /* Bright violet for high contrast mode */
         }
         
         /* Top Accessibility Controls */

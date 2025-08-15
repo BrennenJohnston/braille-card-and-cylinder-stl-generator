@@ -103,14 +103,14 @@
         /* High contrast mode specific button styling */
         [data-theme="high-contrast"] button[type="submit"],
         [data-theme="high-contrast"] #generate-stl-btn {
-            background: #ffff00 !important;
+            background: #00ff00 !important;
             color: #000000 !important;
             border: 2px solid #000000 !important;
         }
 
         [data-theme="high-contrast"] button[type="submit"]:hover,
         [data-theme="high-contrast"] #generate-stl-btn:hover {
-            background: #ffffff !important;
+            background: #00ff00 !important;
             color: #000000 !important;
             border: 2px solid #ffff00 !important;
         }
@@ -480,6 +480,43 @@
             text-align: center;
         }
 
+        /* High contrast text styling */
+        [data-theme="high-contrast"] strong,
+        [data-theme="high-contrast"] b {
+            color: #00ffff !important; /* Cyan for bold text */
+        }
+
+        [data-theme="high-contrast"] .grade-label[style*="font-weight: 700"] {
+            color: #00ffff !important; /* Cyan for bold labels */
+        }
+
+        [data-theme="high-contrast"] em,
+        [data-theme="high-contrast"] i,
+        [data-theme="high-contrast"] [style*="font-style: italic"] {
+            color: #ff8800 !important; /* Orange for italic text */
+            font-style: italic;
+        }
+
+        [data-theme="high-contrast"] .grade-info span {
+            color: #ff8800 !important; /* Orange for grade info notes */
+        }
+
+        [data-theme="high-contrast"] #offset-help {
+            color: #ff8800 !important; /* Orange for offset help text */
+        }
+
+        /* Note styling classes */
+        .grade-note,
+        .offset-note {
+            color: var(--text-tertiary);
+            font-style: italic;
+        }
+
+        [data-theme="high-contrast"] .grade-note,
+        [data-theme="high-contrast"] .offset-note {
+            color: #ff8800 !important; /* Orange for all note text */
+        }
+
         body {
             background: linear-gradient(120deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
             min-height: 100vh;
@@ -659,11 +696,13 @@
         button {
             border: none;
             border-radius: 8px;
-            padding: 0.7em 0;
-            font-size: 1.1em;
+            padding: 0.7em 1em;
+            font-size: 1em;
             font-weight: 600;
             cursor: pointer;
             transition: background 0.2s, transform 0.1s;
+            line-height: 1.2;
+            white-space: nowrap;
         }
         button[type="submit"] {
             background: var(--btn-primary-bg);
@@ -710,6 +749,21 @@
             gap: 1em;
             align-items: center;
             margin-bottom: 1em;
+        }
+
+        /* Specific button sizing for better text fit */
+        #generate-stl-btn,
+        #download-btn {
+            min-width: 120px;
+            text-align: center;
+        }
+
+        #generate-stl-btn {
+            font-size: 0.95em;
+        }
+
+        #download-btn {
+            font-size: 0.95em;
         }
         #download-counter-plate-btn {
             background: var(--btn-tertiary-bg);
@@ -1008,16 +1062,16 @@
                         <label class="radio-option">
                             <input type="radio" name="grade" value="g2" checked>
                             <span class="radio-text">English, U.S., contracted (Grade 2)</span>
-                            <div style="margin-top: 4px; font-size: 0.85em; color: var(--text-tertiary); font-style: italic;">(UEB): Uses modern contractions, so check limits after translation</div>
+                            <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">(UEB): Uses modern contractions, so check limits after translation</div>
                         </label>
                         <label class="radio-option">
                             <input type="radio" name="grade" value="g1">
                             <span class="radio-text">English, U.S., uncontracted (Grade 1)</span>
                         </label>
                         </div>
-                        <div class="grade-info" style="margin-top: 8px; font-size: 0.9em; color: var(--text-tertiary); font-style: italic;" role="note">
-                            <span id="grade1-info" style="display: none;" aria-live="polite">Uncontracted should be used in special circumstances only. Contracted is the default option.</span>
-                            <span id="grade2-info" style="display: none;" aria-live="polite">Grade 2 (contracted) is the default and recommended option for most use cases.</span>
+                        <div class="grade-info" style="margin-top: 8px; font-size: 0.9em;" role="note">
+                            <span id="grade1-info" class="grade-note" style="display: none;" aria-live="polite">Uncontracted should be used in special circumstances only. Contracted is the default option.</span>
+                            <span id="grade2-info" class="grade-note" style="display: none;" aria-live="polite">Grade 2 (contracted) is the default and recommended option for most use cases.</span>
                         </div>
                     </fieldset>
                 </div>
@@ -1039,9 +1093,9 @@
                             <div id="negative-plate-offset-container" style="display: none; margin-top: 10px;" role="group" aria-label="Counter plate settings">
                                 <label for="counter_plate_dot_size_offset">Counter Dot Diameter Offset (mm):</label>
                                 <input type="number" id="counter_plate_dot_size_offset" name="counter_plate_dot_size_offset" value="0.0" step="0.1" aria-describedby="offset-help" title="Adjusts the counter plate braille dot base diameter relative to the emboss plate diameter">
-                                <div id="offset-help" style="font-size: 0.85em; color: var(--text-tertiary); margin-top: 2px; font-style: italic;">
-                                    Adds or subtracts from the Universal Counter Plate's recessed dot diameter. The dot size mirrors the Embossing Plate's Dot Base Diameter by default.
-                                </div>
+                                                            <div id="offset-help" class="offset-note" style="font-size: 0.85em; margin-top: 2px;">
+                                Adds or subtracts from the Universal Counter Plate's recessed dot diameter. The dot size mirrors the Embossing Plate's Dot Base Diameter by default.
+                            </div>
                             </div>
                         </div>
                     </fieldset>

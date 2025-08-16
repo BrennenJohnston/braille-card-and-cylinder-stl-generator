@@ -1527,8 +1527,8 @@
                             <legend class="grade-label">Select Language:</legend>
                             <div style="margin-bottom: 0.8em;">
                                 <select id="language-table" name="language_table" class="language-select" aria-describedby="language-help">
-                                    <!-- English options -->
-                                    <optgroup label="English">
+                                    <!-- Default English options -->
+                                    <optgroup label="Default">
                                         <option value="en-ueb-g2.ctb" selected>English, U.S., contracted (UEB grade 2)</option>
                                         <option value="en-ueb-g1.ctb">English, U.S., uncontracted (UEB grade 1)</option>
                                         <option value="en-us-g2.ctb">English, U.S., contracted (EBAE grade 2)</option>
@@ -1537,69 +1537,60 @@
                                         <option value="en-gb-g1.utb">English, U.K., uncontracted (grade 1)</option>
                                         <option value="en_CA.ctb">English, Canada, computer braille</option>
                                     </optgroup>
-                                    <!-- Major European languages -->
-                                    <optgroup label="European Languages">
-                                        <option value="Fr-Fr-g2.ctb">French, France, contracted (grade 2)</option>
-                                        <option value="fr-fr-g1.utb">French, France, uncontracted (grade 1)</option>
-                                        <option value="de-de-g2.ctb">German, Germany, contracted (grade 2)</option>
-                                        <option value="de-de-g1.ctb">German, Germany, uncontracted (grade 1)</option>
-                                        <option value="Es-Es-g1.utb">Spanish, Spain, uncontracted</option>
-                                        <option value="it-it-comp8.utb">Italian, computer braille (8-dot)</option>
-                                        <option value="it-it-comp6.utb">Italian, computer braille (6-dot)</option>
-                                        <option value="pt-pt-g2.ctb">Portuguese, Portugal, contracted (grade 2)</option>
-                                        <option value="pt-pt-g1.utb">Portuguese, Portugal, uncontracted (grade 1)</option>
-                                        <option value="nl-NL-g0.utb">Dutch, Netherlands, uncontracted</option>
+                                    <!-- All other languages -->
+                                    <optgroup label="Other">
+                                        <option value="afr-za-g1.ctb">Afrikaans, South Africa</option>
+                                        <option value="ar-ar-g1.utb">Arabic</option>
+                                        <option value="bg.ctb">Bulgarian</option>
+                                        <option value="zh-chn.ctb">Chinese, China (simplified)</option>
+                                        <option value="zh-tw.ctb">Chinese, Taiwan (traditional)</option>
+                                        <option value="hr.ctb">Croatian</option>
+                                        <option value="cs-g1.ctb">Czech, uncontracted</option>
                                         <option value="da-dk-g26.ctb">Danish, contracted (6-dot)</option>
                                         <option value="da-dk-g16.ctb">Danish, uncontracted (6-dot)</option>
-                                        <option value="sv-1996.ctb">Swedish (1996 standard)</option>
-                                        <option value="no-no-g2.ctb">Norwegian, contracted (grade 2)</option>
-                                        <option value="no-no-g1.ctb">Norwegian, uncontracted (grade 1)</option>
+                                        <option value="nl-NL-g0.utb">Dutch, Netherlands, uncontracted</option>
+                                        <option value="eo-g1.ctb">Esperanto</option>
+                                        <option value="fa-ir-g1.utb">Persian/Farsi, Iran</option>
                                         <option value="fi-fi.ctb">Finnish, 6-dot</option>
-                                    </optgroup>
-                                    <!-- Other European languages -->
-                                    <optgroup label="Other European">
-                                        <option value="pl-pl-comp8.ctb">Polish, computer braille (8-dot)</option>
-                                        <option value="Pl-Pl-g1.utb">Polish, uncontracted</option>
-                                        <option value="cs-g1.ctb">Czech, uncontracted</option>
-                                        <option value="sk-sk-g1.utb">Slovak, uncontracted</option>
-                                        <option value="hu-hu-g2.ctb">Hungarian, contracted (grade 2)</option>
-                                        <option value="hu-hu-g1.ctb">Hungarian, uncontracted (grade 1)</option>
-                                        <option value="ro.ctb">Romanian</option>
-                                        <option value="bg.ctb">Bulgarian</option>
-                                        <option value="hr.ctb">Croatian</option>
-                                        <option value="sl-si-comp8.ctb">Slovenian, computer braille (8-dot)</option>
-                                        <option value="sl-si-g1.utb">Slovenian, uncontracted</option>
-                                        <option value="sr-g1.ctb">Serbian</option>
+                                        <option value="fr-fr-g1.utb">French, France, uncontracted (grade 1)</option>
+                                        <option value="Fr-Fr-g2.ctb">French, France, contracted (grade 2)</option>
+                                        <option value="de-de-g1.ctb">German, Germany, uncontracted (grade 1)</option>
+                                        <option value="de-de-g2.ctb">German, Germany, contracted (grade 2)</option>
                                         <option value="el.ctb">Greek</option>
+                                        <option value="he.ctb">Hebrew</option>
+                                        <option value="hi-in-g1.utb">Hindi, India</option>
+                                        <option value="hu-hu-g1.ctb">Hungarian, uncontracted (grade 1)</option>
+                                        <option value="hu-hu-g2.ctb">Hungarian, contracted (grade 2)</option>
+                                        <option value="is.ctb">Icelandic</option>
+                                        <option value="ga-g1.utb">Irish, uncontracted (grade 1)</option>
+                                        <option value="ga-g2.ctb">Irish, contracted (grade 2)</option>
+                                        <option value="it-it-comp6.utb">Italian, computer braille (6-dot)</option>
+                                        <option value="it-it-comp8.utb">Italian, computer braille (8-dot)</option>
+                                        <option value="ko-g1.ctb">Korean, uncontracted (grade 1)</option>
+                                        <option value="ko-g2.ctb">Korean, contracted (grade 2)</option>
+                                        <option value="mt.ctb">Maltese</option>
+                                        <option value="no-no-g1.ctb">Norwegian, uncontracted (grade 1)</option>
+                                        <option value="no-no-g2.ctb">Norwegian, contracted (grade 2)</option>
+                                        <option value="Pl-Pl-g1.utb">Polish, uncontracted</option>
+                                        <option value="pl-pl-comp8.ctb">Polish, computer braille (8-dot)</option>
+                                        <option value="pt-pt-g1.utb">Portuguese, Portugal, uncontracted (grade 1)</option>
+                                        <option value="pt-pt-g2.ctb">Portuguese, Portugal, contracted (grade 2)</option>
+                                        <option value="ro.ctb">Romanian</option>
+                                        <option value="ru-ru-g1.utb">Russian, uncontracted</option>
+                                        <option value="ru-litbrl.ctb">Russian, literary</option>
+                                        <option value="gd.ctb">Scottish Gaelic</option>
+                                        <option value="sr-g1.ctb">Serbian</option>
+                                        <option value="sk-sk-g1.utb">Slovak, uncontracted</option>
+                                        <option value="sl-si-g1.utb">Slovenian, uncontracted</option>
+                                        <option value="sl-si-comp8.ctb">Slovenian, computer braille (8-dot)</option>
+                                        <option value="Es-Es-g1.utb">Spanish, Spain, uncontracted</option>
+                                        <option value="sv-1996.ctb">Swedish (1996 standard)</option>
                                         <option value="tr.ctb">Turkish, contracted</option>
                                         <option value="tr-g1.ctb">Turkish, uncontracted (grade 1)</option>
-                                        <option value="ru-litbrl.ctb">Russian, literary</option>
-                                        <option value="ru-ru-g1.utb">Russian, uncontracted</option>
-                                    </optgroup>
-                                    <!-- Asian languages -->
-                                    <optgroup label="Asian Languages">
-                                        <option value="zh-tw.ctb">Chinese, Taiwan (traditional)</option>
-                                        <option value="zh-chn.ctb">Chinese, China (simplified)</option>
-                                        <option value="ko-g2.ctb">Korean, contracted (grade 2)</option>
-                                        <option value="ko-g1.ctb">Korean, uncontracted (grade 1)</option>
                                         <option value="vi.ctb">Vietnamese, contracted</option>
                                         <option value="vi-g1.ctb">Vietnamese, uncontracted (grade 1)</option>
-                                        <option value="hi-in-g1.utb">Hindi, India</option>
-                                        <option value="ar-ar-g1.utb">Arabic</option>
-                                        <option value="he.ctb">Hebrew</option>
-                                        <option value="fa-ir-g1.utb">Persian/Farsi, Iran</option>
-                                    </optgroup>
-                                    <!-- Other languages -->
-                                    <optgroup label="Other Languages">
-                                        <option value="afr-za-g1.ctb">Afrikaans, South Africa</option>
-                                        <option value="cy-cy-g2.ctb">Welsh, contracted (grade 2)</option>
                                         <option value="cy-cy-g1.utb">Welsh, uncontracted (grade 1)</option>
-                                        <option value="ga-g2.ctb">Irish, contracted (grade 2)</option>
-                                        <option value="ga-g1.utb">Irish, uncontracted (grade 1)</option>
-                                        <option value="gd.ctb">Scottish Gaelic</option>
-                                        <option value="is.ctb">Icelandic</option>
-                                        <option value="mt.ctb">Maltese</option>
-                                        <option value="eo-g1.ctb">Esperanto</option>
+                                        <option value="cy-cy-g2.ctb">Welsh, contracted (grade 2)</option>
                                     </optgroup>
                                 </select>
                                 <div id="language-help" class="grade-note" style="margin-top: 6px; font-size: 0.85em;">

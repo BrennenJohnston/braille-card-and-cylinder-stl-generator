@@ -1696,6 +1696,34 @@
                                 <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1">
                             </div>
                         </div>
+
+                        <div class="grade-selection">
+                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Plate Dimensions</label>
+                            <div>
+                                <label for="card_width">Plate Width:</label>
+                                <input type="number" id="card_width" name="card_width" value="90" step="0.1">
+                            </div>
+                            <div>
+                                <label for="card_height">Plate Height:</label>
+                                <input type="number" id="card_height" name="card_height" value="52" step="0.1">
+                            </div>
+                            <div>
+                                <label for="card_thickness">Plate Thickness:</label>
+                                <input type="number" id="card_thickness" name="card_thickness" value="2.0" step="0.1">
+                            </div>
+                        </div>
+
+                        <div class="grade-selection">
+                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille / Card Positioning</label>
+                            <div>
+                                <label for="braille_y_adjust">Y Adjust:</label>
+                                <input type="number" id="braille_y_adjust" name="braille_y_adjust" value="0.0" step="0.1">
+                            </div>
+                            <div>
+                                <label for="braille_x_adjust">X Adjust:</label>
+                                <input type="number" id="braille_x_adjust" name="braille_x_adjust" value="0.0" step="0.1">
+                            </div>
+                        </div>
                         
                         <div style="margin-top: 1.5em; text-align: center;">
                             <button type="button" id="preview-braille-btn">Preview Braille Translation</button>
@@ -2019,7 +2047,12 @@
                 'grid_rows',
                 'cell_spacing',
                 'line_spacing',
-                'dot_spacing'
+                'dot_spacing',
+                'card_width',
+                'card_height',
+                'card_thickness',
+                'braille_x_adjust',
+                'braille_y_adjust'
             ];
             
             expertInputs.forEach(inputId => {
@@ -2058,7 +2091,12 @@
             'grid_rows',
             'cell_spacing',
             'line_spacing',
-            'dot_spacing'
+            'dot_spacing',
+            'card_width',
+            'card_height',
+            'card_thickness',
+            'braille_x_adjust',
+            'braille_y_adjust'
         ];
         
         expertInputs.forEach(inputId => {
@@ -2246,7 +2284,12 @@
                 emboss_dot_base_diameter: document.getElementById('emboss_dot_base_diameter').value,
                 emboss_dot_height: document.getElementById('emboss_dot_height').value,
                 emboss_dot_flat_hat: document.getElementById('emboss_dot_flat_hat').value,
-                counter_plate_dot_size_offset: document.getElementById('counter_plate_dot_size_offset').value
+                counter_plate_dot_size_offset: document.getElementById('counter_plate_dot_size_offset').value,
+                card_width: document.getElementById('card_width').value,
+                card_height: document.getElementById('card_height').value,
+                card_thickness: document.getElementById('card_thickness').value,
+                braille_x_adjust: document.getElementById('braille_x_adjust').value,
+                braille_y_adjust: document.getElementById('braille_y_adjust').value
             };
             
             // Debug: Log the settings being sent

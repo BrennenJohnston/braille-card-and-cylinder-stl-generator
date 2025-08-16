@@ -1279,14 +1279,24 @@
             margin-left: auto;
         }
 
-        .theme-label {
+        .theme-label-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 8px;
+            padding: 0.6em 1em;
             font-size: 0.9em;
-            font-weight: 600;
             color: var(--text-secondary);
             white-space: nowrap;
             display: flex;
             align-items: center;
             gap: 0.3em;
+            min-height: 2.5em;
+            box-sizing: border-box;
+        }
+
+        .theme-label-text {
+            font-weight: 600;
+            color: var(--text-secondary);
         }
 
         /* Theme Toggle Button */
@@ -1355,8 +1365,9 @@
                 margin-left: 0;
             }
             
-            .theme-label {
+            .theme-label-box {
                 font-size: 0.85em;
+                min-height: 2.2em;
             }
         }
         
@@ -1371,7 +1382,12 @@
         }
         
         /* Form Section Accessibility Controls */
-        [data-theme="high-contrast"] .theme-label {
+        [data-theme="high-contrast"] .theme-label-box {
+            background: #1a1a1a !important; /* Dark background for high contrast */
+            border: 2px solid #ffff00 !important; /* Yellow border for high contrast */
+        }
+        
+        [data-theme="high-contrast"] .theme-label-text {
             color: #02fe05 !important; /* Green text for high contrast */
         }
         
@@ -1484,10 +1500,12 @@
                 
                 <!-- Theme Toggle Section -->
                 <div class="theme-toggle-section" role="group" aria-labelledby="theme-label">
-                    <span id="theme-label" class="theme-label">Change Theme to →</span>
+                    <div id="theme-label" class="theme-label-box">
+                        <span class="theme-label-text">Change Theme to →</span>
+                    </div>
                     <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme" title="Toggle between light, dark, and high contrast themes">
-                        <span class="theme-icon" aria-hidden="true">🌙</span>
-                        <span class="theme-text">Dark</span>
+                        <span class="theme-icon" aria-hidden="true">⚡</span>
+                        <span class="theme-text">High Contrast</span>
                     </button>
                 </div>
             </div>
@@ -1788,15 +1806,15 @@
         };
 
         // Theme switching functionality
-        const themes = ['high-contrast', 'dark', 'light'];
+        const themes = ['dark', 'high-contrast', 'light'];
         const themeIcons = {
-            'high-contrast': '⚡',
             'dark': '🌙',
+            'high-contrast': '⚡',
             'light': '🌞'
         };
         const themeNames = {
-            'high-contrast': 'High Contrast',
             'dark': 'Dark',
+            'high-contrast': 'High Contrast',
             'light': 'Light'
         };
         
@@ -1806,8 +1824,8 @@
             currentThemeIndex = themes.indexOf(savedTheme);
             applyTheme(savedTheme);
         } else {
-            // Default to high contrast mode if no saved preference
-            applyTheme('high-contrast');
+            // Default to dark mode if no saved preference
+            applyTheme('dark');
         }
 
         function applyTheme(theme) {
@@ -1916,10 +1934,7 @@
             }
         }
 
-        // Initialize with high contrast theme on first load
-        if (!localStorage.getItem('preferred-theme')) {
-            applyTheme('high-contrast');
-        }
+        // Theme initialization is handled above in the main theme logic
 
         // Font size adjustment functionality
         const fontSizes = [75, 87.5, 100, 112.5, 125, 150, 175, 200];

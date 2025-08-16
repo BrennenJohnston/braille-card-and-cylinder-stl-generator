@@ -1624,13 +1624,7 @@
                                     <span class="radio-text">Universal Counter Plate</span>
                                 </label>
                                 <span id="counter-plate-desc" class="sr-only">Creates recessed dots to support embossing process</span>
-                                <div id="negative-plate-offset-container" style="display: none; margin-top: 10px;" role="group" aria-label="Counter plate settings">
-                                    <label for="counter_plate_dot_size_offset">Counter Dot Diameter Offset (mm):</label>
-                                    <input type="number" id="counter_plate_dot_size_offset" name="counter_plate_dot_size_offset" value="0.0" step="0.1" aria-describedby="offset-help" title="Adjusts the counter plate braille dot base diameter relative to the emboss plate diameter">
-                                    <div id="offset-help" class="offset-note" style="font-size: 0.85em; margin-top: 2px;">
-                                        Adds or subtracts from the Universal Counter Plate's recessed dot diameter. The dot size mirrors the Embossing Plate's Dot Base Diameter by default.
-                                    </div>
-                                </div>
+
                             </div>
                         </fieldset>
                     </div>
@@ -1683,6 +1677,17 @@
                             <div>
                                 <label for="emboss_dot_flat_hat">Flat hat diameter:</label>
                                 <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1">
+                            </div>
+                        </div>
+
+                        <div class="grade-selection">
+                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Counter Dot Dimensions</label>
+                            <div>
+                                <label for="counter_plate_dot_size_offset">Counter Dot Diameter Offset (mm):</label>
+                                <input type="number" id="counter_plate_dot_size_offset" name="counter_plate_dot_size_offset" value="0.0" step="0.1" aria-describedby="offset-help" title="Adjusts the counter plate braille dot base diameter relative to the emboss plate diameter">
+                                <div id="offset-help" class="offset-note" style="font-size: 0.85em; margin-top: 2px;">
+                                    Adds or subtracts from the Universal Counter Plate's recessed dot diameter. The dot size mirrors the Embossing Plate's Dot Base Diameter by default.
+                                </div>
                             </div>
                         </div>
 
@@ -2002,7 +2007,6 @@
                 }
             }
         });
-        const negativePlateOffsetContainer = document.getElementById('negative-plate-offset-container');
         const expertToggleBtn = document.getElementById('expert-toggle');
         const expertSettings = document.getElementById('expert-settings');
         const expertToggleText = document.getElementById('expert-toggle-text');
@@ -2013,12 +2017,6 @@
         const infoContent = document.getElementById('info-content');
         const infoToggleText = document.getElementById('info-toggle-text');
         const infoToggleIcon = document.getElementById('info-toggle-icon');
-
-        document.querySelectorAll('input[name="plate_type"]').forEach(radio => {
-            radio.addEventListener('change', function() {
-                negativePlateOffsetContainer.style.display = this.value === 'negative' ? 'block' : 'none';
-            });
-        });
 
 
 
@@ -2057,6 +2055,7 @@
                 'emboss_dot_base_diameter',
                 'emboss_dot_height', 
                 'emboss_dot_flat_hat',
+                'counter_plate_dot_size_offset',
                 'grid_columns',
                 'grid_rows',
                 'cell_spacing',

@@ -30,6 +30,7 @@ class CardSettings:
             "braille_y_adjust": 0.4,
             "braille_x_adjust": 0.1,
             "negative_plate_offset": 0.4,
+            "counter_plate_dot_size_offset": 0.0,  # Default offset from emboss dot diameter
         }
         
         # Set attributes from kwargs or defaults, while being tolerant of "empty" inputs
@@ -49,6 +50,10 @@ class CardSettings:
         # Ensure attributes that represent counts are integers
         self.grid_columns = int(self.grid_columns)
         self.grid_rows = int(self.grid_rows)
+        
+        # Handle backward compatibility for offset naming
+        if 'negative_plate_offset' in kwargs and 'counter_plate_dot_size_offset' not in kwargs:
+            self.counter_plate_dot_size_offset = self.negative_plate_offset
         
         # Calculated properties
         self.dot_top_diameter = self.dot_hat_size
@@ -479,9 +484,9 @@ def generate_braille_stl():
                             filename = f'braille_embossing_plate_{sanitized}'
                         break
         else:
-            # For counter plates, include dot diameter in filename
-            dot_diameter = settings.dot_base_diameter
-            filename = f'braille_counter_plate_{dot_diameter}mm'
+            # For counter plates, include total diameter (base + offset) in filename
+            total_diameter = settings.dot_base_diameter + settings.counter_plate_dot_size_offset
+            filename = f'braille_counter_plate_{total_diameter}mm'
         
         # Additional filename sanitization for security
         filename = re.sub(r'[^\w\-_]', '', filename)[:50]  # Allow longer names for embossing plates
@@ -508,9 +513,9 @@ def generate_counter_plate_stl():
         mesh.export(stl_io, file_type='stl')
         stl_io.seek(0)
         
-        # Include dot diameter in filename
-        dot_diameter = settings.dot_base_diameter
-        filename = f"braille_counter_plate_{dot_diameter}mm"
+        # Include total diameter (base + offset) in filename
+        total_diameter = settings.dot_base_diameter + settings.counter_plate_dot_size_offset
+        filename = f"braille_counter_plate_{total_diameter}mm"
         return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl')
 
     except Exception as e:

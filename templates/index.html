@@ -2422,9 +2422,11 @@
                         }
                     }
                 } else {
-                    // For counter plates, include dot diameter in filename
-                    const dotDiameter = document.getElementById('emboss_dot_base_diameter').value;
-                    filename = `braille_counter_plate_${dotDiameter}mm`;
+                    // For counter plates, include total diameter (base + offset) in filename
+                    const dotDiameter = parseFloat(document.getElementById('emboss_dot_base_diameter').value) || 0;
+                    const counterOffset = parseFloat(document.getElementById('counter_plate_dot_size_offset').value) || 0;
+                    const totalDiameter = dotDiameter + counterOffset;
+                    filename = `braille_counter_plate_${totalDiameter}mm`;
                 }
                 
                 // Store the generated STL URL and filename for download

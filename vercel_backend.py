@@ -1103,9 +1103,9 @@ def generate_braille_stl():
                             filename = f'braille_embossing_plate_{sanitized}'
                         break
         else:
-            # For counter plates, include dot diameter in filename
-            dot_diameter = settings.emboss_dot_base_diameter
-            filename = f'braille_counter_plate_{dot_diameter}mm'
+            # For counter plates, include total diameter (base + offset) in filename
+            total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
+            filename = f'braille_counter_plate_{total_diameter}mm'
         
         # Additional filename sanitization for security
         filename = re.sub(r'[^\w\-_]', '', filename)[:50]  # Allow longer names for embossing plates
@@ -1155,9 +1155,9 @@ def generate_counter_plate_stl():
         mesh.export(stl_io, file_type='stl')
         stl_io.seek(0)
         
-        # Include dot diameter in filename
-        dot_diameter = settings.emboss_dot_base_diameter
-        filename = f'braille_counter_plate_{dot_diameter}mm.stl'
+        # Include total diameter (base + offset) in filename
+        total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
+        filename = f'braille_counter_plate_{total_diameter}mm.stl'
         return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=filename)
         
     except Exception as e:
@@ -1202,9 +1202,9 @@ def generate_universal_counter_plate_route():
         mesh.export(stl_io, file_type='stl')
         stl_io.seek(0)
         
-        # Include dot diameter in filename
-        dot_diameter = settings.emboss_dot_base_diameter
-        filename = f'braille_universal_counter_plate_{dot_diameter}mm.stl'
+        # Include total diameter (base + offset) in filename
+        total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
+        filename = f'braille_universal_counter_plate_{total_diameter}mm.stl'
         return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=filename)
         
     except Exception as e:
@@ -1258,9 +1258,9 @@ def generate_hemispherical_counter_plate_route():
         mesh.export(stl_io, file_type='stl')
         stl_io.seek(0)
         
-        # Include dot diameter in filename
-        dot_diameter = settings.emboss_dot_base_diameter
-        filename = f'braille_hemispherical_counter_plate_{dot_diameter}mm.stl'
+        # Include total diameter (base + offset) in filename
+        total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
+        filename = f'braille_hemispherical_counter_plate_{total_diameter}mm.stl'
         return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=filename)
         
     except Exception as e:

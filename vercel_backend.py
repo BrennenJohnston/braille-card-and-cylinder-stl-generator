@@ -1103,8 +1103,9 @@ def generate_braille_stl():
                             filename = f'braille_embossing_plate_{sanitized}'
                         break
         else:
-            # For counter plates, use default name
-            filename = 'braille_counter_plate'
+            # For counter plates, include dot diameter in filename
+            dot_diameter = settings.emboss_dot_base_diameter
+            filename = f'braille_counter_plate_{dot_diameter}mm'
         
         # Additional filename sanitization for security
         filename = re.sub(r'[^\w\-_]', '', filename)[:50]  # Allow longer names for embossing plates
@@ -1154,7 +1155,10 @@ def generate_counter_plate_stl():
         mesh.export(stl_io, file_type='stl')
         stl_io.seek(0)
         
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='braille_counter_plate.stl')
+        # Include dot diameter in filename
+        dot_diameter = settings.emboss_dot_base_diameter
+        filename = f'braille_counter_plate_{dot_diameter}mm.stl'
+        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=filename)
         
     except Exception as e:
         return jsonify({'error': f'Failed to generate counter plate: {str(e)}'}), 500
@@ -1198,7 +1202,10 @@ def generate_universal_counter_plate_route():
         mesh.export(stl_io, file_type='stl')
         stl_io.seek(0)
         
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='braille_universal_counter_plate.stl')
+        # Include dot diameter in filename
+        dot_diameter = settings.emboss_dot_base_diameter
+        filename = f'braille_universal_counter_plate_{dot_diameter}mm.stl'
+        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=filename)
         
     except Exception as e:
         return jsonify({'error': f'Failed to generate universal counter plate: {str(e)}'}), 500
@@ -1251,7 +1258,10 @@ def generate_hemispherical_counter_plate_route():
         mesh.export(stl_io, file_type='stl')
         stl_io.seek(0)
         
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='braille_hemispherical_counter_plate.stl')
+        # Include dot diameter in filename
+        dot_diameter = settings.emboss_dot_base_diameter
+        filename = f'braille_hemispherical_counter_plate_{dot_diameter}mm.stl'
+        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=filename)
         
     except Exception as e:
         return jsonify({'error': f'Failed to generate hemispherical counter plate: {str(e)}'}), 500

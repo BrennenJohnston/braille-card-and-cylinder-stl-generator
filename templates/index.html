@@ -1852,13 +1852,13 @@
             currentFontSizeIndex = fontSizes.indexOf(parseInt(savedFontSize));
             if (currentFontSizeIndex === -1) currentFontSizeIndex = 2;
         } else if (isMobile) {
-            // Mobile always defaults to 200% unless user has specifically set mobile preference
+            // Mobile defaults to 100% unless user has specifically set mobile preference
             const savedMobileFontSize = localStorage.getItem('preferred-mobile-font-size');
             if (savedMobileFontSize) {
                 currentFontSizeIndex = fontSizes.indexOf(parseInt(savedMobileFontSize));
-                if (currentFontSizeIndex === -1) currentFontSizeIndex = 6; // Default to 200% on mobile
+                if (currentFontSizeIndex === -1) currentFontSizeIndex = 2; // Default to 100% on mobile
             } else {
-                currentFontSizeIndex = 6; // Default to 200% on mobile
+                currentFontSizeIndex = 2; // Default to 100% on mobile
             }
         }
         

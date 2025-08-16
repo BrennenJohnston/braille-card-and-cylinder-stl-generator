@@ -10,17 +10,161 @@ from pathlib import Path
 from flask_cors import CORS
 from shapely.geometry import Polygon, Point
 from shapely.ops import unary_union
+from functools import wraps
+import time
+from collections import defaultdict
+import hashlib
 
 app = Flask(__name__)
-CORS(app)
+# CORS configuration - update with your actual domain before deployment
+allowed_origins = [
+    'https://your-vercel-domain.vercel.app',  # Replace with your actual Vercel domain
+    'https://your-custom-domain.com'  # Replace with your custom domain if any
+]
+
+# For development, allow localhost
+if os.environ.get('FLASK_ENV') == 'development':
+    allowed_origins.extend(['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5001'])
+
+CORS(app, origins=allowed_origins, supports_credentials=True)
+
+# Security configurations
+app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024  # 1MB max request size
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
+
+# Rate limiting storage
+request_counts = defaultdict(list)
+REQUEST_LIMIT = 10  # requests per minute
+TIME_WINDOW = 60  # seconds
+
+# Security headers
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to all responses"""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com"
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    return response
+
+# Rate limiting decorator
+def rate_limit(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Get client IP (considering proxy headers for production)
+        client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+        if client_ip:
+            client_ip = client_ip.split(',')[0].strip()
+        else:
+            client_ip = request.remote_addr
+        
+        # Clean old requests
+        current_time = time.time()
+        request_counts[client_ip] = [
+            req_time for req_time in request_counts[client_ip]
+            if current_time - req_time < TIME_WINDOW
+        ]
+        
+        # Check rate limit
+        if len(request_counts[client_ip]) >= REQUEST_LIMIT:
+            return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
+        
+        # Record this request
+        request_counts[client_ip].append(current_time)
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Input validation functions
+def validate_lines(lines):
+    """Validate the lines input for security and correctness"""
+    if not isinstance(lines, list):
+        raise ValueError("Lines must be a list")
+    
+    if len(lines) != 4:
+        raise ValueError("Must provide exactly 4 lines")
+    
+    for i, line in enumerate(lines):
+        if not isinstance(line, str):
+            raise ValueError(f"Line {i+1} must be a string")
+        
+        # Check length to prevent extremely long inputs
+        if len(line) > 50:
+            raise ValueError(f"Line {i+1} is too long (max 50 characters)")
+        
+        # Basic sanitization - remove potentially harmful characters
+        if any(char in line for char in ['<', '>', '&', '"', "'", '\x00']):
+            raise ValueError(f"Line {i+1} contains invalid characters")
+    
+    return True
+
+def validate_settings(settings_data):
+    """Validate settings data for security"""
+    if not isinstance(settings_data, dict):
+        raise ValueError("Settings must be a dictionary")
+    
+    # Define allowed settings keys and their types/ranges
+    allowed_settings = {
+        'card_width': (float, 50, 200),
+        'card_height': (float, 30, 150),
+        'card_thickness': (float, 1, 10),
+        'grid_columns': (int, 1, 20),
+        'grid_rows': (int, 1, 10),
+        'cell_spacing': (float, 2, 15),
+        'line_spacing': (float, 5, 25),
+        'dot_spacing': (float, 1, 5),
+        'emboss_dot_base_diameter': (float, 0.5, 3),
+        'emboss_dot_height': (float, 0.3, 2),
+        'emboss_dot_flat_hat': (float, 0.1, 2),
+        'braille_x_adjust': (float, -10, 10),
+        'braille_y_adjust': (float, -10, 10),
+        'counter_plate_dot_size_offset': (float, 0, 2),
+        'hemisphere_subdivisions': (int, 1, 3)
+    }
+    
+    for key, value in settings_data.items():
+        if key not in allowed_settings:
+            continue  # Ignore unknown settings (CardSettings will use defaults)
+        
+        expected_type, min_val, max_val = allowed_settings[key]
+        
+        # Type validation
+        try:
+            if expected_type == int:
+                value = int(float(value))  # Allow "2.0" to become int 2
+            else:
+                value = float(value)
+        except (ValueError, TypeError):
+            raise ValueError(f"Setting '{key}' must be a number")
+        
+        # Range validation
+        if not (min_val <= value <= max_val):
+            raise ValueError(f"Setting '{key}' must be between {min_val} and {max_val}")
+    
+    return True
 
 # Add error handling for Vercel environment
 @app.errorhandler(Exception)
 def handle_error(e):
     import traceback
-    print(f"Error: {str(e)}")
-    print(f"Traceback: {traceback.format_exc()}")
-    return jsonify({'error': f'Server error: {str(e)}'}), 500
+    # Log error for debugging in production
+    app.logger.error(f"Error: {str(e)}")
+    app.logger.error(f"Traceback: {traceback.format_exc()}")
+    # Don't expose internal details in production
+    if app.debug:
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+    else:
+        return jsonify({'error': 'An internal server error occurred'}), 500
+
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    return jsonify({'error': 'File too large. Maximum size is 1MB.'}), 413
+
+@app.errorhandler(400)
+def bad_request(error):
+    return jsonify({'error': 'Invalid request format'}), 400
 
 class CardSettings:
     def __init__(self, **kwargs):
@@ -135,17 +279,14 @@ def braille_to_dots(braille_char: str) -> list:
     3 6
     """
     if not braille_char or braille_char == ' ':
-        print(f"DEBUG: Empty/space character, returning [0,0,0,0,0,0]")
         return [0, 0, 0, 0, 0, 0]  # Empty cell
     
     # Check if it's in the braille Unicode block (U+2800 to U+28FF)
     code_point = ord(braille_char)
-    print(f"DEBUG: Character '{braille_char}' has Unicode code point: {code_point} (0x{code_point:04X})")
     
     if code_point >= 0x2800 and code_point <= 0x28FF:
         # Extract the dot pattern (bits 0-7 for dots 1-8)
         dot_pattern = code_point - 0x2800
-        print(f"DEBUG: Dot pattern value: {dot_pattern}")
         
         # Convert to 6-dot pattern (dots 1-6)
         dots = [0, 0, 0, 0, 0, 0]
@@ -153,10 +294,8 @@ def braille_to_dots(braille_char: str) -> list:
             if dot_pattern & (1 << i):
                 dots[i] = 1
         
-        print(f"DEBUG: Final dots array: {dots}")
         return dots
     else:
-        print(f"DEBUG: Character '{braille_char}' is not in braille Unicode block, returning [0,0,0,0,0,0]")
         return [0, 0, 0, 0, 0, 0]
 
 def create_braille_dot(x, y, z, settings: CardSettings):
@@ -229,7 +368,6 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
         if has_braille_chars:
             # Input is proper braille Unicode, use it directly
             braille_text = line_text
-            print(f"DEBUG: Input '{line_text}' is proper braille Unicode, using directly")
         else:
             # Input is not braille Unicode - this is an error
             error_msg = f"Line {row_num + 1} does not contain proper braille Unicode characters. Frontend must translate text to braille before sending."
@@ -250,7 +388,6 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
                 break
                 
             dots = braille_to_dots(braille_char)
-            print(f"DEBUG: Braille char '{braille_char}' → dots {dots}")
             
             # Calculate X position for this column
             x_pos = settings.left_margin + (col_num * settings.cell_spacing) + settings.braille_x_adjust
@@ -264,12 +401,9 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
                     dot_y = y_pos + dot_row_offsets[dot_pos[0]]
                     z = settings.card_thickness + settings.emboss_dot_height / 2
                     
-                    print(f"DEBUG: Creating dot {i+1} at ({dot_x:.2f}, {dot_y:.2f}, {z:.2f})")
                     dot_mesh = create_braille_dot(dot_x, dot_y, z, settings)
                     meshes.append(dot_mesh)
                     dot_count += 1
-            
-            print(f"DEBUG: Created {dot_count} dots for character '{braille_char}'")
     
     print(f"Created positive plate with {len(meshes)-1} cone-shaped dots")
     return trimesh.util.concatenate(meshes)
@@ -279,8 +413,6 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
     Create a negative plate with recessed holes using 2D Shapely operations for Vercel compatibility.
     This creates a counter plate with holes that match the embossing plate dimensions and positioning.
     """
-    print(f"DEBUG: Starting negative plate creation with Shapely approach")
-    print(f"DEBUG: Settings: grid {settings.grid_columns}x{settings.grid_rows}, dot spacing: {settings.dot_spacing}")
     
     # Create base rectangle for the card
     base_polygon = Polygon([
@@ -289,8 +421,6 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
         (settings.card_width, settings.card_height),
         (0, settings.card_height)
     ])
-    
-    print(f"DEBUG: Base polygon area: {base_polygon.area:.2f}")
     
     # Dot positioning constants (same as embossing plate)
     dot_col_offsets = [-settings.dot_spacing / 2, settings.dot_spacing / 2]
@@ -309,13 +439,8 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
     clearance_factor = 0.1  # 0.1mm additional clearance
     hole_radius += clearance_factor
     
-    print(f"DEBUG: Hole radius: {hole_radius:.2f}mm (base: {settings.recessed_dot_base_diameter/2:.2f}mm + clearance: {clearance_factor:.2f}mm)")
-    print(f"DEBUG: Embossing dot radius: {settings.emboss_dot_base_diameter/2:.2f}mm")
-    print(f"DEBUG: Hole-to-dot ratio: {hole_radius/(settings.emboss_dot_base_diameter/2):.2f}")
-    
     # Ensure hole radius is reasonable (at least 0.5mm)
     if hole_radius < 0.5:
-        print(f"WARNING: Hole radius {hole_radius:.2f}mm is very small, increasing to 0.5mm")
         hole_radius = 0.5
     
     # Process each line to create holes that match the embossing plate
@@ -333,7 +458,6 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
                 
             # Calculate Y position for this row (same as embossing plate)
             y_pos = settings.card_height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
-            print(f"DEBUG: Row {row_num}: Y position = {settings.card_height} - {settings.top_margin} - ({row_num} * {settings.line_spacing}) + {settings.braille_y_adjust} = {y_pos:.2f}mm")
                 
             # Process each braille character in the line
             for col_num, braille_char in enumerate(line_text):
@@ -342,11 +466,9 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
                         
                 # Calculate X position for this column (same as embossing plate)
                 x_pos = settings.left_margin + (col_num * settings.cell_spacing) + settings.braille_x_adjust
-                print(f"DEBUG: Cell[{row_num},{col_num}]: X position = {settings.left_margin} + ({col_num} * {settings.cell_spacing}) + {settings.braille_x_adjust} = {x_pos:.2f}mm")
                     
                 # Create holes for the dots that are present in this braille character
                 dots = braille_to_dots(braille_char)
-                print(f"DEBUG: Creating holes for char '{braille_char}' → dots {dots} at cell[{row_num},{col_num}]")
                     
                 for dot_idx, dot_val in enumerate(dots):
                     if dot_val == 1:  # Only create holes for dots that are present
@@ -354,16 +476,12 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
                         dot_x = x_pos + dot_col_offsets[dot_pos[1]]
                         dot_y = y_pos + dot_row_offsets[dot_pos[0]]
                         
-                        print(f"DEBUG: Dot {dot_idx+1}: offset[{dot_pos[0]},{dot_pos[1]}] → ({dot_x:.2f}, {dot_y:.2f})")
                         
                         # Create circular hole with higher resolution
                         hole = Point(dot_x, dot_y).buffer(hole_radius, resolution=64)
                         holes.append(hole)
                         total_dots += 1
                         
-                        print(f"DEBUG: Hole {total_dots} for dot {dot_idx+1} at ({dot_x:.2f}, {dot_y:.2f})")
-    
-    print(f"DEBUG: Created {total_dots} holes total for actual text content")
     
     if not holes:
         print("WARNING: No holes were created! Creating a plate with all possible holes as fallback")
@@ -372,20 +490,13 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
     
     # Combine all holes into one multi-polygon
     try:
-        print("DEBUG: Combining holes with unary_union...")
         all_holes = unary_union(holes)
-        print(f"DEBUG: Combined holes area: {all_holes.area:.4f}")
         
         # Subtract holes from base to create the plate with holes
-        print("DEBUG: Subtracting holes from base...")
         plate_with_holes = base_polygon.difference(all_holes)
-        print(f"DEBUG: Plate with holes area: {plate_with_holes.area:.4f}")
-        print(f"DEBUG: Area removed: {base_polygon.area - plate_with_holes.area:.4f}")
         
     except Exception as e:
-        print(f"ERROR: Failed to combine holes or subtract from base: {e}")
-        import traceback
-        traceback.print_exc()
+        app.logger.error(f"Failed to combine holes or subtract from base: {e}")
         return create_fallback_plate(settings)
     
     # Extrude the 2D shape to 3D
@@ -395,25 +506,19 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
             # It's a MultiPolygon - take the largest polygon (should be the main plate)
             largest_polygon = max(plate_with_holes.geoms, key=lambda p: p.area)
             final_mesh = trimesh.creation.extrude_polygon(largest_polygon, height=settings.card_thickness)
-            print(f"DEBUG: MultiPolygon detected, using largest polygon with area {largest_polygon.area:.2f}")
+
         else:
             # It's a single Polygon
             final_mesh = trimesh.creation.extrude_polygon(plate_with_holes, height=settings.card_thickness)
         
-        print(f"DEBUG: Successfully created counter plate with {total_dots} holes using Shapely")
-        print(f"DEBUG: Final mesh bounds: {final_mesh.bounds}")
-        print(f"DEBUG: Final mesh volume: {final_mesh.volume:.4f}")
         return final_mesh
     except Exception as e:
-        print(f"ERROR: Failed to extrude polygon: {e}")
-        import traceback
-        traceback.print_exc()
+        app.logger.error(f"Failed to extrude polygon: {e}")
         # Fallback to simple base plate if extrusion fails
         return create_fallback_plate(settings)
 
 def create_universal_counter_plate_fallback(settings: CardSettings):
     """Create a counter plate with all possible holes as fallback when text-based holes fail"""
-    print("DEBUG: Creating universal counter plate fallback with all possible holes")
     
     # Create base rectangle for the card
     base_polygon = Polygon([
@@ -455,7 +560,6 @@ def create_universal_counter_plate_fallback(settings: CardSettings):
                 holes.append(hole)
                 total_dots += 1
     
-    print(f"DEBUG: Fallback: Created {total_dots} holes total for all possible positions")
     
     # Combine and subtract holes
     try:
@@ -469,7 +573,6 @@ def create_universal_counter_plate_fallback(settings: CardSettings):
         else:
             final_mesh = trimesh.creation.extrude_polygon(plate_with_holes, height=settings.card_thickness)
         
-        print(f"DEBUG: Fallback counter plate created successfully")
         return final_mesh
         
     except Exception as e:
@@ -592,14 +695,10 @@ def create_universal_counter_plate(settings: CardSettings):
     - Counter plate dot height  
     - Counter plate dot flat top diameter
     """
-    print("DEBUG: Starting universal counter plate creation with conical holes")
-    print(f"DEBUG: Grid: {settings.grid_columns}x{settings.grid_rows} = {settings.grid_columns * settings.grid_rows * 6} total holes")
 
     # Create the base plate
     plate = trimesh.creation.box(extents=(settings.card_width, settings.card_height, settings.card_thickness))
     plate.apply_translation((settings.card_width / 2, settings.card_height / 2, settings.card_thickness / 2))
-    print(f"DEBUG: Base plate bounds: {plate.bounds}")
-    print(f"DEBUG: Base plate volume: {plate.volume:.4f}")
 
     # Dot positioning constants (same as emboss plate)
     dot_col_offsets = [-settings.dot_spacing / 2, settings.dot_spacing / 2]
@@ -615,10 +714,7 @@ def create_universal_counter_plate(settings: CardSettings):
     counter_dot_top_radius = settings.counter_plate_dot_top_diameter / 2
     counter_dot_height = settings.counter_plate_dot_height
 
-    print(f"DEBUG: Counter plate dot parameters:")
-    print(f"DEBUG:   Base radius: {counter_dot_base_radius:.3f}mm")
-    print(f"DEBUG:   Top radius: {counter_dot_top_radius:.3f}mm") 
-    print(f"DEBUG:   Height: {counter_dot_height:.3f}mm")
+
 
     # Generate cones for each grid position
     for row in range(settings.grid_rows):
@@ -654,39 +750,24 @@ def create_universal_counter_plate(settings: CardSettings):
                 z_pos = -counter_dot_height  # Start well below the plate
                 cone_cutter.apply_translation((dot_x, dot_y, z_pos))
                 
-                # Debug: Log first few cone positions and bounds
-                if total_dots < 5:
-                    print(f"DEBUG: Cone {total_dots + 1} at ({dot_x:.2f}, {dot_y:.2f}, {z_pos:.2f})")
-                    print(f"DEBUG:   Cone bounds: {cone_cutter.bounds}")
-                    print(f"DEBUG:   Cone extends from Z={cone_cutter.bounds[0][2]:.3f} to Z={cone_cutter.bounds[1][2]:.3f}")
+
                 
                 cutters.append(cone_cutter)
                 total_dots += 1
 
-    print(f"DEBUG: Created {total_dots} conical cutters for boolean subtraction.")
-    print(f"DEBUG: Expected total: {settings.grid_rows * settings.grid_columns * 6}")
 
     # Perform boolean operations
     if cutters:
         try:
             # First, union all the cone cutters together
-            print(f"DEBUG: Unioning {len(cutters)} cone cutters...")
             if len(cutters) == 1:
                 combined_cutters = cutters[0]
             else:
                 combined_cutters = trimesh.boolean.union(cutters, engine='manifold')
             
-            print("DEBUG: Cones unioned successfully.")
-            print(f"DEBUG: Combined cutters bounds: {combined_cutters.bounds}")
             
             # Then subtract the unified cones from the plate
-            print("DEBUG: Performing plate subtraction...")
             final_mesh = trimesh.boolean.difference([plate, combined_cutters], engine='manifold')
-            
-            print("DEBUG: Boolean subtraction successful using manifold engine.")
-            print(f"DEBUG: Final mesh bounds: {final_mesh.bounds}")
-            print(f"DEBUG: Final mesh volume: {final_mesh.volume:.4f} (original: {plate.volume:.4f})")
-            print(f"DEBUG: Volume removed: {plate.volume - final_mesh.volume:.4f}")
             
             return final_mesh
             
@@ -724,17 +805,11 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
     - Generates dot centers from a full grid using the same layout parameters as the Embossing Plate.
     - Always places all 6 dots per cell (does not consult per-character translation).
     """
-    print("DEBUG: Starting hemispherical counter plate creation with Manifold backend")
-    print(f"DEBUG: Grid: {params.grid_columns}x{params.grid_rows} = {params.grid_columns * params.grid_rows * 6} total recesses")
-    print(f"DEBUG: Hemisphere radius: {params.hemisphere_radius:.3f}mm")
-    print(f"DEBUG: Plate thickness: {params.plate_thickness:.3f}mm")
     
     # Create the base plate as a box aligned to z=[0, TH], x=[0, W], y=[0, H]
     plate_mesh = trimesh.creation.box(extents=(params.card_width, params.card_height, params.plate_thickness))
     plate_mesh.apply_translation((params.card_width/2, params.card_height/2, params.plate_thickness/2))
     
-    print(f"DEBUG: Base plate bounds: {plate_mesh.bounds}")
-    print(f"DEBUG: Base plate volume: {plate_mesh.volume:.4f}")
     
     # Dot positioning constants (same as embossing plate)
     dot_col_offsets = [-params.dot_spacing / 2, params.dot_spacing / 2]
@@ -769,17 +844,11 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
                 z_pos = params.plate_thickness + params.epsilon
                 sphere.apply_translation((dot_x, dot_y, z_pos))
                 
-                # Debug: Log first few sphere positions
-                if total_spheres < 5:
-                    print(f"DEBUG: Sphere {total_spheres + 1} at ({dot_x:.2f}, {dot_y:.2f}, {z_pos:.3f})")
-                    print(f"DEBUG:   Sphere bounds: {sphere.bounds}")
-                    print(f"DEBUG:   Sphere extends from Z={sphere.bounds[0][2]:.3f} to Z={sphere.bounds[1][2]:.3f}")
+
                 
                 sphere_meshes.append(sphere)
                 total_spheres += 1
     
-    print(f"DEBUG: Created {total_spheres} icospheres for hemispherical recesses")
-    print(f"DEBUG: Expected total: {params.grid_rows * params.grid_columns * 6}")
     
     if not sphere_meshes:
         print("WARNING: No spheres were generated. Returning base plate.")
@@ -788,29 +857,19 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
     # Perform boolean operations using Manifold backend
     try:
         # Union all spheres together (optional; Manifold can take a list)
-        print(f"DEBUG: Unioning {len(sphere_meshes)} spheres...")
         if len(sphere_meshes) == 1:
             union_spheres = sphere_meshes[0]
         else:
             union_spheres = trimesh.boolean.union(sphere_meshes, engine='manifold')
         
-        print("DEBUG: Spheres unioned successfully.")
-        print(f"DEBUG: Combined spheres bounds: {union_spheres.bounds}")
         
         # Subtract the unified spheres from the plate in one operation
-        print("DEBUG: Performing plate subtraction with Manifold...")
         counter_plate_mesh = trimesh.boolean.difference([plate_mesh, union_spheres], engine='manifold')
         
-        print("DEBUG: Boolean subtraction successful using Manifold engine.")
-        print(f"DEBUG: Final mesh bounds: {counter_plate_mesh.bounds}")
-        print(f"DEBUG: Final mesh volume: {counter_plate_mesh.volume:.4f} (original: {plate_mesh.volume:.4f})")
-        print(f"DEBUG: Volume removed: {plate_mesh.volume - counter_plate_mesh.volume:.4f}")
-        
         # Verify the mesh is watertight
-        if counter_plate_mesh.is_watertight:
-            print("DEBUG: Final mesh is watertight ✓")
-        else:
-            print("WARNING: Final mesh is not watertight!")
+        if not counter_plate_mesh.is_watertight:
+            # Try to fix the mesh
+            counter_plate_mesh.fill_holes()
         
         return counter_plate_mesh
         
@@ -825,339 +884,25 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
 def health_check():
     return jsonify({'status': 'ok', 'message': 'Vercel backend is running'})
 
-@app.route('/test-liblouis-files')
-def test_liblouis_files():
-    """Test endpoint to verify liblouis files are accessible"""
-    import os
-    
-    files_to_check = [
-        # Frontend liblouis files (web worker)
-        'static/liblouis/build-no-tables-utf16.js',
-        'static/liblouis/easy-api.js',
-        'static/liblouis/tables/en-ueb-g1.ctb',
-        'static/liblouis/tables/en-ueb-g2.ctb',
-        'static/liblouis/tables/unicode.dis',
-        'static/liblouis/tables/chardefs.cti',
-        'static/liblouis/tables/braille-patterns.cti',
-        'static/liblouis/tables/litdigits6Dots.uti',
-        'static/liblouis-worker.js',
-        # Backend no longer needs liblouis files - expects Unicode from frontend
-    ]
-    
-    results = {}
-    for file_path in files_to_check:
-        try:
-            exists = os.path.exists(file_path)
-            if exists:
-                size = os.path.getsize(file_path)
-                results[file_path] = {'exists': True, 'size': size}
-            else:
-                results[file_path] = {'exists': False, 'size': 0}
-        except Exception as e:
-            results[file_path] = {'exists': False, 'error': str(e)}
-    
-    return jsonify({
-        'status': 'file_check_complete',
-        'files': results,
-        'working_directory': os.getcwd(),
-        'directory_contents': os.listdir('.')
-    })
-
-@app.route('/test-boolean-operation')
-def test_boolean_operation():
-    """Test endpoint to verify boolean operations work correctly"""
-    try:
-        # Create a simple test case
-        base = trimesh.creation.box(extents=(10, 10, 2))
-        base.apply_translation((5, 5, 1))
-        
-        # Create a test hole
-        hole = trimesh.creation.cylinder(radius=1, height=3, sections=16)
-        hole.apply_translation((5, 5, 0))
-        
-        # Try boolean subtraction
-        result = base.difference(hole)
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Boolean operation test passed',
-            'base_bounds': base.bounds.tolist(),
-            'base_volume': float(base.volume),
-            'hole_volume': float(hole.volume),
-            'result_volume': float(result.volume)
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': f'Boolean operation test failed: {str(e)}',
-            'error': str(e)
-        }), 500
-
-@app.route('/test-manifold-cone-operations')
-def test_manifold_cone_operations():
-    """Test endpoint to verify manifold engine works with cone-shaped boolean operations"""
-    try:
-        # Create a test card base
-        base = trimesh.creation.box(extents=(20, 20, 2))
-        base.apply_translation((10, 10, 1))
-        
-        # Create a test cone similar to what we use for braille dots
-        cone = trimesh.creation.cylinder(radius=1.0, height=1.5, sections=16)
-        
-        # Scale top to create frustum (cone shape)
-        scale_factor = 0.4  # Top radius smaller than base
-        top_surface_z = cone.vertices[:, 2].max()
-        is_top_vertex = np.isclose(cone.vertices[:, 2], top_surface_z)
-        cone.vertices[is_top_vertex, :2] *= scale_factor
-        
-        # Position the cone
-        cone.apply_translation((10, 10, 0.75))
-        
-        # Test manifold engine specifically
-        try:
-            result_manifold = base.difference(cone, engine='manifold')
-            manifold_success = True
-            manifold_volume = float(result_manifold.volume)
-            manifold_error = None
-        except Exception as e:
-            manifold_success = False
-            manifold_volume = None
-            manifold_error = str(e)
-        
-        # Test default engine for comparison
-        try:
-            result_default = base.difference(cone)
-            default_success = True
-            default_volume = float(result_default.volume)
-            default_error = None
-        except Exception as e:
-            default_success = False
-            default_volume = None
-            default_error = str(e)
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Manifold cone operation test completed',
-            'base_volume': float(base.volume),
-            'cone_volume': float(cone.volume),
-            'manifold': {
-                'success': manifold_success,
-                'volume': manifold_volume,
-                'error': manifold_error
-            },
-            'default': {
-                'success': default_success,
-                'volume': default_volume,
-                'error': default_error
-            },
-            'engines_available': ['manifold' if manifold_success else 'manifold_failed', 'default' if default_success else 'default_failed']
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': f'Manifold cone operation test failed: {str(e)}',
-            'error': str(e)
-        }), 500
-
-@app.route('/test-cone-positioning')
-def test_cone_positioning():
-    """Test endpoint to verify cone positioning and intersection with plate"""
-    try:
-        # Use the same settings as the main application
-        settings = CardSettings()
-        
-        # Create a test plate (smaller for testing)
-        plate = trimesh.creation.box(extents=(30, 20, 2))
-        plate.apply_translation((15, 10, 1))
-        print(f"DEBUG: Test plate bounds: {plate.bounds}")
-        
-        # Create a few test cones with the same logic as the main function
-        cutters = []
-        recessed_base_radius = settings.recessed_dot_base_diameter / 2
-        recessed_top_radius = settings.recessed_dot_top_diameter / 2
-        recessed_height = settings.recessed_dot_height
-        
-        # Create cones at specific test positions
-        test_positions = [(15, 10), (20, 15), (10, 5)]  # Center and corners
-        
-        for i, (x, y) in enumerate(test_positions):
-            cone = trimesh.creation.cylinder(
-                radius=recessed_base_radius,
-                height=recessed_height,
-                sections=16
-            )
-            
-            # Scale top to create frustum
-            if recessed_base_radius > 0:
-                scale_factor = recessed_top_radius / recessed_base_radius
-                top_surface_z = cone.vertices[:, 2].max()
-                is_top_vertex = np.isclose(cone.vertices[:, 2], top_surface_z)
-                cone.vertices[is_top_vertex, :2] *= scale_factor
-            
-            # Position the cone to intersect the plate
-            z_pos = -settings.negative_plate_offset
-            cone.apply_translation((x, y, z_pos))
-            
-            print(f"DEBUG: Test cone {i+1} at ({x}, {y}, {z_pos}) - bounds: {cone.bounds}")
-            cutters.append(cone)
-        
-        # Test boolean operation
-        if len(cutters) == 1:
-            combined_cutters = cutters[0]
-        else:
-            combined_cutters = trimesh.boolean.union(cutters, engine='manifold')
-        
-        print(f"DEBUG: Combined cutters bounds: {combined_cutters.bounds}")
-        
-        # Perform subtraction
-        result = trimesh.boolean.difference([plate, combined_cutters], engine='manifold')
-        print(f"DEBUG: Result bounds: {result.bounds}")
-        print(f"DEBUG: Result volume: {result.volume:.4f} (original: {plate.volume:.4f})")
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Cone positioning test completed',
-            'plate_bounds': plate.bounds.tolist(),
-            'plate_volume': float(plate.volume),
-            'cone_count': len(cutters),
-            'combined_cutters_bounds': combined_cutters.bounds.tolist(),
-            'result_bounds': result.bounds.tolist(),
-            'result_volume': float(result.volume),
-            'volume_difference': float(plate.volume - result.volume)
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': f'Cone positioning test failed: {str(e)}',
-            'error': str(e)
-        }), 500
-
-@app.route('/test-universal-counter-plate')
-def test_universal_counter_plate():
-    """Test endpoint to verify universal counter plate generation"""
-    try:
-        # Use the same settings as the main application
-        settings = CardSettings()
-        
-        print("DEBUG: Testing universal counter plate generation...")
-        mesh = create_universal_counter_plate(settings)
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Universal counter plate test completed',
-            'mesh_bounds': mesh.bounds.tolist(),
-            'mesh_volume': float(mesh.volume),
-            'expected_holes': settings.grid_rows * settings.grid_columns * 6,
-            'settings': {
-                'card_width': settings.card_width,
-                'card_height': settings.card_height,
-                'card_thickness': settings.card_thickness,
-                'grid_columns': settings.grid_columns,
-                'grid_rows': settings.grid_rows,
-                'emboss_dot_base_diameter': settings.emboss_dot_base_diameter,
-                'emboss_dot_height': settings.emboss_dot_height,
-                'emboss_dot_flat_hat': settings.emboss_dot_flat_hat,
-                'negative_plate_offset': settings.negative_plate_offset
-            }
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': f'Universal counter plate test failed: {str(e)}',
-            'error': str(e)
-        }), 500
 
 
 
 
 
 
-@app.route('/test-hemispherical-counter-plate')
-def test_hemispherical_counter_plate():
-    """Test endpoint to verify hemispherical counter plate generation with Manifold backend"""
-    try:
-        # Use the same settings as the main application
-        settings = CardSettings()
-        
-        print("DEBUG: Testing hemispherical counter plate generation with Manifold backend...")
-        print(f"DEBUG: Grid: {settings.grid_columns}x{settings.grid_rows} = {settings.grid_columns * settings.grid_rows * 6} total recesses")
-        print(f"DEBUG: Hemisphere radius: {settings.hemisphere_radius:.3f}mm")
-        print(f"DEBUG: Plate thickness: {settings.plate_thickness:.3f}mm")
-        
-        # Create the hemispherical counter plate
-        mesh = build_counter_plate_hemispheres(settings)
-        
-        # Export to STL
-        stl_io = io.BytesIO()
-        mesh.export(stl_io, file_type='stl')
-        stl_io.seek(0)
-        
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='test_hemispherical_counter_plate.stl')
-        
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': f'Hemispherical counter plate test failed: {str(e)}',
-            'error': str(e)
-        }), 500
 
 
-@app.route('/test-hemispherical-counter-plate-info')
-def test_hemispherical_counter_plate_info():
-    """Test endpoint to verify hemispherical counter plate properties without downloading"""
-    try:
-        # Use the same settings as the main application
-        settings = CardSettings()
-        
-        print("DEBUG: Testing hemispherical counter plate generation with Manifold backend...")
-        print(f"DEBUG: Grid: {settings.grid_columns}x{settings.grid_rows} = {settings.grid_columns * settings.grid_rows * 6} total recesses")
-        print(f"DEBUG: Hemisphere radius: {settings.hemisphere_radius:.3f}mm")
-        print(f"DEBUG: Plate thickness: {settings.plate_thickness:.3f}mm")
-        
-        # Create the hemispherical counter plate
-        mesh = build_counter_plate_hemispheres(settings)
-        
-        # Analyze the mesh to verify it has the expected properties
-        expected_recesses = settings.grid_rows * settings.grid_columns * 6
-        expected_volume_removed = expected_recesses * (4/3 * np.pi * settings.hemisphere_radius**3) / 2  # Half sphere volume
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Hemispherical counter plate test completed',
-            'mesh_properties': {
-                'bounds': mesh.bounds.tolist(),
-                'volume': float(mesh.volume),
-                'is_watertight': bool(mesh.is_watertight),
-                'vertex_count': len(mesh.vertices),
-                'face_count': len(mesh.faces)
-            },
-            'expected_properties': {
-                'total_recesses': expected_recesses,
-                'hemisphere_radius_mm': float(settings.hemisphere_radius),
-                'plate_thickness_mm': float(settings.plate_thickness),
-                'expected_volume_removed': float(expected_volume_removed)
-            },
-            'settings': {
-                'card_width': settings.card_width,
-                'card_height': settings.card_height,
-                'grid_columns': settings.grid_columns,
-                'grid_rows': settings.grid_rows,
-                'emboss_dot_base_diameter_mm': settings.emboss_dot_base_diameter_mm,
-                'plate_thickness_mm': settings.plate_thickness_mm,
-                'epsilon_mm': settings.epsilon_mm
-            }
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': f'Hemispherical counter plate test failed: {str(e)}',
-            'error': str(e)
-        }), 500
+
+
+
+
+
+
+
+
+
+
+
 
 
 @app.route('/')
@@ -1188,44 +933,75 @@ def favicon():
 @app.route('/static/<path:filename>')
 def static_files(filename):
     try:
-        print(f"DEBUG: Static file request for: {filename}")
-        print(f"DEBUG: Current working directory: {os.getcwd()}")
-        print(f"DEBUG: Static directory exists: {os.path.exists('static')}")
-        print(f"DEBUG: Full path exists: {os.path.exists(os.path.join('static', filename))}")
+        # Security: Prevent path traversal attacks
+        if '..' in filename or filename.startswith('/'):
+            return jsonify({'error': 'Invalid file path'}), 400
         
+        # Normalize the path to prevent bypassing
+        safe_path = os.path.normpath(filename)
+        if safe_path != filename or safe_path.startswith('..'):
+            return jsonify({'error': 'Invalid file path'}), 400
+        
+        # Check if static directory exists
         if not os.path.exists('static'):
-            print(f"ERROR: Static directory not found")
-            return jsonify({'error': 'Static directory not found'}), 500
-            
-        if not os.path.exists(os.path.join('static', filename)):
-            print(f"ERROR: File {filename} not found in static directory")
-            return jsonify({'error': f'File {filename} not found'}), 404
-            
-        print(f"DEBUG: Serving file: {filename}")
-        return send_from_directory('static', filename)
+            app.logger.error("Static directory not found")
+            return jsonify({'error': 'Resource not found'}), 404
+        
+        # Check if file exists
+        full_path = os.path.join('static', safe_path)
+        if not os.path.exists(full_path) or not os.path.isfile(full_path):
+            return jsonify({'error': 'File not found'}), 404
+        
+        # Additional security: ensure the resolved path is still under static/
+        if not os.path.abspath(full_path).startswith(os.path.abspath('static')):
+            return jsonify({'error': 'Invalid file path'}), 400
+        
+        return send_from_directory('static', safe_path)
     except Exception as e:
-        print(f"ERROR: Failed to serve static file {filename}: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': f'Failed to serve file: {str(e)}'}), 500
+        app.logger.error(f"Failed to serve static file {filename}: {e}")
+        return jsonify({'error': 'Failed to serve file'}), 500
 
 @app.route('/generate_braille_stl', methods=['POST'])
+@rate_limit
 def generate_braille_stl():
-    data = request.get_json()
-    lines = data.get('lines', ['', '', '', ''])
-    plate_type = data.get('plate_type', 'positive')
-    grade = data.get('grade', 'g2')
-    settings_data = data.get('settings', {})
+    try:
+        # Validate request content type
+        if not request.is_json:
+            return jsonify({'error': 'Content-Type must be application/json'}), 400
+        
+        data = request.get_json(force=True)
+        
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+        
+        lines = data.get('lines', ['', '', '', ''])
+        plate_type = data.get('plate_type', 'positive')
+        grade = data.get('grade', 'g2')
+        settings_data = data.get('settings', {})
+        
+        # Validate inputs
+        validate_lines(lines)
+        validate_settings(settings_data)
+        
+        # Validate plate_type
+        if plate_type not in ['positive', 'negative']:
+            return jsonify({'error': 'Invalid plate_type. Must be "positive" or "negative"'}), 400
+        
+        # Validate grade
+        if grade not in ['g1', 'g2']:
+            return jsonify({'error': 'Invalid grade. Must be "g1" or "g2"'}), 400
+        
+        settings = CardSettings(**settings_data)
+        
+        # Check for empty input only for positive plates (emboss plates require text)
+        if plate_type == 'positive' and all(not line.strip() for line in lines):
+            return jsonify({'error': 'Please enter text in at least one line'}), 400
     
-    # Validate input
-    if not isinstance(lines, list) or len(lines) != 4:
-        return jsonify({'error': 'Invalid input: must provide exactly 4 lines'}), 400
-    
-    settings = CardSettings(**settings_data)
-    
-    # Check for empty input only for positive plates (emboss plates require text)
-    if plate_type == 'positive' and all(not line.strip() for line in lines):
-        return jsonify({'error': 'Please enter text in at least one line'}), 400
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        app.logger.error(f"Validation error in generate_braille_stl: {e}")
+        return jsonify({'error': 'Invalid request data'}), 400
     
     # Character limit validation is now done on frontend after braille translation
     # Backend expects lines to already be within limits
@@ -1311,6 +1087,9 @@ def generate_braille_stl():
                     filename = sanitized
                 break
         
+        # Additional filename sanitization for security
+        filename = re.sub(r'[^\w\-_]', '', filename)[:30]  # Strict filename sanitization
+        
         # Add plate type to filename
         plate_suffix = 'counter_plate' if plate_type == 'negative' else 'braille'
         
@@ -1322,14 +1101,29 @@ def generate_braille_stl():
         return jsonify({'error': f'Failed to generate STL: {str(e)}'}), 500
 
 @app.route('/generate_counter_plate_stl', methods=['POST'])
+@rate_limit
 def generate_counter_plate_stl():
     """
     Generate counter plate with hemispherical recesses as per project brief.
     Counter plate does NOT depend on text input - it always creates ALL 6 dots per cell.
     """
-    data = request.get_json()
-    settings_data = data.get('settings', {})
-    settings = CardSettings(**settings_data)
+    try:
+        if not request.is_json:
+            return jsonify({'error': 'Content-Type must be application/json'}), 400
+        
+        data = request.get_json(force=True)
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+        
+        settings_data = data.get('settings', {})
+        validate_settings(settings_data)
+        settings = CardSettings(**settings_data)
+    
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        app.logger.error(f"Validation error in generate_counter_plate_stl: {e}")
+        return jsonify({'error': 'Invalid request data'}), 400
     
     try:
         print("DEBUG: Generating counter plate with hemispherical recesses (all positions)")
@@ -1351,14 +1145,29 @@ def generate_counter_plate_stl():
         return jsonify({'error': f'Failed to generate counter plate: {str(e)}'}), 500
 
 @app.route('/generate_universal_counter_plate', methods=['POST'])
+@rate_limit
 def generate_universal_counter_plate_route():
     """
     Generate a universal counter plate with hemispherical recesses for ALL possible dot positions.
     This endpoint does NOT require any text input - it generates a plate with recesses at all 312 dot positions.
     """
-    data = request.get_json()
-    settings_data = data.get('settings', {})
-    settings = CardSettings(**settings_data)
+    try:
+        if not request.is_json:
+            return jsonify({'error': 'Content-Type must be application/json'}), 400
+        
+        data = request.get_json(force=True)
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+        
+        settings_data = data.get('settings', {})
+        validate_settings(settings_data)
+        settings = CardSettings(**settings_data)
+    
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        app.logger.error(f"Validation error in generate_universal_counter_plate: {e}")
+        return jsonify({'error': 'Invalid request data'}), 400
     
     try:
         print("DEBUG: Generating universal counter plate with hemispherical recesses (no text input required)")
@@ -1381,6 +1190,7 @@ def generate_universal_counter_plate_route():
 
 
 @app.route('/generate_hemispherical_counter_plate', methods=['POST'])
+@rate_limit
 def generate_hemispherical_counter_plate_route():
     """
     Generate a counter plate with true hemispherical recesses using trimesh with Manifold backend.
@@ -1394,9 +1204,23 @@ def generate_hemispherical_counter_plate_route():
     - plate_thickness_mm (TH)
     - All layout parameters (num_lines, cells_per_line, spacing, margins, offsets)
     """
-    data = request.get_json()
-    settings_data = data.get('settings', {})
-    settings = CardSettings(**settings_data)
+    try:
+        if not request.is_json:
+            return jsonify({'error': 'Content-Type must be application/json'}), 400
+        
+        data = request.get_json(force=True)
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+        
+        settings_data = data.get('settings', {})
+        validate_settings(settings_data)
+        settings = CardSettings(**settings_data)
+    
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        app.logger.error(f"Validation error in generate_hemispherical_counter_plate: {e}")
+        return jsonify({'error': 'Invalid request data'}), 400
     
     try:
         print("DEBUG: Generating hemispherical counter plate with Manifold backend")

@@ -1722,6 +1722,14 @@
         // Declare 3D scene variables at module scope
         let renderer, scene, camera, mesh, controls;
         let lastSTLUrl = null;
+        
+        // Production logging - only log errors in production
+        const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+        const log = {
+            debug: isProduction ? () => {} : console.log,
+            info: isProduction ? () => {} : console.log,
+            error: console.error // Always log errors
+        };
 
         // Theme switching functionality
         const themes = ['high-contrast', 'dark', 'light'];
@@ -2050,11 +2058,11 @@
             const input = document.getElementById(inputId);
             if (input) {
                 input.addEventListener('input', (e) => {
-                    console.log(`Expert Mode Input Changed: ${inputId} = ${e.target.value}`);
+                    log.debug(`Expert Mode Input Changed: ${inputId} = ${e.target.value}`);
                 });
                 
                 // Also log the initial values
-                console.log(`Initial value for ${inputId}: ${input.value}`);
+                log.debug(`Initial value for ${inputId}: ${input.value}`);
             }
         });
         
@@ -2102,7 +2110,7 @@
                             <strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → "${braille}"
                         </div>`;
                     } catch (error) {
-                        console.error('Translation failed for line', i + 1, ':', error);
+                        log.error('Translation failed for line', i + 1, ':', error);
                         previewHTML += `<div class="preview-line-error">
                             <strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → Error: ${error.message}
                         </div>`;
@@ -2202,12 +2210,12 @@
                     const line = lines[i].trim();
                     if (line) {
                         try {
-                            console.log(`Translating line ${i + 1}: '${line}' to braille using table: ${tableName}...`);
+                            log.debug(`Translating line ${i + 1}: '${line}' to braille using table: ${tableName}...`);
                             const brailleText = await translateWithLiblouis(line, 'g2', tableName);
-                            console.log(`Line ${i + 1} translated: '${line}' → '${brailleText}'`);
+                            log.debug(`Line ${i + 1} translated: '${line}' → '${brailleText}'`);
                             translatedLines.push(brailleText);
                         } catch (error) {
-                            console.error(`Failed to translate line ${i + 1}:`, error);
+                            log.error(`Failed to translate line ${i + 1}:`, error);
                             // Fallback to original text if translation fails
                             translatedLines.push(line);
                         }
@@ -2215,12 +2223,12 @@
                         translatedLines.push('');
                     }
                 }
-                console.log('Original lines:', lines);
-                console.log('Translated lines:', translatedLines);
+                log.debug('Original lines:', lines);
+                log.debug('Translated lines:', translatedLines);
             } else {
                 // Counter plates don't need text - just pass empty lines
                 translatedLines = ['', '', '', ''];
-                console.log('Counter plate selected - no text translation needed');
+                log.debug('Counter plate selected - no text translation needed');
             }
             const settings = {
                 grid_columns: document.getElementById('grid_columns').value,
@@ -2235,9 +2243,9 @@
             };
             
             // Debug: Log the settings being sent
-            console.log('Expert Mode Settings:', settings);
-            console.log('Settings object keys:', Object.keys(settings));
-            console.log('Settings object values:', Object.values(settings));
+            log.debug('Expert Mode Settings:', settings);
+            log.debug('Settings object keys:', Object.keys(settings));
+            log.debug('Settings object values:', Object.values(settings));
             
             // Check if at least one line has content (only for positive plates)
             if (plateType === 'positive' && lines.every(line => !line.trim())) {
@@ -2272,7 +2280,7 @@
             actionBtn.style.opacity = '0.7';
             
             // Debug: Log the settings being sent
-            console.log('Expert Mode Settings:', settings);
+            log.debug('Expert Mode Settings:', settings);
             
             const res = await fetch('/generate_braille_stl', {
                 method: 'POST',
@@ -2436,7 +2444,7 @@
         window.addEventListener('load', async () => {
             try {
                 // Initialize liblouis web worker
-                console.log('Initializing liblouis web worker...');
+                log.debug('Initializing liblouis web worker...');
                 
                 // Test if worker file is accessible first
                 try {
@@ -2444,9 +2452,9 @@
                     if (!workerResponse.ok) {
                         throw new Error(`Worker file not accessible: ${workerResponse.status}`);
                     }
-                    console.log('Worker file is accessible');
+                    log.debug('Worker file is accessible');
                 } catch (fetchError) {
-                    console.error('Worker file test failed:', fetchError);
+                    log.error('Worker file test failed:', fetchError);
                     throw new Error('Cannot access worker file: ' + fetchError.message);
                 }
                 
@@ -2469,23 +2477,23 @@
                 };
                 
                 liblouisWorker.onerror = function(error) {
-                    console.error('Worker error:', error);
+                    log.error('Worker error:', error);
                 };
                 
                 // Initialize liblouis in the worker
                 const initResult = await sendWorkerMessage('init');
                 if (initResult.success) {
                     liblouisReady = true;
-                    console.log('Liblouis web worker initialized successfully');
+                    log.debug('Liblouis web worker initialized successfully');
                 } else {
                     throw new Error('Failed to initialize liblouis worker: ' + initResult.error);
                 }
                 
             } catch (error) {
-                console.error('Failed to initialize liblouis worker:', error);
+                log.error('Failed to initialize liblouis worker:', error);
                 
                 // Fallback: disable liblouis and show error message
-                console.log('Web worker failed - disabling liblouis translation');
+                log.debug('Web worker failed - disabling liblouis translation');
                 liblouisReady = false;
                 liblouisWorker = null;
                 
@@ -2509,17 +2517,17 @@
             }
             
             try {
-                console.log('Sending translation request to worker:', text, 'grade:', grade, 'table:', tableName);
+                log.debug('Sending translation request to worker:', text, 'grade:', grade, 'table:', tableName);
                 const result = await sendWorkerMessage('translate', { text, grade, tableName });
                 
                 if (result.success && result.translation) {
-                    console.log('Translation successful:', result.translation);
+                    log.debug('Translation successful:', result.translation);
                     return result.translation;
                 } else {
                     throw new Error('Translation failed: ' + (result.error || 'Unknown error'));
                 }
             } catch (error) {
-                console.error('Worker translation failed:', error);
+                log.error('Worker translation failed:', error);
                 throw error;
             }
         }

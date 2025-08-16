@@ -175,22 +175,22 @@
         [data-theme="high-contrast"] .expert-toggle-btn,
         [data-theme="high-contrast"] .info-toggle-btn {
             background: #1a1a1a !important; /* Dark background */
-            color: #ffff00 !important; /* Yellow text */
-            border: 2px solid #ffff00 !important; /* Yellow border */
+            color: #02fe05 !important; /* Green text to match other menu titles */
+            border: 2px solid #02fe05 !important; /* Green border */
         }
 
         [data-theme="high-contrast"] .expert-toggle-btn:hover,
         [data-theme="high-contrast"] .info-toggle-btn:hover {
             background: #000000 !important; /* Black background on hover */
-            color: #ffff00 !important; /* Yellow text */
-            border: 2px solid #ffff00 !important; /* Yellow border */
+            color: #02fe05 !important; /* Green text to match other menu titles */
+            border: 2px solid #02fe05 !important; /* Green border */
         }
 
         [data-theme="high-contrast"] .expert-toggle-btn.active,
         [data-theme="high-contrast"] .info-toggle-btn.active {
             background: #000000 !important; /* Black background when active */
-            color: #ffff00 !important; /* Yellow text */
-            border: 2px solid #ffff00 !important; /* Yellow border */
+            color: #02fe05 !important; /* Green text to match other menu titles */
+            border: 2px solid #02fe05 !important; /* Green border */
         }
 
         [data-theme="high-contrast"] .font-size-btn {
@@ -1490,7 +1490,7 @@
                 
                 <div class="info-dropdown">
                     <button type="button" id="info-toggle" class="info-toggle-btn">
-                        <span id="info-toggle-text">More Information and Instructions</span>
+                        <span id="info-toggle-text">More Info</span>
                         <span id="info-toggle-icon">▼</span>
                     </button>
                     <div id="info-content" class="info-content" style="display: none;">
@@ -1503,7 +1503,6 @@
                         </ol>
                         <p><strong>Acknowledgements:</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li>Code authored by <strong>Claude 4.1 Opus</strong>.</li>
                             <li>Powered by <a href="https://liblouis.io/" target="_blank" style="color: #3182ce; text-decoration: none;"><strong>Liblouis</strong></a>, an open-source professional braille translator.</li>
                             <li>Extra thanks to <strong>Tobi Weinberg</strong> for the substantial time and effort he volunteered to help start this project and see it through.</li>
                         </ul>
@@ -2117,7 +2116,7 @@
         infoToggleBtn.addEventListener('click', () => {
             const isVisible = infoContent.style.display !== 'none';
             infoContent.style.display = isVisible ? 'none' : 'block';
-            infoToggleText.textContent = isVisible ? 'More Information and Instructions' : 'Hide Information';
+                                        infoToggleText.textContent = isVisible ? 'More Info' : 'Hide Information';
             infoToggleIcon.textContent = isVisible ? '▼' : '▲';
             infoToggleBtn.classList.toggle('active', !isVisible);
         });

@@ -1927,6 +1927,7 @@
         const viewer = document.getElementById('viewer');
         const actionBtn = document.getElementById('action-btn');
         let lastGeneratedSTLUrl = null;
+        let lastGeneratedFilename = null;
 
         const previewBrailleBtn = document.getElementById('preview-braille-btn');
         const errorDiv = document.getElementById('error-message');
@@ -1964,7 +1965,10 @@
                 if (lastGeneratedSTLUrl) {
                     const a = document.createElement('a');
                     a.href = lastGeneratedSTLUrl;
-                    // The backend now provides the proper filename, so we don't need to set it here
+                    // Use the filename generated on the frontend
+                    if (lastGeneratedFilename) {
+                        a.download = lastGeneratedFilename;
+                    }
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
@@ -2385,11 +2389,43 @@
             }
             
             try {
+                // Create blob and URL for 3D preview
                 const blob = await res.blob();
                 if (lastSTLUrl) URL.revokeObjectURL(lastSTLUrl);
                 lastSTLUrl = URL.createObjectURL(blob);
-                // Store the generated STL URL for download
+                
+                // Generate filename on frontend to match backend logic
+                const plateType = document.querySelector('input[name="plate_type"]:checked').value;
+                let filename = plateType === 'positive' ? 'braille_embossing_plate' : 'braille_counter_plate';
+                
+                if (plateType === 'positive') {
+                    // Get the current lines from the form
+                    const gridRows = parseInt(document.getElementById('grid_rows').value) || 4;
+                    const lines = [];
+                    for (let i = 1; i <= gridRows; i++) {
+                        const input = document.getElementById(`line${i}`);
+                        lines.push(input ? input.value : '');
+                    }
+                    
+                    // Find first non-empty line (prioritizing Line 1)
+                    for (let i = 0; i < lines.length; i++) {
+                        if (lines[i].trim()) {
+                            // Sanitize filename: remove special characters and limit length
+                            let sanitized = lines[i].trim().substring(0, 30);
+                            sanitized = sanitized.replace(/[^\w\s-]/g, '');
+                            sanitized = sanitized.replace(/[-\s]+/g, '_').replace(/^_+|_+$/g, '');
+                            
+                            if (sanitized) {
+                                filename = `braille_embossing_plate_${sanitized}`;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // Store the generated STL URL and filename for download
                 lastGeneratedSTLUrl = lastSTLUrl;
+                lastGeneratedFilename = `${filename}.stl`;
                 loadSTL(lastSTLUrl);
                 
                 // Change button to download state after successful generation

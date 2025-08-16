@@ -44,7 +44,7 @@ This standalone package includes:
 - **Thickness**: 2.0mm - Optimal for 3D printing
 - **Grid**: 13 columns × 4 rows of braille cells
 - **Margins**: 5.9mm left/right, 8.4mm top/bottom
-- **Braille spacing**: Standard 6.5mm cell spacing, 12.0mm line spacing
+- **Braille spacing**: Standard 6.5mm cell spacing, 10.0mm line spacing
 
 ## 🔤 Braille Grades
 

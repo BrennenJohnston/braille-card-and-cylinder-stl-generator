@@ -26,10 +26,10 @@ def test_hemispherical_counter_plate():
         grid_columns=13,
         grid_rows=4,
         cell_spacing=7.0,
-        line_spacing=12.0,
+        line_spacing=10.0,
         dot_spacing=2.5,
-        dot_base_diameter=2.0,
-        emboss_dot_base_diameter_mm=2.0,
+        dot_base_diameter=1.8,
+        emboss_dot_base_diameter_mm=1.8,
         plate_thickness_mm=2.0,
         epsilon_mm=0.001
     )

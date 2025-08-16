@@ -104,10 +104,10 @@ The application uses professionally-recognized braille specifications:
 
 | Parameter | Value | Standard |
 |-----------|-------|----------|
-| **Dot Height** | 0.8mm | NLS Spec 800 |
-| **Dot Diameter** | 1.0mm | BANA Guidelines |
+| **Dot Height** | 1.0mm | NLS Spec 800 |
+| **Dot Diameter** | 1.8mm | BANA Guidelines |
 | **Cell Spacing** | 6.5mm | UEB Standards |
-| **Line Spacing** | 12.0mm | International Standard |
+| **Line Spacing** | 10.0mm | International Standard |
 | **Dot Spacing** | 2.5mm | ADA Guidelines |
 
 **Expert Mode** allows full customization of all dimensions.

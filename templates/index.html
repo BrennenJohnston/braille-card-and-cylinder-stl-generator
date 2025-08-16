@@ -1451,8 +1451,8 @@
                 
                 <!-- Theme Toggle Button -->
                 <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme" title="Toggle between light, dark, and high contrast themes">
-                    <span class="theme-icon" aria-hidden="true">⚡</span>
-                    <span class="theme-text">High Contrast</span>
+                    <span class="theme-icon" aria-hidden="true">🌙</span>
+                    <span class="theme-text">Dark</span>
                 </button>
             </div>
         </div>
@@ -1781,11 +1781,17 @@
             const themeIcon = themeToggle.querySelector('.theme-icon');
             const themeText = themeToggle.querySelector('.theme-text');
             
-            themeIcon.textContent = themeIcons[theme];
-            themeText.textContent = themeNames[theme];
+            // Find the next theme in the cycle
+            const currentIndex = themes.indexOf(theme);
+            const nextIndex = (currentIndex + 1) % themes.length;
+            const nextTheme = themes[nextIndex];
             
-            // Update aria-label for current state
-            themeToggle.setAttribute('aria-label', `Current theme: ${themeNames[theme]}. Click to switch theme`);
+            // Show the next theme that will be applied when clicked
+            themeIcon.textContent = themeIcons[nextTheme];
+            themeText.textContent = themeNames[nextTheme];
+            
+            // Update aria-label to show current theme and what will happen next
+            themeToggle.setAttribute('aria-label', `Current theme: ${themeNames[theme]}. Click to switch to ${themeNames[nextTheme]} theme`);
             
             // Save preference
             localStorage.setItem('preferred-theme', theme);

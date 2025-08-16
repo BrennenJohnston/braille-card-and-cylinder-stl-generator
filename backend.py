@@ -463,18 +463,29 @@ def generate_braille_stl():
         mesh.export(stl_io, file_type='stl')
         stl_io.seek(0)
         
-        # Create filename from first non-empty line
-        filename = 'braille_card'
-        for line in lines:
-            if line.strip():
-                # Sanitize filename: remove special characters and limit length
-                sanitized = re.sub(r'[^\w\s-]', '', line.strip()[:20])
-                sanitized = re.sub(r'[-\s]+', '_', sanitized).strip('_')
-                if sanitized:
-                    filename = sanitized
-                break
+        # Create filename based on text content with fallback logic
+        if plate_type == 'positive':
+            # For embossing plates, prioritize Line 1, then fallback to other lines
+            filename = 'braille_embossing_plate'
+            for i, line in enumerate(lines):
+                if line.strip():
+                    # Sanitize filename: remove special characters and limit length
+                    sanitized = re.sub(r'[^\w\s-]', '', line.strip()[:30])
+                    sanitized = re.sub(r'[-\s]+', '_', sanitized).strip('_')
+                    if sanitized:
+                        if i == 0:  # Line 1
+                            filename = f'braille_embossing_plate_{sanitized}'
+                        else:  # Other lines as fallback
+                            filename = f'braille_embossing_plate_{sanitized}'
+                        break
+        else:
+            # For counter plates, use default name
+            filename = 'braille_counter_plate'
         
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=f'{filename}_braille.stl')
+        # Additional filename sanitization for security
+        filename = re.sub(r'[^\w\-_]', '', filename)[:50]  # Allow longer names for embossing plates
+        
+        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl')
         
     except Exception as e:
         return jsonify({'error': f'Failed to generate STL: {str(e)}'}), 500
@@ -496,7 +507,7 @@ def generate_counter_plate_stl():
         mesh.export(stl_io, file_type='stl')
         stl_io.seek(0)
         
-        filename = "universal_counter_plate"
+        filename = "braille_counter_plate"
         return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl')
 
     except Exception as e:

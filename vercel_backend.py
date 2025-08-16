@@ -1087,26 +1087,30 @@ def generate_braille_stl():
         config_json = json.dumps(config_dump, indent=2)
         print(f"DEBUG: Config dump:\n{config_json}")
         
-        # Create filename from first non-empty line
-        filename = 'braille_card'
-        for line in lines:
-            if line.strip():
-                # Sanitize filename: remove special characters and limit length
-                sanitized = re.sub(r'[^\w\s-]', '', line.strip()[:20])
-                sanitized = re.sub(r'[-\s]+', '_', sanitized).strip('_')
-                if sanitized:
-                    filename = sanitized
-                break
+        # Create filename based on text content with fallback logic
+        if plate_type == 'positive':
+            # For embossing plates, prioritize Line 1, then fallback to other lines
+            filename = 'braille_embossing_plate'
+            for i, line in enumerate(lines):
+                if line.strip():
+                    # Sanitize filename: remove special characters and limit length
+                    sanitized = re.sub(r'[^\w\s-]', '', line.strip()[:30])
+                    sanitized = re.sub(r'[-\s]+', '_', sanitized).strip('_')
+                    if sanitized:
+                        if i == 0:  # Line 1
+                            filename = f'braille_embossing_plate_{sanitized}'
+                        else:  # Other lines as fallback
+                            filename = f'braille_embossing_plate_{sanitized}'
+                        break
+        else:
+            # For counter plates, use default name
+            filename = 'braille_counter_plate'
         
         # Additional filename sanitization for security
-        filename = re.sub(r'[^\w\-_]', '', filename)[:30]  # Strict filename sanitization
+        filename = re.sub(r'[^\w\-_]', '', filename)[:50]  # Allow longer names for embossing plates
         
-        # Add plate type to filename
-        plate_suffix = 'counter_plate' if plate_type == 'negative' else 'braille'
-        
-        # For now, just return the STL file. In production, you might want to
-        # return a zip file containing both the STL and the JSON config
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=f'{filename}_{plate_suffix}.stl')
+        # Return the STL file
+        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl')
         
     except Exception as e:
         return jsonify({'error': f'Failed to generate STL: {str(e)}'}), 500
@@ -1150,7 +1154,7 @@ def generate_counter_plate_stl():
         mesh.export(stl_io, file_type='stl')
         stl_io.seek(0)
         
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='counter_plate.stl')
+        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='braille_counter_plate.stl')
         
     except Exception as e:
         return jsonify({'error': f'Failed to generate counter plate: {str(e)}'}), 500
@@ -1194,7 +1198,7 @@ def generate_universal_counter_plate_route():
         mesh.export(stl_io, file_type='stl')
         stl_io.seek(0)
         
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='universal_counter_plate.stl')
+        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='braille_universal_counter_plate.stl')
         
     except Exception as e:
         return jsonify({'error': f'Failed to generate universal counter plate: {str(e)}'}), 500
@@ -1247,7 +1251,7 @@ def generate_hemispherical_counter_plate_route():
         mesh.export(stl_io, file_type='stl')
         stl_io.seek(0)
         
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='hemispherical_counter_plate.stl')
+        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name='braille_hemispherical_counter_plate.stl')
         
     except Exception as e:
         return jsonify({'error': f'Failed to generate hemispherical counter plate: {str(e)}'}), 500

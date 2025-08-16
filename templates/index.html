@@ -1964,9 +1964,7 @@
                 if (lastGeneratedSTLUrl) {
                     const a = document.createElement('a');
                     a.href = lastGeneratedSTLUrl;
-                    // Use appropriate filename based on plate type
-                    const plateType = document.querySelector('input[name="plate_type"]:checked').value;
-                    a.download = plateType === 'positive' ? 'braille_embossing_plate.stl' : 'braille_counter_plate.stl';
+                    // The backend now provides the proper filename, so we don't need to set it here
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);

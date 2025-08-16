@@ -1271,6 +1271,24 @@
             }
         }
 
+        /* Theme Toggle Section */
+        .theme-toggle-section {
+            display: flex;
+            align-items: center;
+            gap: 0.8em;
+            margin-left: auto;
+        }
+
+        .theme-label {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 0.3em;
+        }
+
         /* Theme Toggle Button */
         .theme-toggle-btn {
             background: var(--bg-primary);
@@ -1329,6 +1347,17 @@
                 margin-left: 0;
                 align-items: center;
             }
+            
+            .theme-toggle-section {
+                flex-direction: column;
+                align-items: center;
+                gap: 0.5em;
+                margin-left: 0;
+            }
+            
+            .theme-label {
+                font-size: 0.85em;
+            }
         }
         
         @media (max-width: 480px) {
@@ -1342,6 +1371,10 @@
         }
         
         /* Form Section Accessibility Controls */
+        [data-theme="high-contrast"] .theme-label {
+            color: #02fe05 !important; /* Green text for high contrast */
+        }
+        
         [data-theme="high-contrast"] .theme-toggle-btn:hover {
             background: #ffff00 !important; /* Yellow instead of yellow */
             color: #0201fe !important; /* Blue instead of black */
@@ -1449,11 +1482,14 @@
                     </button>
                 </div>
                 
-                <!-- Theme Toggle Button -->
-                <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme" title="Toggle between light, dark, and high contrast themes">
-                    <span class="theme-icon" aria-hidden="true">🌙</span>
-                    <span class="theme-text">Dark</span>
-                </button>
+                <!-- Theme Toggle Section -->
+                <div class="theme-toggle-section" role="group" aria-labelledby="theme-label">
+                    <span id="theme-label" class="theme-label">Change Theme to →</span>
+                    <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme" title="Toggle between light, dark, and high contrast themes">
+                        <span class="theme-icon" aria-hidden="true">🌙</span>
+                        <span class="theme-text">Dark</span>
+                    </button>
+                </div>
             </div>
         </div>
         

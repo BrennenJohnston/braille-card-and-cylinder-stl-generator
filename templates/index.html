@@ -1457,36 +1457,39 @@
             <div class="preview-section" role="region" aria-label="3D STL Preview">
                 <div id="viewer" role="img" aria-label="3D preview of braille business card STL file" tabindex="0"></div>
                 
-                <!-- Plate Type Selection and Action Buttons -->
-                <div class="plate-selection-row">
-                    <div class="grade-selection plate-type-selection">
-                        <fieldset>
-                            <legend class="grade-label">Select Plate to Generate</legend>
-                            <div class="radio-group" role="radiogroup" aria-required="true">
-                                <label class="radio-option">
-                                    <input type="radio" name="plate_type" value="positive" checked aria-describedby="emboss-plate-desc">
-                                    <span class="radio-text">Embossing Plate</span>
-                                </label>
-                                <span id="emboss-plate-desc" class="sr-only">Creates raised braille dots for embossing cards</span>
-                                <label class="radio-option">
-                                    <input type="radio" name="plate_type" value="negative" aria-describedby="counter-plate-desc">
-                                    <span class="radio-text">Universal Counter Plate</span>
-                                </label>
-                                <span id="counter-plate-desc" class="sr-only">Creates recessed dots to support embossing process</span>
-                                <div id="negative-plate-offset-container" style="display: none; margin-top: 10px;" role="group" aria-label="Counter plate settings">
-                                    <label for="counter_plate_dot_size_offset">Counter Dot Diameter Offset (mm):</label>
-                                    <input type="number" id="counter_plate_dot_size_offset" name="counter_plate_dot_size_offset" value="0.0" step="0.1" aria-describedby="offset-help" title="Adjusts the counter plate braille dot base diameter relative to the emboss plate diameter">
-                                    <div id="offset-help" class="offset-note" style="font-size: 0.85em; margin-top: 2px;">
-                                        Adds or subtracts from the Universal Counter Plate's recessed dot diameter. The dot size mirrors the Embossing Plate's Dot Base Diameter by default.
-                                    </div>
-                                </div>
-                            </div>
-                        </fieldset>
-                    </div>
-                    
-                    <div class="button-row">
-                        <button type="button" id="action-btn" class="generate-state" aria-label="Generate STL file from entered text" data-state="generate">Generate STL</button>
-                    </div>
+                <!-- Text Input Section moved here -->
+                <div class="line-input-group">
+                    <fieldset class="line-input-fieldset">
+                        <legend class="grade-label">Enter Text for Braille Translation</legend>
+                        <div class="grade-note" style="margin-bottom: 0.8em; font-size: 0.85em;">
+                            <strong>Note:</strong> Contracted braille combines letters into single cells, so the character limit is only confirmed <em>after translation</em> — the program will warn you automatically if it's too long.
+                        </div>
+                        <div class="line-input">
+                            <label for="line1" class="line-label">Line 1</label>
+                            <input type="text" id="line1" name="line1" placeholder="Enter English text here..." maxlength="50" aria-describedby="line1-help">
+                            <span id="line1-help" class="sr-only">Maximum 50 characters for line 1</span>
+                        </div>
+                        <div class="line-input">
+                            <label for="line2" class="line-label">Line 2</label>
+                            <input type="text" id="line2" name="line2" placeholder="Enter English text here..." maxlength="50" aria-describedby="line2-help">
+                            <span id="line2-help" class="sr-only">Maximum 50 characters for line 2</span>
+                        </div>
+                        <div class="line-input">
+                            <label for="line3" class="line-label">Line 3</label>
+                            <input type="text" id="line3" name="line3" placeholder="Enter English text here..." maxlength="50" aria-describedby="line3-help">
+                            <span id="line3-help" class="sr-only">Maximum 50 characters for line 3</span>
+                        </div>
+                        <div class="line-input">
+                            <label for="line4" class="line-label">Line 4</label>
+                            <input type="text" id="line4" name="line4" placeholder="Enter English text here..." maxlength="50" aria-describedby="line4-help">
+                            <span id="line4-help" class="sr-only">Maximum 50 characters for line 4</span>
+                        </div>
+                    </fieldset>
+                </div>
+                
+                <!-- Action Button moved here -->
+                <div class="button-row" style="margin-top: 1em;">
+                    <button type="button" id="action-btn" class="generate-state" aria-label="Generate STL file from entered text" data-state="generate">Generate STL</button>
                 </div>
             </div>
             
@@ -1617,31 +1620,28 @@
                         </fieldset>
                     </div>
                     
-                    <div class="line-input-group">
-                        <fieldset class="line-input-fieldset">
-                            <legend class="grade-label">Enter Text for Braille Translation</legend>
-                            <div class="grade-note" style="margin-bottom: 0.8em; font-size: 0.85em;">
-                                <strong>Note:</strong> Contracted braille combines letters into single cells, so the character limit is only confirmed <em>after translation</em> — the program will warn you automatically if it's too long.
-                            </div>
-                            <div class="line-input">
-                                <label for="line1" class="line-label">Line 1</label>
-                                <input type="text" id="line1" name="line1" placeholder="Enter English text here..." maxlength="50" aria-describedby="line1-help">
-                                <span id="line1-help" class="sr-only">Maximum 50 characters for line 1</span>
-                            </div>
-                            <div class="line-input">
-                                <label for="line2" class="line-label">Line 2</label>
-                                <input type="text" id="line2" name="line2" placeholder="Enter English text here..." maxlength="50" aria-describedby="line2-help">
-                                <span id="line2-help" class="sr-only">Maximum 50 characters for line 2</span>
-                            </div>
-                            <div class="line-input">
-                                <label for="line3" class="line-label">Line 3</label>
-                                <input type="text" id="line3" name="line3" placeholder="Enter English text here..." maxlength="50" aria-describedby="line3-help">
-                                <span id="line3-help" class="sr-only">Maximum 50 characters for line 3</span>
-                            </div>
-                            <div class="line-input">
-                                <label for="line4" class="line-label">Line 4</label>
-                                <input type="text" id="line4" name="line4" placeholder="Enter English text here..." maxlength="50" aria-describedby="line4-help">
-                                <span id="line4-help" class="sr-only">Maximum 50 characters for line 4</span>
+                    <!-- Plate Type Selection moved here -->
+                    <div class="grade-selection">
+                        <fieldset>
+                            <legend class="grade-label">Select Plate to Generate</legend>
+                            <div class="radio-group" role="radiogroup" aria-required="true">
+                                <label class="radio-option">
+                                    <input type="radio" name="plate_type" value="positive" checked aria-describedby="emboss-plate-desc">
+                                    <span class="radio-text">Embossing Plate</span>
+                                </label>
+                                <span id="emboss-plate-desc" class="sr-only">Creates raised braille dots for embossing cards</span>
+                                <label class="radio-option">
+                                    <input type="radio" name="plate_type" value="negative" aria-describedby="counter-plate-desc">
+                                    <span class="radio-text">Universal Counter Plate</span>
+                                </label>
+                                <span id="counter-plate-desc" class="sr-only">Creates recessed dots to support embossing process</span>
+                                <div id="negative-plate-offset-container" style="display: none; margin-top: 10px;" role="group" aria-label="Counter plate settings">
+                                    <label for="counter_plate_dot_size_offset">Counter Dot Diameter Offset (mm):</label>
+                                    <input type="number" id="counter_plate_dot_size_offset" name="counter_plate_dot_size_offset" value="0.0" step="0.1" aria-describedby="offset-help" title="Adjusts the counter plate braille dot base diameter relative to the emboss plate diameter">
+                                    <div id="offset-help" class="offset-note" style="font-size: 0.85em; margin-top: 2px;">
+                                        Adds or subtracts from the Universal Counter Plate's recessed dot diameter. The dot size mirrors the Embossing Plate's Dot Base Diameter by default.
+                                    </div>
+                                </div>
                             </div>
                         </fieldset>
                     </div>

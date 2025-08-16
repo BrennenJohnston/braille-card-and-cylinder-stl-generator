@@ -1464,25 +1464,9 @@
                         <div class="grade-note" style="margin-bottom: 0.8em; font-size: 0.85em;">
                             <strong>Note:</strong> Contracted braille combines letters into single cells, so the character limit is only confirmed <em>after translation</em> — the program will warn you automatically if it's too long.
                         </div>
-                        <div class="line-input">
-                            <label for="line1" class="line-label">Line 1</label>
-                            <input type="text" id="line1" name="line1" placeholder="Enter English text here..." maxlength="50" aria-describedby="line1-help">
-                            <span id="line1-help" class="sr-only">Maximum 50 characters for line 1</span>
-                        </div>
-                        <div class="line-input">
-                            <label for="line2" class="line-label">Line 2</label>
-                            <input type="text" id="line2" name="line2" placeholder="Enter English text here..." maxlength="50" aria-describedby="line2-help">
-                            <span id="line2-help" class="sr-only">Maximum 50 characters for line 2</span>
-                        </div>
-                        <div class="line-input">
-                            <label for="line3" class="line-label">Line 3</label>
-                            <input type="text" id="line3" name="line3" placeholder="Enter English text here..." maxlength="50" aria-describedby="line3-help">
-                            <span id="line3-help" class="sr-only">Maximum 50 characters for line 3</span>
-                        </div>
-                        <div class="line-input">
-                            <label for="line4" class="line-label">Line 4</label>
-                            <input type="text" id="line4" name="line4" placeholder="Enter English text here..." maxlength="50" aria-describedby="line4-help">
-                            <span id="line4-help" class="sr-only">Maximum 50 characters for line 4</span>
+                        <!-- Dynamic line inputs container -->
+                        <div id="dynamic-line-inputs">
+                            <!-- Line inputs will be dynamically generated here based on grid_rows value -->
                         </div>
                     </fieldset>
                 </div>
@@ -2012,14 +1996,16 @@
 
         // Add event listeners to reset button state when inputs change
         function addInputChangeListeners() {
-            // Text input fields
-            const textInputs = ['line1', 'line2', 'line3', 'line4'];
-            textInputs.forEach(inputId => {
-                const input = document.getElementById(inputId);
+            // Dynamic text input fields
+            const gridRows = parseInt(document.getElementById('grid_rows').value) || 4;
+            for (let i = 1; i <= gridRows; i++) {
+                const input = document.getElementById(`line${i}`);
                 if (input) {
+                    // Remove existing listener to prevent duplicates
+                    input.removeEventListener('input', resetToGenerateState);
                     input.addEventListener('input', resetToGenerateState);
                 }
-            });
+            }
             
             // Language selection
             const languageSelect = document.getElementById('language-table');
@@ -2062,9 +2048,63 @@
                 }
             });
         }
+
+        // Function to create dynamic line inputs based on grid_rows value
+        function createDynamicLineInputs(numLines) {
+            const container = document.getElementById('dynamic-line-inputs');
+            container.innerHTML = ''; // Clear existing inputs
+            
+            for (let i = 1; i <= numLines; i++) {
+                const lineDiv = document.createElement('div');
+                lineDiv.className = 'line-input';
+                lineDiv.innerHTML = `
+                    <label for="line${i}" class="line-label">Line ${i}</label>
+                    <input type="text" id="line${i}" name="line${i}" placeholder="Enter English text here..." maxlength="50" aria-describedby="line${i}-help">
+                    <span id="line${i}-help" class="sr-only">Maximum 50 characters for line ${i}</span>
+                `;
+                container.appendChild(lineDiv);
+            }
+            
+            // Re-add event listeners for the new inputs
+            addInputChangeListeners();
+        }
+
+        // Function to collect all dynamic line values
+        function getDynamicLineValues() {
+            const gridRows = parseInt(document.getElementById('grid_rows').value) || 4;
+            const lines = [];
+            for (let i = 1; i <= gridRows; i++) {
+                const input = document.getElementById(`line${i}`);
+                lines.push(input ? input.value : '');
+            }
+            // Ensure we always return at least 4 lines for backend compatibility
+            while (lines.length < 4) {
+                lines.push('');
+            }
+            return lines;
+        }
+
+        // Function to add listener for grid_rows changes
+        function addGridRowsListener() {
+            const gridRowsInput = document.getElementById('grid_rows');
+            if (gridRowsInput) {
+                gridRowsInput.addEventListener('input', () => {
+                    const numLines = parseInt(gridRowsInput.value) || 4;
+                    // Clamp to reasonable limits
+                    const clampedLines = Math.max(1, Math.min(10, numLines));
+                    if (clampedLines !== numLines) {
+                        gridRowsInput.value = clampedLines;
+                    }
+                    createDynamicLineInputs(clampedLines);
+                    resetToGenerateState();
+                });
+            }
+        }
         
-        // Initialize input change listeners
+        // Initialize dynamic line inputs and listeners
+        createDynamicLineInputs(4); // Start with default 4 lines
         addInputChangeListeners();
+        addGridRowsListener();
 
         expertToggleBtn.addEventListener('click', () => {
             const isVisible = expertSettings.style.display !== 'none';
@@ -2127,12 +2167,7 @@
         previewBrailleBtn.addEventListener('click', async () => {
             // Reset button state when previewing (user is making changes)
             resetToGenerateState();
-            const lines = [
-                document.getElementById('line1').value,
-                document.getElementById('line2').value,
-                document.getElementById('line3').value,
-                document.getElementById('line4').value
-            ];
+            const lines = getDynamicLineValues();
             
             const languageSelect = document.getElementById('language-table');
             const tableName = languageSelect.value;
@@ -2235,13 +2270,8 @@
             errorDiv.style.display = 'none';
             errorText.textContent = '';
             
-            // Collect all line inputs
-            const lines = [
-                document.getElementById('line1').value,
-                document.getElementById('line2').value,
-                document.getElementById('line3').value,
-                document.getElementById('line4').value
-            ];
+            // Collect all dynamic line inputs
+            const lines = getDynamicLineValues();
             
             const plateType = document.querySelector('input[name="plate_type"]:checked').value;
             const languageSelect = document.getElementById('language-table');

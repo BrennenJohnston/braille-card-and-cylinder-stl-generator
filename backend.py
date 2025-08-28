@@ -262,7 +262,7 @@ class CardSettings:
         self.counter_plate_dot_height = self.emboss_dot_height + self.negative_plate_offset
         
         # Hemispherical recess parameters (as per project brief)
-        # The hemisphere radius is now affected by the counter plate dot size offset
+        # The hemisphere radius is affected by the counter plate dot size offset
         self.hemisphere_radius = (self.emboss_dot_base_diameter + self.counter_plate_dot_size_offset) / 2
         self.plate_thickness = self.card_thickness
         self.epsilon = self.epsilon_mm
@@ -606,13 +606,328 @@ def create_fallback_plate(settings: CardSettings):
     base.apply_translation((settings.card_width/2, settings.card_height/2, settings.card_thickness/2))
     return base
 
+def layout_cylindrical_cells(braille_lines, settings: CardSettings, cylinder_diameter_mm: float, cylinder_height_mm: float):
+    """
+    Calculate positions for braille cells on a cylinder surface.
+    Returns a list of (braille_char, x_theta, y_z) tuples where:
+    - x_theta is the position along the circumference (will be converted to angle)
+    - y_z is the vertical position on the cylinder
+    """
+    cells = []
+    circumference = np.pi * cylinder_diameter_mm
+    
+    # Calculate how many cells fit around the circumference
+    cells_per_row = int(circumference / (settings.cell_spacing + settings.dot_spacing))
+    
+    # Calculate row height (same as card)
+    row_height = settings.line_spacing
+    
+    # Start from top of cylinder
+    current_y = cylinder_height_mm - settings.top_margin
+    
+    for row_num, line in enumerate(braille_lines):
+        if not line.strip():
+            continue
+            
+        # Check if input contains proper braille Unicode
+        has_braille_chars = any(ord(char) >= 0x2800 and ord(char) <= 0x28FF for char in line)
+        if not has_braille_chars:
+            continue
+            
+        # Process characters, wrapping to next row if needed
+        char_index = 0
+        while char_index < len(line) and current_y > settings.top_margin:
+            # Process one row worth of characters
+            row_chars = line[char_index:char_index + cells_per_row]
+            
+            # Calculate x positions for this row
+            for col_num, braille_char in enumerate(row_chars):
+                x_pos = settings.left_margin + (col_num * settings.cell_spacing)
+                cells.append((braille_char, x_pos, current_y))
+            
+            # Move to next row
+            current_y -= row_height
+            char_index += cells_per_row
+    
+    return cells, cells_per_row
+
+def cylindrical_transform(x, y, z, cylinder_diameter_mm, seam_offset_deg=0):
+    """
+    Transform planar coordinates to cylindrical coordinates.
+    x -> theta (angle around cylinder)
+    y -> z (height on cylinder)
+    z -> radial offset from cylinder surface
+    """
+    radius = cylinder_diameter_mm / 2
+    circumference = np.pi * cylinder_diameter_mm
+    
+    # Convert x position to angle
+    theta = (x / circumference) * 2 * np.pi + np.radians(seam_offset_deg)
+    
+    # Calculate cylindrical coordinates
+    cyl_x = radius * np.cos(theta)
+    cyl_y = radius * np.sin(theta)
+    cyl_z = y
+    
+    # Apply radial offset (for dot height)
+    cyl_x += z * np.cos(theta)
+    cyl_y += z * np.sin(theta)
+    
+    return cyl_x, cyl_y, cyl_z
+
+def create_cylinder_shell(diameter_mm, height_mm, thickness_mm):
+    """
+    Create a hollow cylinder (tube) mesh using a simpler approach.
+    """
+    outer_radius = diameter_mm / 2
+    inner_radius = outer_radius - thickness_mm
+    
+    # Create a solid cylinder and subtract a smaller cylinder from it
+    outer_cylinder = trimesh.creation.cylinder(radius=outer_radius, height=height_mm, sections=64)
+    inner_cylinder = trimesh.creation.cylinder(radius=inner_radius, height=height_mm - 0.001, sections=64)
+    
+    # Use boolean difference to create the shell
+    try:
+        shell = trimesh.boolean.difference([outer_cylinder, inner_cylinder], engine='manifold')
+        if shell.is_watertight:
+            return shell
+    except:
+        pass
+    
+    # Fallback: Create shell manually using annulus for top/bottom
+    from trimesh.creation import annulus
+    
+    # Create top and bottom annulus (ring) meshes
+    top_ring = annulus(r_min=inner_radius, r_max=outer_radius, height=0, sections=64)
+    top_ring.apply_translation([0, 0, height_mm/2])
+    
+    bottom_ring = annulus(r_min=inner_radius, r_max=outer_radius, height=0, sections=64)
+    bottom_ring.apply_translation([0, 0, -height_mm/2])
+    
+    # Create outer and inner cylinder surfaces
+    outer_surface = trimesh.creation.cylinder(radius=outer_radius, height=height_mm, sections=64, cap=False)
+    inner_surface = trimesh.creation.cylinder(radius=inner_radius, height=height_mm, sections=64, cap=False)
+    
+    # Flip inner surface normals
+    inner_surface.invert()
+    
+    # Combine all parts
+    shell = trimesh.util.concatenate([outer_surface, inner_surface, top_ring, bottom_ring])
+    
+    # Merge vertices and remove duplicates
+    shell.merge_vertices()
+    shell.remove_duplicate_faces()
+    
+    return shell
+
+def create_cylinder_braille_dot(x, y, z, settings: CardSettings, cylinder_diameter_mm, seam_offset_deg=0):
+    """
+    Create a braille dot transformed to cylinder surface.
+    """
+    # Create the dot at origin (axis along +Z)
+    dot = create_braille_dot(0, 0, 0, settings)
+
+    # Cylinder geometry
+    radius = cylinder_diameter_mm / 2.0
+    circumference = np.pi * cylinder_diameter_mm
+
+    # Angle around cylinder for planar x-position
+    theta = (x / circumference) * 2.0 * np.pi + np.radians(seam_offset_deg)
+
+    # Unit vectors at this theta
+    r_hat = np.array([np.cos(theta), np.sin(theta), 0.0])
+    t_axis = np.array([-np.sin(theta), np.cos(theta), 0.0])  # tangent axis used for rotation
+
+    # Rotate dot so its +Z axis aligns with radial outward direction (r_hat)
+    rot_to_radial = trimesh.transformations.rotation_matrix(np.pi / 2.0, t_axis)
+    dot.apply_transform(rot_to_radial)
+
+    # Place the dot so its base is flush with the cylinder outer surface
+    dot_height = settings.emboss_dot_height
+    center_radial_distance = radius + (dot_height / 2.0)
+    center_position = r_hat * center_radial_distance + np.array([0.0, 0.0, y])
+    dot.apply_translation(center_position)
+
+    return dot
+
+def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None):
+    """
+    Generate a cylinder-shaped braille card with dots on the outer surface.
+    
+    Args:
+        lines: List of text lines
+        grade: Braille grade
+        settings: CardSettings object
+        cylinder_params: Dictionary with cylinder-specific parameters:
+            - diameter_mm: Cylinder diameter
+            - height_mm: Cylinder height  
+            - thickness_mm: Wall thickness
+            - seam_offset_deg: Rotation offset for seam
+    """
+    if settings is None:
+        settings = CardSettings()
+    
+    if cylinder_params is None:
+        cylinder_params = {
+            'diameter_mm': 30,
+            'height_mm': settings.card_height,
+            'thickness_mm': settings.card_thickness,
+            'seam_offset_deg': 0
+        }
+    
+    diameter = float(cylinder_params.get('diameter_mm', 30))
+    height = float(cylinder_params.get('height_mm', settings.card_height))
+    thickness = float(cylinder_params.get('thickness_mm', settings.card_thickness))
+    seam_offset = float(cylinder_params.get('seam_offset_deg', 0))
+    
+    print(f"Creating cylinder mesh - Diameter: {diameter}mm, Height: {height}mm")
+    
+    # Create cylinder shell
+    cylinder_shell = create_cylinder_shell(diameter, height, thickness)
+    meshes = [cylinder_shell]
+    
+    # Layout braille cells on cylinder
+    cells, cells_per_row = layout_cylindrical_cells(lines, settings, diameter, height)
+    
+    # Check for overflow
+    total_cells_needed = sum(len(line.strip()) for line in lines if line.strip())
+    total_cells_available = cells_per_row * int(height / settings.line_spacing)
+    
+    if total_cells_needed > total_cells_available:
+        print(f"Warning: Text requires {total_cells_needed} cells but cylinder can fit {total_cells_available}")
+    
+    # Dot positioning constants (same as card)
+    dot_col_offsets = [-settings.dot_spacing / 2, settings.dot_spacing / 2]
+    dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]
+    dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
+    
+    # Create dots for each cell
+    for braille_char, cell_x, cell_y in cells:
+        dots = braille_to_dots(braille_char)
+        
+        for i, dot_val in enumerate(dots):
+            if dot_val == 1:
+                dot_pos = dot_positions[i]
+                dot_x = cell_x + dot_col_offsets[dot_pos[1]]
+                dot_y = cell_y + dot_row_offsets[dot_pos[0]]
+                # Map absolute card Y to cylinder's local Z (centered at 0)
+                dot_z_local = dot_y - (height / 2.0)
+                z = thickness + settings.emboss_dot_height / 2  # unused in transform now
+                
+                dot_mesh = create_cylinder_braille_dot(dot_x, dot_z_local, z, settings, diameter, seam_offset)
+                meshes.append(dot_mesh)
+    
+    print(f"Created cylinder with {len(meshes)-1} braille dots")
+    return trimesh.util.concatenate(meshes)
+
+def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_params=None):
+    """
+    Generate a cylinder-shaped counter plate with hemispherical recesses on inner surface.
+    Similar to the card counter plate, it creates recesses at ALL possible dot positions.
+    """
+    if cylinder_params is None:
+        cylinder_params = {
+            'diameter_mm': 30,
+            'height_mm': settings.card_height,
+            'thickness_mm': settings.card_thickness,
+            'seam_offset_deg': 0
+        }
+    
+    diameter = float(cylinder_params.get('diameter_mm', 30))
+    height = float(cylinder_params.get('height_mm', settings.card_height))
+    thickness = float(cylinder_params.get('thickness_mm', settings.card_thickness))
+    seam_offset = float(cylinder_params.get('seam_offset_deg', 0))
+    
+    print(f"Creating cylinder counter plate - Diameter: {diameter}mm, Height: {height}mm")
+    
+    # Create cylinder shell
+    cylinder_shell = create_cylinder_shell(diameter, height, thickness)
+    
+    # Calculate how many cells fit around the circumference
+    circumference = np.pi * diameter
+    cells_per_row = int(circumference / (settings.cell_spacing + settings.dot_spacing))
+    
+    # Calculate number of rows that fit on cylinder
+    rows_on_cylinder = int(height / settings.line_spacing)
+    
+    # Dot positioning constants (same as card)
+    dot_col_offsets = [-settings.dot_spacing / 2, settings.dot_spacing / 2]
+    dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]
+    dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
+    
+    # Create spheres for ALL possible dot positions
+    sphere_meshes = []
+    
+    # Start from top of cylinder
+    current_y = height - settings.top_margin
+    
+    for row in range(rows_on_cylinder):
+        if current_y < settings.top_margin:
+            break
+            
+        for col in range(cells_per_row):
+            # Calculate cell position
+            x_pos = settings.left_margin + (col * settings.cell_spacing)
+            
+            # Create spheres for ALL 6 dots in this cell
+            for dot_idx in range(6):
+                dot_pos = dot_positions[dot_idx]
+                dot_x = x_pos + dot_col_offsets[dot_pos[1]]
+                dot_y = current_y + dot_row_offsets[dot_pos[0]]
+                
+                # Create sphere with radius based on counter plate offset
+                sphere_radius = (settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset) / 2
+                sphere = trimesh.creation.icosphere(subdivisions=settings.hemisphere_subdivisions, radius=sphere_radius)
+                
+                # Ensure sphere is a valid volume
+                if not sphere.is_volume:
+                    sphere.fix_normals()
+                
+                # Transform to cylindrical coordinates on INNER surface
+                inner_radius = diameter / 2 - thickness
+                theta = (dot_x / circumference) * 2 * np.pi + np.radians(seam_offset)
+                
+                # Position sphere centre *inside the wall* so its equator meets the interior surface
+                # This mirrors the planar logic where the sphere centre is above the surface by its radius.
+                center_radius = inner_radius + sphere_radius - settings.epsilon
+                cyl_x = center_radius * np.cos(theta)
+                cyl_y = center_radius * np.sin(theta)
+                # Map planar Y to cylinder local Z (centered at 0)
+                cyl_z = dot_y - (height / 2.0)
+                
+                sphere.apply_translation([cyl_x, cyl_y, cyl_z])
+                sphere_meshes.append(sphere)
+        
+        # Move to next row
+        current_y -= settings.line_spacing
+    
+    print(f"Creating {len(sphere_meshes)} hemispherical recesses on cylinder counter plate")
+    
+    # Boolean subtract the spheres from the cylinder shell to create recesses
+    try:
+        if not sphere_meshes:
+            return cylinder_shell
+        # Union the spheres first (improves robustness)
+        if len(sphere_meshes) == 1:
+            union_spheres = sphere_meshes[0]
+        else:
+            union_spheres = trimesh.boolean.union(sphere_meshes, engine='manifold')
+        recessed_shell = trimesh.boolean.difference([cylinder_shell, union_spheres], engine='manifold')
+        if not recessed_shell.is_watertight:
+            recessed_shell.fill_holes()
+        return recessed_shell
+    except Exception as e:
+        print(f"ERROR: Cylinder counter plate fallback boolean subtraction failed: {e}")
+        # Fallback to returning the plain shell if booleans fail
+        return cylinder_shell
+
 def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
     """
     Create a counter plate with true hemispherical recesses using trimesh with Manifold backend.
     
     This function generates a full braille grid and creates hemispherical recesses at EVERY dot position,
     regardless of grade-2 translation. The hemisphere diameter exactly equals the Embossing Plate's
-    "braille dot base diameter" parameter.
+    "braille dot base diameter" parameter plus the counter plate dot size offset.
     
     Args:
         params: CardSettings object containing all layout and geometry parameters
@@ -622,9 +937,9 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
         
     Technical details:
     - Plate thickness: TH (mm). Top surface is z=TH, bottom is z=0.
-    - Hemisphere radius r = emboss_dot_base_diameter_mm / 2.
+    - Hemisphere radius r = (emboss_dot_base_diameter + counter_plate_dot_size_offset) / 2.
     - For each dot center (x, y) in the braille grid, creates an icosphere with radius r
-      and translates its center to (x, y, TH + ε) so the lower hemisphere sits inside the slab
+      and translates its center to (x, y, TH - r + ε) so the lower hemisphere sits inside the slab
       and the equator coincides with the top surface.
     - Subtracts all spheres in one operation using trimesh.boolean.difference with engine='manifold'.
     - Generates dot centers from a full grid using the same layout parameters as the Embossing Plate.
@@ -635,11 +950,16 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
     plate_mesh = trimesh.creation.box(extents=(params.card_width, params.card_height, params.plate_thickness))
     plate_mesh.apply_translation((params.card_width/2, params.card_height/2, params.plate_thickness/2))
     
+    print(f"DEBUG: Creating counter plate base: {params.card_width}mm x {params.card_height}mm x {params.plate_thickness}mm")
     
     # Dot positioning constants (same as embossing plate)
     dot_col_offsets = [-params.dot_spacing / 2, params.dot_spacing / 2]
     dot_row_offsets = [params.dot_spacing, 0, -params.dot_spacing]
     dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]  # Map dot index (0-5) to [row, col]
+    
+    # Calculate hemisphere radius including the counter plate offset
+    hemisphere_radius = (params.emboss_dot_base_diameter + params.counter_plate_dot_size_offset) / 2
+    print(f"DEBUG: Hemisphere radius: {hemisphere_radius:.3f}mm (base: {params.emboss_dot_base_diameter}mm + offset: {params.counter_plate_dot_size_offset}mm)")
     
     # Create icospheres for ALL possible dot positions
     sphere_meshes = []
@@ -660,48 +980,87 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
                 dot_x = x_pos + dot_col_offsets[dot_pos[1]]
                 dot_y = y_pos + dot_row_offsets[dot_pos[0]]
                 
-                # Create an icosphere with radius = emboss_dot_base_diameter / 2
+                # Create an icosphere with the calculated hemisphere radius
                 # Use hemisphere_subdivisions parameter to control mesh density
-                sphere = trimesh.creation.icosphere(subdivisions=params.hemisphere_subdivisions, radius=params.hemisphere_radius)
+                sphere = trimesh.creation.icosphere(subdivisions=params.hemisphere_subdivisions, radius=hemisphere_radius)
                 
-                # Position the sphere center at z = TH + ε so the lower hemisphere sits inside the slab
-                # and the equator coincides with the top surface
+                # CRITICAL FIX: Position the sphere center at the plate surface level
+                # This ensures when the sphere is subtracted, it creates a hemispherical recess going DOWN into the plate
+                # The sphere center should be at z = plate_thickness + small_epsilon so the sphere intersects the plate surface
                 z_pos = params.plate_thickness + params.epsilon
                 sphere.apply_translation((dot_x, dot_y, z_pos))
-                
-
                 
                 sphere_meshes.append(sphere)
                 total_spheres += 1
     
+    print(f"DEBUG: Created {total_spheres} hemispheres for counter plate")
     
     if not sphere_meshes:
         print("WARNING: No spheres were generated. Returning base plate.")
         return plate_mesh
     
-    # Perform boolean operations using Manifold backend
+    # Perform boolean operations - try manifold first, then trimesh default
+    engines_to_try = ['manifold', 'blender', None]  # None uses trimesh default (usually CGAL or OpenSCAD)
+    
+    for engine in engines_to_try:
+        try:
+            engine_name = engine if engine else "trimesh-default"
+            print(f"DEBUG: Attempting boolean operations with {engine_name} engine...")
+            
+            # Union all spheres together for more efficient subtraction
+            if len(sphere_meshes) == 1:
+                union_spheres = sphere_meshes[0]
+            else:
+                print("DEBUG: Unioning spheres...")
+                union_spheres = trimesh.boolean.union(sphere_meshes, engine=engine)
+            
+            print("DEBUG: Subtracting spheres from plate...")
+            # Subtract the unified spheres from the plate in one operation
+            counter_plate_mesh = trimesh.boolean.difference([plate_mesh, union_spheres], engine=engine)
+            
+            # Verify the mesh is watertight
+            if not counter_plate_mesh.is_watertight:
+                print("DEBUG: Counter plate mesh not watertight, attempting to fix...")
+                counter_plate_mesh.fill_holes()
+                if counter_plate_mesh.is_watertight:
+                    print("DEBUG: Successfully fixed counter plate mesh")
+            
+            print(f"DEBUG: Counter plate completed with {engine_name} engine: {len(counter_plate_mesh.vertices)} vertices, {len(counter_plate_mesh.faces)} faces")
+            return counter_plate_mesh
+            
+        except Exception as e:
+            print(f"ERROR: Boolean operations with {engine_name} failed: {e}")
+            if engine == engines_to_try[-1]:  # Last engine failed
+                print("WARNING: All boolean engines failed. Creating hemisphere counter plate with individual subtraction...")
+                break
+            else:
+                print(f"WARNING: Trying next engine...")
+                continue
+    
+    # Final fallback: subtract spheres one by one (slower but more reliable)
     try:
-        # Union all spheres together (optional; Manifold can take a list)
-        if len(sphere_meshes) == 1:
-            union_spheres = sphere_meshes[0]
-        else:
-            union_spheres = trimesh.boolean.union(sphere_meshes, engine='manifold')
+        print("DEBUG: Attempting individual sphere subtraction...")
+        counter_plate_mesh = plate_mesh.copy()
         
+        for i, sphere in enumerate(sphere_meshes):
+            try:
+                print(f"DEBUG: Subtracting sphere {i+1}/{len(sphere_meshes)}...")
+                counter_plate_mesh = trimesh.boolean.difference([counter_plate_mesh, sphere])
+            except Exception as sphere_error:
+                print(f"WARNING: Failed to subtract sphere {i+1}: {sphere_error}")
+                continue
         
-        # Subtract the unified spheres from the plate in one operation
-        counter_plate_mesh = trimesh.boolean.difference([plate_mesh, union_spheres], engine='manifold')
-        
-        # Verify the mesh is watertight
+        # Try to fix the mesh
         if not counter_plate_mesh.is_watertight:
-            # Try to fix the mesh
             counter_plate_mesh.fill_holes()
         
+        print(f"DEBUG: Individual subtraction completed: {len(counter_plate_mesh.vertices)} vertices, {len(counter_plate_mesh.faces)} faces")
         return counter_plate_mesh
         
-    except Exception as e:
-        print(f"ERROR: Boolean operations with Manifold failed: {e}")
+    except Exception as final_error:
+        print(f"ERROR: Individual sphere subtraction failed: {final_error}")
         print("WARNING: Falling back to simple negative plate method.")
-        # Fallback to the simple approach if Manifold fails
+        # Final fallback to the simple approach
         return create_simple_negative_plate(params)
 
 @app.route('/health')
@@ -784,6 +1143,8 @@ def generate_braille_stl():
         plate_type = data.get('plate_type', 'positive')
         grade = data.get('grade', 'g2')
         settings_data = data.get('settings', {})
+        shape_type = data.get('shape_type', 'card')  # New: default to 'card' for backward compatibility
+        cylinder_params = data.get('cylinder_params', {})  # New: optional cylinder parameters
         
         # Validate inputs
         validate_lines(lines)
@@ -796,6 +1157,10 @@ def generate_braille_stl():
         # Validate grade
         if grade not in ['g1', 'g2']:
             return jsonify({'error': 'Invalid grade. Must be "g1" or "g2"'}), 400
+        
+        # Validate shape_type
+        if shape_type not in ['card', 'cylinder']:
+            return jsonify({'error': 'Invalid shape_type. Must be "card" or "cylinder"'}), 400
         
         settings = CardSettings(**settings_data)
         
@@ -813,15 +1178,27 @@ def generate_braille_stl():
     # Backend expects lines to already be within limits
     
     try:
-        if plate_type == 'positive':
-            mesh = create_positive_plate_mesh(lines, grade, settings)
-        elif plate_type == 'negative':
-            # Counter plate uses hemispherical recesses as per project brief
-            # It does NOT depend on text input - always creates ALL 6 dots per cell
-            print("DEBUG: Generating counter plate with hemispherical recesses (all positions)")
-            mesh = build_counter_plate_hemispheres(settings)
-        else:
-            return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
+        if shape_type == 'card':
+            # Original card generation logic
+            if plate_type == 'positive':
+                mesh = create_positive_plate_mesh(lines, grade, settings)
+            elif plate_type == 'negative':
+                # Counter plate uses hemispherical recesses as per project brief
+                # It does NOT depend on text input - always creates ALL 6 dots per cell
+                print("DEBUG: Generating counter plate with hemispherical recesses (all positions)")
+                mesh = build_counter_plate_hemispheres(settings)
+            else:
+                return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
+        
+        elif shape_type == 'cylinder':
+            # New cylinder generation logic
+            if plate_type == 'positive':
+                mesh = generate_cylinder_stl(lines, grade, settings, cylinder_params)
+            elif plate_type == 'negative':
+                # Cylinder counter plate - needs implementation
+                mesh = generate_cylinder_counter_plate(lines, settings, cylinder_params)
+            else:
+                return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
         
         # Verify mesh is watertight and manifold
         if not mesh.is_watertight:
@@ -835,8 +1212,13 @@ def generate_braille_stl():
         
         if not mesh.is_winding_consistent:
             print(f"WARNING: Generated {plate_type} plate mesh has inconsistent winding!")
-            mesh.fix_normals()
-            print("INFO: Fixed mesh normals")
+            try:
+                mesh.fix_normals()
+                print("INFO: Fixed mesh normals")
+            except ImportError:
+                # fix_normals requires scipy, try unify_normals instead
+                mesh.unify_normals()
+                print("INFO: Unified mesh normals (scipy not available)")
         
         # Export to STL
         stl_io = io.BytesIO()
@@ -847,8 +1229,10 @@ def generate_braille_stl():
         config_dump = {
             "timestamp": datetime.now().isoformat(),
             "plate_type": plate_type,
+            "shape_type": shape_type,
             "grade": grade if plate_type == 'positive' else "n/a",
             "text_lines": lines if plate_type == 'positive' else ["Counter plate - all positions"],
+            "cylinder_params": cylinder_params if shape_type == 'cylinder' else "n/a",
             "settings": {
                 # Card parameters
                 "card_width": settings.card_width,
@@ -885,7 +1269,7 @@ def generate_braille_stl():
         # Create filename based on text content with fallback logic
         if plate_type == 'positive':
             # For embossing plates, prioritize Line 1, then fallback to other lines
-            filename = 'braille_embossing_plate'
+            filename = f'braille_embossing_plate-{shape_type}'
             for i, line in enumerate(lines):
                 if line.strip():
                     # Sanitize filename: remove special characters and limit length
@@ -893,17 +1277,17 @@ def generate_braille_stl():
                     sanitized = re.sub(r'[-\s]+', '_', sanitized).strip('_')
                     if sanitized:
                         if i == 0:  # Line 1
-                            filename = f'braille_embossing_plate_{sanitized}'
+                            filename = f'braille_embossing_plate_{sanitized}-{shape_type}'
                         else:  # Other lines as fallback
-                            filename = f'braille_embossing_plate_{sanitized}'
+                            filename = f'braille_embossing_plate_{sanitized}-{shape_type}'
                         break
         else:
             # For counter plates, include total diameter (base + offset) in filename
             total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
-            filename = f'braille_counter_plate_{total_diameter}mm'
+            filename = f'braille_counter_plate_{total_diameter}mm-{shape_type}'
         
         # Additional filename sanitization for security
-        filename = re.sub(r'[^\w\-_]', '', filename)[:50]  # Allow longer names for embossing plates
+        filename = re.sub(r'[^\w\-_]', '', filename)[:60]  # Allow longer names to accommodate shape type
         
         return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl')
         

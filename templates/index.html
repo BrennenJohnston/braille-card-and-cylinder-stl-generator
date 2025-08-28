@@ -1673,6 +1673,56 @@
                             </div>
                         </fieldset>
                     </div>
+                    
+                    <!-- Output Shape Selection -->
+                    <div class="grade-selection">
+                        <fieldset>
+                            <legend class="grade-label">Select Output Shape</legend>
+                            <div class="radio-group" role="radiogroup" aria-required="true">
+                                <label class="radio-option">
+                                    <input type="radio" name="shape_type" value="card" checked aria-describedby="card-shape-desc">
+                                    <span class="radio-text">Flat Card</span>
+                                </label>
+                                <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card</span>
+                                <label class="radio-option">
+                                    <input type="radio" name="shape_type" value="cylinder" aria-describedby="cylinder-shape-desc">
+                                    <span class="radio-text">Cylinder</span>
+                                </label>
+                                <span id="cylinder-shape-desc" class="sr-only">Creates a cylindrical braille surface</span>
+                            </div>
+                        </fieldset>
+                    </div>
+                    
+                    <!-- Cylinder-specific parameters (hidden by default) -->
+                    <div id="cylinder-settings" class="grade-selection" style="display: none;">
+                        <fieldset>
+                            <legend class="grade-label">Cylinder Parameters</legend>
+                            <div style="display: grid; gap: 10px;">
+                                <div>
+                                    <label for="cylinder_diameter_mm">Cylinder Diameter (mm):</label>
+                                    <input type="number" id="cylinder_diameter_mm" name="cylinder_diameter_mm" value="30" step="0.1" min="10" max="200">
+                                </div>
+                                <div>
+                                    <label for="cylinder_height_mm">Cylinder Height (mm):</label>
+                                    <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200">
+                                </div>
+                                <div>
+                                    <label for="cylinder_thickness_mm">Wall Thickness (mm):</label>
+                                    <input type="number" id="cylinder_thickness_mm" name="cylinder_thickness_mm" value="2" step="0.1" min="0.5" max="10">
+                                </div>
+                                <div>
+                                    <label for="seam_offset_deg">Seam Offset (degrees):</label>
+                                    <input type="number" id="seam_offset_deg" name="seam_offset_deg" value="0" step="1" min="0" max="360">
+                                    <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                        Rotates the starting position of braille text around the cylinder
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="cylinder-overflow-warning" class="grade-note" style="margin-top: 10px; color: #d73502; display: none;">
+                                <strong>Warning:</strong> <span id="cylinder-overflow-message"></span>
+                            </div>
+                        </fieldset>
+                    </div>
 
                     <div class="expert-mode-toggle">
                         <button type="button" id="expert-toggle" class="expert-toggle-btn">
@@ -2092,6 +2142,14 @@
                 radio.addEventListener('change', resetToGenerateState);
             });
             
+            // Shape type radio buttons
+            document.querySelectorAll('input[name="shape_type"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    resetToGenerateState();
+                    updateShapeSettings();
+                });
+            });
+            
             // Counter plate offset
             const counterPlateOffset = document.getElementById('counter_plate_dot_size_offset');
             if (counterPlateOffset) {
@@ -2122,6 +2180,80 @@
                     input.addEventListener('input', resetToGenerateState);
                 }
             });
+            
+            // Cylinder parameter inputs
+            const cylinderInputs = [
+                'cylinder_diameter_mm',
+                'cylinder_height_mm',
+                'cylinder_thickness_mm',
+                'seam_offset_deg'
+            ];
+            
+            cylinderInputs.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.addEventListener('input', function() {
+                        resetToGenerateState();
+                        checkCylinderOverflow();
+                    });
+                }
+            });
+        }
+        
+        // Function to show/hide cylinder settings based on shape selection
+        function updateShapeSettings() {
+            const shapeType = document.querySelector('input[name="shape_type"]:checked').value;
+            const cylinderSettings = document.getElementById('cylinder-settings');
+            
+            if (shapeType === 'cylinder') {
+                cylinderSettings.style.display = 'block';
+                // Initialize cylinder height with current card height
+                const cardHeight = document.getElementById('card_height').value;
+                document.getElementById('cylinder_height_mm').value = cardHeight;
+                checkCylinderOverflow();
+            } else {
+                cylinderSettings.style.display = 'none';
+            }
+        }
+        
+        // Function to check cylinder text overflow
+        function checkCylinderOverflow() {
+            const shapeType = document.querySelector('input[name="shape_type"]:checked').value;
+            if (shapeType !== 'cylinder') return;
+            
+            const diameter = parseFloat(document.getElementById('cylinder_diameter_mm').value) || 30;
+            const height = parseFloat(document.getElementById('cylinder_height_mm').value) || 52;
+            const cellSpacing = parseFloat(document.getElementById('cell_spacing').value) || 6.5;
+            const dotSpacing = parseFloat(document.getElementById('dot_spacing').value) || 2.5;
+            const lineSpacing = parseFloat(document.getElementById('line_spacing').value) || 10;
+            
+            // Calculate how many cells fit around circumference
+            const circumference = Math.PI * diameter;
+            const cellsPerRow = Math.floor(circumference / (cellSpacing + dotSpacing));
+            
+            // Calculate how many rows fit on cylinder
+            const rowsOnCylinder = Math.floor(height / lineSpacing);
+            
+            // Get total cells needed from text
+            const lines = getDynamicLineValues();
+            let totalCellsNeeded = 0;
+            lines.forEach(line => {
+                if (line.trim()) {
+                    totalCellsNeeded += line.trim().length;
+                }
+            });
+            
+            const totalCellsAvailable = cellsPerRow * rowsOnCylinder;
+            
+            const warningDiv = document.getElementById('cylinder-overflow-warning');
+            const warningMessage = document.getElementById('cylinder-overflow-message');
+            
+            if (totalCellsNeeded > totalCellsAvailable) {
+                warningMessage.textContent = `Text requires ${totalCellsNeeded} cells but cylinder can fit ${totalCellsAvailable} cells. Some text may be cut off.`;
+                warningDiv.style.display = 'block';
+            } else {
+                warningDiv.style.display = 'none';
+            }
         }
 
         // Function to create dynamic line inputs based on grid_rows value
@@ -2453,13 +2585,35 @@
             actionBtn.textContent = 'Generating...';
             actionBtn.style.opacity = '0.7';
             
+            // Get shape type and cylinder params
+            const shapeType = document.querySelector('input[name="shape_type"]:checked').value;
+            let cylinderParams = {};
+            
+            if (shapeType === 'cylinder') {
+                cylinderParams = {
+                    diameter_mm: document.getElementById('cylinder_diameter_mm').value,
+                    height_mm: document.getElementById('cylinder_height_mm').value,
+                    thickness_mm: document.getElementById('cylinder_thickness_mm').value,
+                    seam_offset_deg: document.getElementById('seam_offset_deg').value
+                };
+            }
+            
             // Debug: Log the settings being sent
             log.debug('Expert Mode Settings:', settings);
+            log.debug('Shape Type:', shapeType);
+            log.debug('Cylinder Params:', cylinderParams);
             
             const res = await fetch('/generate_braille_stl', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lines: translatedLines, grade: 'g2', plate_type: plateType, settings: settings })
+                body: JSON.stringify({ 
+                    lines: translatedLines, 
+                    grade: 'g2', 
+                    plate_type: plateType, 
+                    shape_type: shapeType,
+                    cylinder_params: cylinderParams,
+                    settings: settings 
+                })
             });
             
             // Hide loading message
@@ -2489,6 +2643,7 @@
                 
                 // Generate filename on frontend to match backend logic
                 const plateType = document.querySelector('input[name="plate_type"]:checked').value;
+                const shapeType = document.querySelector('input[name="shape_type"]:checked').value;
                 let filename = plateType === 'positive' ? 'braille_embossing_plate' : 'braille_counter_plate';
                 
                 if (plateType === 'positive') {
@@ -2509,17 +2664,21 @@
                             sanitized = sanitized.replace(/[-\s]+/g, '_').replace(/^_+|_+$/g, '');
                             
                             if (sanitized) {
-                                filename = `braille_embossing_plate_${sanitized}`;
+                                filename = `braille_embossing_plate_${sanitized}-${shapeType}`;
                                 break;
                             }
                         }
+                    }
+                    // If no text was found, still append shape type
+                    if (!filename.includes(shapeType)) {
+                        filename = `braille_embossing_plate-${shapeType}`;
                     }
                 } else {
                     // For counter plates, include total diameter (base + offset) in filename
                     const dotDiameter = parseFloat(document.getElementById('emboss_dot_base_diameter').value) || 0;
                     const counterOffset = parseFloat(document.getElementById('counter_plate_dot_size_offset').value) || 0;
                     const totalDiameter = dotDiameter + counterOffset;
-                    filename = `braille_counter_plate_${totalDiameter}mm`;
+                    filename = `braille_counter_plate_${totalDiameter}mm-${shapeType}`;
                 }
                 
                 // Store the generated STL URL and filename for download

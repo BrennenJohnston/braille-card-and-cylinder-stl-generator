@@ -1,3 +1,22 @@
+# Virtual environments
+venv/
+.venv/
 
-/venv
-/__pycache__
+# Python cache
+__pycache__/
+*.pyc
+
+# Test files
+test_*.stl
+test_*.py
+tmp_*
+
+# Build artifacts
+*.tmp
+*.log
+
+# Dependencies
+node_modules/
+
+# IDE files
+.vscode/

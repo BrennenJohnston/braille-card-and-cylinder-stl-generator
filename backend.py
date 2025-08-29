@@ -620,7 +620,8 @@ def layout_cylindrical_cells(braille_lines, settings: CardSettings, cylinder_dia
     circumference = np.pi * cylinder_diameter_mm
     
     # Calculate how many cells fit around the circumference
-    cells_per_row = int(circumference / (settings.cell_spacing + settings.dot_spacing))
+    # cell_spacing is the center-to-center distance between cells
+    cells_per_row = int(circumference / settings.cell_spacing)
     
     # Calculate row height (same as card)
     row_height = settings.line_spacing
@@ -645,7 +646,8 @@ def layout_cylindrical_cells(braille_lines, settings: CardSettings, cylinder_dia
             
             # Calculate x positions for this row
             for col_num, braille_char in enumerate(row_chars):
-                x_pos = settings.left_margin + (col_num * settings.cell_spacing)
+                # No margin for cylinders to maximize circumference usage
+                x_pos = col_num * settings.cell_spacing
                 cells.append((braille_char, x_pos, current_y))
             
             # Move to next row
@@ -909,7 +911,8 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     
     # Calculate how many cells fit around the circumference
     circumference = np.pi * diameter
-    cells_per_row = int(circumference / (settings.cell_spacing + settings.dot_spacing))
+    # cell_spacing is the center-to-center distance between cells
+    cells_per_row = int(circumference / settings.cell_spacing)
     
     # Calculate number of rows that fit on cylinder
     rows_on_cylinder = int(height / settings.line_spacing)
@@ -931,7 +934,8 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             
         for col in range(cells_per_row):
             # Calculate cell position
-            x_pos = settings.left_margin + (col * settings.cell_spacing)
+            # No margin for cylinders to maximize circumference usage
+            x_pos = col * settings.cell_spacing
             
             # Create spheres for ALL 6 dots in this cell
             for dot_idx in range(6):

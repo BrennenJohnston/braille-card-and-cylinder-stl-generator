@@ -2231,8 +2231,9 @@
             const lineSpacing = parseFloat(document.getElementById('line_spacing').value) || 10;
             
             // Calculate how many cells fit around circumference
+            // cellSpacing is the center-to-center distance between cells
             const circumference = Math.PI * diameter;
-            const cellsPerRow = Math.floor(circumference / (cellSpacing + dotSpacing));
+            const cellsPerRow = Math.floor(circumference / cellSpacing);
             
             // Calculate how many rows fit on cylinder
             const rowsOnCylinder = Math.floor(height / lineSpacing);

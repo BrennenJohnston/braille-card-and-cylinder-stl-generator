@@ -678,50 +678,88 @@ def cylindrical_transform(x, y, z, cylinder_diameter_mm, seam_offset_deg=0):
     
     return cyl_x, cyl_y, cyl_z
 
-def create_cylinder_shell(diameter_mm, height_mm, thickness_mm):
+def create_cylinder_shell(diameter_mm, height_mm, polygonal_cutout_radius_mm):
     """
-    Create a hollow cylinder (tube) mesh using a simpler approach.
+    Create a cylinder with a 6-point polygonal cutout along its length.
+    
+    Args:
+        diameter_mm: Outer diameter of the cylinder
+        height_mm: Height of the cylinder
+        polygonal_cutout_radius_mm: Inscribed radius of the 6-point polygonal cutout
     """
     outer_radius = diameter_mm / 2
-    inner_radius = outer_radius - thickness_mm
     
-    # Create a solid cylinder and subtract a smaller cylinder from it
-    outer_cylinder = trimesh.creation.cylinder(radius=outer_radius, height=height_mm, sections=64)
-    inner_cylinder = trimesh.creation.cylinder(radius=inner_radius, height=height_mm - 0.001, sections=64)
+    # Create the main solid cylinder
+    main_cylinder = trimesh.creation.cylinder(radius=outer_radius, height=height_mm, sections=64)
     
-    # Use boolean difference to create the shell
+    # If no cutout is specified, return the solid cylinder
+    if polygonal_cutout_radius_mm <= 0:
+        return main_cylinder
+    
+    # Create a 6-point polygonal prism for the cutout
+    # The prism extends the full height of the cylinder
+    # Calculate the circumscribed radius from the inscribed radius
+    # For a regular hexagon: circumscribed_radius = inscribed_radius / cos(30°)
+    # cos(30°) = sqrt(3)/2 ≈ 0.866
+    circumscribed_radius = polygonal_cutout_radius_mm / 0.866
+    
+    # Create the 6-point polygon vertices
+    angles = np.linspace(0, 2*np.pi, 6, endpoint=False)
+    vertices_2d = []
+    for angle in angles:
+        x = circumscribed_radius * np.cos(angle)
+        y = circumscribed_radius * np.sin(angle)
+        vertices_2d.append([x, y])
+    
+    # Create the polygonal prism by extruding the polygon along the Z-axis
+    # The prism should be slightly longer than the cylinder to ensure complete cutting
+    prism_height = height_mm + 2.0  # Add 1mm on each end
+    
+    # Create the polygonal prism using trimesh
+    # We'll create it by making a 3D mesh from the 2D polygon
+    from trimesh.creation import extrude_polygon
+    
+    # Create the polygon using shapely
+    from shapely.geometry import Polygon as ShapelyPolygon
+    polygon = ShapelyPolygon(vertices_2d)
+    
+    # Extrude the polygon to create the prism
+    cutout_prism = extrude_polygon(polygon, height=prism_height)
+    
+    # Center the prism vertically at origin (extrude_polygon creates it from Z=0 to Z=height)
+    prism_center_z = cutout_prism.bounds[1][2] / 2.0  # Get center of prism's Z bounds
+    cutout_prism.apply_translation([0, 0, -prism_center_z])
+    
+    # Debug: Print prism and cylinder dimensions
+    print(f"DEBUG: Cylinder height: {height_mm}mm, extends from Z={-height_mm/2:.2f} to Z={height_mm/2:.2f}")
+    print(f"DEBUG: Prism height: {prism_height}mm, after centering extends from Z={-prism_height/2:.2f} to Z={prism_height/2:.2f}")
+    print(f"DEBUG: Prism bounds after centering: {cutout_prism.bounds}")
+    
+    # Center the prism at the origin - no translation needed
+    # Both the cylinder and prism are already centered at origin
+    # The prism extends from -prism_height/2 to +prism_height/2
+    # The cylinder extends from -height_mm/2 to +height_mm/2
+    # Since prism_height > height_mm, the prism will cut through the entire cylinder
+    
+    # Perform boolean subtraction to create the cutout
     try:
-        shell = trimesh.boolean.difference([outer_cylinder, inner_cylinder], engine='manifold')
-        if shell.is_watertight:
-            return shell
-    except:
-        pass
+        result = trimesh.boolean.difference([main_cylinder, cutout_prism], engine='manifold')
+        if result.is_watertight:
+            return result
+    except Exception as e:
+        print(f"Warning: Boolean operation failed with manifold engine: {e}")
     
-    # Fallback: Create shell manually using annulus for top/bottom
-    from trimesh.creation import annulus
+    # Fallback: try with default engine
+    try:
+        result = trimesh.boolean.difference([main_cylinder, cutout_prism])
+        if result.is_watertight:
+            return result
+    except Exception as e:
+        print(f"Warning: Boolean operation failed with default engine: {e}")
     
-    # Create top and bottom annulus (ring) meshes
-    top_ring = annulus(r_min=inner_radius, r_max=outer_radius, height=0, sections=64)
-    top_ring.apply_translation([0, 0, height_mm/2])
-    
-    bottom_ring = annulus(r_min=inner_radius, r_max=outer_radius, height=0, sections=64)
-    bottom_ring.apply_translation([0, 0, -height_mm/2])
-    
-    # Create outer and inner cylinder surfaces
-    outer_surface = trimesh.creation.cylinder(radius=outer_radius, height=height_mm, sections=64, cap=False)
-    inner_surface = trimesh.creation.cylinder(radius=inner_radius, height=height_mm, sections=64, cap=False)
-    
-    # Flip inner surface normals
-    inner_surface.invert()
-    
-    # Combine all parts
-    shell = trimesh.util.concatenate([outer_surface, inner_surface, top_ring, bottom_ring])
-    
-    # Merge vertices and remove duplicates
-    shell.merge_vertices()
-    shell.remove_duplicate_faces()
-    
-    return shell
+    # Final fallback: return the original cylinder if all boolean operations fail
+    print("Warning: Could not create polygonal cutout, returning solid cylinder")
+    return main_cylinder
 
 def create_cylinder_braille_dot(x, y, z, settings: CardSettings, cylinder_diameter_mm, seam_offset_deg=0):
     """
@@ -764,7 +802,7 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
         cylinder_params: Dictionary with cylinder-specific parameters:
             - diameter_mm: Cylinder diameter
             - height_mm: Cylinder height  
-            - thickness_mm: Wall thickness
+            - polygonal_cutout_radius_mm: Inscribed radius of 6-point polygonal cutout (0 = no cutout)
             - seam_offset_deg: Rotation offset for seam
     """
     if settings is None:
@@ -774,19 +812,19 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
         cylinder_params = {
             'diameter_mm': 30,
             'height_mm': settings.card_height,
-            'thickness_mm': settings.card_thickness,
+            'polygonal_cutout_radius_mm': 5,
             'seam_offset_deg': 0
         }
     
     diameter = float(cylinder_params.get('diameter_mm', 30))
     height = float(cylinder_params.get('height_mm', settings.card_height))
-    thickness = float(cylinder_params.get('thickness_mm', settings.card_thickness))
+    polygonal_cutout_radius = float(cylinder_params.get('polygonal_cutout_radius_mm', 0))
     seam_offset = float(cylinder_params.get('seam_offset_deg', 0))
     
-    print(f"Creating cylinder mesh - Diameter: {diameter}mm, Height: {height}mm")
+    print(f"Creating cylinder mesh - Diameter: {diameter}mm, Height: {height}mm, Cutout Radius: {polygonal_cutout_radius}mm")
     
     # Create cylinder shell
-    cylinder_shell = create_cylinder_shell(diameter, height, thickness)
+    cylinder_shell = create_cylinder_shell(diameter, height, polygonal_cutout_radius)
     meshes = [cylinder_shell]
     
     # Layout braille cells on cylinder
@@ -815,7 +853,7 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
                 dot_y = cell_y + dot_row_offsets[dot_pos[0]]
                 # Map absolute card Y to cylinder's local Z (centered at 0)
                 dot_z_local = dot_y - (height / 2.0)
-                z = thickness + settings.emboss_dot_height / 2  # unused in transform now
+                z = polygonal_cutout_radius + settings.emboss_dot_height / 2  # unused in transform now
                 
                 dot_mesh = create_cylinder_braille_dot(dot_x, dot_z_local, z, settings, diameter, seam_offset)
                 meshes.append(dot_mesh)
@@ -841,24 +879,33 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     """
     Generate a cylinder-shaped counter plate with hemispherical recesses on the OUTER surface.
     Similar to the card counter plate, it creates recesses at ALL possible dot positions.
+    
+    Args:
+        lines: List of text lines
+        settings: CardSettings object
+        cylinder_params: Dictionary with cylinder-specific parameters:
+            - diameter_mm: Cylinder diameter
+            - height_mm: Cylinder height  
+            - polygonal_cutout_radius_mm: Inscribed radius of 6-point polygonal cutout (0 = no cutout)
+            - seam_offset_deg: Rotation offset for seam
     """
     if cylinder_params is None:
         cylinder_params = {
             'diameter_mm': 30,
             'height_mm': settings.card_height,
-            'thickness_mm': settings.card_thickness,
+            'polygonal_cutout_radius_mm': 5,
             'seam_offset_deg': 0
         }
     
     diameter = float(cylinder_params.get('diameter_mm', 30))
     height = float(cylinder_params.get('height_mm', settings.card_height))
-    thickness = float(cylinder_params.get('thickness_mm', settings.card_thickness))
+    polygonal_cutout_radius = float(cylinder_params.get('polygonal_cutout_radius_mm', 0))
     seam_offset = float(cylinder_params.get('seam_offset_deg', 0))
     
-    print(f"Creating cylinder counter plate - Diameter: {diameter}mm, Height: {height}mm")
+    print(f"Creating cylinder counter plate - Diameter: {diameter}mm, Height: {height}mm, Cutout Radius: {polygonal_cutout_radius}mm")
     
     # Create cylinder shell
-    cylinder_shell = create_cylinder_shell(diameter, height, thickness)
+    cylinder_shell = create_cylinder_shell(diameter, height, polygonal_cutout_radius)
     
     # Calculate how many cells fit around the circumference
     circumference = np.pi * diameter
@@ -936,13 +983,8 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         return cylinder_shell
     
     # More robust boolean strategy:
-    # 1) Start with a solid OUTER cylinder
+    # 1) Start with the cylinder shell (which already has the polygonal cutout)
     # 2) Subtract the union of all spheres to create outer recesses
-    # 3) Hollow the cylinder by subtracting the INNER cylinder
-    outer_radius = diameter / 2
-    inner_radius = outer_radius - thickness
-    outer_solid = trimesh.creation.cylinder(radius=outer_radius, height=height, sections=64)
-    inner_cutter = trimesh.creation.cylinder(radius=inner_radius, height=height - 0.001, sections=64)
     
     engines_to_try = ['manifold', None]  # None uses trimesh default
     
@@ -955,11 +997,8 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             else:
                 union_spheres = trimesh.boolean.union(sphere_meshes, engine=engine)
             
-            print(f"DEBUG: Cylinder boolean - subtract spheres from outer solid with {engine_name}...")
-            outer_recessed = trimesh.boolean.difference([outer_solid, union_spheres], engine=engine)
-            
-            print(f"DEBUG: Cylinder boolean - hollow with inner cutter using {engine_name}...")
-            final_shell = trimesh.boolean.difference([outer_recessed, inner_cutter], engine=engine)
+            print(f"DEBUG: Cylinder boolean - subtract spheres from cylinder shell with {engine_name}...")
+            final_shell = trimesh.boolean.difference([cylinder_shell, union_spheres], engine=engine)
             
             if not final_shell.is_watertight:
                 print("DEBUG: Cylinder final shell not watertight, attempting to fill holes...")
@@ -982,20 +1021,19 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             print(f"ERROR: Cylinder robust boolean with {engine_name} failed: {e}")
             continue
     
-    # Fallback: subtract spheres individually from solid, then hollow
+    # Fallback: subtract spheres individually from cylinder shell
     try:
-        print("DEBUG: Fallback - individual subtraction from solid outer cylinder...")
-        outer_recessed = outer_solid.copy()
+        print("DEBUG: Fallback - individual subtraction from cylinder shell...")
+        result_shell = cylinder_shell.copy()
         for i, sphere in enumerate(sphere_meshes):
             try:
-                print(f"DEBUG: Subtracting sphere {i+1}/{len(sphere_meshes)} from solid outer...")
-                outer_recessed = trimesh.boolean.difference([outer_recessed, sphere])
+                print(f"DEBUG: Subtracting sphere {i+1}/{len(sphere_meshes)} from cylinder shell...")
+                result_shell = trimesh.boolean.difference([result_shell, sphere])
             except Exception as sphere_error:
                 print(f"WARNING: Failed to subtract sphere {i+1}: {sphere_error}")
                 continue
         
-        print("DEBUG: Fallback - hollowing after individual subtraction...")
-        final_shell = trimesh.boolean.difference([outer_recessed, inner_cutter])
+        final_shell = result_shell
         if not final_shell.is_watertight:
             final_shell.fill_holes()
         print(f"DEBUG: Fallback completed: {len(final_shell.vertices)} vertices, {len(final_shell.faces)} faces")

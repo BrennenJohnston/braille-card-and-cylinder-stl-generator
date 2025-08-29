@@ -1707,8 +1707,11 @@
                                     <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200">
                                 </div>
                                 <div>
-                                    <label for="cylinder_thickness_mm">Wall Thickness (mm):</label>
-                                    <input type="number" id="cylinder_thickness_mm" name="cylinder_thickness_mm" value="2" step="0.1" min="0.5" max="10">
+                                    <label for="cylinder_polygonal_cutout_radius_mm">Polygonal Cutout Inscribed Radius (mm):</label>
+                                    <input type="number" id="cylinder_polygonal_cutout_radius_mm" name="cylinder_polygonal_cutout_radius_mm" value="5" step="0.1" min="0" max="50">
+                                    <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                        Creates a 6-point polygonal cutout along the cylinder's length. Set to 0 for no cutout.
+                                    </div>
                                 </div>
                                 <div>
                                     <label for="seam_offset_deg">Seam Offset (degrees):</label>
@@ -2185,7 +2188,7 @@
             const cylinderInputs = [
                 'cylinder_diameter_mm',
                 'cylinder_height_mm',
-                'cylinder_thickness_mm',
+                'cylinder_polygonal_cutout_radius_mm',
                 'seam_offset_deg'
             ];
             
@@ -2593,7 +2596,7 @@
                 cylinderParams = {
                     diameter_mm: document.getElementById('cylinder_diameter_mm').value,
                     height_mm: document.getElementById('cylinder_height_mm').value,
-                    thickness_mm: document.getElementById('cylinder_thickness_mm').value,
+                    polygonal_cutout_radius_mm: document.getElementById('cylinder_polygonal_cutout_radius_mm').value,
                     seam_offset_deg: document.getElementById('seam_offset_deg').value
                 };
             }

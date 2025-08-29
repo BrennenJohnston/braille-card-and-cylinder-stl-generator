@@ -2447,6 +2447,7 @@
             
             camera = new THREE.PerspectiveCamera(45, viewer.clientWidth/viewer.clientHeight, 0.1, 1000);
             camera.position.set(0, 0, 120);
+            camera.up.set(0, 1, 0); // Default Y-up
             camera.lookAt(0, 0, 0);
             controls = new OrbitControls(camera, renderer.domElement);
             controls.target.set(0, 0, 0);
@@ -2719,7 +2720,10 @@
             loader.load(url, function (geometry) {
                 if (mesh) scene.remove(mesh);
                 
-                // Compute bounding box before centering to detect object type
+                // Center the geometry first
+                geometry.center();
+                
+                // Compute bounding box after centering to detect object type
                 geometry.computeBoundingBox();
                 const bbox = geometry.boundingBox;
                 const width = bbox.max.x - bbox.min.x;
@@ -2729,17 +2733,6 @@
                 // Check if this is a cylinder
                 const shapeType = document.querySelector('input[name="shape_type"]:checked')?.value;
                 const isCylinder = shapeType === 'cylinder' || height > Math.max(width, depth) * 1.5;
-                
-                if (!isCylinder) {
-                    // For cards, center the geometry as before
-                    geometry.center();
-                } else {
-                    // For cylinders, only center X and Y, keep Z positioning
-                    // (cylinder base is at Z=0 in the STL)
-                    const centerX = (bbox.max.x + bbox.min.x) / 2;
-                    const centerY = (bbox.max.y + bbox.min.y) / 2;
-                    geometry.translate(-centerX, -centerY, 0);
-                }
                 
                 // Get theme-appropriate mesh color with proper fallback
                 const styles = getComputedStyle(document.documentElement);
@@ -2774,28 +2767,60 @@
                 
                 // Adjust camera position based on object type
                 if (isCylinder) {
-                    // For cylinders: view from the side, centered on braille content
-                    const gridRows = parseInt(document.getElementById('grid_rows').value) || 4;
-                    const lineSpacing = parseFloat(document.getElementById('line_spacing').value) || 10.0;
-                    const topMargin = parseFloat(document.getElementById('braille_y_adjust')?.value || 0) + 8.4; // Default top margin
-                    const cylinderHeight = parseFloat(document.getElementById('cylinder_height_mm').value) || height;
-                    
-                    // Calculate the center of the braille content
-                    const brailleHeight = (gridRows - 1) * lineSpacing;
-                    // Since cylinder base is at Z=0 and extends upward, calculate from top
-                    const brailleCenterZ = cylinderHeight - topMargin - brailleHeight / 2;
-                    
-                    // Position camera to view from the side (+X direction looking toward origin)
-                    camera.position.set(120, 0, brailleCenterZ);
-                    camera.lookAt(0, 0, brailleCenterZ);
-                    controls.target.set(0, 0, brailleCenterZ);
-                } else {
-                    // For cards: keep default front view
-                    camera.position.set(0, 0, 120);
-                    camera.lookAt(0, 0, 0);
+                    // For cylinders: view from the side
+                    // After centering, the cylinder is at origin (0,0,0)
+                    // The cylinder's axis is along the Z-direction
+
+                    // Ensure camera up vector is correct for upright viewing BEFORE lookAt
+                    camera.up.set(0, 0, 1); // Z-axis is up for the cylinder
+
+                    // Position camera to view cylinder upright from the side
+                    // Set camera on the +X axis looking toward origin
+                    camera.position.set(120, 0, 0);
                     controls.target.set(0, 0, 0);
+                    camera.lookAt(0, 0, 0);
+
+                    // Recreate controls so internal up-vector transform matches camera.up
+                    if (controls) controls.dispose();
+                    controls = new OrbitControls(camera, renderer.domElement);
+                    controls.target.set(0, 0, 0);
+                    // Reapply standard control settings
+                    {   const isMobile = window.innerWidth <= 768;
+                        controls.enableDamping = true;
+                        controls.dampingFactor = 0.05;
+                        controls.rotateSpeed = isMobile ? 0.5 : 1.0;
+                        controls.zoomSpeed = isMobile ? 0.8 : 1.2;
+                        controls.panSpeed = isMobile ? 0.5 : 0.8;
+                        controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+                    }
+                    // Panning orthogonal to world up for Z-up scenes
+                    controls.screenSpacePanning = false;
+
+                    camera.updateProjectionMatrix();
+                } else {
+                    // For cards: keep default front view with Y-up
+                    camera.position.set(0, 0, 120);
+                    camera.up.set(0, 1, 0); // Y-axis is up for cards (default)
+                    camera.lookAt(0, 0, 0);
+                    // Recreate controls to ensure correct up-vector mapping when switching back to Y-up
+                    if (controls) controls.dispose();
+                    controls = new OrbitControls(camera, renderer.domElement);
+                    controls.target.set(0, 0, 0);
+                    {   const isMobile = window.innerWidth <= 768;
+                        controls.enableDamping = true;
+                        controls.dampingFactor = 0.05;
+                        controls.rotateSpeed = isMobile ? 0.5 : 1.0;
+                        controls.zoomSpeed = isMobile ? 0.8 : 1.2;
+                        controls.panSpeed = isMobile ? 0.5 : 0.8;
+                        controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+                    }
+                    controls.screenSpacePanning = true;
+                    camera.updateProjectionMatrix();
                 }
+                
+                // Force controls to update with new camera settings
                 controls.update();
+                controls.saveState(); // Save the new camera state as default
                 
                 animate();
             }, undefined, function (error) {

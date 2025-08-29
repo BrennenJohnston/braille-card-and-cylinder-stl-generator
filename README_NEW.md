@@ -195,6 +195,10 @@ The application uses professionally-recognized braille specifications:
 - **Three.js Community** - 3D visualization capabilities
 - **Braille Authority of North America** - Standards and specifications
 
+**Attribution:** This project builds upon
+[tobiwg/braile-card-generator](https://github.com/tobiwg/braile-card-generator/tree/main), and an earlier iteration I maintained at
+[BrennenJohnston/braile-card-generator](https://github.com/BrennenJohnston/braile-card-generator/blob/brennen-dev/README.md).
+
 **Open Source Components:**
 - Flask (Python web framework)
 - Trimesh (3D mesh processing)

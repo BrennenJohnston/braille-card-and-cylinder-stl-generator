@@ -143,6 +143,10 @@ Engraved rim labels avoid mix-ups: **EMBOSS (RAISED) — MIRRORED** vs **COUNTER
 
 Huge thanks to **Tobi Weinberg** for kick-starting the project and introducing me to Cursor AI.  Without Tobi’s time, effort, and encouragement this program would not exist.
 
+Attribution: This project was originally based on
+[tobiwg/braile-card-generator](https://github.com/tobiwg/braile-card-generator/tree/main) and further evolved from my earlier variant
+[BrennenJohnston/braile-card-generator](https://github.com/BrennenJohnston/braile-card-generator/blob/brennen-dev/README.md) (branch `brennen-dev`).
+
 ---
 
 ## 12. References

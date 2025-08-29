@@ -2719,14 +2719,18 @@
                     material = new THREE.MeshPhongMaterial({ 
                         color: new THREE.Color(meshColor), 
                         specular: 0xffffff, // White specular highlights for maximum contrast
-                        shininess: 300 // Higher shininess for sharper highlights
+                        shininess: 300, // Higher shininess for sharper highlights
+                        flatShading: true,
+                        side: THREE.DoubleSide
                     });
                 } else {
                     // Standard material for other themes
                     material = new THREE.MeshPhongMaterial({ 
                         color: new THREE.Color(meshColor), 
                         specular: 0x111111, 
-                        shininess: 200 
+                        shininess: 200,
+                        flatShading: true,
+                        side: THREE.DoubleSide
                     });
                 }
                 mesh = new THREE.Mesh(geometry, material);

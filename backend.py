@@ -209,6 +209,8 @@ class CardSettings:
             "emboss_dot_base_diameter_mm": 1.8,  # Updated default: 1.8 mm
             "plate_thickness_mm": 2.0,
             "epsilon_mm": 0.001,
+            # Cylinder counter plate robustness (how much the sphere crosses the outer surface)
+            "cylinder_counter_plate_overcut_mm": 0.05,
         }
         
         # Set attributes from kwargs or defaults, while being tolerant of "empty" inputs
@@ -266,6 +268,7 @@ class CardSettings:
         self.hemisphere_radius = (self.emboss_dot_base_diameter + self.counter_plate_dot_size_offset) / 2
         self.plate_thickness = self.card_thickness
         self.epsilon = self.epsilon_mm
+        self.cylinder_counter_plate_overcut_mm = self.cylinder_counter_plate_overcut_mm
 
 def translate_with_liblouis_js(text: str, grade: str = "g2") -> str:
     """
@@ -818,11 +821,25 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
                 meshes.append(dot_mesh)
     
     print(f"Created cylinder with {len(meshes)-1} braille dots")
-    return trimesh.util.concatenate(meshes)
+    
+    # Combine all meshes
+    final_mesh = trimesh.util.concatenate(meshes)
+    
+    # Rotate cylinder 90 degrees around X-axis so curved surface faces viewer
+    # This makes the height become depth and curved surface faces forward
+    rotation_matrix = trimesh.transformations.rotation_matrix(np.pi/2, [1, 0, 0])
+    final_mesh.apply_transform(rotation_matrix)
+    
+    # Flip cylinder 180 degrees around Z-axis to orient it right-side up
+    # This ensures the top of the cylinder faces up relative to the viewer
+    flip_matrix = trimesh.transformations.rotation_matrix(np.pi, [0, 0, 1])
+    final_mesh.apply_transform(flip_matrix)
+    
+    return final_mesh
 
 def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_params=None):
     """
-    Generate a cylinder-shaped counter plate with hemispherical recesses on inner surface.
+    Generate a cylinder-shaped counter plate with hemispherical recesses on the OUTER surface.
     Similar to the card counter plate, it creates recesses at ALL possible dot positions.
     """
     if cylinder_params is None:
@@ -875,21 +892,23 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
                 dot_x = x_pos + dot_col_offsets[dot_pos[1]]
                 dot_y = current_y + dot_row_offsets[dot_pos[0]]
                 
-                # Create sphere with radius based on counter plate offset
-                sphere_radius = (settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset) / 2
-                sphere = trimesh.creation.icosphere(subdivisions=settings.hemisphere_subdivisions, radius=sphere_radius)
+                # Create sphere with radius based on counter plate offset (same as card version)
+                hemisphere_radius = (settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset) / 2
+                sphere = trimesh.creation.icosphere(subdivisions=settings.hemisphere_subdivisions, radius=hemisphere_radius)
                 
                 # Ensure sphere is a valid volume
                 if not sphere.is_volume:
                     sphere.fix_normals()
                 
-                # Transform to cylindrical coordinates on INNER surface
-                inner_radius = diameter / 2 - thickness
+                # Transform to cylindrical coordinates on OUTER surface
+                outer_radius = diameter / 2
                 theta = (dot_x / circumference) * 2 * np.pi + np.radians(seam_offset)
                 
-                # Position sphere centre *inside the wall* so its equator meets the interior surface
-                # This mirrors the planar logic where the sphere centre is above the surface by its radius.
-                center_radius = inner_radius + sphere_radius - settings.epsilon
+                # Place sphere center at the cylinder's outer radius so the tangent plane at the
+                # dot location intersects the sphere at its equator (true hemispherical dimple).
+                # Add a tiny outward overcut to avoid near-coplanar issues and guarantee a clear opening.
+                overcut = max(settings.epsilon, getattr(settings, 'cylinder_counter_plate_overcut_mm', 0.05))
+                center_radius = outer_radius + overcut
                 cyl_x = center_radius * np.cos(theta)
                 cyl_y = center_radius * np.sin(theta)
                 # Map planar Y to cylinder local Z (centered at 0)
@@ -901,24 +920,108 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         # Move to next row
         current_y -= settings.line_spacing
     
-    print(f"Creating {len(sphere_meshes)} hemispherical recesses on cylinder counter plate")
+    print(f"DEBUG: Creating {len(sphere_meshes)} hemispherical recesses on cylinder counter plate")
     
-    # Boolean subtract the spheres from the cylinder shell to create recesses
+    if not sphere_meshes:
+        print("WARNING: No spheres were generated for cylinder counter plate. Returning base shell.")
+        # Rotate cylinder 90 degrees around X-axis so curved surface faces viewer
+        rotation_matrix = trimesh.transformations.rotation_matrix(np.pi/2, [1, 0, 0])
+        cylinder_shell.apply_transform(rotation_matrix)
+        
+        # Flip cylinder 180 degrees around Z-axis to orient it right-side up
+        # This ensures the top of the cylinder faces up relative to the viewer
+        flip_matrix = trimesh.transformations.rotation_matrix(np.pi, [0, 0, 1])
+        cylinder_shell.apply_transform(flip_matrix)
+        
+        return cylinder_shell
+    
+    # More robust boolean strategy:
+    # 1) Start with a solid OUTER cylinder
+    # 2) Subtract the union of all spheres to create outer recesses
+    # 3) Hollow the cylinder by subtracting the INNER cylinder
+    outer_radius = diameter / 2
+    inner_radius = outer_radius - thickness
+    outer_solid = trimesh.creation.cylinder(radius=outer_radius, height=height, sections=64)
+    inner_cutter = trimesh.creation.cylinder(radius=inner_radius, height=height - 0.001, sections=64)
+    
+    engines_to_try = ['manifold', None]  # None uses trimesh default
+    
+    for engine in engines_to_try:
+        try:
+            engine_name = engine if engine else "trimesh-default"
+            print(f"DEBUG: Cylinder boolean - union spheres with {engine_name}...")
+            if len(sphere_meshes) == 1:
+                union_spheres = sphere_meshes[0]
+            else:
+                union_spheres = trimesh.boolean.union(sphere_meshes, engine=engine)
+            
+            print(f"DEBUG: Cylinder boolean - subtract spheres from outer solid with {engine_name}...")
+            outer_recessed = trimesh.boolean.difference([outer_solid, union_spheres], engine=engine)
+            
+            print(f"DEBUG: Cylinder boolean - hollow with inner cutter using {engine_name}...")
+            final_shell = trimesh.boolean.difference([outer_recessed, inner_cutter], engine=engine)
+            
+            if not final_shell.is_watertight:
+                print("DEBUG: Cylinder final shell not watertight, attempting to fill holes...")
+                final_shell.fill_holes()
+            
+            print(f"DEBUG: Cylinder counter plate completed with {engine_name}: {len(final_shell.vertices)} vertices, {len(final_shell.faces)} faces")
+            
+            # Rotate cylinder 90 degrees around X-axis so curved surface faces viewer
+            # This makes the height become depth and curved surface faces forward
+            rotation_matrix = trimesh.transformations.rotation_matrix(np.pi/2, [1, 0, 0])
+            final_shell.apply_transform(rotation_matrix)
+            
+            # Flip cylinder 180 degrees around Z-axis to orient it right-side up
+            # This ensures the top of the cylinder faces up relative to the viewer
+            flip_matrix = trimesh.transformations.rotation_matrix(np.pi, [0, 0, 1])
+            final_shell.apply_transform(flip_matrix)
+            
+            return final_shell
+        except Exception as e:
+            print(f"ERROR: Cylinder robust boolean with {engine_name} failed: {e}")
+            continue
+    
+    # Fallback: subtract spheres individually from solid, then hollow
     try:
-        if not sphere_meshes:
-            return cylinder_shell
-        # Union the spheres first (improves robustness)
-        if len(sphere_meshes) == 1:
-            union_spheres = sphere_meshes[0]
-        else:
-            union_spheres = trimesh.boolean.union(sphere_meshes, engine='manifold')
-        recessed_shell = trimesh.boolean.difference([cylinder_shell, union_spheres], engine='manifold')
-        if not recessed_shell.is_watertight:
-            recessed_shell.fill_holes()
-        return recessed_shell
-    except Exception as e:
-        print(f"ERROR: Cylinder counter plate fallback boolean subtraction failed: {e}")
-        # Fallback to returning the plain shell if booleans fail
+        print("DEBUG: Fallback - individual subtraction from solid outer cylinder...")
+        outer_recessed = outer_solid.copy()
+        for i, sphere in enumerate(sphere_meshes):
+            try:
+                print(f"DEBUG: Subtracting sphere {i+1}/{len(sphere_meshes)} from solid outer...")
+                outer_recessed = trimesh.boolean.difference([outer_recessed, sphere])
+            except Exception as sphere_error:
+                print(f"WARNING: Failed to subtract sphere {i+1}: {sphere_error}")
+                continue
+        
+        print("DEBUG: Fallback - hollowing after individual subtraction...")
+        final_shell = trimesh.boolean.difference([outer_recessed, inner_cutter])
+        if not final_shell.is_watertight:
+            final_shell.fill_holes()
+        print(f"DEBUG: Fallback completed: {len(final_shell.vertices)} vertices, {len(final_shell.faces)} faces")
+        
+        # Rotate cylinder 90 degrees around X-axis so curved surface faces viewer
+        rotation_matrix = trimesh.transformations.rotation_matrix(np.pi/2, [1, 0, 0])
+        final_shell.apply_transform(rotation_matrix)
+        
+        # Flip cylinder 180 degrees around Z-axis to orient it right-side up
+        # This ensures the top of the cylinder faces up relative to the viewer
+        flip_matrix = trimesh.transformations.rotation_matrix(np.pi, [0, 0, 1])
+        final_shell.apply_transform(flip_matrix)
+        
+        return final_shell
+    except Exception as final_error:
+        print(f"ERROR: Cylinder fallback boolean failed: {final_error}")
+        print("WARNING: Returning simple cylinder shell without recesses.")
+        # Rotate cylinder 90 degrees around X-axis so curved surface faces viewer
+        rotation_matrix = trimesh.transformations.rotation_matrix(np.pi/2, [1, 0, 0])
+        cylinder_shell.apply_transform(rotation_matrix)
+        
+        # Flip cylinder 180 degrees around Z-axis to orient it right-side up
+        # This ensures the top of the cylinder faces up relative to the viewer
+        flip_matrix = trimesh.transformations.rotation_matrix(np.pi, [0, 0, 1])
+        cylinder_shell.apply_transform(flip_matrix)
+        
         return cylinder_shell
 
 def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
@@ -984,10 +1087,10 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
                 # Use hemisphere_subdivisions parameter to control mesh density
                 sphere = trimesh.creation.icosphere(subdivisions=params.hemisphere_subdivisions, radius=hemisphere_radius)
                 
-                # CRITICAL FIX: Position the sphere center at the plate surface level
+                # CRITICAL FIX: Position the sphere center AT the plate surface level
                 # This ensures when the sphere is subtracted, it creates a hemispherical recess going DOWN into the plate
-                # The sphere center should be at z = plate_thickness + small_epsilon so the sphere intersects the plate surface
-                z_pos = params.plate_thickness + params.epsilon
+                # The sphere center should be exactly at the top surface (z = plate_thickness)
+                z_pos = params.plate_thickness
                 sphere.apply_translation((dot_x, dot_y, z_pos))
                 
                 sphere_meshes.append(sphere)

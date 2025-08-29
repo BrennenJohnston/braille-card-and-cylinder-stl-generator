@@ -617,42 +617,51 @@ def layout_cylindrical_cells(braille_lines, settings: CardSettings, cylinder_dia
     - y_z is the vertical position on the cylinder
     """
     cells = []
+    radius = cylinder_diameter_mm / 2
     circumference = np.pi * cylinder_diameter_mm
     
-    # Calculate how many cells fit around the circumference
-    # cell_spacing is the center-to-center distance between cells
-    cells_per_row = int(circumference / settings.cell_spacing)
+    # Use grid_columns from settings instead of calculating based on circumference
+    cells_per_row = settings.grid_columns
     
-    # Calculate row height (same as card)
+    # Calculate the total grid width (same as card)
+    grid_width = (settings.grid_columns - 1) * settings.cell_spacing
+    
+    # Convert grid width to angular width
+    grid_angle = grid_width / radius
+    
+    # Center the grid around the cylinder (calculate left margin angle)
+    # The grid should be centered, so start angle is -grid_angle/2
+    start_angle = -grid_angle / 2
+    
+    # Convert cell_spacing from linear to angular
+    cell_spacing_angle = settings.cell_spacing / radius
+    
+    # Calculate row height (same as card - vertical spacing doesn't change)
     row_height = settings.line_spacing
     
-    # Start from top of cylinder
+    # Start from top of cylinder (using same margin calculation as card)
     current_y = cylinder_height_mm - settings.top_margin
     
-    for row_num, line in enumerate(braille_lines):
-        if not line.strip():
+    # Process up to grid_rows lines
+    for row_num in range(min(settings.grid_rows, len(braille_lines))):
+        line = braille_lines[row_num].strip()
+        if not line:
             continue
             
         # Check if input contains proper braille Unicode
         has_braille_chars = any(ord(char) >= 0x2800 and ord(char) <= 0x28FF for char in line)
         if not has_braille_chars:
             continue
-            
-        # Process characters, wrapping to next row if needed
-        char_index = 0
-        while char_index < len(line) and current_y > settings.top_margin:
-            # Process one row worth of characters
-            row_chars = line[char_index:char_index + cells_per_row]
-            
-            # Calculate x positions for this row
-            for col_num, braille_char in enumerate(row_chars):
-                # No margin for cylinders to maximize circumference usage
-                x_pos = col_num * settings.cell_spacing
-                cells.append((braille_char, x_pos, current_y))
-            
-            # Move to next row
-            current_y -= row_height
-            char_index += cells_per_row
+        
+        # Calculate Y position for this row (same as card)
+        y_pos = cylinder_height_mm - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
+        
+        # Process each character up to grid_columns
+        for col_num, braille_char in enumerate(line[:settings.grid_columns]):
+            # Calculate angular position for this column
+            angle = start_angle + (col_num * cell_spacing_angle)
+            x_pos = angle * radius  # Convert to arc length for compatibility
+            cells.append((braille_char, x_pos, y_pos))
     
     return cells, cells_per_row
 
@@ -682,12 +691,12 @@ def cylindrical_transform(x, y, z, cylinder_diameter_mm, seam_offset_deg=0):
 
 def create_cylinder_shell(diameter_mm, height_mm, polygonal_cutout_radius_mm):
     """
-    Create a cylinder with a 6-point polygonal cutout along its length.
+    Create a cylinder with a 12-point polygonal cutout along its length.
     
     Args:
         diameter_mm: Outer diameter of the cylinder
         height_mm: Height of the cylinder
-        polygonal_cutout_radius_mm: Inscribed radius of the 6-point polygonal cutout
+        polygonal_cutout_radius_mm: Inscribed radius of the 12-point polygonal cutout
     """
     outer_radius = diameter_mm / 2
     
@@ -698,15 +707,15 @@ def create_cylinder_shell(diameter_mm, height_mm, polygonal_cutout_radius_mm):
     if polygonal_cutout_radius_mm <= 0:
         return main_cylinder
     
-    # Create a 6-point polygonal prism for the cutout
+    # Create a 12-point polygonal prism for the cutout
     # The prism extends the full height of the cylinder
     # Calculate the circumscribed radius from the inscribed radius
-    # For a regular hexagon: circumscribed_radius = inscribed_radius / cos(30°)
-    # cos(30°) = sqrt(3)/2 ≈ 0.866
-    circumscribed_radius = polygonal_cutout_radius_mm / 0.866
+    # For a regular 12-gon: circumscribed_radius = inscribed_radius / cos(15°)
+    # cos(15°) = cos(π/12)
+    circumscribed_radius = polygonal_cutout_radius_mm / np.cos(np.pi / 12)
     
-    # Create the 6-point polygon vertices
-    angles = np.linspace(0, 2*np.pi, 6, endpoint=False)
+    # Create the 12-point polygon vertices
+    angles = np.linspace(0, 2*np.pi, 12, endpoint=False)
     vertices_2d = []
     for angle in angles:
         x = circumscribed_radius * np.cos(angle)
@@ -804,7 +813,7 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
         cylinder_params: Dictionary with cylinder-specific parameters:
             - diameter_mm: Cylinder diameter
             - height_mm: Cylinder height  
-            - polygonal_cutout_radius_mm: Inscribed radius of 6-point polygonal cutout (0 = no cutout)
+            - polygonal_cutout_radius_mm: Inscribed radius of 12-point polygonal cutout (0 = no cutout)
             - seam_offset_deg: Rotation offset for seam
     """
     if settings is None:
@@ -814,7 +823,7 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
         cylinder_params = {
             'diameter_mm': 30,
             'height_mm': settings.card_height,
-            'polygonal_cutout_radius_mm': 5,
+            'polygonal_cutout_radius_mm': 13,
             'seam_offset_deg': 0
         }
     
@@ -825,6 +834,20 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
     
     print(f"Creating cylinder mesh - Diameter: {diameter}mm, Height: {height}mm, Cutout Radius: {polygonal_cutout_radius}mm")
     
+    # Print grid and angular spacing information
+    radius = diameter / 2
+    grid_width = (settings.grid_columns - 1) * settings.cell_spacing
+    grid_angle_deg = np.degrees(grid_width / radius)
+    cell_spacing_angle_deg = np.degrees(settings.cell_spacing / radius)
+    dot_spacing_angle_deg = np.degrees(settings.dot_spacing / radius)
+    
+    print(f"Grid configuration:")
+    print(f"  - Grid: {settings.grid_columns} columns × {settings.grid_rows} rows")
+    print(f"  - Grid width: {grid_width:.1f}mm → {grid_angle_deg:.1f}° arc on cylinder")
+    print(f"Angular spacing calculations:")
+    print(f"  - Cell spacing: {settings.cell_spacing}mm → {cell_spacing_angle_deg:.2f}° on cylinder")
+    print(f"  - Dot spacing: {settings.dot_spacing}mm → {dot_spacing_angle_deg:.2f}° on cylinder")
+    
     # Create cylinder shell
     cylinder_shell = create_cylinder_shell(diameter, height, polygonal_cutout_radius)
     meshes = [cylinder_shell]
@@ -832,16 +855,24 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
     # Layout braille cells on cylinder
     cells, cells_per_row = layout_cylindrical_cells(lines, settings, diameter, height)
     
-    # Check for overflow
+    # Check for overflow based on grid dimensions
     total_cells_needed = sum(len(line.strip()) for line in lines if line.strip())
-    total_cells_available = cells_per_row * int(height / settings.line_spacing)
+    total_cells_available = settings.grid_columns * settings.grid_rows
     
     if total_cells_needed > total_cells_available:
-        print(f"Warning: Text requires {total_cells_needed} cells but cylinder can fit {total_cells_available}")
+        print(f"Warning: Text requires {total_cells_needed} cells but grid has {total_cells_available} cells ({settings.grid_columns}×{settings.grid_rows})")
     
-    # Dot positioning constants (same as card)
-    dot_col_offsets = [-settings.dot_spacing / 2, settings.dot_spacing / 2]
-    dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]
+    # Check if grid wraps too far around cylinder
+    if grid_angle_deg > 360:
+        print(f"Warning: Grid width ({grid_angle_deg:.1f}°) exceeds cylinder circumference (360°)")
+    
+    # Convert dot spacing to angular measurements for cylinder
+    radius = diameter / 2
+    dot_spacing_angle = settings.dot_spacing / radius  # Convert linear to angular
+    
+    # Dot positioning with angular offsets for columns, linear for rows
+    dot_col_angle_offsets = [-dot_spacing_angle / 2, dot_spacing_angle / 2]
+    dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]  # Vertical stays linear
     dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
     
     # Create dots for each cell
@@ -851,7 +882,8 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
         for i, dot_val in enumerate(dots):
             if dot_val == 1:
                 dot_pos = dot_positions[i]
-                dot_x = cell_x + dot_col_offsets[dot_pos[1]]
+                # Use angular offset for horizontal spacing, converted back to arc length
+                dot_x = cell_x + (dot_col_angle_offsets[dot_pos[1]] * radius)
                 dot_y = cell_y + dot_row_offsets[dot_pos[0]]
                 # Map absolute card Y to cylinder's local Z (centered at 0)
                 dot_z_local = dot_y - (height / 2.0)
@@ -888,14 +920,14 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         cylinder_params: Dictionary with cylinder-specific parameters:
             - diameter_mm: Cylinder diameter
             - height_mm: Cylinder height  
-            - polygonal_cutout_radius_mm: Inscribed radius of 6-point polygonal cutout (0 = no cutout)
+            - polygonal_cutout_radius_mm: Inscribed radius of 12-point polygonal cutout (0 = no cutout)
             - seam_offset_deg: Rotation offset for seam
     """
     if cylinder_params is None:
         cylinder_params = {
             'diameter_mm': 30,
             'height_mm': settings.card_height,
-            'polygonal_cutout_radius_mm': 5,
+            'polygonal_cutout_radius_mm': 13,
             'seam_offset_deg': 0
         }
     
@@ -909,17 +941,31 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     # Create cylinder shell
     cylinder_shell = create_cylinder_shell(diameter, height, polygonal_cutout_radius)
     
-    # Calculate how many cells fit around the circumference
+    # Use grid dimensions from settings (same as card)
+    radius = diameter / 2
     circumference = np.pi * diameter
-    # cell_spacing is the center-to-center distance between cells
-    cells_per_row = int(circumference / settings.cell_spacing)
     
-    # Calculate number of rows that fit on cylinder
-    rows_on_cylinder = int(height / settings.line_spacing)
+    # Calculate the total grid width (same as card)
+    grid_width = (settings.grid_columns - 1) * settings.cell_spacing
     
-    # Dot positioning constants (same as card)
-    dot_col_offsets = [-settings.dot_spacing / 2, settings.dot_spacing / 2]
-    dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]
+    # Convert grid width to angular width
+    grid_angle = grid_width / radius
+    
+    # Center the grid around the cylinder (calculate start angle)
+    start_angle = -grid_angle / 2
+    
+    # Convert cell_spacing from linear to angular
+    cell_spacing_angle = settings.cell_spacing / radius
+    
+    # Use grid_rows from settings
+    rows_on_cylinder = settings.grid_rows
+    
+    # Convert dot spacing to angular measurements
+    dot_spacing_angle = settings.dot_spacing / radius
+    
+    # Dot positioning with angular offsets for columns, linear for rows
+    dot_col_angle_offsets = [-dot_spacing_angle / 2, dot_spacing_angle / 2]
+    dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]  # Vertical stays linear
     dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
     
     # Create spheres for ALL possible dot positions
@@ -932,15 +978,15 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         if current_y < settings.top_margin:
             break
             
-        for col in range(cells_per_row):
-            # Calculate cell position
-            # No margin for cylinders to maximize circumference usage
-            x_pos = col * settings.cell_spacing
+        for col in range(settings.grid_columns):
+            # Calculate cell angular position
+            cell_angle = start_angle + (col * cell_spacing_angle)
             
             # Create spheres for ALL 6 dots in this cell
             for dot_idx in range(6):
                 dot_pos = dot_positions[dot_idx]
-                dot_x = x_pos + dot_col_offsets[dot_pos[1]]
+                # Calculate dot angular position
+                dot_angle = cell_angle + dot_col_angle_offsets[dot_pos[1]]
                 dot_y = current_y + dot_row_offsets[dot_pos[0]]
                 
                 # Create sphere with radius based on counter plate offset (same as card version)
@@ -953,7 +999,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
                 
                 # Transform to cylindrical coordinates on OUTER surface
                 outer_radius = diameter / 2
-                theta = (dot_x / circumference) * 2 * np.pi + np.radians(seam_offset)
+                theta = dot_angle + np.radians(seam_offset)
                 
                 # Place sphere center at the cylinder's outer radius so the tangent plane at the
                 # dot location intersects the sphere at its equator (true hemispherical dimple).

@@ -18,13 +18,15 @@ def debug_prism():
     
     # Test parameters
     height_mm = 50.0
-    polygonal_cutout_radius_mm = 5.0
+    polygonal_cutout_radius_mm = 13.0
     
     # Calculate the circumscribed radius from the inscribed radius
-    circumscribed_radius = polygonal_cutout_radius_mm / 0.866
+    # For a regular 12-gon: circumscribed_radius = inscribed_radius / cos(15°)
+    # cos(15°) = cos(π/12)
+    circumscribed_radius = polygonal_cutout_radius_mm / np.cos(np.pi / 12)
     
-    # Create the 6-point polygon vertices
-    angles = np.linspace(0, 2*np.pi, 6, endpoint=False)
+    # Create the 12-point polygon vertices
+    angles = np.linspace(0, 2*np.pi, 12, endpoint=False)
     vertices_2d = []
     for angle in angles:
         x = circumscribed_radius * np.cos(angle)

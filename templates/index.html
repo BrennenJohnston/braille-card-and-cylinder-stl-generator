@@ -1693,39 +1693,7 @@
                         </fieldset>
                     </div>
                     
-                    <!-- Cylinder-specific parameters (hidden by default) -->
-                    <div id="cylinder-settings" class="grade-selection" style="display: none;">
-                        <fieldset>
-                            <legend class="grade-label">Cylinder Parameters</legend>
-                            <div style="display: grid; gap: 10px;">
-                                <div>
-                                    <label for="cylinder_diameter_mm">Cylinder Diameter (mm):</label>
-                                    <input type="number" id="cylinder_diameter_mm" name="cylinder_diameter_mm" value="30" step="0.1" min="10" max="200">
-                                </div>
-                                <div>
-                                    <label for="cylinder_height_mm">Cylinder Height (mm):</label>
-                                    <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200">
-                                </div>
-                                <div>
-                                    <label for="cylinder_polygonal_cutout_radius_mm">Polygonal Cutout Inscribed Radius (mm):</label>
-                                    <input type="number" id="cylinder_polygonal_cutout_radius_mm" name="cylinder_polygonal_cutout_radius_mm" value="5" step="0.1" min="0" max="50">
-                                    <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                        Creates a 6-point polygonal cutout along the cylinder's length. Set to 0 for no cutout.
-                                    </div>
-                                </div>
-                                <div>
-                                    <label for="seam_offset_deg">Seam Offset (degrees):</label>
-                                    <input type="number" id="seam_offset_deg" name="seam_offset_deg" value="0" step="1" min="0" max="360">
-                                    <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                        Rotates the starting position of braille text around the cylinder
-                                    </div>
-                                </div>
-                            </div>
-                            <div id="cylinder-overflow-warning" class="grade-note" style="margin-top: 10px; color: #d73502; display: none;">
-                                <strong>Warning:</strong> <span id="cylinder-overflow-message"></span>
-                            </div>
-                        </fieldset>
-                    </div>
+
 
                     <div class="expert-mode-toggle">
                         <button type="button" id="expert-toggle" class="expert-toggle-btn">
@@ -1802,6 +1770,35 @@
                             <div>
                                 <label for="card_thickness">Plate Thickness:</label>
                                 <input type="number" id="card_thickness" name="card_thickness" value="2.0" step="0.1">
+                            </div>
+                        </div>
+
+                        <div class="grade-selection">
+                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Cylinder Dimensions</label>
+                            <div>
+                                <label for="cylinder_diameter_mm">Cylinder Diameter (mm):</label>
+                                <input type="number" id="cylinder_diameter_mm" name="cylinder_diameter_mm" value="30" step="0.1" min="10" max="200">
+                            </div>
+                            <div>
+                                <label for="cylinder_height_mm">Cylinder Height (mm):</label>
+                                <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200">
+                            </div>
+                            <div>
+                                <label for="cylinder_polygonal_cutout_radius_mm">Polygonal Cutout Inscribed Radius (mm):</label>
+                                <input type="number" id="cylinder_polygonal_cutout_radius_mm" name="cylinder_polygonal_cutout_radius_mm" value="13" step="0.1" min="0" max="50">
+                                <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                    Creates a 12-point polygonal cutout along the cylinder's length. Set to 0 for no cutout.
+                                </div>
+                            </div>
+                            <div>
+                                <label for="seam_offset_deg">Seam Offset (degrees):</label>
+                                <input type="number" id="seam_offset_deg" name="seam_offset_deg" value="0" step="1" min="0" max="360">
+                                <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                    Rotates the starting position of braille text around the cylinder
+                                </div>
+                            </div>
+                            <div id="cylinder-overflow-warning" class="grade-note" style="margin-top: 10px; color: #d73502; display: none;">
+                                <strong>Warning:</strong> <span id="cylinder-overflow-message"></span>
                             </div>
                         </div>
 
@@ -2206,16 +2203,21 @@
         // Function to show/hide cylinder settings based on shape selection
         function updateShapeSettings() {
             const shapeType = document.querySelector('input[name="shape_type"]:checked').value;
-            const cylinderSettings = document.getElementById('cylinder-settings');
+            const cylinderSettings = document.querySelector('.grade-selection:has(#cylinder_diameter_mm)');
             
-            if (shapeType === 'cylinder') {
+            // Always show cylinder dimensions in expert mode
+            if (cylinderSettings) {
                 cylinderSettings.style.display = 'block';
-                // Initialize cylinder height with current card height
+            }
+            
+            // Initialize cylinder height with current card height when cylinder is selected
+            if (shapeType === 'cylinder') {
                 const cardHeight = document.getElementById('card_height').value;
-                document.getElementById('cylinder_height_mm').value = cardHeight;
+                const cylinderHeightInput = document.getElementById('cylinder_height_mm');
+                if (cylinderHeightInput) {
+                    cylinderHeightInput.value = cardHeight;
+                }
                 checkCylinderOverflow();
-            } else {
-                cylinderSettings.style.display = 'none';
             }
         }
         
@@ -2316,6 +2318,9 @@
         createDynamicLineInputs(4); // Start with default 4 lines
         addInputChangeListeners();
         addGridRowsListener();
+        
+        // Initialize shape settings to show/hide cylinder parameters correctly
+        updateShapeSettings();
 
         expertToggleBtn.addEventListener('click', () => {
             const isVisible = expertSettings.style.display !== 'none';
@@ -2347,7 +2352,11 @@
             'card_height',
             'card_thickness',
             'braille_x_adjust',
-            'braille_y_adjust'
+            'braille_y_adjust',
+            'cylinder_diameter_mm',
+            'cylinder_height_mm',
+            'cylinder_polygonal_cutout_radius_mm',
+            'seam_offset_deg'
         ];
         
         expertInputs.forEach(inputId => {
@@ -2738,7 +2747,33 @@
                     });
                 }
                 mesh = new THREE.Mesh(geometry, material);
-                mesh.rotation.x = 0;
+                
+                // Apply the same rotations as the backend for cylinder models
+                // This ensures preview matches the downloaded STL orientation
+                // Detect if this is likely a cylinder by checking if height > width
+                const bbox = geometry.boundingBox;
+                if (bbox) {
+                    const width = bbox.max.x - bbox.min.x;
+                    const height = bbox.max.y - bbox.min.y;
+                    const depth = bbox.max.z - bbox.min.z;
+                    
+                    // If the geometry is taller than it is wide/deep, it's likely a cylinder
+                    // that should be rotated to match the backend's print orientation
+                    if (height > Math.max(width, depth) * 1.2) {
+                        // Apply same rotations as backend:
+                        // 1. Rotate 90° around X-axis to lay cylinder on its side
+                        mesh.rotation.x = Math.PI / 2;
+                        // 2. Flip 180° around Z-axis to orient right-side up
+                        mesh.rotation.z = Math.PI;
+                    } else {
+                        // For card-like objects, keep original orientation
+                        mesh.rotation.x = 0;
+                    }
+                } else {
+                    // Fallback for objects without bounding box
+                    mesh.rotation.x = 0;
+                }
+                
                 scene.add(mesh);
                 animate();
             }, undefined, function (error) {

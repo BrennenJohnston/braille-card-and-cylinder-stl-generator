@@ -1198,7 +1198,8 @@ def generate_braille_stl():
             if plate_type == 'positive':
                 mesh = generate_cylinder_stl(lines, grade, settings, cylinder_params)
             elif plate_type == 'negative':
-                return jsonify({'error': 'Cylinder counter plates are not yet implemented for Vercel deployment'}), 501
+                print("DEBUG: Generating cylinder counter plate with hemispherical recesses (all positions)")
+                mesh = generate_cylinder_counter_plate(lines, settings, cylinder_params)
             else:
                 return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
         else:
@@ -1737,6 +1738,187 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
     final_mesh.apply_translation([0, 0, height/2])
     
     return final_mesh
+
+def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_params=None):
+    """
+    Generate a cylinder-shaped counter plate with hemispherical recesses on the OUTER surface.
+    Similar to the card counter plate, it creates recesses at ALL possible dot positions.
+    
+    Args:
+        lines: List of text lines
+        settings: CardSettings object
+        cylinder_params: Dictionary with cylinder-specific parameters:
+            - diameter_mm: Cylinder diameter
+            - height_mm: Cylinder height  
+            - polygonal_cutout_radius_mm: Inscribed radius of 12-point polygonal cutout (0 = no cutout)
+            - seam_offset_deg: Rotation offset for seam
+    """
+    if cylinder_params is None:
+        cylinder_params = {
+            'diameter_mm': 30,
+            'height_mm': settings.card_height,
+            'polygonal_cutout_radius_mm': 13,
+            'seam_offset_deg': 0
+        }
+    
+    diameter = float(cylinder_params.get('diameter_mm', 30))
+    height = float(cylinder_params.get('height_mm', settings.card_height))
+    polygonal_cutout_radius = float(cylinder_params.get('polygonal_cutout_radius_mm', 0))
+    seam_offset = float(cylinder_params.get('seam_offset_deg', 0))
+    
+    print(f"Creating cylinder counter plate - Diameter: {diameter}mm, Height: {height}mm, Cutout Radius: {polygonal_cutout_radius}mm")
+    
+    # Create cylinder shell
+    cylinder_shell = create_cylinder_shell(diameter, height, polygonal_cutout_radius)
+    
+    # Use grid dimensions from settings (same as card)
+    radius = diameter / 2
+    circumference = np.pi * diameter
+    
+    # Calculate the total grid width (same as card)
+    grid_width = (settings.grid_columns - 1) * settings.cell_spacing
+    
+    # Convert grid width to angular width
+    grid_angle = grid_width / radius
+    
+    # Center the grid around the cylinder (calculate start angle)
+    start_angle = -grid_angle / 2
+    
+    # Convert cell_spacing from linear to angular
+    cell_spacing_angle = settings.cell_spacing / radius
+    
+    # Use grid_rows from settings
+    rows_on_cylinder = settings.grid_rows
+    
+    # Convert dot spacing to angular measurements
+    dot_spacing_angle = settings.dot_spacing / radius
+    
+    # Dot positioning with angular offsets for columns, linear for rows
+    dot_col_angle_offsets = [-dot_spacing_angle / 2, dot_spacing_angle / 2]
+    dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]  # Vertical stays linear
+    dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
+    
+    # Create spheres for ALL possible dot positions
+    sphere_meshes = []
+    
+    # Start from top of cylinder
+    current_y = height - settings.top_margin
+    
+    for row in range(rows_on_cylinder):
+        if current_y < settings.top_margin:
+            break
+            
+        for col in range(settings.grid_columns):
+            # Calculate cell angular position
+            cell_angle = start_angle + (col * cell_spacing_angle)
+            
+            # Create spheres for ALL 6 dots in this cell
+            for dot_idx in range(6):
+                dot_pos = dot_positions[dot_idx]
+                # Calculate dot angular position
+                dot_angle = cell_angle + dot_col_angle_offsets[dot_pos[1]]
+                dot_y = current_y + dot_row_offsets[dot_pos[0]]
+                
+                # Create sphere with radius based on counter plate offset (same as card version)
+                hemisphere_radius = (settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset) / 2
+                sphere = trimesh.creation.icosphere(subdivisions=settings.hemisphere_subdivisions, radius=hemisphere_radius)
+                
+                # Ensure sphere is a valid volume
+                if not sphere.is_volume:
+                    sphere.fix_normals()
+                
+                # Transform to cylindrical coordinates on OUTER surface
+                outer_radius = diameter / 2
+                theta = dot_angle + np.radians(seam_offset)
+                
+                # Place sphere center at the cylinder's outer radius so the tangent plane at the
+                # dot location intersects the sphere at its equator (true hemispherical dimple).
+                # Add a tiny outward overcut to avoid near-coplanar issues and guarantee a clear opening.
+                overcut = max(settings.epsilon, getattr(settings, 'cylinder_counter_plate_overcut_mm', 0.05))
+                center_radius = outer_radius + overcut
+                cyl_x = center_radius * np.cos(theta)
+                cyl_y = center_radius * np.sin(theta)
+                # Map planar Y to cylinder local Z (centered at 0)
+                cyl_z = dot_y - (height / 2.0)
+                
+                sphere.apply_translation([cyl_x, cyl_y, cyl_z])
+                sphere_meshes.append(sphere)
+        
+        # Move to next row
+        current_y -= settings.line_spacing
+    
+    print(f"DEBUG: Creating {len(sphere_meshes)} hemispherical recesses on cylinder counter plate")
+    
+    if not sphere_meshes:
+        print("WARNING: No spheres were generated for cylinder counter plate. Returning base shell.")
+        # Position cylinder for 3D printing: base at Z=0, extending upward
+        cylinder_shell.apply_translation([0, 0, height/2])
+        return cylinder_shell
+    
+    # More robust boolean strategy:
+    # 1) Start with the cylinder shell (which already has the polygonal cutout)
+    # 2) Subtract the union of all spheres to create outer recesses
+    
+    engines_to_try = ['manifold', None]  # None uses trimesh default
+    
+    for engine in engines_to_try:
+        try:
+            engine_name = engine if engine else "trimesh-default"
+            print(f"DEBUG: Cylinder boolean - union spheres with {engine_name}...")
+            if len(sphere_meshes) == 1:
+                union_spheres = sphere_meshes[0]
+            else:
+                union_spheres = trimesh.boolean.union(sphere_meshes, engine=engine)
+            
+            print(f"DEBUG: Cylinder boolean - subtract spheres from cylinder shell with {engine_name}...")
+            final_shell = trimesh.boolean.difference([cylinder_shell, union_spheres], engine=engine)
+            
+            if not final_shell.is_watertight:
+                print("DEBUG: Cylinder final shell not watertight, attempting to fill holes...")
+                final_shell.fill_holes()
+            
+            print(f"DEBUG: Cylinder counter plate completed with {engine_name}: {len(final_shell.vertices)} vertices, {len(final_shell.faces)} faces")
+            
+            # Position cylinder for 3D printing: base at Z=0, extending upward
+            # The cylinder is currently centered at origin, so translate up by height/2
+            final_shell.apply_translation([0, 0, height/2])
+            
+            return final_shell
+        except Exception as e:
+            print(f"ERROR: Cylinder robust boolean with {engine_name} failed: {e}")
+            continue
+    
+    # Fallback: subtract spheres individually from cylinder shell
+    try:
+        print("DEBUG: Fallback - individual subtraction from cylinder shell...")
+        result_shell = cylinder_shell.copy()
+        for i, sphere in enumerate(sphere_meshes):
+            try:
+                print(f"DEBUG: Subtracting sphere {i+1}/{len(sphere_meshes)} from cylinder shell...")
+                result_shell = trimesh.boolean.difference([result_shell, sphere])
+            except Exception as sphere_error:
+                print(f"WARNING: Failed to subtract sphere {i+1}: {sphere_error}")
+                continue
+        
+        final_shell = result_shell
+        if not final_shell.is_watertight:
+            final_shell.fill_holes()
+        print(f"DEBUG: Fallback completed: {len(final_shell.vertices)} vertices, {len(final_shell.faces)} faces")
+        
+        # Position cylinder for 3D printing: base at Z=0, extending upward
+        # The cylinder is currently centered at origin, so translate up by height/2
+        final_shell.apply_translation([0, 0, height/2])
+        
+        return final_shell
+    except Exception as final_error:
+        print(f"ERROR: Cylinder fallback boolean failed: {final_error}")
+        print("WARNING: Returning simple cylinder shell without recesses.")
+        
+        # Position cylinder for 3D printing: base at Z=0, extending upward
+        # The cylinder is currently centered at origin, so translate up by height/2
+        cylinder_shell.apply_translation([0, 0, height/2])
+        
+        return cylinder_shell
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

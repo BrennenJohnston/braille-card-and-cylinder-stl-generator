@@ -937,6 +937,7 @@ def node_modules(filename):
     return jsonify({'error': 'node_modules not available on deployment'}), 404
 
 @app.route('/favicon.ico')
+@app.route('/favicon.png')
 def favicon():
     """Handle favicon requests to prevent 404 errors"""
     return '', 204  # Return empty response with "No Content" status
@@ -1146,8 +1147,10 @@ def generate_braille_stl():
         
         lines = data.get('lines', ['', '', '', ''])
         plate_type = data.get('plate_type', 'positive')
+        shape_type = data.get('shape_type', 'card')  # New: default to 'card' for backward compatibility
         grade = data.get('grade', 'g2')
         settings_data = data.get('settings', {})
+        cylinder_params = data.get('cylinder_params', {})
         
         # Validate inputs
         validate_lines(lines)
@@ -1156,6 +1159,10 @@ def generate_braille_stl():
         # Validate plate_type
         if plate_type not in ['positive', 'negative']:
             return jsonify({'error': 'Invalid plate_type. Must be "positive" or "negative"'}), 400
+        
+        # Validate shape_type
+        if shape_type not in ['card', 'cylinder']:
+            return jsonify({'error': 'Invalid shape_type. Must be "card" or "cylinder"'}), 400
         
         # Validate grade
         if grade not in ['g1', 'g2']:
@@ -1177,15 +1184,25 @@ def generate_braille_stl():
     # Backend expects lines to already be within limits
     
     try:
-        if plate_type == 'positive':
-            mesh = create_positive_plate_mesh(lines, grade, settings)
-        elif plate_type == 'negative':
-            # Counter plate uses hemispherical recesses as per project brief
-            # It does NOT depend on text input - always creates ALL 6 dots per cell
-            print("DEBUG: Generating counter plate with hemispherical recesses (all positions)")
-            mesh = build_counter_plate_hemispheres(settings)
+        if shape_type == 'card':
+            if plate_type == 'positive':
+                mesh = create_positive_plate_mesh(lines, grade, settings)
+            elif plate_type == 'negative':
+                # Counter plate uses hemispherical recesses as per project brief
+                # It does NOT depend on text input - always creates ALL 6 dots per cell
+                print("DEBUG: Generating counter plate with hemispherical recesses (all positions)")
+                mesh = build_counter_plate_hemispheres(settings)
+            else:
+                return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
+        elif shape_type == 'cylinder':
+            if plate_type == 'positive':
+                mesh = generate_cylinder_stl(lines, grade, settings, cylinder_params)
+            elif plate_type == 'negative':
+                return jsonify({'error': 'Cylinder counter plates are not yet implemented for Vercel deployment'}), 501
+            else:
+                return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
         else:
-            return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
+            return jsonify({'error': f'Invalid shape type: {shape_type}. Use "card" or "cylinder".'}), 400
         
         # Verify mesh is watertight and manifold
         if not mesh.is_watertight:
@@ -1211,8 +1228,10 @@ def generate_braille_stl():
         config_dump = {
             "timestamp": datetime.now().isoformat(),
             "plate_type": plate_type,
+            "shape_type": shape_type,
             "grade": grade if plate_type == 'positive' else "n/a",
             "text_lines": lines if plate_type == 'positive' else ["Counter plate - all positions"],
+            "cylinder_params": cylinder_params if shape_type == 'cylinder' else "n/a",
             "settings": {
                 # Card parameters
                 "card_width": settings.card_width,
@@ -1249,7 +1268,7 @@ def generate_braille_stl():
         # Create filename based on text content with fallback logic
         if plate_type == 'positive':
             # For embossing plates, prioritize Line 1, then fallback to other lines
-            filename = 'braille_embossing_plate'
+            filename = f'braille_embossing_plate-{shape_type}'
             for i, line in enumerate(lines):
                 if line.strip():
                     # Sanitize filename: remove special characters and limit length
@@ -1257,17 +1276,17 @@ def generate_braille_stl():
                     sanitized = re.sub(r'[-\s]+', '_', sanitized).strip('_')
                     if sanitized:
                         if i == 0:  # Line 1
-                            filename = f'braille_embossing_plate_{sanitized}'
+                            filename = f'braille_embossing_plate_{sanitized}-{shape_type}'
                         else:  # Other lines as fallback
-                            filename = f'braille_embossing_plate_{sanitized}'
+                            filename = f'braille_embossing_plate_{sanitized}-{shape_type}'
                         break
         else:
             # For counter plates, include total diameter (base + offset) in filename
             total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
-            filename = f'braille_counter_plate_{total_diameter}mm'
+            filename = f'braille_counter_plate_{total_diameter}mm-{shape_type}'
         
         # Additional filename sanitization for security
-        filename = re.sub(r'[^\w\-_]', '', filename)[:50]  # Allow longer names for embossing plates
+        filename = re.sub(r'[^\w\-_]', '', filename)[:60]  # Allow longer names to accommodate shape type
         
         # Return the STL file
         return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl')
@@ -1424,6 +1443,300 @@ def generate_hemispherical_counter_plate_route():
         
     except Exception as e:
         return jsonify({'error': f'Failed to generate hemispherical counter plate: {str(e)}'}), 500
+
+# Cylinder functionality - added for Vercel deployment
+
+def layout_cylindrical_cells(braille_lines, settings: CardSettings, cylinder_diameter_mm: float, cylinder_height_mm: float):
+    """
+    Calculate positions for braille cells on a cylinder surface.
+    Returns a list of (braille_char, x_theta, y_z) tuples where:
+    - x_theta is the position along the circumference (will be converted to angle)
+    - y_z is the vertical position on the cylinder
+    """
+    cells = []
+    radius = cylinder_diameter_mm / 2
+    circumference = np.pi * cylinder_diameter_mm
+    
+    # Use grid_columns from settings instead of calculating based on circumference
+    cells_per_row = settings.grid_columns
+    
+    # Calculate the total grid width (same as card)
+    grid_width = (settings.grid_columns - 1) * settings.cell_spacing
+    
+    # Convert grid width to angular width
+    grid_angle = grid_width / radius
+    
+    # Center the grid around the cylinder (calculate left margin angle)
+    # The grid should be centered, so start angle is -grid_angle/2
+    start_angle = -grid_angle / 2
+    
+    # Convert cell_spacing from linear to angular
+    cell_spacing_angle = settings.cell_spacing / radius
+    
+    # Calculate row height (same as card - vertical spacing doesn't change)
+    row_height = settings.line_spacing
+    
+    # Start from top of cylinder (using same margin calculation as card)
+    current_y = cylinder_height_mm - settings.top_margin
+    
+    # Process up to grid_rows lines
+    for row_num in range(min(settings.grid_rows, len(braille_lines))):
+        line = braille_lines[row_num].strip()
+        if not line:
+            continue
+            
+        # Check if input contains proper braille Unicode
+        has_braille_chars = any(ord(char) >= 0x2800 and ord(char) <= 0x28FF for char in line)
+        if not has_braille_chars:
+            continue
+        
+        # Calculate Y position for this row (same as card)
+        y_pos = cylinder_height_mm - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
+        
+        # Process each character up to grid_columns
+        for col_num, braille_char in enumerate(line[:settings.grid_columns]):
+            # Calculate angular position for this column
+            angle = start_angle + (col_num * cell_spacing_angle)
+            x_pos = angle * radius  # Convert to arc length for compatibility
+            cells.append((braille_char, x_pos, y_pos))
+    
+    return cells, cells_per_row
+
+def cylindrical_transform(x, y, z, cylinder_diameter_mm, seam_offset_deg=0):
+    """
+    Transform planar coordinates to cylindrical coordinates.
+    x -> theta (angle around cylinder)
+    y -> z (height on cylinder)
+    z -> radial offset from cylinder surface
+    """
+    radius = cylinder_diameter_mm / 2
+    circumference = np.pi * cylinder_diameter_mm
+    
+    # Convert x position to angle
+    theta = (x / circumference) * 2 * np.pi + np.radians(seam_offset_deg)
+    
+    # Calculate cylindrical coordinates
+    cyl_x = radius * np.cos(theta)
+    cyl_y = radius * np.sin(theta)
+    cyl_z = y
+    
+    # Apply radial offset (for dot height)
+    cyl_x += z * np.cos(theta)
+    cyl_y += z * np.sin(theta)
+    
+    return cyl_x, cyl_y, cyl_z
+
+def create_cylinder_shell(diameter_mm, height_mm, polygonal_cutout_radius_mm):
+    """
+    Create a cylinder with a 12-point polygonal cutout along its length.
+    
+    Args:
+        diameter_mm: Outer diameter of the cylinder
+        height_mm: Height of the cylinder
+        polygonal_cutout_radius_mm: Inscribed radius of the 12-point polygonal cutout
+    """
+    outer_radius = diameter_mm / 2
+    
+    # Create the main solid cylinder
+    main_cylinder = trimesh.creation.cylinder(radius=outer_radius, height=height_mm, sections=64)
+    
+    # If no cutout is specified, return the solid cylinder
+    if polygonal_cutout_radius_mm <= 0:
+        return main_cylinder
+    
+    # Create a 12-point polygonal prism for the cutout
+    # The prism extends the full height of the cylinder
+    # Calculate the circumscribed radius from the inscribed radius
+    # For a regular 12-gon: circumscribed_radius = inscribed_radius / cos(15°)
+    # cos(15°) = cos(π/12)
+    circumscribed_radius = polygonal_cutout_radius_mm / np.cos(np.pi / 12)
+    
+    # Create the 12-point polygon vertices
+    angles = np.linspace(0, 2*np.pi, 12, endpoint=False)
+    vertices_2d = []
+    for angle in angles:
+        x = circumscribed_radius * np.cos(angle)
+        y = circumscribed_radius * np.sin(angle)
+        vertices_2d.append([x, y])
+    
+    # Create a Shapely polygon for extrusion
+    from shapely.geometry import Polygon
+    polygon = Polygon(vertices_2d)
+    
+    # The prism should be slightly longer than the cylinder to ensure complete cutting
+    prism_height = height_mm + 2.0  # Add 2mm buffer
+    
+    # Extrude the polygon to create a 3D prism
+    try:
+        cutout_prism = trimesh.creation.extrude_polygon(polygon, height=prism_height)
+        
+        # Center the prism at the origin (same as cylinder)
+        # The extrude_polygon creates prism from 0 to height, but we want it centered
+        cutout_prism.apply_translation([0, 0, -prism_height/2])
+        
+        # Debug: Print prism and cylinder dimensions
+        print(f"DEBUG: Cylinder height: {height_mm}mm, extends from Z={-height_mm/2:.2f} to Z={height_mm/2:.2f}")
+        print(f"DEBUG: Cutout prism height: {prism_height}mm, extends from Z={-prism_height/2:.2f} to Z={prism_height/2:.2f}")
+        
+    except Exception as e:
+        print(f"Warning: Could not create polygonal cutout prism: {e}")
+        return main_cylinder
+    
+    # Both the cylinder and prism are already centered at origin
+    # The prism extends from -prism_height/2 to +prism_height/2
+    # The cylinder extends from -height_mm/2 to +height_mm/2
+    # Since prism_height > height_mm, the prism will cut through the entire cylinder
+    
+    # Perform boolean subtraction to create the cutout
+    try:
+        result = trimesh.boolean.difference([main_cylinder, cutout_prism], engine='manifold')
+        if result.is_watertight:
+            return result
+    except Exception as e:
+        print(f"Warning: Boolean operation failed with manifold engine: {e}")
+    
+    # Fallback: try with default engine
+    try:
+        result = trimesh.boolean.difference([main_cylinder, cutout_prism])
+        if result.is_watertight:
+            return result
+    except Exception as e:
+        print(f"Warning: Boolean operation failed with default engine: {e}")
+    
+    # Final fallback: return the original cylinder if all boolean operations fail
+    print("Warning: Could not create polygonal cutout, returning solid cylinder")
+    return main_cylinder
+
+def create_cylinder_braille_dot(x, y, z, settings: CardSettings, cylinder_diameter_mm, seam_offset_deg=0):
+    """
+    Create a braille dot transformed to cylinder surface.
+    """
+    # Create the dot at origin (axis along +Z)
+    dot = create_braille_dot(0, 0, 0, settings)
+
+    # Cylinder geometry
+    radius = cylinder_diameter_mm / 2.0
+    circumference = np.pi * cylinder_diameter_mm
+
+    # Angle around cylinder for planar x-position
+    theta = (x / circumference) * 2.0 * np.pi + np.radians(seam_offset_deg)
+
+    # Unit vectors at this theta
+    r_hat = np.array([np.cos(theta), np.sin(theta), 0.0])
+    t_axis = np.array([-np.sin(theta), np.cos(theta), 0.0])  # tangent axis used for rotation
+
+    # Rotate dot so its +Z axis aligns with radial outward direction (r_hat)
+    rot_to_radial = trimesh.transformations.rotation_matrix(np.pi / 2.0, t_axis)
+    dot.apply_transform(rot_to_radial)
+
+    # Place the dot so its base is flush with the cylinder outer surface
+    dot_height = settings.emboss_dot_height
+    center_radial_distance = radius + (dot_height / 2.0)
+    center_position = r_hat * center_radial_distance + np.array([0.0, 0.0, y])
+    dot.apply_translation(center_position)
+
+    return dot
+
+def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None):
+    """
+    Generate a cylinder-shaped braille card with dots on the outer surface.
+    
+    Args:
+        lines: List of text lines
+        grade: Braille grade
+        settings: CardSettings object
+        cylinder_params: Dictionary with cylinder-specific parameters:
+            - diameter_mm: Cylinder diameter
+            - height_mm: Cylinder height  
+            - polygonal_cutout_radius_mm: Inscribed radius of 12-point polygonal cutout (0 = no cutout)
+            - seam_offset_deg: Rotation offset for seam
+    """
+    if settings is None:
+        settings = CardSettings()
+    
+    if cylinder_params is None:
+        cylinder_params = {
+            'diameter_mm': 30,
+            'height_mm': settings.card_height,
+            'polygonal_cutout_radius_mm': 13,
+            'seam_offset_deg': 0
+        }
+    
+    diameter = float(cylinder_params.get('diameter_mm', 30))
+    height = float(cylinder_params.get('height_mm', settings.card_height))
+    polygonal_cutout_radius = float(cylinder_params.get('polygonal_cutout_radius_mm', 0))
+    seam_offset = float(cylinder_params.get('seam_offset_deg', 0))
+    
+    print(f"Creating cylinder mesh - Diameter: {diameter}mm, Height: {height}mm, Cutout Radius: {polygonal_cutout_radius}mm")
+    
+    # Print grid and angular spacing information
+    radius = diameter / 2
+    grid_width = (settings.grid_columns - 1) * settings.cell_spacing
+    grid_angle_deg = np.degrees(grid_width / radius)
+    cell_spacing_angle_deg = np.degrees(settings.cell_spacing / radius)
+    dot_spacing_angle_deg = np.degrees(settings.dot_spacing / radius)
+    
+    print(f"Grid configuration:")
+    print(f"  - Grid: {settings.grid_columns} columns × {settings.grid_rows} rows")
+    print(f"  - Grid width: {grid_width:.1f}mm → {grid_angle_deg:.1f}° arc on cylinder")
+    print(f"Angular spacing calculations:")
+    print(f"  - Cell spacing: {settings.cell_spacing}mm → {cell_spacing_angle_deg:.2f}° on cylinder")
+    print(f"  - Dot spacing: {settings.dot_spacing}mm → {dot_spacing_angle_deg:.2f}° on cylinder")
+    
+    # Create cylinder shell
+    cylinder_shell = create_cylinder_shell(diameter, height, polygonal_cutout_radius)
+    meshes = [cylinder_shell]
+    
+    # Layout braille cells on cylinder
+    cells, cells_per_row = layout_cylindrical_cells(lines, settings, diameter, height)
+    
+    # Check for overflow based on grid dimensions
+    total_cells_needed = sum(len(line.strip()) for line in lines if line.strip())
+    total_cells_available = settings.grid_columns * settings.grid_rows
+    
+    if total_cells_needed > total_cells_available:
+        print(f"Warning: Text requires {total_cells_needed} cells, but grid only has {total_cells_available} cells available")
+    
+    # Check if grid wraps too far around cylinder
+    if grid_angle_deg > 360:
+        print(f"Warning: Grid width ({grid_angle_deg:.1f}°) exceeds cylinder circumference (360°)")
+    
+    # Convert dot spacing to angular measurements for cylinder
+    dot_spacing_angle = settings.dot_spacing / radius
+    
+    # Dot positioning constants (same as card)
+    dot_col_offsets = [-settings.dot_spacing / 2, settings.dot_spacing / 2]
+    dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]
+    dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
+    
+    # Create dots for each cell
+    for braille_char, x_pos, y_pos in cells:
+        dots = braille_to_dots(braille_char)
+        
+        for dot_idx, dot_val in enumerate(dots):
+            if dot_val == 1:
+                dot_pos = dot_positions[dot_idx]
+                dot_x = x_pos + dot_col_offsets[dot_pos[1]]
+                dot_y_offset = dot_row_offsets[dot_pos[0]]
+                
+                # Map absolute card Y to cylinder's local Z (centered at 0)
+                dot_z_local = y_pos - (height / 2)
+                dot_z_local += dot_y_offset
+                
+                z = 0  # Radial position (on surface)
+                dot_mesh = create_cylinder_braille_dot(dot_x, dot_z_local, z, settings, diameter, seam_offset)
+                meshes.append(dot_mesh)
+    
+    print(f"Created cylinder with {len(meshes)-1} braille dots")
+    
+    # Combine all meshes
+    final_mesh = trimesh.util.concatenate(meshes)
+    
+    # Position cylinder for 3D printing: base at Z=0, extending upward
+    # The cylinder is currently centered at origin, so translate up by height/2
+    final_mesh.apply_translation([0, 0, height/2])
+    
+    return final_mesh
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

@@ -1,14 +1,15 @@
-# Braille Card Generator - Standalone Package
+# Braille Card & Cylinder Generator - Standalone Package
 
-This is a standalone, downloadable software package that allows you to generate 3D printable braille business cards without needing to install Python or any programming knowledge.
+This is a standalone, downloadable software package that allows you to generate 3D printable braille business cards and cylindrical objects without needing to install Python or any programming knowledge.
 
 ## 🎯 What This Package Does
 
-The Braille Card Generator creates 3D printable STL files for braille business cards that can be:
+The Braille Card & Cylinder Generator creates 3D printable STL files for braille objects that can be:
 - **3D printed** on any FDM or SLA printer
 - **Used immediately** without any programming knowledge
 - **Customized** with your own text (up to 4 lines)
 - **Generated** in both Grade 1 (uncontracted) and Grade 2 (contracted) braille
+- **Created in two shapes**: Business cards (flat) or cylinders (curved)
 
 ## 📦 Package Contents
 

@@ -1,17 +1,20 @@
-# Braille Business Card Embossing Plates — Beginner’s Guide
+# Braille Business Card & Cylinder STL Generator 🎯
 
-Create tactile, readable braille on ordinary business-card paper with just a 3-D printer, a clamp, and a few minutes in the free program **OpenSCAD**.  This guide walks you—*even if you have never 3-D printed before*—through designing, printing, and using custom braille Emboss & Counter plates.
+**Create professional, tactile braille business cards and 3D objects with 3D-printable embossing plates**
+
+This web application generates STL files for 3D-printable braille embossing and counter plates. Simply enter your text, and the system automatically translates it to braille and creates the precise 3D models needed for embossing professional business cards or creating cylindrical braille objects.
 
 ---
 
-## 1. What You’ll Make
+## 1. What You'll Make
 
-| Part | Purpose |
-|------|---------|
-| **Emboss Plate** (raised dots) | Pushes the braille dots *out* of the paper |
-| **Counter Plate** (matching recesses) | Supports the paper so dots keep their shape |
+| Shape | Components | Purpose |
+|-------|------------|---------|
+| **Business Cards (Flat)** | Embossing Plate + Counter Plate | Traditional flat business cards with raised braille dots |
+| **Cylinders** | Cylinder Shell + Counter Plate | 3D cylindrical objects with curved braille surface |
 
-Press a card between the two plates and you have braille you can feel and read.
+**Business Card Process**: Place paper between plates → Apply pressure → Get professional braille cards!
+**Cylinder Process**: Print cylinder with integrated braille dots for 3D tactile objects!
 
 > Vocabulary for experts: Emboss = male/positive, Counter = female/negative.
 
@@ -31,14 +34,20 @@ Press a card between the two plates and you have braille you can feel and read.
 
 ## 3. 5-Minute Quick-Start
 
-1. **Open** `Braille Business Card STL Generator.scad` in OpenSCAD.
-2. **View → Customizer**  ➜ fill in your text *in English*.
-   - Keep **Grade** set to **Grade 2 (contracted)** unless you have a special reason.
-   - Leave all sizes *as-is* for your very first test.
-3. **Design → Render (F6)** → **File → Export → STL**.
-4. Slice & print both plates flat on the bed.
-5. Place a single card between plates & clamp firmly for a few seconds.
-6. Feel / measure the dots.  Happy? Great!  Need tweaks?  See Section 7.
+### Web Application (Recommended)
+1. **Visit** the web application at your deployed URL
+2. **Enter your text** (up to 4 lines)
+3. **Select braille grade** (Grade 2 recommended for most users)
+4. **Choose shape**: Business card (flat) or cylinder
+5. **Click Generate** to create STL files
+6. **Download** and 3D print your files
+7. **Test** with actual card stock and adjust if needed
+
+### For Business Cards:
+- Print both emboss and counter plates
+- Place card stock between plates
+- Apply firm, even pressure
+- Check results and iterate if needed
 
 > **Tip** Always test with the same paper thickness you’ll use later.  Paper controls the final dot height more than the plastic settings do.
 
@@ -100,8 +109,21 @@ Sources & further reading:
 | 1. Print a **small test plate** | One or two words is enough |
 | 2. **Emboss** a single card | Even, firm pressure |
 | 3. **Inspect** | Feel the dots; use calipers if available |
-| 4. **Adjust parameters** in the Customizer | See table below |
+| 4. **Adjust parameters** using Expert Mode | See table below |
 | 5. **Re-print & re-test** | One or two iterations usually nails it |
+
+### 🔄 NEW: Cylinder Shape Feature
+
+**Create 3D cylindrical objects with curved braille surfaces:**
+
+| Parameter | Purpose | Typical Range |
+|-----------|---------|---------------|
+| **Diameter** | Cylinder width | 20mm - 50mm |
+| **Height** | Cylinder length | 30mm - 100mm |
+| **Cutout Radius** | Interior polygonal hole | 0mm - 15mm |
+| **Seam Offset** | Rotation adjustment | 0° - 360° |
+
+**Use Cases:** Tactile learning tools, decorative objects, cylindrical labels, educational models
 
 Common tweaks:
 
@@ -111,6 +133,7 @@ Common tweaks:
 | Dots feel sharp | Increase **Apex Rounding** or lower Dot Height |
 | Cells crowd | Increase **Cell Advance** or reduce **Dot Diameter** |
 | Plates stick together | Increase **Counter Clearance** or add small **Draft** |
+| Cylinder text wraps | Reduce diameter or shorten text |
 
 ---
 

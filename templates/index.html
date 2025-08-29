@@ -1581,71 +1581,8 @@
                             <legend class="grade-label">Select Language:</legend>
                             <div style="margin-bottom: 0.8em;">
                                 <select id="language-table" name="language_table" class="language-select" aria-describedby="language-help">
-                                    <!-- Default English options -->
-                                    <optgroup label="Default">
-                                        <option value="en-ueb-g2.ctb" selected>English, U.S., contracted (UEB grade 2)</option>
-                                        <option value="en-ueb-g1.ctb">English, U.S., uncontracted (UEB grade 1)</option>
-                                        <option value="en-us-g2.ctb">English, U.S., contracted (EBAE grade 2)</option>
-                                        <option value="en-us-g1.ctb">English, U.S., uncontracted (EBAE grade 1)</option>
-                                        <option value="en-GB-g2.ctb">English, U.K., contracted (grade 2)</option>
-                                        <option value="en-gb-g1.utb">English, U.K., uncontracted (grade 1)</option>
-                                        <option value="en_CA.ctb">English, Canada, computer braille</option>
-                                    </optgroup>
-                                    <!-- All other languages -->
-                                    <optgroup label="Other">
-                                        <option value="afr-za-g1.ctb">Afrikaans, South Africa</option>
-                                        <option value="ar-ar-g1.utb">Arabic</option>
-                                        <option value="bg.ctb">Bulgarian</option>
-                                        <option value="zh-chn.ctb">Chinese, China (simplified)</option>
-                                        <option value="zh-tw.ctb">Chinese, Taiwan (traditional)</option>
-                                        <option value="hr.ctb">Croatian</option>
-                                        <option value="cs-g1.ctb">Czech, uncontracted</option>
-                                        <option value="da-dk-g26.ctb">Danish, contracted (6-dot)</option>
-                                        <option value="da-dk-g16.ctb">Danish, uncontracted (6-dot)</option>
-                                        <option value="nl-NL-g0.utb">Dutch, Netherlands, uncontracted</option>
-                                        <option value="eo-g1.ctb">Esperanto</option>
-                                        <option value="fa-ir-g1.utb">Persian/Farsi, Iran</option>
-                                        <option value="fi-fi.ctb">Finnish, 6-dot</option>
-                                        <option value="fr-fr-g1.utb">French, France, uncontracted (grade 1)</option>
-                                        <option value="Fr-Fr-g2.ctb">French, France, contracted (grade 2)</option>
-                                        <option value="de-de-g1.ctb">German, Germany, uncontracted (grade 1)</option>
-                                        <option value="de-de-g2.ctb">German, Germany, contracted (grade 2)</option>
-                                        <option value="el.ctb">Greek</option>
-                                        <option value="he.ctb">Hebrew</option>
-                                        <option value="hi-in-g1.utb">Hindi, India</option>
-                                        <option value="hu-hu-g1.ctb">Hungarian, uncontracted (grade 1)</option>
-                                        <option value="hu-hu-g2.ctb">Hungarian, contracted (grade 2)</option>
-                                        <option value="is.ctb">Icelandic</option>
-                                        <option value="ga-g1.utb">Irish, uncontracted (grade 1)</option>
-                                        <option value="ga-g2.ctb">Irish, contracted (grade 2)</option>
-                                        <option value="it-it-comp6.utb">Italian, computer braille (6-dot)</option>
-                                        <option value="it-it-comp8.utb">Italian, computer braille (8-dot)</option>
-                                        <option value="ko-g1.ctb">Korean, uncontracted (grade 1)</option>
-                                        <option value="ko-g2.ctb">Korean, contracted (grade 2)</option>
-                                        <option value="mt.ctb">Maltese</option>
-                                        <option value="no-no-g1.ctb">Norwegian, uncontracted (grade 1)</option>
-                                        <option value="no-no-g2.ctb">Norwegian, contracted (grade 2)</option>
-                                        <option value="Pl-Pl-g1.utb">Polish, uncontracted</option>
-                                        <option value="pl-pl-comp8.ctb">Polish, computer braille (8-dot)</option>
-                                        <option value="pt-pt-g1.utb">Portuguese, Portugal, uncontracted (grade 1)</option>
-                                        <option value="pt-pt-g2.ctb">Portuguese, Portugal, contracted (grade 2)</option>
-                                        <option value="ro.ctb">Romanian</option>
-                                        <option value="ru-ru-g1.utb">Russian, uncontracted</option>
-                                        <option value="ru-litbrl.ctb">Russian, literary</option>
-                                        <option value="gd.ctb">Scottish Gaelic</option>
-                                        <option value="sr-g1.ctb">Serbian</option>
-                                        <option value="sk-sk-g1.utb">Slovak, uncontracted</option>
-                                        <option value="sl-si-g1.utb">Slovenian, uncontracted</option>
-                                        <option value="sl-si-comp8.ctb">Slovenian, computer braille (8-dot)</option>
-                                        <option value="Es-Es-g1.utb">Spanish, Spain, uncontracted</option>
-                                        <option value="sv-1996.ctb">Swedish (1996 standard)</option>
-                                        <option value="tr.ctb">Turkish, contracted</option>
-                                        <option value="tr-g1.ctb">Turkish, uncontracted (grade 1)</option>
-                                        <option value="vi.ctb">Vietnamese, contracted</option>
-                                        <option value="vi-g1.ctb">Vietnamese, uncontracted (grade 1)</option>
-                                        <option value="cy-cy-g1.utb">Welsh, uncontracted (grade 1)</option>
-                                        <option value="cy-cy-g2.ctb">Welsh, contracted (grade 2)</option>
-                                    </optgroup>
+                                    <option value="en-ueb-g2.ctb" selected>English, U.S., contracted (UEB grade 2)</option>
+                                    <option value="en-ueb-g1.ctb">English, U.S., uncontracted (UEB grade 1)</option>
                                 </select>
                                 <div id="language-help" class="grade-note" style="margin-top: 6px; font-size: 0.85em;">
                                     NOTE: English, U.S., contracted (UEB grade 2) is the default standard for all U.S. English braille translations. Please only select another language or grade for special use cases.
@@ -1840,6 +1777,272 @@
     
     <script type="module">
         import * as THREE from '/static/three.module.js';
+        async function loadLanguageOptions() {
+            const select = document.getElementById('language-table');
+            if (!select) return;
+
+            // Preserve the first two default English UEB options
+            const defaultValues = new Set(['en-ueb-g2.ctb', 'en-ueb-g1.ctb']);
+            const defaultOptions = Array.from(select.querySelectorAll('option')).filter(o => defaultValues.has(o.value));
+
+            // Clear existing and re-add defaults in an optgroup
+            select.innerHTML = '';
+            const defaultGroup = document.createElement('optgroup');
+            defaultGroup.label = 'Default';
+            defaultOptions.forEach(o => defaultGroup.appendChild(o));
+            select.appendChild(defaultGroup);
+
+            // Fetch available tables from backend
+            let resp;
+            try {
+                resp = await fetch('/liblouis/tables', { credentials: 'same-origin' });
+            } catch (e) {
+                return; // Fail silently; defaults remain
+            }
+            if (!resp.ok) return;
+            const data = await resp.json().catch(() => null);
+            if (!data || !Array.isArray(data.tables)) return;
+
+            // Build label for each entry (native-language autonyms)
+            const otherGroup = document.createElement('optgroup');
+            otherGroup.label = 'Other';
+
+            const seen = new Set(defaultValues);
+            const entries = data.tables.slice();
+
+            // Sort: English first, then by locale and file name
+            entries.sort((a, b) => {
+                const aEn = (a.locale || '').toLowerCase().startsWith('en') ? 0 : 1;
+                const bEn = (b.locale || '').toLowerCase().startsWith('en') ? 0 : 1;
+                if (aEn !== bEn) return aEn - bEn;
+                const al = (a.locale || '').toLowerCase();
+                const bl = (b.locale || '').toLowerCase();
+                if (al !== bl) return al < bl ? -1 : 1;
+                const af = (a.file || '').toLowerCase();
+                const bf = (b.file || '').toLowerCase();
+                return af < bf ? -1 : af > bf ? 1 : 0;
+            });
+
+            // Language name mappings with native scripts (autonyms)
+            const languageNames = {
+                'af': 'Afrikaans',
+                'ar': 'العربية', // Arabic
+                'as': 'অসমীয়া', // Assamese  
+                'aw': 'अवधी', // Awadhi
+                'be': 'বাংলা', // Bengali
+                'bg': 'Български', // Bulgarian
+                'bh': 'भोजपुरी', // Bhojpuri
+                'bn': 'বাংলা', // Bengali
+                'bo': 'བོད་སྐད་', // Tibetan
+                'br': 'ब्राज', // Braj
+                'ca': 'Català', // Catalan
+                'chr': 'ᏣᎳᎩ', // Cherokee
+                'ckb': 'کوردی', // Central Kurdish
+                'cs': 'Čeština', // Czech
+                'cy': 'Cymraeg', // Welsh
+                'da': 'Dansk', // Danish
+                'de': 'Deutsch', // German
+                'dra': 'द्राविड़', // Dravidian
+                'el': 'Ελληνικά', // Greek
+                'en': 'English',
+                'eo': 'Esperanto',
+                'es': 'Español', // Spanish
+                'et': 'Eesti', // Estonian
+                'fa': 'فارسی', // Persian/Farsi
+                'fi': 'Suomi', // Finnish
+                'fr': 'Français', // French
+                'ga': 'Gaeilge', // Irish
+                'gd': 'Gàidhlig', // Scottish Gaelic
+                'gez': 'ግዕዝ', // Ge'ez
+                'gon': 'गोंडी', // Gondi
+                'gu': 'ગુજરાતી', // Gujarati
+                'haw': 'ʻŌlelo Hawaiʻi', // Hawaiian
+                'he': 'עברית', // Hebrew
+                'hi': 'हिन्दी', // Hindi
+                'hr': 'Hrvatski', // Croatian
+                'hu': 'Magyar', // Hungarian
+                'hy': 'Հայերեն', // Armenian
+                'is': 'Íslenska', // Icelandic
+                'it': 'Italiano', // Italian
+                'iu': 'ᐃᓄᒃᑎᑐᑦ', // Inuktitut
+                'ka': 'ಕನ್ನಡ', // Kannada
+                'kh': 'ខ្មែរ', // Khmer
+                'kn': 'ಕನ್ನಡ', // Kannada
+                'ko': '한국어', // Korean
+                'kok': 'कोंकणी', // Konkani
+                'kru': 'कुरुख', // Kurukh
+                'ks': 'कॉशुर', // Kashmiri
+                'lt': 'Lietuvių', // Lithuanian
+                'lv': 'Latviešu', // Latvian
+                'mao': 'Te Reo Māori', // Maori
+                'ml': 'മലയാളം', // Malayalam
+                'mn': 'Монгол', // Mongolian
+                'mni': 'মৈতৈলোন্', // Manipuri
+                'mr': 'मराठी', // Marathi
+                'mt': 'Malti', // Maltese
+                'mun': 'मुंडारी', // Mundari
+                'mwr': 'मारवाड़ी', // Marwari
+                'ne': 'नेपाली', // Nepali
+                'nl': 'Nederlands', // Dutch
+                'no': 'Norsk', // Norwegian
+                'np': 'नेपाली', // Nepali
+                'or': 'ଓଡ଼ିଆ', // Odia
+                'pa': 'ਪੰਜਾਬੀ', // Punjabi
+                'pi': 'पालि', // Pali
+                'pl': 'Polski', // Polish
+                'pt': 'Português', // Portuguese
+                'pu': 'ਪੰਜਾਬੀ', // Punjabi
+                'ro': 'Română', // Romanian
+                'ru': 'Русский', // Russian
+                'sa': 'संस्कृतम्', // Sanskrit
+                'sd': 'سنڌي', // Sindhi
+                'se': 'Sámegiella', // Northern Sami
+                'si': 'සිංහල', // Sinhala
+                'sk': 'Slovenčina', // Slovak
+                'sl': 'Slovenščina', // Slovenian
+                'sot': 'Sesotho', // Southern Sotho
+                'sr': 'Српски', // Serbian
+                'sv': 'Svenska', // Swedish
+                'ta': 'தமிழ்', // Tamil
+                'te': 'తెలుగు', // Telugu
+                'tr': 'Türkçe', // Turkish
+                'tsn': 'Setswana', // Tswana
+                'ur': 'اردو', // Urdu
+                'vi': 'Tiếng Việt', // Vietnamese
+                'zh': '中文', // Chinese
+            };
+
+            // Region/country names where needed
+            const regionNames = {
+                'ZA': 'South Africa',
+                'IN': 'India', 
+                'US': 'United States',
+                'GB': 'United Kingdom',
+                'CA': 'Canada',
+                'NZ': 'New Zealand',
+                'CHN': 'China (Simplified)',
+                'TW': 'Taiwan (Traditional)',
+                'HK': 'Hong Kong',
+                'CH': 'Switzerland',
+                'DE': 'Germany',
+                'ES': 'Spain',
+                'FR': 'France',
+                'BE': 'Belgium',
+                'NL': 'Netherlands',
+                'PT': 'Portugal',
+                'AT': 'Austria',
+                'MN': 'Mongolia',
+                'PK': 'Pakistan',
+                'IR': 'Iran',
+            };
+
+            // Helper to get language name
+            const getLanguageName = (locale) => {
+                if (!locale) return '';
+                const parts = locale.split('-');
+                const lang = parts[0].toLowerCase();
+                return languageNames[lang] || lang.charAt(0).toUpperCase() + lang.slice(1);
+            };
+
+            // Helper to get full display name
+            const getDisplayName = (t) => {
+                const locale = (t.locale || '').replace('_', '-');
+                const parts = locale.split('-');
+                const langCode = parts[0].toLowerCase();
+                const region = parts[1] ? parts[1].toUpperCase() : '';
+                
+                let displayName = getLanguageName(locale);
+                
+                // Add region if present and meaningful
+                if (region && regionNames[region]) {
+                    displayName += `, ${regionNames[region]}`;
+                } else if (region && region.length === 2) {
+                    displayName += ` (${region})`;
+                }
+                
+                return displayName;
+            };
+
+            // Process entries
+            const usedLabels = new Map(); // Track label -> count
+
+            for (const t of entries) {
+                const file = t.file;
+                if (!file || seen.has(file)) continue;
+                seen.add(file);
+
+                // Get base language name
+                let baseName = getDisplayName(t);
+                
+                // Build description parts
+                const parts = [];
+                
+                // Grade/contraction info
+                if (t.grade === '2') {
+                    parts.push('contracted');
+                } else if (t.grade === '1') {
+                    parts.push('uncontracted');
+                } else if (t.grade === '0') {
+                    parts.push('computer');
+                }
+                
+                // Type info
+                if (t.type === 'computer' && !parts.includes('computer')) {
+                    if (t.dots === 8) {
+                        parts.push('8-dot computer');
+                    } else {
+                        parts.push('computer');
+                    }
+                } else if (t.type === 'literary' && t.contraction === 'full') {
+                    if (!parts.includes('contracted')) {
+                        parts.push('literary');
+                    }
+                }
+                
+                // Variant info (UEB, EBAE, etc)
+                if (t.variant) {
+                    parts.push(t.variant);
+                }
+                
+                // Special naming for specific files
+                if (file === 'en-ueb-g2.ctb') {
+                    baseName = 'English, U.S.';
+                    parts.length = 0;
+                    parts.push('contracted', 'UEB grade 2');
+                } else if (file === 'en-ueb-g1.ctb') {
+                    baseName = 'English, U.S.';
+                    parts.length = 0;
+                    parts.push('uncontracted', 'UEB grade 1');
+                } else if (file.includes('-comp')) {
+                    if (!parts.includes('computer') && !parts.includes('8-dot computer')) {
+                        parts.push('computer braille');
+                    }
+                }
+                
+                // Build final label
+                let label = baseName;
+                if (parts.length > 0) {
+                    label += ` (${parts.join(', ')})`;
+                }
+                
+                // Handle duplicates
+                const labelCount = usedLabels.get(label) || 0;
+                if (labelCount > 0) {
+                    label += ` [${file}]`;
+                }
+                usedLabels.set(label, labelCount + 1);
+
+                const opt = document.createElement('option');
+                opt.value = file;
+                opt.textContent = label;
+                otherGroup.appendChild(opt);
+            }
+
+            select.appendChild(otherGroup);
+        }
+
+        // Kick off language options load ASAP
+        loadLanguageOptions();
         import { STLLoader } from '/static/STLLoader.js';
         import { OrbitControls } from '/static/OrbitControls.js';
 

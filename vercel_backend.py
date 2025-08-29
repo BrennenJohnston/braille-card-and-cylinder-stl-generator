@@ -972,6 +972,165 @@ def static_files(filename):
         app.logger.error(f"Failed to serve static file {filename}: {e}")
         return jsonify({'error': 'Failed to serve file'}), 500
 
+def _scan_liblouis_tables(directory: str):
+    """Scan a directory for liblouis translation tables and extract basic metadata.
+
+    Returns a list of dicts with keys: file, locale, type, grade, contraction, dots, variant.
+    """
+    tables_info = []
+    try:
+        if not os.path.isdir(directory):
+            return tables_info
+
+        # Walk recursively to find tables in subfolders as well
+        for root, _, files in os.walk(directory):
+            for fname in files:
+                low = fname.lower()
+                # Only expose primary translation tables
+                if not (low.endswith('.ctb') or low.endswith('.utb') or low.endswith('.tbl')):
+                    continue
+
+                fpath = os.path.join(root, fname)
+
+                meta = {
+                    'file': fname,
+                    'locale': None,
+                    'type': None,
+                    'grade': None,
+                    'contraction': None,
+                    'dots': None,
+                    'variant': None,
+                }
+
+                # Parse lightweight metadata from the file header
+                try:
+                    with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
+                        for _ in range(200):
+                            line = f.readline()
+                            if not line:
+                                break
+                            m = re.match(r'^\s*#\+\s*([A-Za-z_-]+)\s*:\s*(.+?)\s*$', line)
+                            if not m:
+                                continue
+                            key = m.group(1).strip().lower()
+                            val = m.group(2).strip()
+                            if key == 'locale' and not meta['locale']:
+                                # Normalize locale casing, e.g., en-us -> en-US
+                                parts = val.replace('_', '-').split('-')
+                                if parts:
+                                    parts[0] = parts[0].lower()
+                                    for i in range(1, len(parts)):
+                                        if len(parts[i]) in (2, 3):
+                                            parts[i] = parts[i].upper()
+                                meta['locale'] = '-'.join(parts)
+                            elif key == 'type' and not meta['type']:
+                                meta['type'] = val.lower()
+                            elif key == 'grade' and not meta['grade']:
+                                meta['grade'] = str(val)
+                            elif key == 'contraction' and not meta['contraction']:
+                                meta['contraction'] = val.lower()
+                            elif key == 'dots' and not meta['dots']:
+                                try:
+                                    meta['dots'] = int(val)
+                                except Exception:
+                                    meta['dots'] = None
+                except Exception:
+                    pass
+
+                base = os.path.splitext(fname)[0]
+                base_norm = base.lower()
+
+                # Derive locale from filename when missing
+                if not meta['locale']:
+                    candidate = base
+                    # Common separators to normalize
+                    candidate = candidate.replace('_', '-')
+                    # Trim trailing grade tokens for locale inference
+                    candidate = re.sub(r'-g[012]\b.*$', '', candidate, flags=re.IGNORECASE)
+                    # Special english variants keep base 'en'
+                    if candidate.startswith('en-ueb') or candidate.startswith('en-us') or candidate.startswith('en-gb'):
+                        loc = candidate.split('-')[0]
+                    else:
+                        parts = candidate.split('-')
+                        loc = parts[0]
+                        if len(parts) > 1 and len(parts[1]) in (2, 3):
+                            loc = f"{parts[0]}-{parts[1]}"
+                    parts = loc.split('-')
+                    if parts:
+                        parts[0] = parts[0].lower()
+                        for i in range(1, len(parts)):
+                            if len(parts[i]) in (2, 3):
+                                parts[i] = parts[i].upper()
+                        meta['locale'] = '-'.join(parts)
+
+                # Derive grade from filename when missing
+                if not meta['grade']:
+                    m = re.search(r'-g([012])\b', base_norm)
+                    if m:
+                        meta['grade'] = m.group(1)
+
+                # Derive dots from filename if not present (e.g., comp8/comp6)
+                if meta['dots'] is None:
+                    if 'comp8' in base_norm or re.search(r'8dot|8-dot', base_norm):
+                        meta['dots'] = 8
+                    elif 'comp6' in base_norm or re.search(r'6dot|6-dot', base_norm):
+                        meta['dots'] = 6
+
+                # Derive type/contraction heuristics if missing
+                if not meta['type']:
+                    if 'comp' in base_norm or (meta['dots'] in (6, 8) and 'g' not in (meta['grade'] or '')):
+                        meta['type'] = 'computer'
+                    else:
+                        meta['type'] = 'literary'
+
+                if not meta['contraction']:
+                    # Infer from grade when possible
+                    if meta['grade'] == '2':
+                        meta['contraction'] = 'full'
+                    elif meta['grade'] in ('0', '1'):
+                        meta['contraction'] = 'no'
+
+                # Variant hints (primarily for English)
+                if 'ueb' in base_norm:
+                    meta['variant'] = 'UEB'
+                elif base_norm.startswith('en-us'):
+                    meta['variant'] = 'EBAE'
+
+                tables_info.append(meta)
+    except Exception:
+        # Fail silently and return whatever we collected
+        return tables_info
+
+    return tables_info
+
+@app.route('/liblouis/tables')
+def list_liblouis_tables():
+    """List available liblouis translation tables from static assets.
+
+    This powers the frontend language dropdown dynamically so it stays in sync
+    with the actual shipped tables.
+    """
+    # Resolve candidate directories relative to app root
+    base = app.root_path
+    candidate_dirs = [
+        os.path.join(base, 'static', 'liblouis', 'tables'),
+        os.path.join(base, 'node_modules', 'liblouis-build', 'tables'),
+        os.path.join(base, 'third_party', 'liblouis', 'tables'),
+        os.path.join(base, 'third_party', 'liblouis', 'share', 'liblouis', 'tables'),
+    ]
+
+    merged = {}
+    for d in candidate_dirs:
+        for t in _scan_liblouis_tables(d):
+            key = t.get('file')
+            if key and key not in merged:
+                merged[key] = t
+
+    tables = list(merged.values())
+    # Sort deterministically by locale then file name
+    tables.sort(key=lambda t: (t.get('locale') or '', t.get('file') or ''))
+    return jsonify({'tables': tables})
+
 @app.route('/generate_braille_stl', methods=['POST'])
 @rate_limit
 def generate_braille_stl():

@@ -2717,8 +2717,30 @@
             init3D();
             const loader = new STLLoader();
             loader.load(url, function (geometry) {
-                geometry.center();
                 if (mesh) scene.remove(mesh);
+                
+                // Compute bounding box before centering to detect object type
+                geometry.computeBoundingBox();
+                const bbox = geometry.boundingBox;
+                const width = bbox.max.x - bbox.min.x;
+                const height = bbox.max.y - bbox.min.y; 
+                const depth = bbox.max.z - bbox.min.z;
+                
+                // Check if this is a cylinder
+                const shapeType = document.querySelector('input[name="shape_type"]:checked')?.value;
+                const isCylinder = shapeType === 'cylinder' || height > Math.max(width, depth) * 1.5;
+                
+                if (!isCylinder) {
+                    // For cards, center the geometry as before
+                    geometry.center();
+                } else {
+                    // For cylinders, only center X and Y, keep Z positioning
+                    // (cylinder base is at Z=0 in the STL)
+                    const centerX = (bbox.max.x + bbox.min.x) / 2;
+                    const centerY = (bbox.max.y + bbox.min.y) / 2;
+                    geometry.translate(-centerX, -centerY, 0);
+                }
+                
                 // Get theme-appropriate mesh color with proper fallback
                 const styles = getComputedStyle(document.documentElement);
                 const meshColorVar = styles.getPropertyValue('--stl-mesh-color').trim();
@@ -2747,34 +2769,34 @@
                     });
                 }
                 mesh = new THREE.Mesh(geometry, material);
-                
-                // Apply the same rotations as the backend for cylinder models
-                // This ensures preview matches the downloaded STL orientation
-                // Detect if this is likely a cylinder by checking if height > width
-                const bbox = geometry.boundingBox;
-                if (bbox) {
-                    const width = bbox.max.x - bbox.min.x;
-                    const height = bbox.max.y - bbox.min.y;
-                    const depth = bbox.max.z - bbox.min.z;
-                    
-                    // If the geometry is taller than it is wide/deep, it's likely a cylinder
-                    // that should be rotated to match the backend's print orientation
-                    if (height > Math.max(width, depth) * 1.2) {
-                        // Apply same rotations as backend:
-                        // 1. Rotate 90° around X-axis to lay cylinder on its side
-                        mesh.rotation.x = Math.PI / 2;
-                        // 2. Flip 180° around Z-axis to orient right-side up
-                        mesh.rotation.z = Math.PI;
-                    } else {
-                        // For card-like objects, keep original orientation
-                        mesh.rotation.x = 0;
-                    }
-                } else {
-                    // Fallback for objects without bounding box
-                    mesh.rotation.x = 0;
-                }
-                
+                mesh.rotation.x = 0;
                 scene.add(mesh);
+                
+                // Adjust camera position based on object type
+                if (isCylinder) {
+                    // For cylinders: view from the side, centered on braille content
+                    const gridRows = parseInt(document.getElementById('grid_rows').value) || 4;
+                    const lineSpacing = parseFloat(document.getElementById('line_spacing').value) || 10.0;
+                    const topMargin = parseFloat(document.getElementById('braille_y_adjust')?.value || 0) + 8.4; // Default top margin
+                    const cylinderHeight = parseFloat(document.getElementById('cylinder_height_mm').value) || height;
+                    
+                    // Calculate the center of the braille content
+                    const brailleHeight = (gridRows - 1) * lineSpacing;
+                    // Since cylinder base is at Z=0 and extends upward, calculate from top
+                    const brailleCenterZ = cylinderHeight - topMargin - brailleHeight / 2;
+                    
+                    // Position camera to view from the side (+X direction looking toward origin)
+                    camera.position.set(120, 0, brailleCenterZ);
+                    camera.lookAt(0, 0, brailleCenterZ);
+                    controls.target.set(0, 0, brailleCenterZ);
+                } else {
+                    // For cards: keep default front view
+                    camera.position.set(0, 0, 120);
+                    camera.lookAt(0, 0, 0);
+                    controls.target.set(0, 0, 0);
+                }
+                controls.update();
+                
                 animate();
             }, undefined, function (error) {
                 errorText.textContent = 'Failed to load STL: ' + error;

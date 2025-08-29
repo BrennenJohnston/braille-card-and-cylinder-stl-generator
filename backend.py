@@ -897,15 +897,9 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
     # Combine all meshes
     final_mesh = trimesh.util.concatenate(meshes)
     
-    # Rotate cylinder 90 degrees around X-axis so curved surface faces viewer
-    # This makes the height become depth and curved surface faces forward
-    rotation_matrix = trimesh.transformations.rotation_matrix(np.pi/2, [1, 0, 0])
-    final_mesh.apply_transform(rotation_matrix)
-    
-    # Flip cylinder 180 degrees around Z-axis to orient it right-side up
-    # This ensures the top of the cylinder faces up relative to the viewer
-    flip_matrix = trimesh.transformations.rotation_matrix(np.pi, [0, 0, 1])
-    final_mesh.apply_transform(flip_matrix)
+    # Position cylinder for 3D printing: base at Z=0, extending upward
+    # The cylinder is currently centered at origin, so translate up by height/2
+    final_mesh.apply_translation([0, 0, height/2])
     
     return final_mesh
 
@@ -1056,15 +1050,9 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             
             print(f"DEBUG: Cylinder counter plate completed with {engine_name}: {len(final_shell.vertices)} vertices, {len(final_shell.faces)} faces")
             
-            # Rotate cylinder 90 degrees around X-axis so curved surface faces viewer
-            # This makes the height become depth and curved surface faces forward
-            rotation_matrix = trimesh.transformations.rotation_matrix(np.pi/2, [1, 0, 0])
-            final_shell.apply_transform(rotation_matrix)
-            
-            # Flip cylinder 180 degrees around Z-axis to orient it right-side up
-            # This ensures the top of the cylinder faces up relative to the viewer
-            flip_matrix = trimesh.transformations.rotation_matrix(np.pi, [0, 0, 1])
-            final_shell.apply_transform(flip_matrix)
+            # Position cylinder for 3D printing: base at Z=0, extending upward
+            # The cylinder is currently centered at origin, so translate up by height/2
+            final_shell.apply_translation([0, 0, height/2])
             
             return final_shell
         except Exception as e:
@@ -1088,27 +1076,18 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             final_shell.fill_holes()
         print(f"DEBUG: Fallback completed: {len(final_shell.vertices)} vertices, {len(final_shell.faces)} faces")
         
-        # Rotate cylinder 90 degrees around X-axis so curved surface faces viewer
-        rotation_matrix = trimesh.transformations.rotation_matrix(np.pi/2, [1, 0, 0])
-        final_shell.apply_transform(rotation_matrix)
-        
-        # Flip cylinder 180 degrees around Z-axis to orient it right-side up
-        # This ensures the top of the cylinder faces up relative to the viewer
-        flip_matrix = trimesh.transformations.rotation_matrix(np.pi, [0, 0, 1])
-        final_shell.apply_transform(flip_matrix)
+        # Position cylinder for 3D printing: base at Z=0, extending upward
+        # The cylinder is currently centered at origin, so translate up by height/2
+        final_shell.apply_translation([0, 0, height/2])
         
         return final_shell
     except Exception as final_error:
         print(f"ERROR: Cylinder fallback boolean failed: {final_error}")
         print("WARNING: Returning simple cylinder shell without recesses.")
-        # Rotate cylinder 90 degrees around X-axis so curved surface faces viewer
-        rotation_matrix = trimesh.transformations.rotation_matrix(np.pi/2, [1, 0, 0])
-        cylinder_shell.apply_transform(rotation_matrix)
         
-        # Flip cylinder 180 degrees around Z-axis to orient it right-side up
-        # This ensures the top of the cylinder faces up relative to the viewer
-        flip_matrix = trimesh.transformations.rotation_matrix(np.pi, [0, 0, 1])
-        cylinder_shell.apply_transform(flip_matrix)
+        # Position cylinder for 3D printing: base at Z=0, extending upward
+        # The cylinder is currently centered at origin, so translate up by height/2
+        cylinder_shell.apply_translation([0, 0, height/2])
         
         return cylinder_shell
 

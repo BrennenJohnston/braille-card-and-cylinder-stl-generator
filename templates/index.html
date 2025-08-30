@@ -2136,28 +2136,46 @@
                 scene.background = new THREE.Color(stlBackground);
                 
                 // Remove existing lights to rebuild them with proper configuration
-                const lightsToRemove = scene.children.filter(child => 
+                const sceneLightsToRemove = scene.children.filter(child => 
                     child instanceof THREE.DirectionalLight || child instanceof THREE.AmbientLight
                 );
-                lightsToRemove.forEach(light => scene.remove(light));
+                sceneLightsToRemove.forEach(light => scene.remove(light));
+                
+                // Also remove camera-attached directional lights
+                const cameraLightsToRemove = camera.children.filter(child => 
+                    child instanceof THREE.DirectionalLight
+                );
+                cameraLightsToRemove.forEach(light => camera.remove(light));
                 
                 // Rebuild lighting based on current theme
                 const currentTheme = document.documentElement.getAttribute('data-theme');
                 const directionalLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity);
                 
                 if (currentTheme === 'high-contrast') {
-                    // High contrast mode: multiple light sources for better visibility
-                    directionalLight.position.set(1, 1, 1).normalize();
-                    scene.add(directionalLight);
+                    // High contrast mode: conventional three-point lighting for better detail visibility
+                    // Key light: 45° horizontal, 30° vertical (right side) - camera-relative
+                    directionalLight.position.set(0.707, 0.5, 0.612).normalize();
+                    camera.add(directionalLight);
                     
-                    // Add secondary fill light for high contrast
-                    const fillLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity * 0.3);
-                    fillLight.position.set(-1, -0.5, 0.5).normalize();
-                    scene.add(fillLight);
+                    // Fill light: 45° horizontal, 15° vertical (left side) for shadow softening - camera-relative
+                    const fillLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity * 0.4);
+                    fillLight.position.set(-0.707, 0.259, 0.659).normalize();
+                    camera.add(fillLight);
+                    
+                    // Subtle back light for edge definition - camera-relative
+                    const backLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity * 0.2);
+                    backLight.position.set(0, 0.5, -0.866).normalize();
+                    camera.add(backLight);
                 } else {
-                    // Standard lighting for normal modes
-                    directionalLight.position.set(0, 0, 1).normalize();
-                    scene.add(directionalLight);
+                    // Standard lighting: conventional angle for optimal detail visibility
+                    // Key light: 45° horizontal, 30° vertical - camera-relative
+                    directionalLight.position.set(0.707, 0.5, 0.612).normalize();
+                    camera.add(directionalLight);
+                    
+                    // Add subtle fill light for standard modes too - camera-relative
+                    const fillLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity * 0.3);
+                    fillLight.position.set(-0.5, 0.259, 0.659).normalize();
+                    camera.add(fillLight);
                 }
                 
                 // Add ambient light
@@ -2652,6 +2670,9 @@
             camera.position.set(0, 0, 120);
             camera.up.set(0, 1, 0); // Default Y-up
             camera.lookAt(0, 0, 0);
+            
+            // Add camera to scene so attached lights will work
+            scene.add(camera);
             controls = new OrbitControls(camera, renderer.domElement);
             controls.target.set(0, 0, 0);
             
@@ -2673,22 +2694,34 @@
             // Theme-appropriate lighting with intensity control
             const directionalLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity);
             
-            // Position the directional light for optimal viewing from multiple angles
-            // For high contrast mode, use a more balanced lighting position
+            // Position the directional light for optimal detail visibility
+            // Use conventional 3D modeling lighting angles
             const currentTheme = document.documentElement.getAttribute('data-theme');
             if (currentTheme === 'high-contrast') {
-                // For high contrast: use multiple light sources for better visibility
-                directionalLight.position.set(1, 1, 1).normalize();
-                scene.add(directionalLight);
+                // High contrast mode: conventional three-point lighting for better detail visibility
+                // Key light: 45° horizontal, 30° vertical (right side) - camera-relative
+                directionalLight.position.set(0.707, 0.5, 0.612).normalize();
+                camera.add(directionalLight);
                 
-                // Add a secondary fill light for high contrast mode
-                const fillLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity * 0.3);
-                fillLight.position.set(-1, -0.5, 0.5).normalize();
-                scene.add(fillLight);
+                // Fill light: 45° horizontal, 15° vertical (left side) for shadow softening - camera-relative
+                const fillLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity * 0.4);
+                fillLight.position.set(-0.707, 0.259, 0.659).normalize();
+                camera.add(fillLight);
+                
+                // Subtle back light for edge definition - camera-relative
+                const backLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity * 0.2);
+                backLight.position.set(0, 0.5, -0.866).normalize();
+                camera.add(backLight);
             } else {
-                // Standard positioning for normal modes
-                directionalLight.position.set(0, 0, 1).normalize();
-                scene.add(directionalLight);
+                // Standard lighting: conventional angle for optimal detail visibility
+                // Key light: 45° horizontal, 30° vertical - camera-relative
+                directionalLight.position.set(0.707, 0.5, 0.612).normalize();
+                camera.add(directionalLight);
+                
+                // Add subtle fill light for standard modes too - camera-relative
+                const fillLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity * 0.3);
+                fillLight.position.set(-0.5, 0.259, 0.659).normalize();
+                camera.add(fillLight);
             }
             
             scene.add(new THREE.AmbientLight(new THREE.Color(stlAmbientLight), stlAmbientIntensity));

@@ -1617,7 +1617,7 @@
                             <legend class="grade-label">Select Output Shape</legend>
                             <div class="radio-group" role="radiogroup" aria-required="true">
                                 <label class="radio-option">
-                                    <input type="radio" name="shape_type" value="card" checked aria-describedby="card-shape-desc">
+                                    <input type="radio" name="shape_type" value="card" aria-describedby="card-shape-desc">
                                     <span class="radio-text">Flat Card</span>
                                 </label>
                                 <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card</span>
@@ -2368,6 +2368,14 @@
                 radio.addEventListener('change', function() {
                     resetToGenerateState();
                     updateShapeSettings();
+                    // Save shape selection to localStorage
+                    try {
+                        localStorage.setItem('brailleGeneratorShapeType', this.value);
+                        log.debug('Saved shape type to localStorage:', this.value);
+                    } catch (e) {
+                        // Silently fail if localStorage is not available
+                        log.warn('Could not save shape type to localStorage:', e);
+                    }
                 });
             });
             
@@ -3201,6 +3209,30 @@
                     errorText.textContent = 'Web worker failed to initialize. Braille translation preview is disabled on this deployment.';
                     errorDiv.style.display = 'flex';
                 }
+            }
+            
+            // Restore saved shape selection from localStorage
+            try {
+                const savedShapeType = localStorage.getItem('brailleGeneratorShapeType');
+                if (savedShapeType) {
+                    const shapeRadio = document.querySelector(`input[name="shape_type"][value="${savedShapeType}"]`);
+                    if (shapeRadio) {
+                        shapeRadio.checked = true;
+                        // Update UI to reflect the restored shape
+                        updateShapeSettings();
+                        log.debug('Restored shape type from localStorage:', savedShapeType);
+                    } else {
+                        // If saved shape type doesn't exist, default to card
+                        document.querySelector('input[name="shape_type"][value="card"]').checked = true;
+                    }
+                } else {
+                    // No saved shape, default to card
+                    document.querySelector('input[name="shape_type"][value="card"]').checked = true;
+                }
+            } catch (e) {
+                // If localStorage fails, default to card
+                document.querySelector('input[name="shape_type"][value="card"]').checked = true;
+                log.warn('Could not restore shape type from localStorage:', e);
             }
             
             init3D();

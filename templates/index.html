@@ -1617,7 +1617,7 @@
                             <legend class="grade-label">Select Output Shape</legend>
                             <div class="radio-group" role="radiogroup" aria-required="true">
                                 <label class="radio-option">
-                                    <input type="radio" name="shape_type" value="card" aria-describedby="card-shape-desc">
+                                    <input type="radio" name="shape_type" value="card" checked aria-describedby="card-shape-desc">
                                     <span class="radio-text">Flat Card</span>
                                 </label>
                                 <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card</span>
@@ -2431,7 +2431,12 @@
         
         // Function to show/hide cylinder settings based on shape selection
         function updateShapeSettings() {
-            const shapeType = document.querySelector('input[name="shape_type"]:checked').value;
+            const shapeTypeElement = document.querySelector('input[name="shape_type"]:checked');
+            if (!shapeTypeElement) {
+                console.warn('No shape type selected');
+                return;
+            }
+            const shapeType = shapeTypeElement.value;
             const cylinderSettings = document.querySelector('.grade-selection:has(#cylinder_diameter_mm)');
             
             // Always show cylinder dimensions in expert mode
@@ -2452,8 +2457,9 @@
         
         // Function to check cylinder text overflow
         function checkCylinderOverflow() {
-            const shapeType = document.querySelector('input[name="shape_type"]:checked').value;
-            if (shapeType !== 'cylinder') return;
+            const shapeTypeElement = document.querySelector('input[name="shape_type"]:checked');
+            if (!shapeTypeElement || shapeTypeElement.value !== 'cylinder') return;
+            const shapeType = shapeTypeElement.value;
             
             const diameter = parseFloat(document.getElementById('cylinder_diameter_mm').value) || 30;
             const height = parseFloat(document.getElementById('cylinder_height_mm').value) || 52;

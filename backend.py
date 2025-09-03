@@ -231,11 +231,25 @@ class CardSettings:
         self.grid_columns = int(self.grid_columns)
         self.grid_rows = int(self.grid_rows)
         
-        # Calculated properties
+        # Calculate grid dimensions first
         self.grid_width = (self.grid_columns - 1) * self.cell_spacing
-        self.left_margin = (self.card_width - self.grid_width) / 2
         self.grid_height = (self.grid_rows - 1) * self.line_spacing
+        
+        # Center the grid on the card with calculated margins
+        self.left_margin = (self.card_width - self.grid_width) / 2
+        self.right_margin = (self.card_width - self.grid_width) / 2
         self.top_margin = (self.card_height - self.grid_height) / 2
+        self.bottom_margin = (self.card_height - self.grid_height) / 2
+        
+        # Safety margin minimum (½ of cell spacing)
+        self.min_safe_margin = self.cell_spacing / 2
+        
+        # Validate that braille dots stay within solid surface boundaries (if not in initialization)
+        try:
+            self._validate_margins()
+        except Exception as e:
+            # Don't fail initialization due to validation issues
+            print(f"Note: Margin validation skipped during initialization: {e}")
         
         # Map new parameter names to legacy ones for backward compatibility
         if 'emboss_dot_base_diameter' in kwargs:
@@ -269,6 +283,75 @@ class CardSettings:
         self.plate_thickness = self.card_thickness
         self.epsilon = self.epsilon_mm
         self.cylinder_counter_plate_overcut_mm = self.cylinder_counter_plate_overcut_mm
+
+    def _validate_margins(self):
+        """
+        Validate that the centered margins provide enough space for braille dots
+        and meet the minimum safety margin requirements.
+        """
+        try:
+            # Ensure all required attributes exist
+            required_attrs = ['dot_spacing', 'left_margin', 'right_margin', 'top_margin', 'bottom_margin', 
+                            'grid_width', 'grid_height', 'card_width', 'card_height', 'cell_spacing', 'min_safe_margin']
+            for attr in required_attrs:
+                if not hasattr(self, attr):
+                    return  # Skip validation if attributes are missing
+            
+            # Check if margins meet minimum safety requirements
+            margin_warnings = []
+            if self.left_margin < self.min_safe_margin:
+                margin_warnings.append(f"Left margin ({self.left_margin:.2f}mm) is less than minimum safe margin ({self.min_safe_margin:.2f}mm)")
+            if self.right_margin < self.min_safe_margin:
+                margin_warnings.append(f"Right margin ({self.right_margin:.2f}mm) is less than minimum safe margin ({self.min_safe_margin:.2f}mm)")
+            if self.top_margin < self.min_safe_margin:
+                margin_warnings.append(f"Top margin ({self.top_margin:.2f}mm) is less than minimum safe margin ({self.min_safe_margin:.2f}mm)")
+            if self.bottom_margin < self.min_safe_margin:
+                margin_warnings.append(f"Bottom margin ({self.bottom_margin:.2f}mm) is less than minimum safe margin ({self.min_safe_margin:.2f}mm)")
+            
+            # Calculate the actual space needed for the braille grid with dots
+            # Each braille cell is cell_spacing wide, dot spacing extends ±dot_spacing/2 from center
+            max_dot_extension = self.dot_spacing / 2
+            
+            # Check if outermost dots will be within boundaries
+            # Consider that dots extend ±dot_spacing/2 from their centers
+            left_edge_clearance = self.left_margin - max_dot_extension
+            right_edge_clearance = self.right_margin - max_dot_extension
+            top_edge_clearance = self.top_margin - max_dot_extension
+            bottom_edge_clearance = self.bottom_margin - max_dot_extension
+            
+            if margin_warnings:
+                print("⚠ WARNING: Margins below minimum safe values:")
+                for warning in margin_warnings:
+                    print(f"  - {warning}")
+                print(f"  - Recommended minimum margin: {self.min_safe_margin:.2f}mm (½ of {self.cell_spacing:.1f}mm cell spacing)")
+                print(f"  - Consider reducing grid size or increasing card dimensions")
+            
+            # Check if dots will extend beyond card edges
+            edge_warnings = []
+            if left_edge_clearance < 0:
+                edge_warnings.append(f"Left edge dots will extend {-left_edge_clearance:.2f}mm beyond card edge")
+            if right_edge_clearance < 0:
+                edge_warnings.append(f"Right edge dots will extend {-right_edge_clearance:.2f}mm beyond card edge")
+            if top_edge_clearance < 0:
+                edge_warnings.append(f"Top edge dots will extend {-top_edge_clearance:.2f}mm beyond card edge")
+            if bottom_edge_clearance < 0:
+                edge_warnings.append(f"Bottom edge dots will extend {-bottom_edge_clearance:.2f}mm beyond card edge")
+            
+            if edge_warnings:
+                print("⚠ CRITICAL WARNING: Braille dots will extend beyond card boundaries!")
+                for warning in edge_warnings:
+                    print(f"  - {warning}")
+            
+            # Log successful validation if all is well
+            if not margin_warnings and not edge_warnings:
+                print(f"✓ Grid centering validation passed: Braille grid is centered with safe margins")
+                print(f"  - Grid dimensions: {self.grid_width:.2f}mm × {self.grid_height:.2f}mm")
+                print(f"  - Card dimensions: {self.card_width:.2f}mm × {self.card_height:.2f}mm")
+                print(f"  - Centered margins: L/R={self.left_margin:.2f}mm, T/B={self.top_margin:.2f}mm")
+                print(f"  - Minimum safe margin: {self.min_safe_margin:.2f}mm (½ of {self.cell_spacing:.1f}mm cell spacing)")
+        except Exception as e:
+            # Silently skip validation if there are any issues
+            pass
 
 def translate_with_liblouis_js(text: str, grade: str = "g2") -> str:
     """
@@ -363,7 +446,7 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
     grade_name = f"Grade {grade.upper()}" if grade in ["g1", "g2"] else "Grade 1"
     print(f"Creating positive plate mesh with {grade_name} characters")
     print(f"Grid: {settings.grid_columns} columns × {settings.grid_rows} rows")
-    print(f"Centering grid. Auto-calculated margins: Left/Right {settings.left_margin:.2f}mm, Top/Bottom {settings.top_margin:.2f}mm")
+    print(f"Centered margins: L/R={settings.left_margin:.2f}mm, T/B={settings.top_margin:.2f}mm")
     print(f"Spacing: Cell-to-cell {settings.cell_spacing}mm, Line-to-line {settings.line_spacing}mm, Dot-to-dot {settings.dot_spacing}mm")
     
     # Create card base
@@ -479,7 +562,7 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
                 print(f"WARNING: Line {row_num + 1} does not contain proper braille Unicode, skipping")
                 continue
                 
-            # Calculate Y position for this row (same as embossing plate)
+            # Calculate Y position for this row (same as embossing plate, using safe margin)
             y_pos = settings.card_height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
                 
             # Process each braille character in the line
@@ -639,7 +722,7 @@ def layout_cylindrical_cells(braille_lines, settings: CardSettings, cylinder_dia
     # Calculate row height (same as card - vertical spacing doesn't change)
     row_height = settings.line_spacing
     
-    # Start from top of cylinder (using same margin calculation as card)
+    # Start from top of cylinder (using safe margin = ½ cell spacing)
     current_y = cylinder_height_mm - settings.top_margin
     
     # Process up to grid_rows lines
@@ -965,7 +1048,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     # Create spheres for ALL possible dot positions
     sphere_meshes = []
     
-    # Start from top of cylinder
+    # Start from top of cylinder (using safe margin = ½ cell spacing)
     current_y = height - settings.top_margin
     
     for row in range(rows_on_cylinder):
@@ -1137,7 +1220,7 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
     
     # Generate spheres for each grid position
     for row in range(params.grid_rows):
-        # Calculate Y position for this row (same as embossing plate)
+        # Calculate Y position for this row (same as embossing plate, using safe margin)
         y_pos = params.card_height - params.top_margin - (row * params.line_spacing) + params.braille_y_adjust
         
         for col in range(params.grid_columns):

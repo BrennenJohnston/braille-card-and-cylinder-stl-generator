@@ -586,9 +586,9 @@ def create_character_shape_3d(character, x, y, settings: CardSettings, height=1.
     """
     print(f"DEBUG: create_character_shape_3d called with character='{character}', x={x}, y={y}, height={height}")
     
-    # Define character size based on braille cell dimensions (with 1mm increase)
-    char_height = 2 * settings.dot_spacing + 1.0  # Increased by 1mm as requested
-    char_width = settings.dot_spacing * 0.8 + 1.0  # Increased by 1mm as requested
+    # Define character size based on braille cell dimensions (scaled 56.25% bigger than original)
+    char_height = 2 * settings.dot_spacing + 4.375  # 9.375mm for default 2.5mm dot spacing
+    char_width = settings.dot_spacing * 0.8 + 2.6875  # 4.6875mm for default 2.5mm dot spacing
     
     # Position character at the right column of the cell
     char_x = x + settings.dot_spacing / 2
@@ -1452,9 +1452,9 @@ def create_cylinder_character_shape(character, x_arc, y_local, settings: CardSet
     t_hat = np.array([-np.sin(theta), np.cos(theta), 0.0])     # tangential
     z_hat = np.array([0.0, 0.0, 1.0])                          # cylinder axis
     
-    # Define character size based on braille cell dimensions (with 1mm increase)
-    char_height = 2 * settings.dot_spacing + 1.0  # Increased by 1mm as requested
-    char_width = settings.dot_spacing * 0.8 + 1.0  # Increased by 1mm as requested
+    # Define character size based on braille cell dimensions (scaled 56.25% bigger than original)
+    char_height = 2 * settings.dot_spacing + 4.375  # 9.375mm for default 2.5mm dot spacing
+    char_width = settings.dot_spacing * 0.8 + 2.6875  # 4.6875mm for default 2.5mm dot spacing
     
     # Get the character definition
     char_upper = character.upper()

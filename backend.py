@@ -183,7 +183,7 @@ class CardSettings:
         defaults = {
             # Card parameters
             "card_width": 90,
-            "card_height": 52,
+            "card_height": 60,
             "card_thickness": 2.0,
             # Grid parameters
             "grid_columns": 13,

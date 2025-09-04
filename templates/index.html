@@ -1646,8 +1646,11 @@
                         <div class="grade-selection">
                             <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
                             <div>
-                                <label for="grid_columns">Number of Braille Cells (Characters):</label>
-                                <input type="number" id="grid_columns" name="grid_columns" value="13">
+                                <label for="grid_columns" id="grid_columns_label">Number of Braille Cells (Characters):</label>
+                                <input type="number" id="grid_columns" name="grid_columns" value="11">
+                                <div id="grid_columns_note" class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                    For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 11 cells for text.
+                                </div>
                             </div>
                             <div>
                                 <label for="grid_rows">Number of Braille Lines:</label>
@@ -1702,7 +1705,7 @@
                             </div>
                             <div>
                                 <label for="card_height">Plate Height:</label>
-                                <input type="number" id="card_height" name="card_height" value="52" step="0.1">
+                                <input type="number" id="card_height" name="card_height" value="60" step="0.1">
                             </div>
                             <div>
                                 <label for="card_thickness">Plate Thickness:</label>
@@ -1718,7 +1721,7 @@
                             </div>
                             <div>
                                 <label for="cylinder_height_mm">Cylinder Height (mm):</label>
-                                <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200">
+                                <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="60" step="0.1" min="10" max="200">
                             </div>
                             <div>
                                 <label for="cylinder_polygonal_cutout_radius_mm">Polygonal Cutout Inscribed Radius (mm):</label>
@@ -2358,10 +2361,48 @@
                 languageSelect.addEventListener('change', resetToGenerateState);
             }
             
+            // Function to update grid columns based on plate type
+            function updateGridColumnsForPlateType(preserveValue = false) {
+                const plateType = document.querySelector('input[name="plate_type"]:checked').value;
+                const gridColumnsInput = document.getElementById('grid_columns');
+                const gridColumnsLabel = document.getElementById('grid_columns_label');
+                const gridColumnsNote = document.getElementById('grid_columns_note');
+                
+                // Store current value before update
+                const currentValue = parseInt(gridColumnsInput.value);
+                
+                if (plateType === 'positive') {
+                    // Embossing plate - show available cells (total - 2)
+                    gridColumnsLabel.textContent = 'Number of Available Braille Cells:';
+                    gridColumnsNote.style.display = 'block';
+                    gridColumnsNote.textContent = 'For embossing plates: 2 cells are reserved for row indicators (start/end markers).';
+                    
+                    if (!preserveValue) {
+                        // Only set default value if not preserving user's custom value
+                        gridColumnsInput.value = '11';
+                    }
+                } else {
+                    // Counter plate - show all cells
+                    gridColumnsLabel.textContent = 'Number of Braille Cells (Characters):';
+                    gridColumnsNote.style.display = 'none';
+                    
+                    if (!preserveValue) {
+                        // Only set default value if not preserving user's custom value
+                        gridColumnsInput.value = '13';
+                    }
+                }
+            }
+            
             // Plate type radio buttons
             document.querySelectorAll('input[name="plate_type"]').forEach(radio => {
-                radio.addEventListener('change', resetToGenerateState);
+                radio.addEventListener('change', function() {
+                    resetToGenerateState();
+                    updateGridColumnsForPlateType();
+                });
             });
+            
+            // Initialize grid columns on page load
+            updateGridColumnsForPlateType();
             
             // Shape type radio buttons
             document.querySelectorAll('input[name="shape_type"]').forEach(radio => {
@@ -2462,7 +2503,7 @@
             const shapeType = shapeTypeElement.value;
             
             const diameter = parseFloat(document.getElementById('cylinder_diameter_mm').value) || 30;
-            const height = parseFloat(document.getElementById('cylinder_height_mm').value) || 52;
+            const height = parseFloat(document.getElementById('cylinder_height_mm').value) || 60;
             const cellSpacing = parseFloat(document.getElementById('cell_spacing').value) || 6.5;
             const dotSpacing = parseFloat(document.getElementById('dot_spacing').value) || 2.5;
             const lineSpacing = parseFloat(document.getElementById('line_spacing').value) || 10;
@@ -2599,6 +2640,11 @@
             if (input) {
                 input.addEventListener('input', (e) => {
                     log.debug(`Expert Mode Input Changed: ${inputId} = ${e.target.value}`);
+                    
+                    // If grid_columns changed, update the label/note but preserve the value
+                    if (inputId === 'grid_columns') {
+                        updateGridColumnsForPlateType(true);
+                    }
                 });
                 
                 // Also log the initial values
@@ -2796,7 +2842,11 @@
                 log.debug('Counter plate selected - no text translation needed');
             }
             const settings = {
-                grid_columns: document.getElementById('grid_columns').value,
+                // For embossing plates, add 2 to account for reserved cells
+                // For counter plates, use the value as-is
+                grid_columns: plateType === 'positive' ? 
+                    String(parseInt(document.getElementById('grid_columns').value) + 2) : 
+                    document.getElementById('grid_columns').value,
                 grid_rows: document.getElementById('grid_rows').value,
                 cell_spacing: document.getElementById('cell_spacing').value,
                 line_spacing: document.getElementById('line_spacing').value,
@@ -2824,14 +2874,31 @@
                 return;
             }
             
-            // Validate braille character limits AFTER translation (only for positive plates)
+            // Validate braille character limits AFTER translation
+            const gridColumnsValue = parseInt(document.getElementById('grid_columns').value);
             if (plateType === 'positive') {
-                const gridColumns = parseInt(document.getElementById('grid_columns').value);
+                // For embossing plates, we need to account for 2 reserved cells
+                // Use the actual grid columns value from the input (not hardcoded)
+                const actualGridColumns = gridColumnsValue + 2; // Add back the 2 reserved cells
+                const availableColumns = gridColumnsValue; // What the user sees is available cells
+                
                 for (let i = 0; i < translatedLines.length; i++) {
                     const brailleLine = translatedLines[i];
-                    if (brailleLine && brailleLine.length > gridColumns) {
-                        const over = brailleLine.length - gridColumns;
-                        errorText.textContent = `Line ${i + 1} exceeds ${gridColumns} braille cells by ${over} cells after translation. Please shorten your text.`;
+                    if (brailleLine && brailleLine.length > availableColumns) {
+                        const over = brailleLine.length - availableColumns;
+                        errorText.textContent = `Line ${i + 1} exceeds ${availableColumns} available braille cells by ${over} cells after translation. Please shorten your text.`;
+                        errorDiv.style.display = 'flex';
+                        errorDiv.className = 'error-message';
+                        return;
+                    }
+                }
+            } else {
+                // For counter plates, all grid columns are available
+                for (let i = 0; i < translatedLines.length; i++) {
+                    const brailleLine = translatedLines[i];
+                    if (brailleLine && brailleLine.length > gridColumnsValue) {
+                        const over = brailleLine.length - gridColumnsValue;
+                        errorText.textContent = `Line ${i + 1} exceeds ${gridColumnsValue} braille cells by ${over} cells after translation. Please shorten your text.`;
                         errorDiv.style.display = 'flex';
                         errorDiv.className = 'error-message';
                         return;

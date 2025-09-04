@@ -186,7 +186,7 @@ class CardSettings:
         defaults = {
             # Card parameters
             "card_width": 90,
-            "card_height": 60,
+            "card_height": 52,
             "card_thickness": 2.0,
             # Grid parameters
             "grid_columns": 14,
@@ -1668,13 +1668,13 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
     
     if cylinder_params is None:
         cylinder_params = {
-            'diameter_mm': 30,
+            'diameter_mm': 30.6,
             'height_mm': settings.card_height,
             'polygonal_cutout_radius_mm': 13,
             'seam_offset_deg': 0
         }
     
-    diameter = float(cylinder_params.get('diameter_mm', 30))
+    diameter = float(cylinder_params.get('diameter_mm', 30.6))
     height = float(cylinder_params.get('height_mm', settings.card_height))
     polygonal_cutout_radius = float(cylinder_params.get('polygonal_cutout_radius_mm', 0))
     seam_offset = float(cylinder_params.get('seam_offset_deg', 0))
@@ -1859,13 +1859,13 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     """
     if cylinder_params is None:
         cylinder_params = {
-            'diameter_mm': 30,
+            'diameter_mm': 30.6,
             'height_mm': settings.card_height,
             'polygonal_cutout_radius_mm': 13,
             'seam_offset_deg': 0
         }
     
-    diameter = float(cylinder_params.get('diameter_mm', 30))
+    diameter = float(cylinder_params.get('diameter_mm', 30.6))
     height = float(cylinder_params.get('height_mm', settings.card_height))
     polygonal_cutout_radius = float(cylinder_params.get('polygonal_cutout_radius_mm', 0))
     seam_offset = float(cylinder_params.get('seam_offset_deg', 0))

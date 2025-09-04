@@ -465,6 +465,106 @@ def create_triangle_marker_polygon(x, y, settings: CardSettings):
     return Polygon(vertices)
 
 
+def create_card_triangle_marker_3d(x, y, settings: CardSettings, height=0.4, for_subtraction=False):
+    """
+    Create a 3D triangular prism for card surface marking.
+    
+    Args:
+        x, y: Center position of the first braille cell
+        settings: CardSettings object with spacing parameters
+        height: Depth/height of the triangle marker (default 0.4mm)
+        for_subtraction: If True, creates a tool for boolean subtraction to make recesses
+    
+    Returns:
+        Trimesh object representing the 3D triangle marker
+    """
+    # Calculate triangle dimensions based on braille dot spacing
+    base_height = 2 * settings.dot_spacing
+    triangle_width = settings.dot_spacing
+    
+    # Triangle vertices (same as 2D version)
+    base_x = x - settings.dot_spacing / 2  # Left column position
+    
+    vertices = [
+        (base_x, y - settings.dot_spacing),      # Bottom of base
+        (base_x, y + settings.dot_spacing),      # Top of base
+        (base_x + triangle_width, y)             # Apex (at middle-right dot height)
+    ]
+    
+    # Create 2D polygon using Shapely
+    tri_2d = Polygon(vertices)
+    
+    if for_subtraction:
+        # For counter plate recesses, extrude downward from top surface
+        # Create a prism that extends from above the surface into the plate
+        extrude_height = height + 0.5  # Extra depth to ensure clean boolean
+        tri_prism = trimesh.creation.extrude_polygon(tri_2d, height=extrude_height)
+        
+        # Position at the top surface of the card
+        z_pos = settings.card_thickness - 0.1  # Start slightly above surface
+        tri_prism.apply_translation([0, 0, z_pos])
+    else:
+        # For embossing plate, extrude upward from top surface
+        tri_prism = trimesh.creation.extrude_polygon(tri_2d, height=height)
+        
+        # Position on top of the card base
+        z_pos = settings.card_thickness
+        tri_prism.apply_translation([0, 0, z_pos])
+    
+    return tri_prism
+
+
+def create_card_line_end_marker_3d(x, y, settings: CardSettings, height=0.5, for_subtraction=False):
+    """
+    Create a 3D line (rectangular prism) for end of row marking on card surface.
+    
+    Args:
+        x, y: Center position of the last braille cell in the row
+        settings: CardSettings object with spacing parameters
+        height: Depth/height of the line marker (default 0.5mm)
+        for_subtraction: If True, creates a tool for boolean subtraction to make recesses
+    
+    Returns:
+        Trimesh object representing the 3D line marker
+    """
+    # Calculate line dimensions based on braille dot spacing
+    line_height = 2 * settings.dot_spacing  # Vertical extent (same as cell height)
+    line_width = settings.dot_spacing  # Horizontal extent
+    
+    # Position line at the right column of the cell
+    # The line should be centered on the right column dot positions
+    line_x = x + settings.dot_spacing / 2  # Right column position
+    
+    # Create rectangle vertices
+    vertices = [
+        (line_x - line_width/2, y - settings.dot_spacing),  # Bottom left
+        (line_x + line_width/2, y - settings.dot_spacing),  # Bottom right
+        (line_x + line_width/2, y + settings.dot_spacing),  # Top right
+        (line_x - line_width/2, y + settings.dot_spacing)   # Top left
+    ]
+    
+    # Create 2D polygon using Shapely
+    line_2d = Polygon(vertices)
+    
+    if for_subtraction:
+        # For counter plate recesses, extrude downward from top surface
+        # Create a prism that extends from above the surface into the plate
+        extrude_height = height + 0.5  # Extra depth to ensure clean boolean
+        line_prism = trimesh.creation.extrude_polygon(line_2d, height=extrude_height)
+        
+        # Position at the top surface of the card
+        z_pos = settings.card_thickness - 0.1  # Start slightly above surface
+        line_prism.apply_translation([0, 0, z_pos])
+    else:
+        # For embossing plate, extrude upward from top surface
+        line_prism = trimesh.creation.extrude_polygon(line_2d, height=height)
+        
+        # Position on top of the card base
+        z_pos = settings.card_thickness
+        line_prism.apply_translation([0, 0, z_pos])
+    
+    return line_prism
+
 
 def create_positive_plate_mesh(lines, grade="g1", settings=None):
     """
@@ -496,6 +596,27 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
     dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]
     dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]] # Map dot index (0-5) to [row, col]
 
+    # Add triangle markers and end line markers for ALL rows (not just those with content)
+    for row_num in range(settings.grid_rows):
+        # Calculate Y position for this row
+        y_pos = settings.card_height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
+        
+        # Add triangle marker at the first cell position (column 0)
+        # Calculate X position for the first column
+        x_pos = settings.left_margin + settings.braille_x_adjust
+        
+        # Create triangle marker for this row
+        triangle_mesh = create_card_triangle_marker_3d(x_pos, y_pos, settings, height=0.4, for_subtraction=False)
+        meshes.append(triangle_mesh)
+        
+        # Add end of row line marker at the last cell position (grid_columns - 1)
+        # Calculate X position for the last column
+        x_pos_end = settings.left_margin + ((settings.grid_columns - 1) * settings.cell_spacing) + settings.braille_x_adjust
+        
+        # Create line end marker for this row
+        line_end_mesh = create_card_line_end_marker_3d(x_pos_end, y_pos, settings, height=0.5, for_subtraction=False)
+        meshes.append(line_end_mesh)
+    
     # Process each line in top-down order
     for row_num in range(settings.grid_rows):
         if row_num >= len(lines):
@@ -518,23 +639,25 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
             print(f"ERROR: {error_msg}")
             raise RuntimeError(error_msg)
         
-        # Check if braille text exceeds grid capacity
-        if len(braille_text) > settings.grid_columns:
-            print(f"Warning: Line {row_num + 1} exceeds {settings.grid_columns} braille cells by {len(braille_text) - settings.grid_columns} cells")
-            braille_text = braille_text[:int(settings.grid_columns)]  # Truncate to fit
+        # Check if braille text exceeds grid capacity (accounting for both markers taking columns)
+        available_columns = settings.grid_columns - 2  # Two less due to triangle and line end markers
+        if len(braille_text) > available_columns:
+            error_msg = f"Error: Line {row_num + 1} contains {len(braille_text)} braille cells, which exceeds the maximum of {available_columns} cells (grid has {settings.grid_columns} total cells with 2 reserved for row indicators)"
+            print(f"ERROR: {error_msg}")
+            raise RuntimeError(error_msg)
         
         # Calculate Y position for this row (top-down)
         y_pos = settings.card_height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
         
         # Process each braille character in the line
         for col_num, braille_char in enumerate(braille_text):
-            if col_num >= settings.grid_columns:
+            if col_num >= available_columns:
                 break
                 
             dots = braille_to_dots(braille_char)
             
-            # Calculate X position for this column
-            x_pos = settings.left_margin + (col_num * settings.cell_spacing) + settings.braille_x_adjust
+            # Calculate X position for this column (shifted by one cell due to triangle marker)
+            x_pos = settings.left_margin + ((col_num + 1) * settings.cell_spacing) + settings.braille_x_adjust
             
             # Create dots for this cell
             for i, dot_val in enumerate(dots):
@@ -547,7 +670,7 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
                     dot_mesh = create_braille_dot(dot_x, dot_y, z, settings)
                     meshes.append(dot_mesh)
     
-    print(f"Created positive plate with {len(meshes)-1} cone-shaped dots")
+    print(f"Created positive plate with {len(meshes)-1-settings.grid_rows*2} cone-shaped dots, {settings.grid_rows} triangle markers, and {settings.grid_rows} line end markers")
     return trimesh.util.concatenate(meshes)
 
 def create_simple_negative_plate(settings: CardSettings, lines=None):
@@ -775,8 +898,8 @@ def layout_cylindrical_cells(braille_lines, settings: CardSettings, cylinder_dia
         # Calculate Y position for this row (same as card)
         y_pos = cylinder_height_mm - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
         
-        # Process each character up to grid_columns-1 (one less due to triangle marker)
-        for col_num, braille_char in enumerate(line[:settings.grid_columns-1]):
+        # Process each character up to grid_columns-2 (two less due to triangle and line end markers)
+        for col_num, braille_char in enumerate(line[:settings.grid_columns-2]):
             # Calculate angular position for this column (shifted by one cell)
             angle = start_angle + ((col_num + 1) * cell_spacing_angle)
             x_pos = angle * radius  # Convert to arc length for compatibility
@@ -976,6 +1099,86 @@ def create_cylinder_triangle_marker(x_arc, y_local, settings: CardSettings, cyli
     return tri_prism_local
 
 
+def create_cylinder_line_end_marker(x_arc, y_local, settings: CardSettings, cylinder_diameter_mm, seam_offset_deg=0, height_mm=0.5, for_subtraction=True):
+    """
+    Create a line (rectangular prism) for end of row marking on cylinder surface.
+    
+    Args:
+        x_arc: Arc length position along circumference (same units as mm on the card)
+        y_local: Z position relative to cylinder center (card Y minus height/2)
+        settings: CardSettings object
+        cylinder_diameter_mm: Cylinder diameter
+        seam_offset_deg: Rotation offset for seam
+        height_mm: Depth/height of the line marker (default 0.5mm)
+        for_subtraction: If True, creates a tool for boolean subtraction to make recesses
+    """
+    radius = cylinder_diameter_mm / 2.0
+    circumference = np.pi * cylinder_diameter_mm
+    
+    # Angle around cylinder for planar x position
+    theta = (x_arc / circumference) * 2.0 * np.pi + np.radians(seam_offset_deg)
+    
+    # Local orthonormal frame at theta
+    r_hat = np.array([np.cos(theta), np.sin(theta), 0.0])      # radial outward
+    t_hat = np.array([-np.sin(theta), np.cos(theta), 0.0])     # tangential
+    z_hat = np.array([0.0, 0.0, 1.0])                          # cylinder axis
+    
+    # Line dimensions - vertical line at end of row
+    line_height = 2.0 * settings.dot_spacing  # Vertical extent (same as cell height)
+    line_width = settings.dot_spacing         # Horizontal extent in tangent direction
+    
+    # Build 2D rectangle in local tangent (X=t) and vertical (Y=z) plane
+    # Rectangle centered at origin, extending in both directions
+    from shapely.geometry import Polygon as ShapelyPolygon
+    line_2d = ShapelyPolygon([
+        (-line_width/2, -settings.dot_spacing),  # Bottom left
+        (line_width/2, -settings.dot_spacing),   # Bottom right
+        (line_width/2, settings.dot_spacing),    # Top right
+        (-line_width/2, settings.dot_spacing)    # Top left
+    ])
+    
+    # For subtraction tool, we need to extend beyond the surface
+    if for_subtraction:
+        # Extrude to create cutting tool that extends from outside to inside the cylinder
+        extrude_height = height_mm + 1.0  # Total extrusion depth
+        line_prism_local = trimesh.creation.extrude_polygon(line_2d, height=extrude_height)
+        
+        # The prism is created with Z from 0 to extrude_height
+        # We need to center it so it extends from -0.5 to (height_mm + 0.5)
+        line_prism_local.apply_translation([0, 0, -0.5])
+        
+        # Build transform: map local coords to cylinder coords
+        T = np.eye(4)
+        T[:3, 0] = t_hat   # X axis (tangential)
+        T[:3, 1] = z_hat   # Y axis (vertical)
+        T[:3, 2] = r_hat   # Z axis (radial outward)
+        
+        # Position so the prism starts outside the cylinder and cuts inward
+        # The prism's Z=0 should be at radius (cylinder surface)
+        center_pos = r_hat * radius + z_hat * y_local
+        T[:3, 3] = center_pos
+        
+        # Apply the transform
+        line_prism_local.apply_transform(T)
+    else:
+        # For direct recessed line (not used currently)
+        line_prism_local = trimesh.creation.extrude_polygon(line_2d, height=height_mm)
+        
+        # Build transform for inward extrusion
+        T = np.eye(4)
+        T[:3, 0] = t_hat   # X axis
+        T[:3, 1] = z_hat   # Y axis
+        T[:3, 2] = -r_hat  # Z axis (inward)
+        
+        # Position recessed into surface
+        center_pos = r_hat * (radius - height_mm / 2.0) + z_hat * y_local
+        T[:3, 3] = center_pos
+        
+        line_prism_local.apply_transform(T)
+    
+    return line_prism_local
+
+
 def create_cylinder_braille_dot(x, y, z, settings: CardSettings, cylinder_diameter_mm, seam_offset_deg=0):
     """
     Create a braille dot transformed to cylinder surface.
@@ -1059,8 +1262,9 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
     # Layout braille cells on cylinder
     cells, cells_per_row = layout_cylindrical_cells(lines, settings, diameter, height)
     
-    # Add triangle recess markers for ALL rows (not just those with content)
+    # Add triangle recess markers and end line markers for ALL rows (not just those with content)
     triangle_meshes = []
+    line_end_meshes = []
     for row_num in range(settings.grid_rows):
         # Calculate Y position for this row
         y_pos = height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
@@ -1080,43 +1284,58 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
             triangle_x, y_local, settings, diameter, seam_offset, height_mm=0.4, for_subtraction=True
         )
         triangle_meshes.append(triangle_mesh)
+        
+        # Add end of row line marker at the last cell position (grid_columns - 1)
+        # Calculate X position for the last column
+        end_angle = start_angle + ((settings.grid_columns - 1) * settings.cell_spacing / radius)
+        line_end_x = end_angle * radius
+        
+        # Create line end marker for subtraction (will create recess)
+        line_end_mesh = create_cylinder_line_end_marker(
+            line_end_x, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
+        )
+        line_end_meshes.append(line_end_mesh)
     
-    # Subtract triangle markers to recess them 0.4mm into the surface
-    print(f"DEBUG: Creating {len(triangle_meshes)} triangle recesses on emboss cylinder")
-    if triangle_meshes:
+    # Subtract triangle markers and line end markers to recess them into the surface
+    print(f"DEBUG: Creating {len(triangle_meshes)} triangle recesses and {len(line_end_meshes)} line end recesses on emboss cylinder")
+    
+    # Combine all markers (triangles and line ends) for efficient boolean operations
+    all_markers = triangle_meshes + line_end_meshes
+    
+    if all_markers:
         try:
-            # Union all triangles first
-            if len(triangle_meshes) == 1:
-                union_triangles = triangle_meshes[0]
+            # Union all markers first
+            if len(all_markers) == 1:
+                union_markers = all_markers[0]
             else:
-                union_triangles = trimesh.boolean.union(triangle_meshes, engine='manifold')
+                union_markers = trimesh.boolean.union(all_markers, engine='manifold')
             
-            print(f"DEBUG: Triangle union successful, subtracting from cylinder shell...")
+            print(f"DEBUG: Marker union successful, subtracting from cylinder shell...")
             # Subtract from shell to recess
-            cylinder_shell = trimesh.boolean.difference([cylinder_shell, union_triangles], engine='manifold')
-            print(f"DEBUG: Triangle subtraction successful")
+            cylinder_shell = trimesh.boolean.difference([cylinder_shell, union_markers], engine='manifold')
+            print(f"DEBUG: Marker subtraction successful")
         except Exception as e:
-            print(f"ERROR: Could not create triangle cutouts: {e}")
+            print(f"ERROR: Could not create marker cutouts: {e}")
             # Try fallback with default engine
             try:
-                print("DEBUG: Trying triangle subtraction with default engine...")
-                if len(triangle_meshes) == 1:
-                    union_triangles = triangle_meshes[0]
+                print("DEBUG: Trying marker subtraction with default engine...")
+                if len(all_markers) == 1:
+                    union_markers = all_markers[0]
                 else:
-                    union_triangles = trimesh.boolean.union(triangle_meshes)
-                cylinder_shell = trimesh.boolean.difference([cylinder_shell, union_triangles])
-                print("DEBUG: Triangle subtraction successful with default engine")
+                    union_markers = trimesh.boolean.union(all_markers)
+                cylinder_shell = trimesh.boolean.difference([cylinder_shell, union_markers])
+                print("DEBUG: Marker subtraction successful with default engine")
             except Exception as e2:
-                print(f"ERROR: Triangle subtraction failed with all engines: {e2}")
+                print(f"ERROR: Marker subtraction failed with all engines: {e2}")
     
     meshes = [cylinder_shell]
     
-    # Check for overflow based on grid dimensions (accounting for triangle markers)
+    # Check for overflow based on grid dimensions (accounting for both markers)
     total_cells_needed = sum(len(line.strip()) for line in lines if line.strip())
-    total_cells_available = (settings.grid_columns - 1) * settings.grid_rows  # One less column due to triangles
+    total_cells_available = (settings.grid_columns - 2) * settings.grid_rows  # Two less columns due to triangles and line ends
     
     if total_cells_needed > total_cells_available:
-        print(f"Warning: Text requires {total_cells_needed} cells but grid has {total_cells_available} cells ({settings.grid_columns-1}×{settings.grid_rows} after triangle markers)")
+        print(f"Warning: Text requires {total_cells_needed} cells but grid has {total_cells_available} cells ({settings.grid_columns-2}×{settings.grid_rows} after row markers)")
     
     # Check if grid wraps too far around cylinder
     if grid_angle_deg > 360:
@@ -1220,10 +1439,11 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]  # Vertical stays linear
     dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
     
-    # Create triangle marker recesses for ALL rows
+    # Create triangle marker recesses and end of row line recesses for ALL rows
     triangle_meshes = []
+    line_end_meshes = []
     
-    # Create triangles for ALL rows in the grid
+    # Create triangles and line ends for ALL rows in the grid
     for row_num in range(settings.grid_rows):
         # Calculate Y position for this row
         y_pos = height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
@@ -1237,6 +1457,17 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             triangle_x, y_local, settings, diameter, seam_offset, height_mm=0.4, for_subtraction=True
         )
         triangle_meshes.append(triangle_mesh)
+        
+        # Add end of row line marker at the last cell position (grid_columns - 1)
+        # Calculate X position for the last column
+        end_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle)
+        line_end_x = end_angle * radius
+        
+        # Create line end marker for subtraction (will create recess)
+        line_end_mesh = create_cylinder_line_end_marker(
+            line_end_x, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
+        )
+        line_end_meshes.append(line_end_mesh)
     
     # Create spheres for ALL dot positions in ALL cells (universal counter plate)
     sphere_meshes = []
@@ -1246,8 +1477,8 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         # Calculate Y position for this row
         y_pos = height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
         
-        # Process ALL columns (minus one for triangle marker space)
-        for col_num in range(settings.grid_columns - 1):
+        # Process ALL columns (minus two for triangle and line end marker spaces)
+        for col_num in range(settings.grid_columns - 2):
             # Calculate cell position (shifted by one cell for triangle marker)
             cell_angle = start_angle + ((col_num + 1) * cell_spacing_angle)
             cell_x = cell_angle * radius  # Convert to arc length
@@ -1319,12 +1550,27 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
                     union_triangles = triangle_meshes[0]
                 else:
                     union_triangles = trimesh.boolean.union(triangle_meshes, engine=engine)
-                
-                # Combine spheres and triangles (both are cutouts for counter plate)
-                print(f"DEBUG: Cylinder boolean - combining spheres and triangles with {engine_name}...")
-                all_cutouts = trimesh.boolean.union([union_spheres, union_triangles], engine=engine)
+            
+            # Union all line end markers
+            if line_end_meshes:
+                print(f"DEBUG: Cylinder boolean - union line end markers with {engine_name}...")
+                if len(line_end_meshes) == 1:
+                    union_line_ends = line_end_meshes[0]
+                else:
+                    union_line_ends = trimesh.boolean.union(line_end_meshes, engine=engine)
+            
+            # Combine all cutouts (spheres, triangles, and line ends)
+            print(f"DEBUG: Cylinder boolean - combining all cutouts with {engine_name}...")
+            all_cutouts_list = [union_spheres]
+            if triangle_meshes:
+                all_cutouts_list.append(union_triangles)
+            if line_end_meshes:
+                all_cutouts_list.append(union_line_ends)
+            
+            if len(all_cutouts_list) > 1:
+                all_cutouts = trimesh.boolean.union(all_cutouts_list, engine=engine)
             else:
-                all_cutouts = union_spheres
+                all_cutouts = all_cutouts_list[0]
             
             print(f"DEBUG: Cylinder boolean - subtract all cutouts from cylinder shell with {engine_name}...")
             final_shell = trimesh.boolean.difference([cylinder_shell, all_cutouts], engine=engine)
@@ -1356,6 +1602,24 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
                 result_shell = trimesh.boolean.difference([result_shell, sphere])
             except Exception as sphere_error:
                 print(f"WARNING: Failed to subtract sphere {i+1}: {sphere_error}")
+                continue
+        
+        # Subtract triangles individually
+        for i, triangle in enumerate(triangle_meshes):
+            try:
+                print(f"DEBUG: Subtracting triangle {i+1}/{len(triangle_meshes)} from cylinder shell...")
+                result_shell = trimesh.boolean.difference([result_shell, triangle])
+            except Exception as triangle_error:
+                print(f"WARNING: Failed to subtract triangle {i+1}: {triangle_error}")
+                continue
+        
+        # Subtract line end markers individually
+        for i, line_end in enumerate(line_end_meshes):
+            try:
+                print(f"DEBUG: Subtracting line end marker {i+1}/{len(line_end_meshes)} from cylinder shell...")
+                result_shell = trimesh.boolean.difference([result_shell, line_end])
+            except Exception as line_error:
+                print(f"WARNING: Failed to subtract line end marker {i+1}: {line_error}")
                 continue
         
         final_shell = result_shell
@@ -1431,9 +1695,10 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
         # Calculate Y position for this row (same as embossing plate, using safe margin)
         y_pos = params.card_height - params.top_margin - (row * params.line_spacing) + params.braille_y_adjust
         
-        for col in range(params.grid_columns):
-            # Calculate X position for this column (same as embossing plate)
-            x_pos = params.left_margin + (col * params.cell_spacing) + params.braille_x_adjust
+        # Process ALL columns (minus two for triangle and line end marker spaces)
+        for col in range(params.grid_columns - 2):
+            # Calculate X position for this column (shifted by one cell due to triangle marker)
+            x_pos = params.left_margin + ((col + 1) * params.cell_spacing) + params.braille_x_adjust
             
             # Create spheres for ALL 6 dots in this cell
             for dot_idx in range(6):
@@ -1456,6 +1721,29 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
     
     print(f"DEBUG: Created {total_spheres} hemispheres for counter plate")
     
+    # Create triangle marker recesses and end of row line recesses for ALL rows
+    triangle_meshes = []
+    line_end_meshes = []
+    for row_num in range(params.grid_rows):
+        # Calculate Y position for this row
+        y_pos = params.card_height - params.top_margin - (row_num * params.line_spacing) + params.braille_y_adjust
+        
+        # Add triangle marker at the first cell position (column 0)
+        x_pos = params.left_margin + params.braille_x_adjust
+        
+        # Create triangle marker for subtraction (will create recess)
+        triangle_mesh = create_card_triangle_marker_3d(x_pos, y_pos, params, height=0.4, for_subtraction=True)
+        triangle_meshes.append(triangle_mesh)
+        
+        # Add end of row line marker at the last cell position (grid_columns - 1)
+        x_pos_end = params.left_margin + ((params.grid_columns - 1) * params.cell_spacing) + params.braille_x_adjust
+        
+        # Create line end marker for subtraction (will create recess)
+        line_end_mesh = create_card_line_end_marker_3d(x_pos_end, y_pos, params, height=0.5, for_subtraction=True)
+        line_end_meshes.append(line_end_mesh)
+    
+    print(f"DEBUG: Created {len(triangle_meshes)} triangle markers and {len(line_end_meshes)} line end markers for counter plate")
+    
     if not sphere_meshes:
         print("WARNING: No spheres were generated. Returning base plate.")
         return plate_mesh
@@ -1475,9 +1763,38 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
                 print("DEBUG: Unioning spheres...")
                 union_spheres = trimesh.boolean.union(sphere_meshes, engine=engine)
             
-            print("DEBUG: Subtracting spheres from plate...")
-            # Subtract the unified spheres from the plate in one operation
-            counter_plate_mesh = trimesh.boolean.difference([plate_mesh, union_spheres], engine=engine)
+            # Union all triangles
+            if triangle_meshes:
+                print(f"DEBUG: Unioning {len(triangle_meshes)} triangles...")
+                if len(triangle_meshes) == 1:
+                    union_triangles = triangle_meshes[0]
+                else:
+                    union_triangles = trimesh.boolean.union(triangle_meshes, engine=engine)
+            
+            # Union all line end markers
+            if line_end_meshes:
+                print(f"DEBUG: Unioning {len(line_end_meshes)} line end markers...")
+                if len(line_end_meshes) == 1:
+                    union_line_ends = line_end_meshes[0]
+                else:
+                    union_line_ends = trimesh.boolean.union(line_end_meshes, engine=engine)
+            
+            # Combine all cutouts (spheres, triangles, and line ends)
+            print("DEBUG: Combining all cutouts...")
+            all_cutouts_list = [union_spheres]
+            if triangle_meshes:
+                all_cutouts_list.append(union_triangles)
+            if line_end_meshes:
+                all_cutouts_list.append(union_line_ends)
+            
+            if len(all_cutouts_list) > 1:
+                all_cutouts = trimesh.boolean.union(all_cutouts_list, engine=engine)
+            else:
+                all_cutouts = all_cutouts_list[0]
+            
+            print("DEBUG: Subtracting all cutouts from plate...")
+            # Subtract the unified cutouts from the plate in one operation
+            counter_plate_mesh = trimesh.boolean.difference([plate_mesh, all_cutouts], engine=engine)
             
             # Verify the mesh is watertight
             if not counter_plate_mesh.is_watertight:
@@ -1498,9 +1815,9 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
                 print(f"WARNING: Trying next engine...")
                 continue
     
-    # Final fallback: subtract spheres one by one (slower but more reliable)
+    # Final fallback: subtract spheres and triangles one by one (slower but more reliable)
     try:
-        print("DEBUG: Attempting individual sphere subtraction...")
+        print("DEBUG: Attempting individual sphere and triangle subtraction...")
         counter_plate_mesh = plate_mesh.copy()
         
         for i, sphere in enumerate(sphere_meshes):
@@ -1509,6 +1826,24 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
                 counter_plate_mesh = trimesh.boolean.difference([counter_plate_mesh, sphere])
             except Exception as sphere_error:
                 print(f"WARNING: Failed to subtract sphere {i+1}: {sphere_error}")
+                continue
+        
+        # Subtract triangles individually
+        for i, triangle in enumerate(triangle_meshes):
+            try:
+                print(f"DEBUG: Subtracting triangle {i+1}/{len(triangle_meshes)}...")
+                counter_plate_mesh = trimesh.boolean.difference([counter_plate_mesh, triangle])
+            except Exception as triangle_error:
+                print(f"WARNING: Failed to subtract triangle {i+1}: {triangle_error}")
+                continue
+        
+        # Subtract line end markers individually
+        for i, line_end in enumerate(line_end_meshes):
+            try:
+                print(f"DEBUG: Subtracting line end marker {i+1}/{len(line_end_meshes)}...")
+                counter_plate_mesh = trimesh.boolean.difference([counter_plate_mesh, line_end])
+            except Exception as line_error:
+                print(f"WARNING: Failed to subtract line end marker {i+1}: {line_error}")
                 continue
         
         # Try to fix the mesh

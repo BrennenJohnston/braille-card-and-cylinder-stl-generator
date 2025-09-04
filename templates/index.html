@@ -1649,7 +1649,7 @@
                                 <label for="grid_columns" id="grid_columns_label">Number of Braille Cells (Characters):</label>
                                 <input type="number" id="grid_columns" name="grid_columns" value="12">
                                 <div id="grid_columns_note" class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                    For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 12 cells for text.
+                                    For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 12 cells available for text.
                                 </div>
                             </div>
                             <div>
@@ -2379,16 +2379,29 @@
                     
                     if (!preserveValue) {
                         // Only set default value if not preserving user's custom value
+                        // Show user the available cells (12), backend will add 2 for indicators
                         gridColumnsInput.value = '12';
+                    } else {
+                        // Convert from backend value (total) to displayed value (available)
+                        if (currentValue > 2) {
+                            gridColumnsInput.value = String(currentValue - 2);
+                        }
                     }
                 } else {
-                    // Counter plate - show all cells
-                    gridColumnsLabel.textContent = 'Number of Braille Cells (Characters):';
-                    gridColumnsNote.style.display = 'none';
+                    // Counter plate - show available cells (total - 2)
+                    gridColumnsLabel.textContent = 'Available Braille Cells for Text:';
+                    gridColumnsNote.textContent = 'For counter plates: 2 cells are reserved for row indicators (start/end markers), leaving 12 cells available for text.';
+                    gridColumnsNote.style.display = 'block';
                     
                     if (!preserveValue) {
                         // Only set default value if not preserving user's custom value
-                        gridColumnsInput.value = '14';
+                        // Show user the available cells (12), backend will add 2 for indicators
+                        gridColumnsInput.value = '12';
+                    } else {
+                        // Convert from backend value (total) to displayed value (available)
+                        if (currentValue > 2) {
+                            gridColumnsInput.value = String(currentValue - 2);
+                        }
                     }
                 }
             }
@@ -2842,11 +2855,9 @@
                 log.debug('Counter plate selected - no text translation needed');
             }
             const settings = {
-                // For embossing plates, add 2 to account for reserved cells
-                // For counter plates, use the value as-is
-                grid_columns: plateType === 'positive' ? 
-                    String(parseInt(document.getElementById('grid_columns').value) + 2) : 
-                    document.getElementById('grid_columns').value,
+                // For both plate types, add 2 to account for reserved cells (indicators)
+                // The frontend displays the available cells, but backend needs total cells
+                grid_columns: String(parseInt(document.getElementById('grid_columns').value) + 2),
                 grid_rows: document.getElementById('grid_rows').value,
                 cell_spacing: document.getElementById('cell_spacing').value,
                 line_spacing: document.getElementById('line_spacing').value,

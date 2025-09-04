@@ -429,6 +429,42 @@ def create_braille_dot(x, y, z, settings: CardSettings):
     return cylinder
 
 
+def create_triangle_marker_polygon(x, y, settings: CardSettings):
+    """
+    Create a 2D triangle polygon for the first cell of each braille row.
+    The triangle base height equals the distance between top and bottom braille dots.
+    The triangle extends horizontally to the middle-right dot position.
+    
+    Args:
+        x: X position of the cell center
+        y: Y position of the cell center
+        settings: CardSettings object with braille dimensions
+    
+    Returns:
+        Shapely Polygon representing the triangle
+    """
+    # Calculate triangle dimensions based on braille dot spacing
+    # Base height = distance from top to bottom dot = 2 * dot_spacing
+    base_height = 2 * settings.dot_spacing
+    
+    # Triangle height (horizontal extension) = dot_spacing (to reach middle-right dot)
+    triangle_width = settings.dot_spacing
+    
+    # Triangle vertices:
+    # Base is centered between top-left and bottom-left dots
+    base_x = x - settings.dot_spacing / 2  # Left column position
+    
+    # Create triangle vertices
+    vertices = [
+        (base_x, y - settings.dot_spacing),      # Bottom of base
+        (base_x, y + settings.dot_spacing),      # Top of base
+        (base_x + triangle_width, y)             # Apex (at middle-right dot height)
+    ]
+    
+    # Create and return the triangle polygon
+    return Polygon(vertices)
+
+
 
 def create_positive_plate_mesh(lines, grade="g1", settings=None):
     """
@@ -739,10 +775,10 @@ def layout_cylindrical_cells(braille_lines, settings: CardSettings, cylinder_dia
         # Calculate Y position for this row (same as card)
         y_pos = cylinder_height_mm - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
         
-        # Process each character up to grid_columns
-        for col_num, braille_char in enumerate(line[:settings.grid_columns]):
-            # Calculate angular position for this column
-            angle = start_angle + (col_num * cell_spacing_angle)
+        # Process each character up to grid_columns-1 (one less due to triangle marker)
+        for col_num, braille_char in enumerate(line[:settings.grid_columns-1]):
+            # Calculate angular position for this column (shifted by one cell)
+            angle = start_angle + ((col_num + 1) * cell_spacing_angle)
             x_pos = angle * radius  # Convert to arc length for compatibility
             cells.append((braille_char, x_pos, y_pos))
     
@@ -855,6 +891,91 @@ def create_cylinder_shell(diameter_mm, height_mm, polygonal_cutout_radius_mm):
     print("Warning: Could not create polygonal cutout, returning solid cylinder")
     return main_cylinder
 
+def create_cylinder_triangle_marker(x_arc, y_local, settings: CardSettings, cylinder_diameter_mm, seam_offset_deg=0, height_mm=0.4, for_subtraction=True):
+    """
+    Create a triangular prism for cylinder surface marking.
+    
+    Args:
+        x_arc: Arc length position along circumference (same units as mm on the card)
+        y_local: Z position relative to cylinder center (card Y minus height/2)
+        settings: CardSettings object
+        cylinder_diameter_mm: Cylinder diameter
+        seam_offset_deg: Rotation offset for seam
+        height_mm: Depth/height of the triangle marker (default 0.4mm)
+        for_subtraction: If True, creates a tool for boolean subtraction to make recesses
+    """
+    radius = cylinder_diameter_mm / 2.0
+    circumference = np.pi * cylinder_diameter_mm
+    
+    # Angle around cylinder for planar x position
+    theta = (x_arc / circumference) * 2.0 * np.pi + np.radians(seam_offset_deg)
+    
+    # Local orthonormal frame at theta
+    r_hat = np.array([np.cos(theta), np.sin(theta), 0.0])      # radial outward
+    t_hat = np.array([-np.sin(theta), np.cos(theta), 0.0])     # tangential
+    z_hat = np.array([0.0, 0.0, 1.0])                          # cylinder axis
+    
+    # Triangle dimensions - standard guide triangle shape
+    base_height = 2.0 * settings.dot_spacing  # Vertical extent
+    triangle_width = settings.dot_spacing     # Horizontal extent (pointing right in tangent direction)
+    
+    # Build 2D triangle in local tangent (X=t) and vertical (Y=z) plane
+    # Vertices: base on left, apex pointing right
+    from shapely.geometry import Polygon as ShapelyPolygon
+    tri_2d = ShapelyPolygon([
+        (0.0, -settings.dot_spacing),    # Bottom of base
+        (0.0,  settings.dot_spacing),    # Top of base
+        (triangle_width, 0.0)            # Apex (pointing tangentially)
+    ])
+    
+    # For subtraction tool, we need to extend beyond the surface
+    if for_subtraction:
+        # Extrude to create cutting tool that extends from outside to inside the cylinder
+        extrude_height = height_mm + 1.0  # Total extrusion depth
+        tri_prism_local = trimesh.creation.extrude_polygon(tri_2d, height=extrude_height)
+        
+        # The prism is created with Z from 0 to extrude_height
+        # We need to center it so it extends from -0.5 to (height_mm + 0.5)
+        tri_prism_local.apply_translation([0, 0, -0.5])
+        
+        # Build transform: map local coords to cylinder coords
+        T = np.eye(4)
+        T[:3, 0] = t_hat   # X axis (tangential)
+        T[:3, 1] = z_hat   # Y axis (vertical)
+        T[:3, 2] = r_hat   # Z axis (radial outward)
+        
+        # Position so the prism starts outside the cylinder and cuts inward
+        # The prism's Z=0 should be at radius (cylinder surface)
+        center_pos = r_hat * radius + z_hat * y_local
+        T[:3, 3] = center_pos
+        
+        # Apply the transform
+        tri_prism_local.apply_transform(T)
+        
+        # Debug output - only print for first triangle to avoid spam
+        if abs(y_local) < settings.line_spacing:  # First row
+            print(f"DEBUG: Triangle at theta={np.degrees(theta):.1f}°, y_local={y_local:.1f}mm")
+            print(f"DEBUG: Triangle bounds after transform: {tri_prism_local.bounds}")
+            print(f"DEBUG: Cylinder radius: {radius}mm")
+    else:
+        # For direct recessed triangle (not used currently)
+        tri_prism_local = trimesh.creation.extrude_polygon(tri_2d, height=height_mm)
+        
+        # Build transform for inward extrusion
+        T = np.eye(4)
+        T[:3, 0] = t_hat   # X axis
+        T[:3, 1] = z_hat   # Y axis
+        T[:3, 2] = -r_hat  # Z axis (inward)
+        
+        # Position recessed into surface
+        center_pos = r_hat * (radius - height_mm / 2.0) + z_hat * y_local
+        T[:3, 3] = center_pos
+        
+        tri_prism_local.apply_transform(T)
+    
+    return tri_prism_local
+
+
 def create_cylinder_braille_dot(x, y, z, settings: CardSettings, cylinder_diameter_mm, seam_offset_deg=0):
     """
     Create a braille dot transformed to cylinder surface.
@@ -938,12 +1059,64 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
     # Layout braille cells on cylinder
     cells, cells_per_row = layout_cylindrical_cells(lines, settings, diameter, height)
     
-    # Check for overflow based on grid dimensions
+    # Add triangle recess markers for ALL rows (not just those with content)
+    triangle_meshes = []
+    for row_num in range(settings.grid_rows):
+        # Calculate Y position for this row
+        y_pos = height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
+        
+        # Calculate X position for triangle marker (at column 0 position)
+        # The grid is centered, so start angle is -grid_angle/2
+        grid_width = (settings.grid_columns - 1) * settings.cell_spacing
+        grid_angle = grid_width / radius
+        start_angle = -grid_angle / 2
+        
+        # Triangle goes at the first cell position (column 0)
+        triangle_x = start_angle * radius
+        
+        # Create triangle marker for subtraction (will create recess)
+        y_local = y_pos - (height / 2.0)
+        triangle_mesh = create_cylinder_triangle_marker(
+            triangle_x, y_local, settings, diameter, seam_offset, height_mm=0.4, for_subtraction=True
+        )
+        triangle_meshes.append(triangle_mesh)
+    
+    # Subtract triangle markers to recess them 0.4mm into the surface
+    print(f"DEBUG: Creating {len(triangle_meshes)} triangle recesses on emboss cylinder")
+    if triangle_meshes:
+        try:
+            # Union all triangles first
+            if len(triangle_meshes) == 1:
+                union_triangles = triangle_meshes[0]
+            else:
+                union_triangles = trimesh.boolean.union(triangle_meshes, engine='manifold')
+            
+            print(f"DEBUG: Triangle union successful, subtracting from cylinder shell...")
+            # Subtract from shell to recess
+            cylinder_shell = trimesh.boolean.difference([cylinder_shell, union_triangles], engine='manifold')
+            print(f"DEBUG: Triangle subtraction successful")
+        except Exception as e:
+            print(f"ERROR: Could not create triangle cutouts: {e}")
+            # Try fallback with default engine
+            try:
+                print("DEBUG: Trying triangle subtraction with default engine...")
+                if len(triangle_meshes) == 1:
+                    union_triangles = triangle_meshes[0]
+                else:
+                    union_triangles = trimesh.boolean.union(triangle_meshes)
+                cylinder_shell = trimesh.boolean.difference([cylinder_shell, union_triangles])
+                print("DEBUG: Triangle subtraction successful with default engine")
+            except Exception as e2:
+                print(f"ERROR: Triangle subtraction failed with all engines: {e2}")
+    
+    meshes = [cylinder_shell]
+    
+    # Check for overflow based on grid dimensions (accounting for triangle markers)
     total_cells_needed = sum(len(line.strip()) for line in lines if line.strip())
-    total_cells_available = settings.grid_columns * settings.grid_rows
+    total_cells_available = (settings.grid_columns - 1) * settings.grid_rows  # One less column due to triangles
     
     if total_cells_needed > total_cells_available:
-        print(f"Warning: Text requires {total_cells_needed} cells but grid has {total_cells_available} cells ({settings.grid_columns}×{settings.grid_rows})")
+        print(f"Warning: Text requires {total_cells_needed} cells but grid has {total_cells_available} cells ({settings.grid_columns-1}×{settings.grid_rows} after triangle markers)")
     
     # Check if grid wraps too far around cylinder
     if grid_angle_deg > 360:
@@ -980,9 +1153,11 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
     # Combine all meshes
     final_mesh = trimesh.util.concatenate(meshes)
     
-    # Position cylinder for 3D printing: base at Z=0, extending upward
-    # The cylinder is currently centered at origin, so translate up by height/2
-    final_mesh.apply_translation([0, 0, height/2])
+    # The cylinder is already created with vertical axis (along Z)
+    # No rotation needed - it should stand upright
+    # Just ensure the base is at Z=0
+    min_z = final_mesh.bounds[0][2]
+    final_mesh.apply_translation([0, 0, -min_z])
     
     return final_mesh
 
@@ -1045,28 +1220,46 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]  # Vertical stays linear
     dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
     
-    # Create spheres for ALL possible dot positions
+    # Create triangle marker recesses for ALL rows
+    triangle_meshes = []
+    
+    # Create triangles for ALL rows in the grid
+    for row_num in range(settings.grid_rows):
+        # Calculate Y position for this row
+        y_pos = height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
+        
+        # Add triangle marker at the first cell position (column 0)
+        triangle_x = start_angle * radius
+        
+        # Create triangle marker for subtraction (will create recess)
+        y_local = y_pos - (height / 2.0)
+        triangle_mesh = create_cylinder_triangle_marker(
+            triangle_x, y_local, settings, diameter, seam_offset, height_mm=0.4, for_subtraction=True
+        )
+        triangle_meshes.append(triangle_mesh)
+    
+    # Create spheres for ALL dot positions in ALL cells (universal counter plate)
     sphere_meshes = []
     
-    # Start from top of cylinder (using safe margin = ½ cell spacing)
-    current_y = height - settings.top_margin
-    
-    for row in range(rows_on_cylinder):
-        if current_y < settings.top_margin:
-            break
-            
-        for col in range(settings.grid_columns):
-            # Calculate cell angular position
-            cell_angle = start_angle + (col * cell_spacing_angle)
+    # Process ALL cells in the grid (not just those with braille content)
+    for row_num in range(settings.grid_rows):
+        # Calculate Y position for this row
+        y_pos = height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
+        
+        # Process ALL columns (minus one for triangle marker space)
+        for col_num in range(settings.grid_columns - 1):
+            # Calculate cell position (shifted by one cell for triangle marker)
+            cell_angle = start_angle + ((col_num + 1) * cell_spacing_angle)
+            cell_x = cell_angle * radius  # Convert to arc length
             
             # Create spheres for ALL 6 dots in this cell
             for dot_idx in range(6):
                 dot_pos = dot_positions[dot_idx]
-                # Calculate dot angular position
-                dot_angle = cell_angle + dot_col_angle_offsets[dot_pos[1]]
-                dot_y = current_y + dot_row_offsets[dot_pos[0]]
+                # Use angular offset for horizontal spacing, converted back to arc length
+                dot_x = cell_x + (dot_col_angle_offsets[dot_pos[1]] * radius)
+                dot_y = y_pos + dot_row_offsets[dot_pos[0]]
                 
-                # Create sphere with radius based on counter plate offset (same as card version)
+                # Create sphere with radius based on counter plate offset
                 hemisphere_radius = (settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset) / 2
                 sphere = trimesh.creation.icosphere(subdivisions=settings.hemisphere_subdivisions, radius=hemisphere_radius)
                 
@@ -1076,11 +1269,10 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
                 
                 # Transform to cylindrical coordinates on OUTER surface
                 outer_radius = diameter / 2
-                theta = dot_angle + np.radians(seam_offset)
+                # Convert x position to angle
+                theta = (dot_x / (np.pi * diameter)) * 2 * np.pi + np.radians(seam_offset)
                 
-                # Place sphere center at the cylinder's outer radius so the tangent plane at the
-                # dot location intersects the sphere at its equator (true hemispherical dimple).
-                # Add a tiny outward overcut to avoid near-coplanar issues and guarantee a clear opening.
+                # Place sphere center at the cylinder's outer radius
                 overcut = max(settings.epsilon, getattr(settings, 'cylinder_counter_plate_overcut_mm', 0.05))
                 center_radius = outer_radius + overcut
                 cyl_x = center_radius * np.cos(theta)
@@ -1090,42 +1282,52 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
                 
                 sphere.apply_translation([cyl_x, cyl_y, cyl_z])
                 sphere_meshes.append(sphere)
-        
-        # Move to next row
-        current_y -= settings.line_spacing
     
     print(f"DEBUG: Creating {len(sphere_meshes)} hemispherical recesses on cylinder counter plate")
     
     if not sphere_meshes:
         print("WARNING: No spheres were generated for cylinder counter plate. Returning base shell.")
-        # Rotate cylinder 90 degrees around X-axis so curved surface faces viewer
-        rotation_matrix = trimesh.transformations.rotation_matrix(np.pi/2, [1, 0, 0])
-        cylinder_shell.apply_transform(rotation_matrix)
-        
-        # Flip cylinder 180 degrees around Z-axis to orient it right-side up
-        # This ensures the top of the cylinder faces up relative to the viewer
-        flip_matrix = trimesh.transformations.rotation_matrix(np.pi, [0, 0, 1])
-        cylinder_shell.apply_transform(flip_matrix)
+        # The cylinder is already created with vertical axis (along Z)
+        # No rotation needed - it should stand upright
+        # Just ensure the base is at Z=0
+        min_z = cylinder_shell.bounds[0][2]
+        cylinder_shell.apply_translation([0, 0, -min_z])
         
         return cylinder_shell
     
     # More robust boolean strategy:
     # 1) Start with the cylinder shell (which already has the polygonal cutout)
-    # 2) Subtract the union of all spheres to create outer recesses
+    # 2) Subtract the union of all spheres and triangles to create outer recesses
     
     engines_to_try = ['manifold', None]  # None uses trimesh default
     
     for engine in engines_to_try:
         try:
             engine_name = engine if engine else "trimesh-default"
+            
+            # Union all spheres
             print(f"DEBUG: Cylinder boolean - union spheres with {engine_name}...")
             if len(sphere_meshes) == 1:
                 union_spheres = sphere_meshes[0]
             else:
                 union_spheres = trimesh.boolean.union(sphere_meshes, engine=engine)
             
-            print(f"DEBUG: Cylinder boolean - subtract spheres from cylinder shell with {engine_name}...")
-            final_shell = trimesh.boolean.difference([cylinder_shell, union_spheres], engine=engine)
+            # Union all triangles
+            if triangle_meshes:
+                print(f"DEBUG: Cylinder boolean - union triangles with {engine_name}...")
+                if len(triangle_meshes) == 1:
+                    union_triangles = triangle_meshes[0]
+                else:
+                    union_triangles = trimesh.boolean.union(triangle_meshes, engine=engine)
+                
+                # Combine spheres and triangles (both are cutouts for counter plate)
+                print(f"DEBUG: Cylinder boolean - combining spheres and triangles with {engine_name}...")
+                all_cutouts = trimesh.boolean.union([union_spheres, union_triangles], engine=engine)
+            else:
+                all_cutouts = union_spheres
+            
+            print(f"DEBUG: Cylinder boolean - subtract all cutouts from cylinder shell with {engine_name}...")
+            final_shell = trimesh.boolean.difference([cylinder_shell, all_cutouts], engine=engine)
             
             if not final_shell.is_watertight:
                 print("DEBUG: Cylinder final shell not watertight, attempting to fill holes...")
@@ -1133,9 +1335,11 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             
             print(f"DEBUG: Cylinder counter plate completed with {engine_name}: {len(final_shell.vertices)} vertices, {len(final_shell.faces)} faces")
             
-            # Position cylinder for 3D printing: base at Z=0, extending upward
-            # The cylinder is currently centered at origin, so translate up by height/2
-            final_shell.apply_translation([0, 0, height/2])
+            # The cylinder is already created with vertical axis (along Z)
+            # No rotation needed - it should stand upright
+            # Just ensure the base is at Z=0
+            min_z = final_shell.bounds[0][2]
+            final_shell.apply_translation([0, 0, -min_z])
             
             return final_shell
         except Exception as e:
@@ -1159,18 +1363,22 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             final_shell.fill_holes()
         print(f"DEBUG: Fallback completed: {len(final_shell.vertices)} vertices, {len(final_shell.faces)} faces")
         
-        # Position cylinder for 3D printing: base at Z=0, extending upward
-        # The cylinder is currently centered at origin, so translate up by height/2
-        final_shell.apply_translation([0, 0, height/2])
+        # The cylinder is already created with vertical axis (along Z)
+        # No rotation needed - it should stand upright
+        # Just ensure the base is at Z=0
+        min_z = final_shell.bounds[0][2]
+        final_shell.apply_translation([0, 0, -min_z])
         
         return final_shell
     except Exception as final_error:
         print(f"ERROR: Cylinder fallback boolean failed: {final_error}")
         print("WARNING: Returning simple cylinder shell without recesses.")
         
-        # Position cylinder for 3D printing: base at Z=0, extending upward
-        # The cylinder is currently centered at origin, so translate up by height/2
-        cylinder_shell.apply_translation([0, 0, height/2])
+        # The cylinder is already created with vertical axis (along Z)
+        # No rotation needed - it should stand upright
+        # Just ensure the base is at Z=0
+        min_z = cylinder_shell.bounds[0][2]
+        cylinder_shell.apply_translation([0, 0, -min_z])
         
         return cylinder_shell
 

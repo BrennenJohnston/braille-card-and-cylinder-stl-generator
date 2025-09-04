@@ -186,7 +186,7 @@ class CardSettings:
             "card_height": 60,
             "card_thickness": 2.0,
             # Grid parameters
-            "grid_columns": 13,
+            "grid_columns": 14,
             "grid_rows": 4,
             "cell_spacing": 6.5,  # Project brief default
             "line_spacing": 10.0,
@@ -590,6 +590,7 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
     base.apply_translation((settings.card_width/2, settings.card_height/2, settings.card_thickness/2))
     
     meshes = [base]
+    marker_meshes = []  # Store markers separately for subtraction
     
     # Dot positioning constants
     dot_col_offsets = [-settings.dot_spacing / 2, settings.dot_spacing / 2]
@@ -605,17 +606,17 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
         # Calculate X position for the first column
         x_pos = settings.left_margin + settings.braille_x_adjust
         
-        # Create triangle marker for this row
-        triangle_mesh = create_card_triangle_marker_3d(x_pos, y_pos, settings, height=0.4, for_subtraction=False)
-        meshes.append(triangle_mesh)
+        # Create triangle marker for this row (recessed for embossing plate)
+        triangle_mesh = create_card_triangle_marker_3d(x_pos, y_pos, settings, height=0.4, for_subtraction=True)
+        marker_meshes.append(triangle_mesh)
         
         # Add end of row line marker at the last cell position (grid_columns - 1)
         # Calculate X position for the last column
         x_pos_end = settings.left_margin + ((settings.grid_columns - 1) * settings.cell_spacing) + settings.braille_x_adjust
         
-        # Create line end marker for this row
-        line_end_mesh = create_card_line_end_marker_3d(x_pos_end, y_pos, settings, height=0.5, for_subtraction=False)
-        meshes.append(line_end_mesh)
+        # Create line end marker for this row (recessed for embossing plate)
+        line_end_mesh = create_card_line_end_marker_3d(x_pos_end, y_pos, settings, height=0.5, for_subtraction=True)
+        marker_meshes.append(line_end_mesh)
     
     # Process each line in top-down order
     for row_num in range(settings.grid_rows):
@@ -670,8 +671,40 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
                     dot_mesh = create_braille_dot(dot_x, dot_y, z, settings)
                     meshes.append(dot_mesh)
     
-    print(f"Created positive plate with {len(meshes)-1-settings.grid_rows*2} cone-shaped dots, {settings.grid_rows} triangle markers, and {settings.grid_rows} line end markers")
-    return trimesh.util.concatenate(meshes)
+    print(f"Created positive plate with {len(meshes)-1} cone-shaped dots, {settings.grid_rows} triangle markers, and {settings.grid_rows} line end markers")
+    
+    # Combine all positive meshes (base + dots)
+    combined_mesh = trimesh.util.concatenate(meshes)
+    
+    # Subtract marker recesses from the combined mesh
+    if marker_meshes:
+        try:
+            # Union all markers for efficient boolean operation
+            if len(marker_meshes) == 1:
+                union_markers = marker_meshes[0]
+            else:
+                union_markers = trimesh.boolean.union(marker_meshes, engine='manifold')
+            
+            print(f"DEBUG: Subtracting {len(marker_meshes)} marker recesses from embossing plate...")
+            # Subtract markers to create recesses
+            combined_mesh = trimesh.boolean.difference([combined_mesh, union_markers], engine='manifold')
+            print(f"DEBUG: Marker subtraction successful")
+        except Exception as e:
+            print(f"WARNING: Could not create marker recesses with manifold engine: {e}")
+            # Try fallback with default engine
+            try:
+                print("DEBUG: Trying marker subtraction with default engine...")
+                if len(marker_meshes) == 1:
+                    union_markers = marker_meshes[0]
+                else:
+                    union_markers = trimesh.boolean.union(marker_meshes)
+                combined_mesh = trimesh.boolean.difference([combined_mesh, union_markers])
+                print("DEBUG: Marker subtraction successful with default engine")
+            except Exception as e2:
+                print(f"ERROR: Marker subtraction failed with all engines: {e2}")
+                print("Returning embossing plate without marker recesses")
+    
+    return combined_mesh
 
 def create_simple_negative_plate(settings: CardSettings, lines=None):
     """

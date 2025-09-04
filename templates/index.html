@@ -1647,9 +1647,9 @@
                             <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
                             <div>
                                 <label for="grid_columns" id="grid_columns_label">Number of Braille Cells (Characters):</label>
-                                <input type="number" id="grid_columns" name="grid_columns" value="11">
+                                <input type="number" id="grid_columns" name="grid_columns" value="12">
                                 <div id="grid_columns_note" class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                    For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 11 cells for text.
+                                    For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 12 cells for text.
                                 </div>
                             </div>
                             <div>
@@ -2379,7 +2379,7 @@
                     
                     if (!preserveValue) {
                         // Only set default value if not preserving user's custom value
-                        gridColumnsInput.value = '11';
+                        gridColumnsInput.value = '12';
                     }
                 } else {
                     // Counter plate - show all cells
@@ -2388,7 +2388,7 @@
                     
                     if (!preserveValue) {
                         // Only set default value if not preserving user's custom value
-                        gridColumnsInput.value = '13';
+                        gridColumnsInput.value = '14';
                     }
                 }
             }

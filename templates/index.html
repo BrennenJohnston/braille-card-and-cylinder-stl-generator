@@ -2938,7 +2938,8 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    lines: translatedLines, 
+                    lines: translatedLines,
+                    original_lines: lines,  // Send original text for character indicators
                     grade: 'g2', 
                     plate_type: plateType, 
                     shape_type: shapeType,

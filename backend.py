@@ -566,15 +566,313 @@ def create_card_line_end_marker_3d(x, y, settings: CardSettings, height=0.5, for
     return line_prism
 
 
-def create_positive_plate_mesh(lines, grade="g1", settings=None):
+def create_character_shape_3d(character, x, y, settings: CardSettings, height=0.6, for_subtraction=True):
+    """
+    Create a 3D character shape (capital letter A-Z or number 0-9) for end of row marking.
+    
+    Args:
+        character: Single character (A-Z or 0-9)
+        x, y: Center position of the last braille cell in the row
+        settings: CardSettings object with spacing parameters
+        height: Depth of the character recess (default 0.6mm as requested)
+        for_subtraction: If True, creates a tool for boolean subtraction to make recesses
+    
+    Returns:
+        Trimesh object representing the 3D character marker
+    """
+    # Define character size based on braille cell dimensions (with 1mm increase)
+    char_height = 2 * settings.dot_spacing + 1.0  # Increased by 1mm as requested
+    char_width = settings.dot_spacing * 0.8 + 1.0  # Increased by 1mm as requested
+    
+    # Position character at the right column of the cell
+    char_x = x + settings.dot_spacing / 2
+    char_y = y
+    
+    # Define simple line segments for each character
+    # Each character is defined as a list of line segments (start_x, start_y, end_x, end_y)
+    # Coordinates are normalized to a unit square and will be scaled
+    char_definitions = {
+        'A': [
+            (0.2, 0, 0.5, 1), (0.5, 1, 0.8, 0),  # Two sides of triangle
+            (0.35, 0.5, 0.65, 0.5)  # Horizontal bar
+        ],
+        'B': [
+            (0.2, 0, 0.2, 1),  # Vertical line
+            (0.2, 1, 0.7, 1), (0.7, 1, 0.8, 0.85), (0.8, 0.85, 0.8, 0.65), (0.8, 0.65, 0.7, 0.5), (0.7, 0.5, 0.2, 0.5),  # Top curve
+            (0.2, 0.5, 0.7, 0.5), (0.7, 0.5, 0.8, 0.35), (0.8, 0.35, 0.8, 0.15), (0.8, 0.15, 0.7, 0), (0.7, 0, 0.2, 0)  # Bottom curve
+        ],
+        'C': [
+            (0.8, 0.8, 0.7, 0.9), (0.7, 0.9, 0.5, 1), (0.5, 1, 0.3, 0.9), (0.3, 0.9, 0.2, 0.7),
+            (0.2, 0.7, 0.2, 0.3), (0.2, 0.3, 0.3, 0.1), (0.3, 0.1, 0.5, 0), (0.5, 0, 0.7, 0.1), (0.7, 0.1, 0.8, 0.2)
+        ],
+        'D': [
+            (0.2, 0, 0.2, 1),  # Vertical line
+            (0.2, 1, 0.6, 1), (0.6, 1, 0.8, 0.8), (0.8, 0.8, 0.8, 0.2), (0.8, 0.2, 0.6, 0), (0.6, 0, 0.2, 0)
+        ],
+        'E': [
+            (0.2, 0, 0.2, 1),  # Vertical line
+            (0.2, 1, 0.8, 1),  # Top horizontal
+            (0.2, 0.5, 0.7, 0.5),  # Middle horizontal
+            (0.2, 0, 0.8, 0)  # Bottom horizontal
+        ],
+        'F': [
+            (0.2, 0, 0.2, 1),  # Vertical line
+            (0.2, 1, 0.8, 1),  # Top horizontal
+            (0.2, 0.5, 0.7, 0.5)  # Middle horizontal
+        ],
+        'G': [
+            (0.8, 0.8, 0.7, 0.9), (0.7, 0.9, 0.5, 1), (0.5, 1, 0.3, 0.9), (0.3, 0.9, 0.2, 0.7),
+            (0.2, 0.7, 0.2, 0.3), (0.2, 0.3, 0.3, 0.1), (0.3, 0.1, 0.5, 0), (0.5, 0, 0.7, 0.1), (0.7, 0.1, 0.8, 0.2),
+            (0.8, 0.2, 0.8, 0.5), (0.8, 0.5, 0.5, 0.5)
+        ],
+        'H': [
+            (0.2, 0, 0.2, 1),  # Left vertical
+            (0.8, 0, 0.8, 1),  # Right vertical
+            (0.2, 0.5, 0.8, 0.5)  # Horizontal bar
+        ],
+        'I': [
+            (0.3, 1, 0.7, 1),  # Top horizontal
+            (0.5, 1, 0.5, 0),  # Vertical
+            (0.3, 0, 0.7, 0)  # Bottom horizontal
+        ],
+        'J': [
+            (0.4, 1, 0.8, 1),  # Top horizontal
+            (0.6, 1, 0.6, 0.2),  # Vertical
+            (0.6, 0.2, 0.5, 0.1), (0.5, 0.1, 0.3, 0), (0.3, 0, 0.2, 0.1), (0.2, 0.1, 0.2, 0.3)
+        ],
+        'K': [
+            (0.2, 0, 0.2, 1),  # Vertical line
+            (0.8, 1, 0.2, 0.5),  # Upper diagonal
+            (0.2, 0.5, 0.8, 0)  # Lower diagonal
+        ],
+        'L': [
+            (0.2, 1, 0.2, 0),  # Vertical line
+            (0.2, 0, 0.8, 0)  # Bottom horizontal
+        ],
+        'M': [
+            (0.2, 0, 0.2, 1),  # Left vertical
+            (0.2, 1, 0.5, 0.6),  # Left diagonal
+            (0.5, 0.6, 0.8, 1),  # Right diagonal
+            (0.8, 1, 0.8, 0)  # Right vertical
+        ],
+        'N': [
+            (0.2, 0, 0.2, 1),  # Left vertical
+            (0.2, 1, 0.8, 0),  # Diagonal
+            (0.8, 0, 0.8, 1)  # Right vertical
+        ],
+        'O': [
+            (0.5, 1, 0.3, 0.9), (0.3, 0.9, 0.2, 0.7), (0.2, 0.7, 0.2, 0.3), (0.2, 0.3, 0.3, 0.1),
+            (0.3, 0.1, 0.5, 0), (0.5, 0, 0.7, 0.1), (0.7, 0.1, 0.8, 0.3), (0.8, 0.3, 0.8, 0.7),
+            (0.8, 0.7, 0.7, 0.9), (0.7, 0.9, 0.5, 1)
+        ],
+        'P': [
+            (0.2, 0, 0.2, 1),  # Vertical line
+            (0.2, 1, 0.7, 1), (0.7, 1, 0.8, 0.85), (0.8, 0.85, 0.8, 0.65), (0.8, 0.65, 0.7, 0.5), (0.7, 0.5, 0.2, 0.5)
+        ],
+        'Q': [
+            (0.5, 1, 0.3, 0.9), (0.3, 0.9, 0.2, 0.7), (0.2, 0.7, 0.2, 0.3), (0.2, 0.3, 0.3, 0.1),
+            (0.3, 0.1, 0.5, 0), (0.5, 0, 0.7, 0.1), (0.7, 0.1, 0.8, 0.3), (0.8, 0.3, 0.8, 0.7),
+            (0.8, 0.7, 0.7, 0.9), (0.7, 0.9, 0.5, 1),
+            (0.6, 0.2, 0.8, 0)  # Tail
+        ],
+        'R': [
+            (0.2, 0, 0.2, 1),  # Vertical line
+            (0.2, 1, 0.7, 1), (0.7, 1, 0.8, 0.85), (0.8, 0.85, 0.8, 0.65), (0.8, 0.65, 0.7, 0.5), (0.7, 0.5, 0.2, 0.5),
+            (0.2, 0.5, 0.8, 0)  # Diagonal leg
+        ],
+        'S': [
+            (0.8, 0.85, 0.7, 1), (0.7, 1, 0.3, 1), (0.3, 1, 0.2, 0.85), (0.2, 0.85, 0.2, 0.65),
+            (0.2, 0.65, 0.3, 0.5), (0.3, 0.5, 0.7, 0.5), (0.7, 0.5, 0.8, 0.35), (0.8, 0.35, 0.8, 0.15),
+            (0.8, 0.15, 0.7, 0), (0.7, 0, 0.3, 0), (0.3, 0, 0.2, 0.15)
+        ],
+        'T': [
+            (0.2, 1, 0.8, 1),  # Top horizontal
+            (0.5, 1, 0.5, 0)  # Vertical
+        ],
+        'U': [
+            (0.2, 1, 0.2, 0.3), (0.2, 0.3, 0.3, 0.1), (0.3, 0.1, 0.5, 0), (0.5, 0, 0.7, 0.1), (0.7, 0.1, 0.8, 0.3), (0.8, 0.3, 0.8, 1)
+        ],
+        'V': [
+            (0.2, 1, 0.5, 0),  # Left diagonal
+            (0.5, 0, 0.8, 1)  # Right diagonal
+        ],
+        'W': [
+            (0.1, 1, 0.3, 0),  # First diagonal
+            (0.3, 0, 0.5, 0.4),  # Second diagonal up
+            (0.5, 0.4, 0.7, 0),  # Third diagonal down
+            (0.7, 0, 0.9, 1)  # Fourth diagonal
+        ],
+        'X': [
+            (0.2, 1, 0.8, 0),  # Diagonal 1
+            (0.2, 0, 0.8, 1)  # Diagonal 2
+        ],
+        'Y': [
+            (0.2, 1, 0.5, 0.5),  # Left diagonal
+            (0.8, 1, 0.5, 0.5),  # Right diagonal
+            (0.5, 0.5, 0.5, 0)  # Vertical
+        ],
+        'Z': [
+            (0.2, 1, 0.8, 1),  # Top horizontal
+            (0.8, 1, 0.2, 0),  # Diagonal
+            (0.2, 0, 0.8, 0)  # Bottom horizontal
+        ],
+        '0': [
+            (0.5, 1, 0.3, 0.9), (0.3, 0.9, 0.2, 0.7), (0.2, 0.7, 0.2, 0.3), (0.2, 0.3, 0.3, 0.1),
+            (0.3, 0.1, 0.5, 0), (0.5, 0, 0.7, 0.1), (0.7, 0.1, 0.8, 0.3), (0.8, 0.3, 0.8, 0.7),
+            (0.8, 0.7, 0.7, 0.9), (0.7, 0.9, 0.5, 1)
+        ],
+        '1': [
+            (0.3, 0.8, 0.5, 1),  # Diagonal top
+            (0.5, 1, 0.5, 0),  # Vertical
+            (0.3, 0, 0.7, 0)  # Bottom horizontal
+        ],
+        '2': [
+            (0.2, 0.8, 0.3, 0.9), (0.3, 0.9, 0.5, 1), (0.5, 1, 0.7, 0.9), (0.7, 0.9, 0.8, 0.8),
+            (0.8, 0.8, 0.8, 0.6), (0.8, 0.6, 0.7, 0.5), (0.7, 0.5, 0.2, 0), (0.2, 0, 0.8, 0)
+        ],
+        '3': [
+            (0.2, 0.85, 0.3, 1), (0.3, 1, 0.7, 1), (0.7, 1, 0.8, 0.85), (0.8, 0.85, 0.8, 0.65),
+            (0.8, 0.65, 0.7, 0.5), (0.7, 0.5, 0.4, 0.5),
+            (0.7, 0.5, 0.8, 0.35), (0.8, 0.35, 0.8, 0.15), (0.8, 0.15, 0.7, 0), (0.7, 0, 0.3, 0), (0.3, 0, 0.2, 0.15)
+        ],
+        '4': [
+            (0.7, 0, 0.7, 1),  # Vertical line
+            (0.2, 0.6, 0.2, 1), (0.2, 0.6, 0.8, 0.6)  # Horizontal and left part
+        ],
+        '5': [
+            (0.8, 1, 0.2, 1),  # Top horizontal
+            (0.2, 1, 0.2, 0.6),  # Vertical down
+            (0.2, 0.6, 0.7, 0.6), (0.7, 0.6, 0.8, 0.45), (0.8, 0.45, 0.8, 0.15), (0.8, 0.15, 0.7, 0), (0.7, 0, 0.3, 0), (0.3, 0, 0.2, 0.15)
+        ],
+        '6': [
+            (0.7, 0.9, 0.5, 1), (0.5, 1, 0.3, 0.9), (0.3, 0.9, 0.2, 0.7), (0.2, 0.7, 0.2, 0.3),
+            (0.2, 0.3, 0.3, 0.1), (0.3, 0.1, 0.5, 0), (0.5, 0, 0.7, 0.1), (0.7, 0.1, 0.8, 0.3),
+            (0.8, 0.3, 0.8, 0.5), (0.8, 0.5, 0.7, 0.6), (0.7, 0.6, 0.3, 0.6), (0.3, 0.6, 0.2, 0.5)
+        ],
+        '7': [
+            (0.2, 1, 0.8, 1),  # Top horizontal
+            (0.8, 1, 0.4, 0)  # Diagonal
+        ],
+        '8': [
+            (0.5, 1, 0.3, 0.9), (0.3, 0.9, 0.2, 0.75), (0.2, 0.75, 0.3, 0.6), (0.3, 0.6, 0.5, 0.5),
+            (0.5, 0.5, 0.7, 0.4), (0.7, 0.4, 0.8, 0.25), (0.8, 0.25, 0.7, 0.1), (0.7, 0.1, 0.5, 0),
+            (0.5, 0, 0.3, 0.1), (0.3, 0.1, 0.2, 0.25), (0.2, 0.25, 0.3, 0.4), (0.3, 0.4, 0.5, 0.5),
+            (0.5, 0.5, 0.7, 0.6), (0.7, 0.6, 0.8, 0.75), (0.8, 0.75, 0.7, 0.9), (0.7, 0.9, 0.5, 1)
+        ],
+        '9': [
+            (0.8, 0.5, 0.7, 0.4), (0.7, 0.4, 0.5, 0.4), (0.5, 0.4, 0.3, 0.5), (0.3, 0.5, 0.2, 0.7),
+            (0.2, 0.7, 0.2, 0.85), (0.2, 0.85, 0.3, 1), (0.3, 1, 0.7, 1), (0.7, 1, 0.8, 0.85),
+            (0.8, 0.85, 0.8, 0.3), (0.8, 0.3, 0.7, 0.1), (0.7, 0.1, 0.5, 0), (0.5, 0, 0.3, 0.1)
+        ]
+    }
+    
+    # Get the character definition
+    char_upper = character.upper()
+    if char_upper not in char_definitions:
+        # Fall back to rectangle for undefined characters
+        return create_card_line_end_marker_3d(x, y, settings, height, for_subtraction)
+    
+    line_segments = char_definitions[char_upper]
+    
+    # Create polygon paths for the character
+    # Convert line segments to polygons with thickness
+    line_thickness = 0.20  # Increased thickness for bold effect
+    polygons = []
+    
+    for seg in line_segments:
+        x1, y1, x2, y2 = seg
+        
+        # Scale to actual size
+        x1 = char_x - char_width/2 + x1 * char_width
+        y1 = char_y - char_height/2 + y1 * char_height
+        x2 = char_x - char_width/2 + x2 * char_width
+        y2 = char_y - char_height/2 + y2 * char_height
+        
+        # Create a rectangle for the line segment
+        dx = x2 - x1
+        dy = y2 - y1
+        length = np.sqrt(dx**2 + dy**2)
+        if length > 0:
+            # Normal vector (perpendicular to line)
+            nx = -dy / length * char_width * line_thickness / 2
+            ny = dx / length * char_width * line_thickness / 2
+            
+            # Four corners of the rectangle
+            vertices = [
+                (x1 - nx, y1 - ny),
+                (x1 + nx, y1 + ny),
+                (x2 + nx, y2 + ny),
+                (x2 - nx, y2 - ny)
+            ]
+            
+            polygons.append(Polygon(vertices))
+    
+    # Union all polygons into one shape
+    if polygons:
+        try:
+            char_2d = unary_union(polygons)
+            
+            # Handle different geometry types
+            if hasattr(char_2d, 'geoms'):
+                # MultiPolygon - take the largest polygon
+                largest_poly = max(char_2d.geoms, key=lambda p: p.area)
+                char_2d = largest_poly
+            
+            # Ensure the polygon is valid
+            if not char_2d.is_valid:
+                char_2d = char_2d.buffer(0)  # Fix self-intersections
+            
+            # Simplify the polygon slightly to avoid numerical issues
+            char_2d = char_2d.simplify(0.05, preserve_topology=True)
+            
+        except Exception as e:
+            print(f"WARNING: Failed to create character shape: {e}")
+            return create_card_line_end_marker_3d(x, y, settings, height, for_subtraction)
+    else:
+        # Fallback to rectangle
+        return create_card_line_end_marker_3d(x, y, settings, height, for_subtraction)
+    
+    # Extrude to 3D
+    try:
+        if for_subtraction:
+            # For embossing plate recesses, extrude downward from top surface
+            extrude_height = height + 0.5  # Extra depth to ensure clean boolean
+            char_prism = trimesh.creation.extrude_polygon(char_2d, height=extrude_height)
+            
+            # Ensure the mesh is valid
+            if not char_prism.is_volume:
+                char_prism.fix_normals()
+                if not char_prism.is_volume:
+                    print(f"WARNING: Character mesh is not a valid volume")
+                    return create_card_line_end_marker_3d(x, y, settings, height, for_subtraction)
+            
+            # Position at the top surface of the card
+            z_pos = settings.card_thickness - 0.1  # Start slightly above surface
+            char_prism.apply_translation([0, 0, z_pos])
+        else:
+            # For raised characters (if needed in future)
+            char_prism = trimesh.creation.extrude_polygon(char_2d, height=height)
+            
+            # Position on top of the card base
+            z_pos = settings.card_thickness
+            char_prism.apply_translation([0, 0, z_pos])
+    except Exception as e:
+        print(f"WARNING: Failed to extrude character shape: {e}")
+        return create_card_line_end_marker_3d(x, y, settings, height, for_subtraction)
+    
+    return char_prism
+
+
+def create_positive_plate_mesh(lines, grade="g1", settings=None, original_lines=None):
     """
     Create a standard braille mesh (positive plate with raised dots).
     Lines are processed in top-down order.
     
     Args:
-        lines: List of 4 text lines
+        lines: List of 4 text lines (braille Unicode)
         grade: "g1" for Grade 1 or "g2" for Grade 2
         settings: A CardSettings object with all dimensional parameters.
+        original_lines: List of 4 original text lines (before braille conversion) for character indicators
     """
     if settings is None:
         settings = CardSettings()
@@ -614,8 +912,25 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None):
         # Calculate X position for the last column
         x_pos_end = settings.left_margin + ((settings.grid_columns - 1) * settings.cell_spacing) + settings.braille_x_adjust
         
-        # Create line end marker for this row (recessed for embossing plate)
-        line_end_mesh = create_card_line_end_marker_3d(x_pos_end, y_pos, settings, height=0.5, for_subtraction=True)
+        # Determine which character to use for end-of-row indicator
+        if original_lines and row_num < len(original_lines):
+            original_text = original_lines[row_num].strip()
+            if original_text:
+                # Get the first character (letter or number)
+                first_char = original_text[0]
+                if first_char.isalpha() or first_char.isdigit():
+                    # Create character shape for end-of-row indicator (0.6mm deep as requested)
+                    line_end_mesh = create_character_shape_3d(first_char, x_pos_end, y_pos, settings, height=0.6, for_subtraction=True)
+                else:
+                    # Fall back to rectangle for non-alphanumeric first characters
+                    line_end_mesh = create_card_line_end_marker_3d(x_pos_end, y_pos, settings, height=0.5, for_subtraction=True)
+            else:
+                # Empty line, use rectangle
+                line_end_mesh = create_card_line_end_marker_3d(x_pos_end, y_pos, settings, height=0.5, for_subtraction=True)
+        else:
+            # No original text provided, use rectangle as fallback
+            line_end_mesh = create_card_line_end_marker_3d(x_pos_end, y_pos, settings, height=0.5, for_subtraction=True)
+        
         marker_meshes.append(line_end_mesh)
     
     # Process each line in top-down order
@@ -1212,6 +1527,333 @@ def create_cylinder_line_end_marker(x_arc, y_local, settings: CardSettings, cyli
     return line_prism_local
 
 
+def create_cylinder_character_shape(character, x_arc, y_local, settings: CardSettings, cylinder_diameter_mm, seam_offset_deg=0, height_mm=0.6, for_subtraction=True):
+    """
+    Create a 3D character shape (capital letter A-Z or number 0-9) for end of row marking on cylinder surface.
+    
+    Args:
+        character: Single character (A-Z or 0-9)
+        x_arc: Arc length position along circumference (same units as mm on the card)
+        y_local: Z position relative to cylinder center (card Y minus height/2)
+        settings: CardSettings object
+        cylinder_diameter_mm: Cylinder diameter
+        seam_offset_deg: Seam rotation offset in degrees
+        height_mm: Depth of the character recess (default 0.6mm as requested)
+        for_subtraction: If True, creates a tool for boolean subtraction
+    
+    Returns:
+        Trimesh object representing the 3D character marker transformed to cylinder
+    """
+    radius = cylinder_diameter_mm / 2.0
+    circumference = np.pi * cylinder_diameter_mm
+    
+    # Angle around cylinder for planar x position
+    theta = (x_arc / circumference) * 2.0 * np.pi + np.radians(seam_offset_deg)
+    
+    # Local orthonormal frame at theta
+    r_hat = np.array([np.cos(theta), np.sin(theta), 0.0])      # radial outward
+    t_hat = np.array([-np.sin(theta), np.cos(theta), 0.0])     # tangential
+    z_hat = np.array([0.0, 0.0, 1.0])                          # cylinder axis
+    
+    # Define character size based on braille cell dimensions (with 1mm increase)
+    char_height = 2 * settings.dot_spacing + 1.0  # Increased by 1mm as requested
+    char_width = settings.dot_spacing * 0.8 + 1.0  # Increased by 1mm as requested
+    
+    # Character definitions (same as card version)
+    char_definitions = {
+        'A': [
+            (0.2, 0, 0.5, 1), (0.5, 1, 0.8, 0),  # Two sides of triangle
+            (0.35, 0.5, 0.65, 0.5)  # Horizontal bar
+        ],
+        'B': [
+            (0.2, 0, 0.2, 1),  # Vertical line
+            (0.2, 1, 0.7, 1), (0.7, 1, 0.8, 0.85), (0.8, 0.85, 0.8, 0.65), (0.8, 0.65, 0.7, 0.5), (0.7, 0.5, 0.2, 0.5),  # Top curve
+            (0.2, 0.5, 0.7, 0.5), (0.7, 0.5, 0.8, 0.35), (0.8, 0.35, 0.8, 0.15), (0.8, 0.15, 0.7, 0), (0.7, 0, 0.2, 0)  # Bottom curve
+        ],
+        'C': [
+            (0.8, 0.8, 0.7, 0.9), (0.7, 0.9, 0.5, 1), (0.5, 1, 0.3, 0.9), (0.3, 0.9, 0.2, 0.7),
+            (0.2, 0.7, 0.2, 0.3), (0.2, 0.3, 0.3, 0.1), (0.3, 0.1, 0.5, 0), (0.5, 0, 0.7, 0.1), (0.7, 0.1, 0.8, 0.2)
+        ],
+        'D': [
+            (0.2, 0, 0.2, 1),  # Vertical line
+            (0.2, 1, 0.6, 1), (0.6, 1, 0.8, 0.8), (0.8, 0.8, 0.8, 0.2), (0.8, 0.2, 0.6, 0), (0.6, 0, 0.2, 0)
+        ],
+        'E': [
+            (0.2, 0, 0.2, 1),  # Vertical line
+            (0.2, 1, 0.8, 1),  # Top horizontal
+            (0.2, 0.5, 0.7, 0.5),  # Middle horizontal
+            (0.2, 0, 0.8, 0)  # Bottom horizontal
+        ],
+        'F': [
+            (0.2, 0, 0.2, 1),  # Vertical line
+            (0.2, 1, 0.8, 1),  # Top horizontal
+            (0.2, 0.5, 0.7, 0.5)  # Middle horizontal
+        ],
+        'G': [
+            (0.8, 0.8, 0.7, 0.9), (0.7, 0.9, 0.5, 1), (0.5, 1, 0.3, 0.9), (0.3, 0.9, 0.2, 0.7),
+            (0.2, 0.7, 0.2, 0.3), (0.2, 0.3, 0.3, 0.1), (0.3, 0.1, 0.5, 0), (0.5, 0, 0.7, 0.1), (0.7, 0.1, 0.8, 0.2),
+            (0.8, 0.2, 0.8, 0.5), (0.8, 0.5, 0.5, 0.5)
+        ],
+        'H': [
+            (0.2, 0, 0.2, 1),  # Left vertical
+            (0.8, 0, 0.8, 1),  # Right vertical
+            (0.2, 0.5, 0.8, 0.5)  # Horizontal bar
+        ],
+        'I': [
+            (0.3, 1, 0.7, 1),  # Top horizontal
+            (0.5, 1, 0.5, 0),  # Vertical
+            (0.3, 0, 0.7, 0)  # Bottom horizontal
+        ],
+        'J': [
+            (0.4, 1, 0.8, 1),  # Top horizontal
+            (0.6, 1, 0.6, 0.2),  # Vertical
+            (0.6, 0.2, 0.5, 0.1), (0.5, 0.1, 0.3, 0), (0.3, 0, 0.2, 0.1), (0.2, 0.1, 0.2, 0.3)
+        ],
+        'K': [
+            (0.2, 0, 0.2, 1),  # Vertical line
+            (0.8, 1, 0.2, 0.5),  # Upper diagonal
+            (0.2, 0.5, 0.8, 0)  # Lower diagonal
+        ],
+        'L': [
+            (0.2, 1, 0.2, 0),  # Vertical line
+            (0.2, 0, 0.8, 0)  # Bottom horizontal
+        ],
+        'M': [
+            (0.2, 0, 0.2, 1),  # Left vertical
+            (0.2, 1, 0.5, 0.6),  # Left diagonal
+            (0.5, 0.6, 0.8, 1),  # Right diagonal
+            (0.8, 1, 0.8, 0)  # Right vertical
+        ],
+        'N': [
+            (0.2, 0, 0.2, 1),  # Left vertical
+            (0.2, 1, 0.8, 0),  # Diagonal
+            (0.8, 0, 0.8, 1)  # Right vertical
+        ],
+        'O': [
+            (0.5, 1, 0.3, 0.9), (0.3, 0.9, 0.2, 0.7), (0.2, 0.7, 0.2, 0.3), (0.2, 0.3, 0.3, 0.1),
+            (0.3, 0.1, 0.5, 0), (0.5, 0, 0.7, 0.1), (0.7, 0.1, 0.8, 0.3), (0.8, 0.3, 0.8, 0.7),
+            (0.8, 0.7, 0.7, 0.9), (0.7, 0.9, 0.5, 1)
+        ],
+        'P': [
+            (0.2, 0, 0.2, 1),  # Vertical line
+            (0.2, 1, 0.7, 1), (0.7, 1, 0.8, 0.85), (0.8, 0.85, 0.8, 0.65), (0.8, 0.65, 0.7, 0.5), (0.7, 0.5, 0.2, 0.5)
+        ],
+        'Q': [
+            (0.5, 1, 0.3, 0.9), (0.3, 0.9, 0.2, 0.7), (0.2, 0.7, 0.2, 0.3), (0.2, 0.3, 0.3, 0.1),
+            (0.3, 0.1, 0.5, 0), (0.5, 0, 0.7, 0.1), (0.7, 0.1, 0.8, 0.3), (0.8, 0.3, 0.8, 0.7),
+            (0.8, 0.7, 0.7, 0.9), (0.7, 0.9, 0.5, 1),
+            (0.6, 0.2, 0.8, 0)  # Tail
+        ],
+        'R': [
+            (0.2, 0, 0.2, 1),  # Vertical line
+            (0.2, 1, 0.7, 1), (0.7, 1, 0.8, 0.85), (0.8, 0.85, 0.8, 0.65), (0.8, 0.65, 0.7, 0.5), (0.7, 0.5, 0.2, 0.5),
+            (0.2, 0.5, 0.8, 0)  # Diagonal leg
+        ],
+        'S': [
+            (0.8, 0.85, 0.7, 1), (0.7, 1, 0.3, 1), (0.3, 1, 0.2, 0.85), (0.2, 0.85, 0.2, 0.65),
+            (0.2, 0.65, 0.3, 0.5), (0.3, 0.5, 0.7, 0.5), (0.7, 0.5, 0.8, 0.35), (0.8, 0.35, 0.8, 0.15),
+            (0.8, 0.15, 0.7, 0), (0.7, 0, 0.3, 0), (0.3, 0, 0.2, 0.15)
+        ],
+        'T': [
+            (0.2, 1, 0.8, 1),  # Top horizontal
+            (0.5, 1, 0.5, 0)  # Vertical
+        ],
+        'U': [
+            (0.2, 1, 0.2, 0.3), (0.2, 0.3, 0.3, 0.1), (0.3, 0.1, 0.5, 0), (0.5, 0, 0.7, 0.1), (0.7, 0.1, 0.8, 0.3), (0.8, 0.3, 0.8, 1)
+        ],
+        'V': [
+            (0.2, 1, 0.5, 0),  # Left diagonal
+            (0.5, 0, 0.8, 1)  # Right diagonal
+        ],
+        'W': [
+            (0.1, 1, 0.3, 0),  # First diagonal
+            (0.3, 0, 0.5, 0.4),  # Second diagonal up
+            (0.5, 0.4, 0.7, 0),  # Third diagonal down
+            (0.7, 0, 0.9, 1)  # Fourth diagonal
+        ],
+        'X': [
+            (0.2, 1, 0.8, 0),  # Diagonal 1
+            (0.2, 0, 0.8, 1)  # Diagonal 2
+        ],
+        'Y': [
+            (0.2, 1, 0.5, 0.5),  # Left diagonal
+            (0.8, 1, 0.5, 0.5),  # Right diagonal
+            (0.5, 0.5, 0.5, 0)  # Vertical
+        ],
+        'Z': [
+            (0.2, 1, 0.8, 1),  # Top horizontal
+            (0.8, 1, 0.2, 0),  # Diagonal
+            (0.2, 0, 0.8, 0)  # Bottom horizontal
+        ],
+        '0': [
+            (0.5, 1, 0.3, 0.9), (0.3, 0.9, 0.2, 0.7), (0.2, 0.7, 0.2, 0.3), (0.2, 0.3, 0.3, 0.1),
+            (0.3, 0.1, 0.5, 0), (0.5, 0, 0.7, 0.1), (0.7, 0.1, 0.8, 0.3), (0.8, 0.3, 0.8, 0.7),
+            (0.8, 0.7, 0.7, 0.9), (0.7, 0.9, 0.5, 1)
+        ],
+        '1': [
+            (0.3, 0.8, 0.5, 1),  # Diagonal top
+            (0.5, 1, 0.5, 0),  # Vertical
+            (0.3, 0, 0.7, 0)  # Bottom horizontal
+        ],
+        '2': [
+            (0.2, 0.8, 0.3, 0.9), (0.3, 0.9, 0.5, 1), (0.5, 1, 0.7, 0.9), (0.7, 0.9, 0.8, 0.8),
+            (0.8, 0.8, 0.8, 0.6), (0.8, 0.6, 0.7, 0.5), (0.7, 0.5, 0.2, 0), (0.2, 0, 0.8, 0)
+        ],
+        '3': [
+            (0.2, 0.85, 0.3, 1), (0.3, 1, 0.7, 1), (0.7, 1, 0.8, 0.85), (0.8, 0.85, 0.8, 0.65),
+            (0.8, 0.65, 0.7, 0.5), (0.7, 0.5, 0.4, 0.5),
+            (0.7, 0.5, 0.8, 0.35), (0.8, 0.35, 0.8, 0.15), (0.8, 0.15, 0.7, 0), (0.7, 0, 0.3, 0), (0.3, 0, 0.2, 0.15)
+        ],
+        '4': [
+            (0.7, 0, 0.7, 1),  # Vertical line
+            (0.2, 0.6, 0.2, 1), (0.2, 0.6, 0.8, 0.6)  # Horizontal and left part
+        ],
+        '5': [
+            (0.8, 1, 0.2, 1),  # Top horizontal
+            (0.2, 1, 0.2, 0.6),  # Vertical down
+            (0.2, 0.6, 0.7, 0.6), (0.7, 0.6, 0.8, 0.45), (0.8, 0.45, 0.8, 0.15), (0.8, 0.15, 0.7, 0), (0.7, 0, 0.3, 0), (0.3, 0, 0.2, 0.15)
+        ],
+        '6': [
+            (0.7, 0.9, 0.5, 1), (0.5, 1, 0.3, 0.9), (0.3, 0.9, 0.2, 0.7), (0.2, 0.7, 0.2, 0.3),
+            (0.2, 0.3, 0.3, 0.1), (0.3, 0.1, 0.5, 0), (0.5, 0, 0.7, 0.1), (0.7, 0.1, 0.8, 0.3),
+            (0.8, 0.3, 0.8, 0.5), (0.8, 0.5, 0.7, 0.6), (0.7, 0.6, 0.3, 0.6), (0.3, 0.6, 0.2, 0.5)
+        ],
+        '7': [
+            (0.2, 1, 0.8, 1),  # Top horizontal
+            (0.8, 1, 0.4, 0)  # Diagonal
+        ],
+        '8': [
+            (0.5, 1, 0.3, 0.9), (0.3, 0.9, 0.2, 0.75), (0.2, 0.75, 0.3, 0.6), (0.3, 0.6, 0.5, 0.5),
+            (0.5, 0.5, 0.7, 0.4), (0.7, 0.4, 0.8, 0.25), (0.8, 0.25, 0.7, 0.1), (0.7, 0.1, 0.5, 0),
+            (0.5, 0, 0.3, 0.1), (0.3, 0.1, 0.2, 0.25), (0.2, 0.25, 0.3, 0.4), (0.3, 0.4, 0.5, 0.5),
+            (0.5, 0.5, 0.7, 0.6), (0.7, 0.6, 0.8, 0.75), (0.8, 0.75, 0.7, 0.9), (0.7, 0.9, 0.5, 1)
+        ],
+        '9': [
+            (0.8, 0.5, 0.7, 0.4), (0.7, 0.4, 0.5, 0.4), (0.5, 0.4, 0.3, 0.5), (0.3, 0.5, 0.2, 0.7),
+            (0.2, 0.7, 0.2, 0.85), (0.2, 0.85, 0.3, 1), (0.3, 1, 0.7, 1), (0.7, 1, 0.8, 0.85),
+            (0.8, 0.85, 0.8, 0.3), (0.8, 0.3, 0.7, 0.1), (0.7, 0.1, 0.5, 0), (0.5, 0, 0.3, 0.1)
+        ]
+    }
+    
+    # Get the character definition
+    char_upper = character.upper()
+    if char_upper not in char_definitions:
+        # Fall back to rectangle for undefined characters
+        return create_cylinder_line_end_marker(x_arc, y_local, settings, cylinder_diameter_mm, seam_offset_deg, height_mm, for_subtraction)
+    
+    line_segments = char_definitions[char_upper]
+    
+    # Create polygon paths for the character
+    # Convert line segments to polygons with thickness
+    line_thickness = 0.20  # Increased thickness for bold effect
+    polygons = []
+    
+    for seg in line_segments:
+        x1, y1, x2, y2 = seg
+        
+        # Scale to actual size (centered at origin)
+        x1 = (x1 - 0.5) * char_width
+        y1 = (y1 - 0.5) * char_height
+        x2 = (x2 - 0.5) * char_width
+        y2 = (y2 - 0.5) * char_height
+        
+        # Create a rectangle for the line segment
+        dx = x2 - x1
+        dy = y2 - y1
+        length = np.sqrt(dx**2 + dy**2)
+        if length > 0:
+            # Normal vector (perpendicular to line)
+            nx = -dy / length * char_width * line_thickness / 2
+            ny = dx / length * char_width * line_thickness / 2
+            
+            # Four corners of the rectangle
+            vertices = [
+                (x1 - nx, y1 - ny),
+                (x1 + nx, y1 + ny),
+                (x2 + nx, y2 + ny),
+                (x2 - nx, y2 - ny)
+            ]
+            
+            polygons.append(Polygon(vertices))
+    
+    # Union all polygons into one shape
+    if polygons:
+        try:
+            char_2d = unary_union(polygons)
+            
+            # Handle different geometry types
+            if hasattr(char_2d, 'geoms'):
+                # MultiPolygon - take the largest polygon
+                largest_poly = max(char_2d.geoms, key=lambda p: p.area)
+                char_2d = largest_poly
+            
+            # Ensure the polygon is valid
+            if not char_2d.is_valid:
+                char_2d = char_2d.buffer(0)  # Fix self-intersections
+            
+            # Simplify the polygon slightly to avoid numerical issues
+            char_2d = char_2d.simplify(0.05, preserve_topology=True)
+            
+        except Exception as e:
+            print(f"WARNING: Failed to create character shape: {e}")
+            return create_cylinder_line_end_marker(x_arc, y_local, settings, cylinder_diameter_mm, seam_offset_deg, height_mm, for_subtraction)
+    else:
+        # Fallback to rectangle
+        return create_cylinder_line_end_marker(x_arc, y_local, settings, cylinder_diameter_mm, seam_offset_deg, height_mm, for_subtraction)
+    
+    # For subtraction tool, we need to extend beyond the surface
+    try:
+        if for_subtraction:
+            # Extrude to create cutting tool that extends from outside to inside the cylinder
+            extrude_height = height_mm + 1.0  # Total extrusion depth
+            char_prism_local = trimesh.creation.extrude_polygon(char_2d, height=extrude_height)
+            
+            # Ensure the mesh is valid
+            if not char_prism_local.is_volume:
+                char_prism_local.fix_normals()
+                if not char_prism_local.is_volume:
+                    print(f"WARNING: Character mesh is not a valid volume")
+                    return create_cylinder_line_end_marker(x_arc, y_local, settings, cylinder_diameter_mm, seam_offset_deg, height_mm, for_subtraction)
+            
+            # The prism is created with Z from 0 to extrude_height
+            # We need to center it so it extends from -0.5 to (height_mm + 0.5)
+            char_prism_local.apply_translation([0, 0, -0.5])
+            
+            # Build transform: map local coords to cylinder coords
+            T = np.eye(4)
+            T[:3, 0] = t_hat   # X axis (tangential)
+            T[:3, 1] = z_hat   # Y axis (vertical)
+            T[:3, 2] = r_hat   # Z axis (radial outward)
+            
+            # Position so the prism starts outside the cylinder and cuts inward
+            # The prism's Z=0 should be at radius (cylinder surface)
+            center_pos = r_hat * radius + z_hat * y_local
+            T[:3, 3] = center_pos
+            
+            # Apply the transform
+            char_prism_local.apply_transform(T)
+        else:
+            # For direct recessed character (not used currently)
+            char_prism_local = trimesh.creation.extrude_polygon(char_2d, height=height_mm)
+            
+            # Build transform for inward extrusion
+            T = np.eye(4)
+            T[:3, 0] = t_hat   # X axis
+            T[:3, 1] = z_hat   # Y axis
+            T[:3, 2] = -r_hat  # Z axis (inward)
+            
+            # Position recessed into surface
+            center_pos = r_hat * (radius - height_mm / 2.0) + z_hat * y_local
+            T[:3, 3] = center_pos
+            
+            char_prism_local.apply_transform(T)
+    except Exception as e:
+        print(f"WARNING: Failed to extrude character shape: {e}")
+        return create_cylinder_line_end_marker(x_arc, y_local, settings, cylinder_diameter_mm, seam_offset_deg, height_mm, for_subtraction)
+    
+    return char_prism_local
+
+
 def create_cylinder_braille_dot(x, y, z, settings: CardSettings, cylinder_diameter_mm, seam_offset_deg=0):
     """
     Create a braille dot transformed to cylinder surface.
@@ -1242,12 +1884,12 @@ def create_cylinder_braille_dot(x, y, z, settings: CardSettings, cylinder_diamet
 
     return dot
 
-def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None):
+def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None, original_lines=None):
     """
     Generate a cylinder-shaped braille card with dots on the outer surface.
     
     Args:
-        lines: List of text lines
+        lines: List of text lines (braille Unicode)
         grade: Braille grade
         settings: CardSettings object
         cylinder_params: Dictionary with cylinder-specific parameters:
@@ -1255,6 +1897,7 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
             - height_mm: Cylinder height  
             - polygonal_cutout_radius_mm: Inscribed radius of 12-point polygonal cutout (0 = no cutout)
             - seam_offset_deg: Rotation offset for seam
+        original_lines: List of original text lines (before braille conversion) for character indicators
     """
     if settings is None:
         settings = CardSettings()
@@ -1323,10 +1966,33 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
         end_angle = start_angle + ((settings.grid_columns - 1) * settings.cell_spacing / radius)
         line_end_x = end_angle * radius
         
-        # Create line end marker for subtraction (will create recess)
-        line_end_mesh = create_cylinder_line_end_marker(
-            line_end_x, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
-        )
+        # Determine which character to use for end-of-row indicator
+        if original_lines and row_num < len(original_lines):
+            original_text = original_lines[row_num].strip()
+            if original_text:
+                # Get the first character (letter or number)
+                first_char = original_text[0]
+                if first_char.isalpha() or first_char.isdigit():
+                    # Create character shape for end-of-row indicator (0.6mm deep as requested)
+                    line_end_mesh = create_cylinder_character_shape(
+                        first_char, line_end_x, y_local, settings, diameter, seam_offset, height_mm=0.6, for_subtraction=True
+                    )
+                else:
+                    # Fall back to rectangle for non-alphanumeric first characters
+                    line_end_mesh = create_cylinder_line_end_marker(
+                        line_end_x, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
+                    )
+            else:
+                # Empty line, use rectangle
+                line_end_mesh = create_cylinder_line_end_marker(
+                    line_end_x, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
+                )
+        else:
+            # No original text provided, use rectangle as fallback
+            line_end_mesh = create_cylinder_line_end_marker(
+                line_end_x, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
+            )
+        
         line_end_meshes.append(line_end_mesh)
     
     # Subtract triangle markers and line end markers to recess them into the surface
@@ -2129,6 +2795,7 @@ def generate_braille_stl():
             return jsonify({'error': 'No JSON data provided'}), 400
         
         lines = data.get('lines', ['', '', '', ''])
+        original_lines = data.get('original_lines', None)  # Optional: original text before braille conversion
         plate_type = data.get('plate_type', 'positive')
         grade = data.get('grade', 'g2')
         settings_data = data.get('settings', {})
@@ -2170,7 +2837,7 @@ def generate_braille_stl():
         if shape_type == 'card':
             # Original card generation logic
             if plate_type == 'positive':
-                mesh = create_positive_plate_mesh(lines, grade, settings)
+                mesh = create_positive_plate_mesh(lines, grade, settings, original_lines)
             elif plate_type == 'negative':
                 # Counter plate uses hemispherical recesses as per project brief
                 # It does NOT depend on text input - always creates ALL 6 dots per cell
@@ -2182,7 +2849,7 @@ def generate_braille_stl():
         elif shape_type == 'cylinder':
             # New cylinder generation logic
             if plate_type == 'positive':
-                mesh = generate_cylinder_stl(lines, grade, settings, cylinder_params)
+                mesh = generate_cylinder_stl(lines, grade, settings, cylinder_params, original_lines)
             elif plate_type == 'negative':
                 # Cylinder counter plate - needs implementation
                 mesh = generate_cylinder_counter_plate(lines, settings, cylinder_params)

@@ -5,4 +5,5 @@ gunicorn
 flask-cors 
 shapely 
 mapbox-earcut
-manifold3d 
+manifold3d
+matplotlib 

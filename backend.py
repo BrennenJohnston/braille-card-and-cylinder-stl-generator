@@ -1123,8 +1123,23 @@ def layout_cylindrical_cells(braille_lines, settings: CardSettings, cylinder_dia
     # Calculate row height (same as card - vertical spacing doesn't change)
     row_height = settings.line_spacing
     
-    # Start from top of cylinder (using safe margin = ½ cell spacing)
-    current_y = cylinder_height_mm - settings.top_margin
+    # Calculate vertical centering
+    # The braille content spans from the top dot of the first row to the bottom dot of the last row
+    # Each cell has dots at offsets [+dot_spacing, 0, -dot_spacing] from cell center
+    # So a cell spans 2 * dot_spacing vertically
+    
+    # Total content height calculation:
+    # - Distance between first and last row centers: (grid_rows - 1) * line_spacing
+    # - Half cell height above first row center: dot_spacing
+    # - Half cell height below last row center: dot_spacing
+    braille_content_height = (settings.grid_rows - 1) * settings.line_spacing + 2 * settings.dot_spacing
+    
+    # Calculate where to position the first row's center
+    # We want the content centered, so:
+    # - Space above content = space below content = (cylinder_height - content_height) / 2
+    # - First row center = cylinder_height - space_above - dot_spacing
+    space_above = (cylinder_height_mm - braille_content_height) / 2.0
+    first_row_center_y = cylinder_height_mm - space_above - settings.dot_spacing
     
     # Process up to grid_rows lines
     for row_num in range(min(settings.grid_rows, len(braille_lines))):
@@ -1137,8 +1152,8 @@ def layout_cylindrical_cells(braille_lines, settings: CardSettings, cylinder_dia
         if not has_braille_chars:
             continue
         
-        # Calculate Y position for this row (same as card)
-        y_pos = cylinder_height_mm - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
+        # Calculate Y position for this row with vertical centering
+        y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
         
         # Process each character up to grid_columns-2 (two less due to text/number indicator and triangle markers)
         for col_num, braille_char in enumerate(line[:settings.grid_columns-2]):
@@ -1712,12 +1727,30 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
     # Layout braille cells on cylinder
     cells, cells_per_row = layout_cylindrical_cells(lines, settings, diameter, height)
     
+    # Calculate vertical centering for markers
+    # The braille content spans from the top dot of the first row to the bottom dot of the last row
+    # Each cell has dots at offsets [+dot_spacing, 0, -dot_spacing] from cell center
+    # So a cell spans 2 * dot_spacing vertically
+    
+    # Total content height calculation:
+    # - Distance between first and last row centers: (grid_rows - 1) * line_spacing
+    # - Half cell height above first row center: dot_spacing
+    # - Half cell height below last row center: dot_spacing
+    braille_content_height = (settings.grid_rows - 1) * settings.line_spacing + 2 * settings.dot_spacing
+    
+    # Calculate where to position the first row's center
+    # We want the content centered, so:
+    # - Space above content = space below content = (cylinder_height - content_height) / 2
+    # - First row center = cylinder_height - space_above - dot_spacing
+    space_above = (height - braille_content_height) / 2.0
+    first_row_center_y = height - space_above - settings.dot_spacing
+    
     # Add end-of-row text/number indicators and triangle recess markers for ALL rows (not just those with content)
     text_number_meshes = []
     triangle_meshes = []
     for row_num in range(settings.grid_rows):
-        # Calculate Y position for this row
-        y_pos = height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
+        # Calculate Y position for this row with vertical centering
+        y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
         
         # The grid is centered, so start angle is -grid_angle/2
         grid_width = (settings.grid_columns - 1) * settings.cell_spacing
@@ -1913,14 +1946,32 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]  # Vertical stays linear
     dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
     
+    # Calculate vertical centering
+    # The braille content spans from the top dot of the first row to the bottom dot of the last row
+    # Each cell has dots at offsets [+dot_spacing, 0, -dot_spacing] from cell center
+    # So a cell spans 2 * dot_spacing vertically
+    
+    # Total content height calculation:
+    # - Distance between first and last row centers: (grid_rows - 1) * line_spacing
+    # - Half cell height above first row center: dot_spacing
+    # - Half cell height below last row center: dot_spacing
+    braille_content_height = (settings.grid_rows - 1) * settings.line_spacing + 2 * settings.dot_spacing
+    
+    # Calculate where to position the first row's center
+    # We want the content centered, so:
+    # - Space above content = space below content = (cylinder_height - content_height) / 2
+    # - First row center = cylinder_height - space_above - dot_spacing
+    space_above = (height - braille_content_height) / 2.0
+    first_row_center_y = height - space_above - settings.dot_spacing
+    
     # Create end of row line recesses and triangle marker recesses for ALL rows
     line_end_meshes = []
     triangle_meshes = []
     
     # Create line ends and triangles for ALL rows in the grid to match embossing plate layout
     for row_num in range(settings.grid_rows):
-        # Calculate Y position for this row
-        y_pos = height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
+        # Calculate Y position for this row with vertical centering
+        y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
         y_local = y_pos - (height / 2.0)
         
         # Add end of row line marker at the first cell position (column 0) to match embossing plate layout
@@ -1948,8 +1999,8 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     
     # Process ALL cells in the grid (not just those with braille content)
     for row_num in range(settings.grid_rows):
-        # Calculate Y position for this row
-        y_pos = height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
+        # Calculate Y position for this row with vertical centering
+        y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
         
         # Process ALL columns (minus two for first cell indicator and last cell triangle)
         for col_num in range(settings.grid_columns - 2):

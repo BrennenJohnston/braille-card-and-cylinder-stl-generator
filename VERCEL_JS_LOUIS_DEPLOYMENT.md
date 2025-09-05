@@ -14,8 +14,8 @@ This deployment strategy uses the [liblouis/js-build](https://github.com/libloui
 ### **Step 1: Prepare Your Repository**
 
 Your repository is already set up with:
-- `vercel_backend.py` - Backend optimized for Vercel
-- `wsgi.py` - Vercel entry point
+- `backend.py` - Flask app used locally and in serverless
+- `wsgi.py` - Vercel entry point importing `app` from `backend.py`
 - `requirements_vercel.txt` - Minimal dependencies
 - `vercel.json` - Vercel configuration
 - `.vercelignore` - Excludes heavy files
@@ -24,24 +24,22 @@ Your repository is already set up with:
 
 1. **Connect your GitHub repository to Vercel**
 2. **Set build settings**:
-   - Build Command: `pip install -r requirements_vercel.txt`
-   - Output Directory: `.`
    - Install Command: `pip install -r requirements_vercel.txt`
-
+   - Output Directory: `.`
 3. **Deploy!** 🎉
 
 ## 🔧 **How It Works**
 
 ### **Current Implementation**
 
-The `vercel_backend.py` currently uses a fallback translation system that provides basic Grade 1 braille. This ensures your app works immediately after deployment.
+The app uses full Liblouis JS in the browser (web worker) with on-demand table loading from `static/liblouis/tables/`.
 
 ### **Future Enhancement: Full Liblouis JS Integration**
 
-To get full Grade 2 braille support, you can integrate the actual liblouis JavaScript build:
+To get full Grade 2 braille support everywhere, you can integrate the actual liblouis JavaScript build directly in the frontend (already included), or move translation server-side if needed.
 
 ```javascript
-// In your frontend or as a separate service
+// In the frontend
 import { translate } from 'liblouis-js';
 
 async function translateToBraille(text, grade) {
@@ -56,35 +54,30 @@ async function translateToBraille(text, grade) {
 |----------|------|-------------------|---------------|
 | **Full C liblouis** | ~50MB+ | ❌ No | ✅ Full |
 | **Liblouis JS Build** | ~5-10MB | ✅ Yes | ✅ Full |
-| **Current Fallback** | ~1MB | ✅ Yes | ⚠️ Basic |
+| **Minimal Fallback** | ~1MB | ✅ Yes | ⚠️ Basic |
 
 ## 🎯 **Benefits of This Approach**
 
-1. **Immediate Deployment** - Works right now with fallback translation
-2. **Easy Upgrade Path** - Can add full liblouis JS later
-3. **Vercel Optimized** - Designed for serverless environments
-4. **Maintains Quality** - Still generates proper 3D STL models
+1. **Immediate Deployment** - Works right now with JS-based translation
+2. **Vercel Optimized** - Designed for serverless environments
+3. **Maintains Quality** - Generates proper 3D STL models
 
 ## 🔄 **Migration Path**
 
-### **Phase 1: Deploy with Fallback (Current)**
-- ✅ Basic braille translation
+### **Phase 1: Deploy with Frontend Liblouis (Current)**
+- ✅ Grade 1/2 braille support
 - ✅ 3D STL generation
 - ✅ Vercel compatibility
 - ✅ Small deployment size
 
-### **Phase 2: Add Liblouis JS (Future)**
-- ✅ Full Grade 1/2 braille support
-- ✅ Professional braille quality
-- ✅ Still Vercel compatible
-- ✅ Maintains small size
+### **Phase 2: Optional Server-Side Translation**
+- ✅ Add Python bindings or REST service if needed
+- ✅ Keep JS worker as fallback
 
 ## 🚨 **Important Notes**
 
 ### **Current Limitations**
-- **Basic translation only** - Letters A-Z, numbers 0-9, spaces
-- **No contractions** - Grade 1 braille only
-- **No special characters** - Limited punctuation support
+- Serverless function time/memory limits can affect large meshes
 
 ### **Vercel Considerations**
 - **Function timeout** - 10s (hobby) / 60s (pro)
@@ -95,10 +88,10 @@ async function translateToBraille(text, grade) {
 
 1. **Deploy to Vercel**
 2. **Test basic functionality**:
-   - Enter "Hello World" in line 1
+   - Enter text lines
    - Select Grade 2
    - Generate STL
-3. **Verify output** - Should create downloadable STL file
+3. **Verify output** - STL downloads and opens in slicer
 
 ## 🔮 **Next Steps**
 
@@ -108,14 +101,13 @@ async function translateToBraille(text, grade) {
 3. Check performance on Vercel
 
 ### **Short Term (1-2 weeks)**
-1. Research liblouis JS integration options
-2. Plan frontend integration strategy
+1. Profile boolean ops performance
+2. Explore manifold3d usage on serverless
 3. Test with real braille users
 
 ### **Long Term (1-2 months)**
-1. Implement full liblouis JS support
-2. Add Grade 2 contractions
-3. Optimize for production use
+1. Add more shapes or fixtures
+2. Optimize for production use
 
 ## 📚 **Resources**
 
@@ -141,11 +133,10 @@ async function translateToBraille(text, grade) {
    - Optimize trimesh operations
 
 ### **Getting Help**
-
 - Check Vercel deployment logs
-- Test locally with `python vercel_backend.py`
+- Test locally with `python backend.py`
 - Review error messages in browser console
 
 ---
 
-**Ready to deploy?** Your app is already configured for Vercel! 🚀
+**Ready to deploy?** Your app is configured for Vercel! 🚀

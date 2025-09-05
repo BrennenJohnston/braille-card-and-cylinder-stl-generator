@@ -2,6 +2,10 @@
 """
 Desktop application for Braille Card Generator using tkinter.
 This provides a native desktop experience for users who prefer not to use web browsers.
+
+Note: This desktop script is experimental/unmaintained and not wired to Liblouis
+translation tables in Python. The recommended and supported path is the web app
+via `backend.py` (local) or Vercel.
 """
 
 import tkinter as tk

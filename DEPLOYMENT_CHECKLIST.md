@@ -28,7 +28,7 @@ LOG_LEVEL=INFO
 ```
 
 #### 2. CORS Origins
-Update `vercel_backend.py` line ~20:
+Update `backend.py` allowed origins:
 ```python
 allowed_origins = [
     'https://your-actual-vercel-domain.vercel.app',  # Replace with your domain
@@ -37,7 +37,7 @@ allowed_origins = [
 ```
 
 #### 3. Security Headers CSP
-Review and update Content Security Policy in `vercel_backend.py` if needed:
+Review and update Content Security Policy in `backend.py` if needed:
 - Currently allows Google Fonts
 - Restricts script sources to self + inline
 - Update if you add additional external resources
@@ -74,6 +74,10 @@ Review and update Content Security Policy in `vercel_backend.py` if needed:
 2. Connect repository to Vercel
 3. Set environment variables in Vercel dashboard
 4. Deploy and test
+
+> Note: `wsgi.py` imports `app` from `backend.py` for Vercel serverless.
+> Use `requirements_vercel.txt` for the Install step to reduce footprint.
+> Add a `.vercelignore` to exclude build artifacts and large `third_party/` assets; keep `static/liblouis/`.
 
 #### Environment Variables in Vercel:
 1. Go to Project Settings > Environment Variables

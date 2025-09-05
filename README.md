@@ -35,7 +35,8 @@ This web application generates STL files for 3D-printable braille embossing and 
 ## 3. 5-Minute Quick-Start
 
 ### Web Application (Recommended)
-1. **Visit** the web application at your deployed URL
+1. **Local dev**: run `python backend.py` and open `http://localhost:5001`
+2. **Vercel**: connect repo and deploy; serverless entry is `wsgi.py`
 2. **Enter your text** (up to 4 lines)
 3. **Select braille grade** (Grade 2 recommended for most users)
 4. **Choose shape**: Business card (flat) or cylinder
@@ -169,6 +170,26 @@ Huge thanks to **Tobi Weinberg** for kick-starting the project and introducing m
 Attribution: This project was originally based on
 [tobiwg/braile-card-generator](https://github.com/tobiwg/braile-card-generator/tree/main) and further evolved from my earlier variant
 [BrennenJohnston/braile-card-generator](https://github.com/BrennenJohnston/braile-card-generator/blob/brennen-dev/README.md) (branch `brennen-dev`).
+
+---
+
+## 13. Developer Notes
+
+- Backend: single Flask app in `backend.py` used both locally and on Vercel via `wsgi.py`.
+- Frontend: served from `templates/index.html` with static assets in `static/`.
+- Translation: browser-side Liblouis via web worker `static/liblouis-worker.js` and tables under `static/liblouis/tables/`.
+- Endpoints: `/liblouis/tables`, `/generate_braille_stl`, `/generate_counter_plate_stl`.
+
+### Local development
+```bash
+pip install -r requirements.txt
+python backend.py  # opens http://localhost:5001
+```
+
+### Vercel deployment
+- Project uses `vercel.json` and `wsgi.py` with `@vercel/python`.
+- Install step: `pip install -r requirements_vercel.txt` (smaller footprint for serverless).
+- Static liblouis tables are bundled and loaded on-demand from `static/liblouis/tables/` in a web worker.
 
 ---
 

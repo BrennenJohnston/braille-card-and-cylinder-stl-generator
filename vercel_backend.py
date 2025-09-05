@@ -164,11 +164,27 @@ def generate_braille_stl():
             return jsonify({'error': 'No JSON data provided'}), 400
         
         lines = data.get('lines', ['', '', '', ''])
-        plate_type = data.get('plate_type', 'positive')
-        shape_type = data.get('shape_type', 'card')  # New: default to 'card' for backward compatibility
-        grade = data.get('grade', 'g2')
+        original_lines = data.get('original_lines', None)
+        # Normalize incoming enums for robustness
+        plate_type = str(data.get('plate_type', 'positive')).strip().lower()
+        shape_type = str(data.get('shape_type', 'card')).strip().lower()  # default to 'card' for backward compatibility
+        grade = str(data.get('grade', 'g2')).strip().lower()
         settings_data = data.get('settings', {})
         cylinder_params = data.get('cylinder_params', {})
+
+        # Debug: log request summary (safe)
+        try:
+            app.logger.info(
+                f"Request /generate_braille_stl → plate_type={plate_type}, shape_type={shape_type}, grade={grade}, "
+                f"orig_lines={'yes' if isinstance(original_lines, list) else 'no'}, grid={settings_data.get('grid_columns')}x{settings_data.get('grid_rows')}"
+            )
+            if shape_type == 'cylinder':
+                app.logger.info(
+                    f"Cylinder params: diameter={cylinder_params.get('diameter_mm')}, height={cylinder_params.get('height_mm')}, "
+                    f"cutout_radius={cylinder_params.get('polygonal_cutout_radius_mm')}, seam_offset={cylinder_params.get('seam_offset_deg')}"
+                )
+        except Exception:
+            pass
         
         # Validate inputs
         validate_lines(lines)
@@ -201,7 +217,7 @@ def generate_braille_stl():
     try:
         if shape_type == 'card':
             if plate_type == 'positive':
-                mesh = create_positive_plate_mesh(lines, grade, settings)
+                mesh = create_positive_plate_mesh(lines, grade, settings, original_lines)
             elif plate_type == 'negative':
                 # Counter plate uses hemispherical recesses as per project brief
                 mesh = build_counter_plate_hemispheres(settings)
@@ -209,7 +225,7 @@ def generate_braille_stl():
                 return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
         elif shape_type == 'cylinder':
             if plate_type == 'positive':
-                mesh = generate_cylinder_stl(lines, grade, settings, cylinder_params)
+                mesh = generate_cylinder_stl(lines, grade, settings, cylinder_params, original_lines)
             elif plate_type == 'negative':
                 mesh = generate_cylinder_counter_plate(lines, settings, cylinder_params)
             else:

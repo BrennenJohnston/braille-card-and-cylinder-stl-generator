@@ -114,6 +114,52 @@ def validate_lines(lines):
     
     return True
 
+def validate_braille_lines(lines, plate_type='positive'):
+    """
+    Validate that lines contain valid braille Unicode characters.
+    Only validates non-empty lines for positive plates.
+    """
+    if plate_type != 'positive':
+        return True  # Counter plates don't need braille validation
+    
+    # Define valid braille Unicode range (U+2800 to U+28FF)
+    BRAILLE_START = 0x2800
+    BRAILLE_END = 0x28FF
+    
+    errors = []
+    
+    for i, line in enumerate(lines):
+        if line.strip():  # Only validate non-empty lines
+            # Check each character in the line
+            for j, char in enumerate(line):
+                char_code = ord(char)
+                if char_code < BRAILLE_START or char_code > BRAILLE_END:
+                    errors.append({
+                        'line': i + 1,
+                        'position': j + 1,
+                        'character': char,
+                        'char_code': f'U+{char_code:04X}'
+                    })
+    
+    if errors:
+        error_details = []
+        for err in errors[:5]:  # Show first 5 errors to avoid spam
+            error_details.append(
+                f"Line {err['line']}, position {err['position']}: "
+                f"'{err['character']}' ({err['char_code']}) is not a valid braille character"
+            )
+        
+        if len(errors) > 5:
+            error_details.append(f"... and {len(errors) - 5} more errors")
+        
+        raise ValueError(
+            "Invalid braille characters detected. Translation may have failed.\n" + 
+            "\n".join(error_details) + 
+            "\n\nPlease ensure text is properly translated to braille before generating STL."
+        )
+    
+    return True
+
 def validate_settings(settings_data):
     """Validate settings data for security"""
     if not isinstance(settings_data, dict):
@@ -356,19 +402,6 @@ class CardSettings:
             # Silently skip validation if there are any issues
             pass
 
-def translate_with_liblouis_js(text: str, grade: str = "g2") -> str:
-    """
-    This function is not used since we expect the frontend to send proper braille Unicode.
-    The frontend should use the liblouis web worker to translate text to braille Unicode.
-    """
-    raise RuntimeError("Direct translation not supported. Frontend must send proper braille Unicode characters.")
-
-def convert_liblouis_output_to_unicode(liblouis_output: str, grade: str = "g2") -> str:
-    """
-    This function is not used since we expect the frontend to send proper braille Unicode.
-    The frontend should use the liblouis web worker to translate text to braille Unicode.
-    """
-    raise RuntimeError("Liblouis output conversion not supported. Frontend must send proper braille Unicode characters.")
 
 def braille_to_dots(braille_char: str) -> list:
     """
@@ -1693,16 +1726,16 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
     
     if cylinder_params is None:
         cylinder_params = {
-            'diameter_mm': 30.6,
+            'diameter_mm': 31.35,
             'height_mm': settings.card_height,
             'polygonal_cutout_radius_mm': 13,
-            'seam_offset_deg': 0
+            'seam_offset_deg': 355
         }
     
-    diameter = float(cylinder_params.get('diameter_mm', 30.6))
+    diameter = float(cylinder_params.get('diameter_mm', 31.35))
     height = float(cylinder_params.get('height_mm', settings.card_height))
     polygonal_cutout_radius = float(cylinder_params.get('polygonal_cutout_radius_mm', 0))
-    seam_offset = float(cylinder_params.get('seam_offset_deg', 0))
+    seam_offset = float(cylinder_params.get('seam_offset_deg', 355))
     
     print(f"Creating cylinder mesh - Diameter: {diameter}mm, Height: {height}mm, Cutout Radius: {polygonal_cutout_radius}mm")
     
@@ -1903,16 +1936,16 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     """
     if cylinder_params is None:
         cylinder_params = {
-            'diameter_mm': 30.6,
+            'diameter_mm': 31.35,
             'height_mm': settings.card_height,
             'polygonal_cutout_radius_mm': 13,
-            'seam_offset_deg': 0
+            'seam_offset_deg': 355
         }
     
-    diameter = float(cylinder_params.get('diameter_mm', 30.6))
+    diameter = float(cylinder_params.get('diameter_mm', 31.35))
     height = float(cylinder_params.get('height_mm', settings.card_height))
     polygonal_cutout_radius = float(cylinder_params.get('polygonal_cutout_radius_mm', 0))
-    seam_offset = float(cylinder_params.get('seam_offset_deg', 0))
+    seam_offset = float(cylinder_params.get('seam_offset_deg', 355))
     
     print(f"Creating cylinder counter plate - Diameter: {diameter}mm, Height: {height}mm, Cutout Radius: {polygonal_cutout_radius}mm")
     
@@ -2632,6 +2665,9 @@ def generate_braille_stl():
         validate_lines(lines)
         validate_settings(settings_data)
         
+        # Validate braille characters for positive plates
+        validate_braille_lines(lines, plate_type)
+        
         # Validate plate_type
         if plate_type not in ['positive', 'negative']:
             return jsonify({'error': 'Invalid plate_type. Must be "positive" or "negative"'}), 400
@@ -2818,111 +2854,10 @@ def generate_counter_plate_stl():
     except Exception as e:
         return jsonify({'error': f'Failed to generate counter plate: {str(e)}'}), 500
 
-@app.route('/generate_universal_counter_plate', methods=['POST'])
-@rate_limit
-def generate_universal_counter_plate_route():
-    """
-    Generate a universal counter plate with hemispherical recesses for ALL possible dot positions.
-    This endpoint does NOT require any text input - it generates a plate with recesses at all 312 dot positions.
-    """
-    try:
-        if not request.is_json:
-            return jsonify({'error': 'Content-Type must be application/json'}), 400
-        
-        data = request.get_json(force=True)
-        if not data:
-            return jsonify({'error': 'No JSON data provided'}), 400
-        
-        settings_data = data.get('settings', {})
-        validate_settings(settings_data)
-        settings = CardSettings(**settings_data)
-    
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 400
-    except Exception as e:
-        app.logger.error(f"Validation error in generate_universal_counter_plate: {e}")
-        return jsonify({'error': 'Invalid request data'}), 400
-    
-    try:
-        print("DEBUG: Generating universal counter plate with hemispherical recesses (no text input required)")
-        mesh = build_counter_plate_hemispheres(settings)
-        
-        # Verify mesh is watertight
-        if not mesh.is_watertight:
-            print("WARNING: Universal counter plate mesh is not watertight, attempting to fix...")
-            mesh.fill_holes()
-        
-        # Export to STL
-        stl_io = io.BytesIO()
-        mesh.export(stl_io, file_type='stl')
-        stl_io.seek(0)
-        
-        # Include total diameter (base + offset) in filename
-        total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
-        filename = f'braille_universal_counter_plate_{total_diameter}mm.stl'
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=filename)
-        
-    except Exception as e:
-        return jsonify({'error': f'Failed to generate universal counter plate: {str(e)}'}), 500
-
-
-@app.route('/generate_hemispherical_counter_plate', methods=['POST'])
-@rate_limit
-def generate_hemispherical_counter_plate_route():
-    """
-    Generate a counter plate with true hemispherical recesses using trimesh with Manifold backend.
-    
-    This endpoint creates a plate with hemispherical recesses at EVERY dot position in the braille grid,
-    regardless of text content. The hemisphere diameter exactly equals the Embossing Plate's
-    "braille dot base diameter" parameter.
-    
-    The counter plate has its own parametric controls for:
-    - emboss_dot_base_diameter_mm (drives hemisphere radius)
-    - plate_thickness_mm (TH)
-    - All layout parameters (num_lines, cells_per_line, spacing, margins, offsets)
-    """
-    try:
-        if not request.is_json:
-            return jsonify({'error': 'Content-Type must be application/json'}), 400
-        
-        data = request.get_json(force=True)
-        if not data:
-            return jsonify({'error': 'No JSON data provided'}), 400
-        
-        settings_data = data.get('settings', {})
-        validate_settings(settings_data)
-        settings = CardSettings(**settings_data)
-    
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 400
-    except Exception as e:
-        app.logger.error(f"Validation error in generate_hemispherical_counter_plate: {e}")
-        return jsonify({'error': 'Invalid request data'}), 400
-    
-    try:
-        print("DEBUG: Generating hemispherical counter plate with Manifold backend")
-        print(f"DEBUG: Grid: {settings.grid_columns}x{settings.grid_rows} = {settings.grid_columns * settings.grid_rows * 6} total recesses")
-        print(f"DEBUG: Hemisphere radius: {settings.hemisphere_radius:.3f}mm")
-        print(f"DEBUG: Plate thickness: {settings.plate_thickness:.3f}mm")
-        
-        # Create the hemispherical counter plate
-        mesh = build_counter_plate_hemispheres(settings)
-        
-        # Export to STL
-        stl_io = io.BytesIO()
-        mesh.export(stl_io, file_type='stl')
-        stl_io.seek(0)
-        
-        # Include total diameter (base + offset) in filename
-        total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
-        filename = f'braille_hemispherical_counter_plate_{total_diameter}mm.stl'
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=filename)
-        
-    except Exception as e:
-        return jsonify({'error': f'Failed to generate hemispherical counter plate: {str(e)}'}), 500
 
 if __name__ == '__main__':
+    
     app.run(debug=True, port=5001)
 
 # For Vercel deployment
-app.debug = False 
+app.debug = False

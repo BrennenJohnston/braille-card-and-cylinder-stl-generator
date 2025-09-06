@@ -1221,7 +1221,7 @@ def cylindrical_transform(x, y, z, cylinder_diameter_mm, seam_offset_deg=0):
     
     return cyl_x, cyl_y, cyl_z
 
-def create_cylinder_shell(diameter_mm, height_mm, polygonal_cutout_radius_mm):
+def create_cylinder_shell(diameter_mm, height_mm, polygonal_cutout_radius_mm, align_vertex_theta_rad=None):
     """
     Create a cylinder with a 12-point polygonal cutout along its length.
     
@@ -1229,6 +1229,10 @@ def create_cylinder_shell(diameter_mm, height_mm, polygonal_cutout_radius_mm):
         diameter_mm: Outer diameter of the cylinder
         height_mm: Height of the cylinder
         polygonal_cutout_radius_mm: Inscribed radius of the 12-point polygonal cutout
+        align_vertex_theta_rad: Optional absolute angle (radians) around Z to rotate
+            the polygonal cutout so that one of its vertices aligns with this angle.
+            Useful to align a cutout vertex with the triangle indicator column
+            (including seam offset) on the cylinder surface.
     """
     outer_radius = diameter_mm / 2
     
@@ -1273,6 +1277,13 @@ def create_cylinder_shell(diameter_mm, height_mm, polygonal_cutout_radius_mm):
     prism_center_z = cutout_prism.bounds[1][2] / 2.0  # Get center of prism's Z bounds
     cutout_prism.apply_translation([0, 0, -prism_center_z])
     
+    # Optionally rotate the cutout so a vertex aligns with a target angle around Z
+    # By construction, one vertex initially lies along +X (theta = 0). Rotating by
+    # align_vertex_theta_rad moves that vertex to the desired absolute angle.
+    if align_vertex_theta_rad is not None:
+        Rz = trimesh.transformations.rotation_matrix(align_vertex_theta_rad, [0.0, 0.0, 1.0])
+        cutout_prism.apply_transform(Rz)
+    
     # Debug: Print prism and cylinder dimensions
     print(f"DEBUG: Cylinder height: {height_mm}mm, extends from Z={-height_mm/2:.2f} to Z={height_mm/2:.2f}")
     print(f"DEBUG: Prism height: {prism_height}mm, after centering extends from Z={-prism_height/2:.2f} to Z={prism_height/2:.2f}")
@@ -1304,7 +1315,7 @@ def create_cylinder_shell(diameter_mm, height_mm, polygonal_cutout_radius_mm):
     print("Warning: Could not create polygonal cutout, returning solid cylinder")
     return main_cylinder
 
-def create_cylinder_triangle_marker(x_arc, y_local, settings: CardSettings, cylinder_diameter_mm, seam_offset_deg=0, height_mm=0.6, for_subtraction=True):
+def create_cylinder_triangle_marker(x_arc, y_local, settings: CardSettings, cylinder_diameter_mm, seam_offset_deg=0, height_mm=0.6, for_subtraction=True, point_left=False):
     """
     Create a triangular prism for cylinder surface marking.
     
@@ -1316,6 +1327,7 @@ def create_cylinder_triangle_marker(x_arc, y_local, settings: CardSettings, cyli
         seam_offset_deg: Rotation offset for seam
         height_mm: Depth/height of the triangle marker (default 0.6mm)
         for_subtraction: If True, creates a tool for boolean subtraction to make recesses
+        point_left: If True, mirror triangle so apex points toward negative tangent (left in unrolled view)
     """
     radius = cylinder_diameter_mm / 2.0
     circumference = np.pi * cylinder_diameter_mm
@@ -1335,11 +1347,19 @@ def create_cylinder_triangle_marker(x_arc, y_local, settings: CardSettings, cyli
     # Build 2D triangle in local tangent (X=t) and vertical (Y=z) plane
     # Vertices: base on left, apex pointing right
     from shapely.geometry import Polygon as ShapelyPolygon
-    tri_2d = ShapelyPolygon([
-        (0.0, -settings.dot_spacing),    # Bottom of base
-        (0.0,  settings.dot_spacing),    # Top of base
-        (triangle_width, 0.0)            # Apex (pointing tangentially)
-    ])
+    if point_left:
+        # Mirror along vertical axis so apex points left (negative tangent)
+        tri_2d = ShapelyPolygon([
+            (0.0, -settings.dot_spacing),    # Bottom of base (right side)
+            (0.0,  settings.dot_spacing),    # Top of base (right side)
+            (-triangle_width, 0.0)           # Apex (pointing left)
+        ])
+    else:
+        tri_2d = ShapelyPolygon([
+            (0.0, -settings.dot_spacing),    # Bottom of base
+            (0.0,  settings.dot_spacing),    # Top of base
+            (triangle_width, 0.0)            # Apex (pointing right/tangentially)
+        ])
     
     # For subtraction tool, we need to extend beyond the surface
     if for_subtraction:
@@ -1371,17 +1391,19 @@ def create_cylinder_triangle_marker(x_arc, y_local, settings: CardSettings, cyli
             print(f"DEBUG: Triangle bounds after transform: {tri_prism_local.bounds}")
             print(f"DEBUG: Cylinder radius: {radius}mm")
     else:
-        # For direct recessed triangle (not used currently)
+        # For extruded triangle (outward from cylinder surface)
         tri_prism_local = trimesh.creation.extrude_polygon(tri_2d, height=height_mm)
         
-        # Build transform for inward extrusion
+        # Build transform for outward extrusion
         T = np.eye(4)
-        T[:3, 0] = t_hat   # X axis
-        T[:3, 1] = z_hat   # Y axis
-        T[:3, 2] = -r_hat  # Z axis (inward)
+        T[:3, 0] = t_hat   # X axis (tangential)
+        T[:3, 1] = z_hat   # Y axis (vertical)
+        T[:3, 2] = r_hat   # Z axis (radial outward)
         
-        # Position recessed into surface
-        center_pos = r_hat * (radius - height_mm / 2.0) + z_hat * y_local
+        # Slightly embed the triangle into the cylinder so union attaches robustly
+        embed = max(getattr(settings, 'epsilon', 0.001), 0.05)
+        # Place the base of the prism just inside the surface (radius - embed), extruding outward
+        center_pos = r_hat * (radius - embed) + z_hat * y_local
         T[:3, 3] = center_pos
         
         tri_prism_local.apply_transform(T)
@@ -1753,8 +1775,15 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
     print(f"  - Cell spacing: {settings.cell_spacing}mm → {cell_spacing_angle_deg:.2f}° on cylinder")
     print(f"  - Dot spacing: {settings.dot_spacing}mm → {dot_spacing_angle_deg:.2f}° on cylinder")
     
-    # Create cylinder shell
-    cylinder_shell = create_cylinder_shell(diameter, height, polygonal_cutout_radius)
+    # Compute triangle column absolute angle (including seam) to align polygon cutout vertex
+    seam_offset_rad = np.radians(seam_offset)
+    grid_angle = grid_width / radius
+    start_angle = -grid_angle / 2
+    triangle_angle = start_angle + ((settings.grid_columns - 1) * settings.cell_spacing / radius)
+    cutout_align_theta = triangle_angle + seam_offset_rad
+    
+    # Create cylinder shell with polygon cutout aligned to triangle marker column
+    cylinder_shell = create_cylinder_shell(diameter, height, polygonal_cutout_radius, align_vertex_theta_rad=cutout_align_theta)
     meshes = [cylinder_shell]
     
     # Layout braille cells on cylinder
@@ -1948,10 +1977,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     seam_offset = float(cylinder_params.get('seam_offset_deg', 355))
     
     print(f"Creating cylinder counter plate - Diameter: {diameter}mm, Height: {height}mm, Cutout Radius: {polygonal_cutout_radius}mm")
-    
-    # Create cylinder shell
-    cylinder_shell = create_cylinder_shell(diameter, height, polygonal_cutout_radius)
-    
+
     # Use grid dimensions from settings (same as card)
     radius = diameter / 2
     circumference = np.pi * diameter
@@ -1967,6 +1993,20 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     
     # Convert cell_spacing from linear to angular
     cell_spacing_angle = settings.cell_spacing / radius
+
+    # Compute first-column triangle absolute angle (including seam) to align polygon cutout vertex
+    # Counter plate uses triangle at the first column
+    seam_offset_rad = np.radians(seam_offset)
+    first_col_angle = start_angle
+    cutout_align_theta = first_col_angle + seam_offset_rad
+
+    # Create cylinder shell with polygon cutout aligned to triangle marker column
+    cylinder_shell = create_cylinder_shell(
+        diameter,
+        height,
+        polygonal_cutout_radius,
+        align_vertex_theta_rad=cutout_align_theta
+    )
     
     # Use grid_rows from settings
     rows_on_cylinder = settings.grid_rows
@@ -1997,7 +2037,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     space_above = (height - braille_content_height) / 2.0
     first_row_center_y = height - space_above - settings.dot_spacing
     
-    # Create end of row line recesses and triangle marker recesses for ALL rows
+    # Create row markers (triangle and line) for ALL rows
     line_end_meshes = []
     triangle_meshes = []
     
@@ -2007,38 +2047,38 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
         y_local = y_pos - (height / 2.0)
         
-        # Add end of row line marker at the first cell position (column 0) to match embossing plate layout
-        line_end_x = start_angle * radius
-        
-        # Create line end marker for subtraction (will create recess)
-        line_end_mesh = create_cylinder_line_end_marker(
-            line_end_x, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
-        )
-        line_end_meshes.append(line_end_mesh)
-        
-        # Add triangle marker at the last cell position (grid_columns - 1) to match embossing plate layout
-        # Calculate X position for the last column
-        triangle_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle)
-        triangle_x = triangle_angle * radius
-        
-        # Create triangle marker for subtraction (will create recess)
+        # For counter plate: triangle at first column (apex pointing left), line at last column
+        # First column (triangle):
+        triangle_x_first = start_angle * radius
         triangle_mesh = create_cylinder_triangle_marker(
-            triangle_x, y_local, settings, diameter, seam_offset, height_mm=0.6, for_subtraction=True
+            triangle_x_first, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True, point_left=True
         )
         triangle_meshes.append(triangle_mesh)
+
+        # Last column (line end):
+        last_col_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle)
+        line_end_x_last = last_col_angle * radius
+        line_end_mesh = create_cylinder_line_end_marker(
+            line_end_x_last, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
+        )
+        line_end_meshes.append(line_end_mesh)
     
     # Create spheres for ALL dot positions in ALL cells (universal counter plate)
     sphere_meshes = []
     
     # Process ALL cells in the grid (not just those with braille content)
+    # Mirror horizontally (right-to-left) so the counter plate reads R→L when printed
+    num_text_cols = settings.grid_columns - 2
     for row_num in range(settings.grid_rows):
         # Calculate Y position for this row with vertical centering
         y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
         
-        # Process ALL columns (minus two for first cell indicator and last cell triangle)
-        for col_num in range(settings.grid_columns - 2):
+        # Process ALL columns mirrored (minus two for first cell indicator and last cell triangle)
+        for col_num in range(num_text_cols):
+            # Mirror column index across row so cells are placed right-to-left
+            mirrored_idx = (num_text_cols - 1) - col_num
             # Calculate cell position (shifted by one cell due to first cell indicator)
-            cell_angle = start_angle + ((col_num + 1) * cell_spacing_angle)
+            cell_angle = start_angle + ((mirrored_idx + 1) * cell_spacing_angle)
             cell_x = cell_angle * radius  # Convert to arc length
             
             # Create spheres for ALL 6 dots in this cell
@@ -2101,9 +2141,10 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             else:
                 union_spheres = trimesh.boolean.union(sphere_meshes, engine=engine)
             
-            # Union all triangles
+            # Union all triangles (for subtraction into the cylinder shell)
+            union_triangles = None
             if triangle_meshes:
-                print(f"DEBUG: Cylinder boolean - union triangles with {engine_name}...")
+                print(f"DEBUG: Cylinder boolean - union triangles for subtraction with {engine_name}...")
                 if len(triangle_meshes) == 1:
                     union_triangles = triangle_meshes[0]
                 else:
@@ -2117,21 +2158,23 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
                 else:
                     union_line_ends = trimesh.boolean.union(line_end_meshes, engine=engine)
             
-            # Combine all cutouts (spheres, triangles, and line ends)
-            print(f"DEBUG: Cylinder boolean - combining all cutouts with {engine_name}...")
-            all_cutouts_list = [union_spheres]
-            if triangle_meshes:
-                all_cutouts_list.append(union_triangles)
+            # Combine cutouts (spheres and line ends) for subtraction
+            print(f"DEBUG: Cylinder boolean - combining cutouts for subtraction with {engine_name}...")
+            cutouts_list = [union_spheres]
             if line_end_meshes:
-                all_cutouts_list.append(union_line_ends)
+                cutouts_list.append(union_line_ends)
+            if union_triangles is not None:
+                cutouts_list.append(union_triangles)
             
-            if len(all_cutouts_list) > 1:
-                all_cutouts = trimesh.boolean.union(all_cutouts_list, engine=engine)
+            if len(cutouts_list) > 1:
+                all_cutouts = trimesh.boolean.union(cutouts_list, engine=engine)
             else:
-                all_cutouts = all_cutouts_list[0]
+                all_cutouts = cutouts_list[0]
             
-            print(f"DEBUG: Cylinder boolean - subtract all cutouts from cylinder shell with {engine_name}...")
+            print(f"DEBUG: Cylinder boolean - subtract cutouts from cylinder shell with {engine_name}...")
             final_shell = trimesh.boolean.difference([cylinder_shell, all_cutouts], engine=engine)
+            
+            # Triangles are recessed via subtraction; no union back
             
             if not final_shell.is_watertight:
                 print("DEBUG: Cylinder final shell not watertight, attempting to fill holes...")
@@ -2162,7 +2205,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
                 print(f"WARNING: Failed to subtract sphere {i+1}: {sphere_error}")
                 continue
         
-        # Subtract triangles individually
+        # Subtract triangles individually (recess them)
         for i, triangle in enumerate(triangle_meshes):
             try:
                 print(f"DEBUG: Subtracting triangle {i+1}/{len(triangle_meshes)} from cylinder shell...")
@@ -2296,8 +2339,8 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
         # Add triangle marker at the last cell position (grid_columns - 1) to match embossing plate layout
         x_pos_last = params.left_margin + ((params.grid_columns - 1) * params.cell_spacing) + params.braille_x_adjust
         
-        # Create triangle marker for subtraction (will create recess)
-        triangle_mesh = create_card_triangle_marker_3d(x_pos_last, y_pos, params, height=0.6, for_subtraction=True)
+        # Create triangle marker for subtraction (recessed triangle in counter plate)
+        triangle_mesh = create_card_triangle_marker_3d(x_pos_last, y_pos, params, height=0.5, for_subtraction=True)
         triangle_meshes.append(triangle_mesh)
     
     print(f"DEBUG: Created {len(triangle_meshes)} triangle markers and {len(line_end_meshes)} line end markers for counter plate")
@@ -2321,9 +2364,10 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
                 print("DEBUG: Unioning spheres...")
                 union_spheres = trimesh.boolean.union(sphere_meshes, engine=engine)
             
-            # Union all triangles
+            # Union all triangles (these will be used for subtraction into the plate)
+            union_triangles = None
             if triangle_meshes:
-                print(f"DEBUG: Unioning {len(triangle_meshes)} triangles...")
+                print(f"DEBUG: Unioning {len(triangle_meshes)} triangles (for subtraction)...")
                 if len(triangle_meshes) == 1:
                     union_triangles = triangle_meshes[0]
                 else:
@@ -2337,21 +2381,21 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
                 else:
                     union_line_ends = trimesh.boolean.union(line_end_meshes, engine=engine)
             
-            # Combine all cutouts (spheres, triangles, and line ends)
-            print("DEBUG: Combining all cutouts...")
-            all_cutouts_list = [union_spheres]
-            if triangle_meshes:
-                all_cutouts_list.append(union_triangles)
+            # Combine cutouts (spheres and line ends) for subtraction
+            print("DEBUG: Combining cutouts for subtraction...")
+            cutouts_list = [union_spheres]
             if line_end_meshes:
-                all_cutouts_list.append(union_line_ends)
+                cutouts_list.append(union_line_ends)
+            if union_triangles is not None:
+                cutouts_list.append(union_triangles)
             
-            if len(all_cutouts_list) > 1:
-                all_cutouts = trimesh.boolean.union(all_cutouts_list, engine=engine)
+            if len(cutouts_list) > 1:
+                all_cutouts = trimesh.boolean.union(cutouts_list, engine=engine)
             else:
-                all_cutouts = all_cutouts_list[0]
+                all_cutouts = cutouts_list[0]
             
-            print("DEBUG: Subtracting all cutouts from plate...")
-            # Subtract the unified cutouts from the plate in one operation
+            print("DEBUG: Subtracting cutouts from plate...")
+            # Subtract the cutouts (spheres, line ends, and triangles) from the plate
             counter_plate_mesh = trimesh.boolean.difference([plate_mesh, all_cutouts], engine=engine)
             
             # Verify the mesh is watertight
@@ -2386,7 +2430,7 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
                 print(f"WARNING: Failed to subtract sphere {i+1}: {sphere_error}")
                 continue
         
-        # Subtract triangles individually
+        # Subtract triangles individually (recess them)
         for i, triangle in enumerate(triangle_meshes):
             try:
                 print(f"DEBUG: Subtracting triangle {i+1}/{len(triangle_meshes)}...")

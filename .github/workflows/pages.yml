@@ -1,0 +1,60 @@
+name: Deploy static site to GitHub Pages
+
+on:
+  push:
+    branches: [ "main", "brennen-dev" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build static bundle
+        run: |
+          mkdir -p dist
+          cp -r templates/index.html dist/index.html
+          cp -r static dist/static
+          # Optionally copy a CNAME if you use a custom domain
+          if [ -f CNAME ]; then cp CNAME dist/CNAME; fi
+
+      - name: Inject API base URL for backend (optional)
+        env:
+          PAGES_API_BASE_URL: ${{ vars.PAGES_API_BASE_URL }}
+        run: |
+          if [ -n "${PAGES_API_BASE_URL}" ]; then
+            echo "Writing API base URL to dist/static/app-config.js"
+            printf "window.APP_CONFIG = { API_BASE_URL: '%s' };\n" "$PAGES_API_BASE_URL" > dist/static/app-config.js
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+

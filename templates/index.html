@@ -1774,11 +1774,18 @@
 
     
     <!-- Load the real liblouis JavaScript implementation from static files -->
-    <script src="/static/liblouis/build-no-tables-utf16.js"></script>
-    <script src="/static/liblouis/easy-api.js"></script>
+    <script src="./static/liblouis/build-no-tables-utf16.js"></script>
+    <script src="./static/liblouis/easy-api.js"></script>
+    <!-- Runtime config for GitHub Pages / external backend -->
+    <script src="./static/app-config.js"></script>
     
     <script type="module">
-        import * as THREE from '/static/three.module.js';
+        import * as THREE from './static/three.module.js';
+        import { STLLoader } from './static/STLLoader.js';
+        import { OrbitControls } from './static/OrbitControls.js';
+        import { buildCardEmbossingPlate, buildCylinderEmbossingPlate } from './static/geometry.js';
+        import { exportObjectToAsciiSTL } from './static/export-stl.js';
+        const API_BASE = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) || '';
         async function loadLanguageOptions() {
             const select = document.getElementById('language-table');
             if (!select) return;
@@ -1794,15 +1801,22 @@
             defaultOptions.forEach(o => defaultGroup.appendChild(o));
             select.appendChild(defaultGroup);
 
-            // Fetch available tables from backend
-            let resp;
+            // Try static manifest first to avoid backend dependency
+            let data = null;
             try {
-                resp = await fetch('/liblouis/tables', { credentials: 'same-origin' });
-            } catch (e) {
-                return; // Fail silently; defaults remain
+                const resp = await fetch('./static/tables-manifest.json');
+                if (resp.ok) {
+                    data = await resp.json();
+                }
+            } catch (e) { /* ignore */ }
+            // Fallback to backend if available
+            if (!data) {
+                try {
+                    const resp2 = await fetch(`${API_BASE}/liblouis/tables`, { credentials: 'same-origin' });
+                    if (resp2.ok) data = await resp2.json().catch(() => null);
+                } catch (e) { /* ignore */ }
             }
-            if (!resp.ok) return;
-            const data = await resp.json().catch(() => null);
+            
             if (!data || !Array.isArray(data.tables)) return;
 
             // Build label for each entry (native-language autonyms)
@@ -2045,8 +2059,7 @@
 
         // Kick off language options load ASAP
         loadLanguageOptions();
-        import { STLLoader } from '/static/STLLoader.js';
-        import { OrbitControls } from '/static/OrbitControls.js';
+        
 
         // Declare 3D scene variables at module scope
         let renderer, scene, camera, mesh, controls;
@@ -2973,44 +2986,17 @@
             log.debug('Shape Type:', shapeType);
             log.debug('Cylinder Params:', cylinderParams);
             
-            const res = await fetch('/generate_braille_stl', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    lines: translatedLines,
-                    original_lines: lines,  // Send original text for character indicators
-                    grade: 'g2', 
-                    plate_type: plateType, 
-                    shape_type: shapeType,
-                    cylinder_params: cylinderParams,
-                    settings: settings 
-                })
-            });
-            
-            // Hide loading message
-            errorDiv.style.display = 'none';
-            
-            if (!res.ok) {
-                let msg = 'Error generating STL';
-                try {
-                    const data = await res.json();
-                    if (data.error) msg = data.error;
-                } catch (e) {
-                    msg = `Server error: ${res.status} ${res.statusText}`;
-                }
-                errorText.textContent = msg;
-                errorDiv.style.display = 'flex';
-                errorDiv.className = 'error-message'; // Reset to error style
-                // Re-enable button on error and reset to generate state
-                resetToGenerateState();
-                return;
-            }
-            
             try {
-                // Create blob and URL for 3D preview
-                const blob = await res.blob();
+                // Client-side STL generation (no backend)
+                let object3D;
+                if (shapeType === 'cylinder') {
+                    object3D = buildCylinderEmbossingPlate(translatedLines, settings, cylinderParams);
+                } else {
+                    object3D = buildCardEmbossingPlate(translatedLines, settings);
+                }
+                const stlBlob = exportObjectToAsciiSTL(object3D, `braille_${plateType}_${shapeType}`);
                 if (lastSTLUrl) URL.revokeObjectURL(lastSTLUrl);
-                lastSTLUrl = URL.createObjectURL(blob);
+                lastSTLUrl = URL.createObjectURL(stlBlob);
                 
                 // Generate filename on frontend to match backend logic
                 const plateType = document.querySelector('input[name="plate_type"]:checked').value;
@@ -3266,7 +3252,7 @@
                 
                 // Test if worker file is accessible first
                 try {
-                    const workerResponse = await fetch('/static/liblouis-worker.js');
+                    const workerResponse = await fetch('./static/liblouis-worker.js');
                     if (!workerResponse.ok) {
                         throw new Error(`Worker file not accessible: ${workerResponse.status}`);
                     }
@@ -3276,7 +3262,7 @@
                     throw new Error('Cannot access worker file: ' + fetchError.message);
                 }
                 
-                liblouisWorker = new Worker('/static/liblouis-worker.js');
+                liblouisWorker = new Worker('./static/liblouis-worker.js');
                 
                 // Handle worker messages
                 liblouisWorker.onmessage = function(e) {

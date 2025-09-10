@@ -19,8 +19,8 @@ from matplotlib.textpath import TextPath
 from matplotlib.font_manager import FontProperties
 
 app = Flask(__name__)
-# CORS configuration - allow Vercel, local dev, and GitHub Pages by default; extend via env
-allowed_origins: list = [
+# CORS configuration - update with your actual domain before deployment
+allowed_origins = [
     'https://your-vercel-domain.vercel.app',  # Replace with your actual Vercel domain
     'https://your-custom-domain.com'  # Replace with your custom domain if any
 ]
@@ -29,22 +29,7 @@ allowed_origins: list = [
 if os.environ.get('FLASK_ENV') == 'development':
     allowed_origins.extend(['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5001'])
 
-# Allowlist from environment (comma-separated)
-env_origins = os.environ.get('ALLOWED_ORIGINS')
-if env_origins:
-    for origin in env_origins.split(','):
-        origin = origin.strip()
-        if origin:
-            allowed_origins.append(origin)
-
-# Regex patterns for GitHub Pages and Vercel preview domains
-github_pages_pattern = re.compile(r'^https://[a-z0-9-]+\.github\.io$', re.IGNORECASE)
-vercel_preview_pattern = re.compile(r'^https://[a-z0-9-]+\.vercel\.app$', re.IGNORECASE)
-
-# Combine explicit origins and regex patterns
-cors_origins = allowed_origins + [github_pages_pattern, vercel_preview_pattern]
-
-CORS(app, origins=cors_origins, supports_credentials=True)
+CORS(app, origins=allowed_origins, supports_credentials=True)
 
 # Security configurations
 app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024  # 1MB max request size

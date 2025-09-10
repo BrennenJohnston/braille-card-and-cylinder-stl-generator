@@ -1,8 +1,8 @@
-# Braille Plate & Cylinder STL Generator 🎯
+# Braille Business Card & Cylinder STL Generator 🎯
 
-**Create professional, tactile braille business cards and 3D cylindrical objects with 3D-printable embossing plates**
+**Create professional, tactile braille business cards and 3D objects with 3D-printable embossing plates**
 
-This web application generates STL files for 3D-printable braille embossing and counter plates. Simply enter your text, and the system automatically translates it to braille and creates the precise 3D models needed for cylindrical braille objects or traditional flat business-card plates.
+This web application generates STL files for 3D-printable braille embossing and counter plates. Simply enter your text, and the system automatically translates it to braille and creates the precise 3D models needed for embossing professional business cards or creating cylindrical braille objects.
 
 ---
 
@@ -32,17 +32,17 @@ This web application generates STL files for 3D-printable braille embossing and 
 
 ---
 
-## 3. 5-Minute Quick-Start (Cylinder-first)
+## 3. 5-Minute Quick-Start
 
 ### Web Application (Recommended)
 1. **Local dev**: run `python backend.py` and open `http://localhost:5001`
 2. **Vercel**: connect repo and deploy; serverless entry is `wsgi.py`
 2. **Enter your text** (up to 4 lines)
 3. **Select braille grade** (Grade 2 recommended for most users)
-4. The default **Output Shape** is **Cylinder**. Click **Generate**.
-5. **Download** and 3D print your cylinder (or counter plate).
-6. If you need the **Universal Counter Plate**, generate it once. You only need to re-download it if you change Expert Mode settings that affect dot geometry or spacing. Changing the text only affects the emboss plate.
-7. To make flat plates, open **Expert Mode** and change **Output Shape** to **Flat Card**.
+4. **Choose shape**: Business card (flat) or cylinder
+5. **Click Generate** to create STL files
+6. **Download** and 3D print your files
+7. **Test** with actual card stock and adjust if needed
 
 ### For Business Cards:
 - Print both emboss and counter plates
@@ -113,7 +113,7 @@ Sources & further reading:
 | 4. **Adjust parameters** using Expert Mode | See table below |
 | 5. **Re-print & re-test** | One or two iterations usually nails it |
 
-### 🔄 Cylinder Shape Parameters
+### 🔄 NEW: Cylinder Shape Feature
 
 **Create 3D cylindrical objects with curved braille surfaces:**
 
@@ -126,14 +126,14 @@ Sources & further reading:
 
 **Use Cases:** Tactile learning tools, decorative objects, cylindrical labels, educational models
 
-Common tweaks (plates & cylinders):
+Common tweaks:
 
 | Symptom | Try this |
 |---------|----------|
 | Dots too flat | Increase **Dot Height** or press harder |
 | Dots feel sharp | Increase **Apex Rounding** or lower Dot Height |
 | Cells crowd | Increase **Cell Advance** or reduce **Dot Diameter** |
-| Plates stick together | Increase **Counter Offset** or add small **Draft** |
+| Plates stick together | Increase **Counter Clearance** or add small **Draft** |
 | Cylinder text wraps | Reduce diameter or shorten text |
 
 ---

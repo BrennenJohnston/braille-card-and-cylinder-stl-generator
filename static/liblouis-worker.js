@@ -7,9 +7,9 @@ let liblouisReady = false;
 // Import liblouis scripts with error handling
 try {
     console.log('Worker: Attempting to load liblouis scripts from static directory...');
-    importScripts('./liblouis/build-no-tables-utf16.js');
+    importScripts('/static/liblouis/build-no-tables-utf16.js');
     console.log('Worker: Loaded build-no-tables-utf16.js');
-    importScripts('./liblouis/easy-api.js');
+    importScripts('/static/liblouis/easy-api.js');
     console.log('Worker: Loaded easy-api.js');
 } catch (error) {
     console.error('Worker: Failed to load liblouis scripts from static:', error);
@@ -41,7 +41,7 @@ async function initializeLiblouis() {
             if (liblouisInstance.enableOnDemandTableLoading) {
                 console.log('Worker: Enabling on-demand table loading...');
                 try {
-                    liblouisInstance.enableOnDemandTableLoading('./liblouis/tables/');
+                    liblouisInstance.enableOnDemandTableLoading('/static/liblouis/tables/');
                     console.log('Worker: Table loading enabled from static directory');
                 } catch (e) {
                     console.log('Worker: Static path failed, trying node_modules path...');

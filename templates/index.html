@@ -1774,18 +1774,20 @@
 
     
     <!-- Load the real liblouis JavaScript implementation from static files -->
-    <script src="./static/liblouis/build-no-tables-utf16.js"></script>
-    <script src="./static/liblouis/easy-api.js"></script>
-    <!-- Runtime config for GitHub Pages / external backend -->
-    <script src="./static/app-config.js"></script>
+    <script src="/static/liblouis/build-no-tables-utf16.js"></script>
+    <script src="/static/liblouis/easy-api.js"></script>
     
     <script type="module">
+<<<<<<< HEAD
         import * as THREE from './static/three.module.js';
         import { STLLoader } from './static/STLLoader.js';
         import { OrbitControls } from './static/OrbitControls.js';
         import { buildCardEmbossingPlate, buildCylinderEmbossingPlate } from './static/geometry.js';
         import { exportObjectToAsciiSTL } from './static/export-stl.js';
         const API_BASE = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) || '';
+=======
+        import * as THREE from '/static/three.module.js';
+>>>>>>> parent of a913329 (github pages)
         async function loadLanguageOptions() {
             const select = document.getElementById('language-table');
             if (!select) return;
@@ -1804,6 +1806,7 @@
             // Try static manifest first to avoid backend dependency
             let data = null;
             try {
+<<<<<<< HEAD
                 const resp = await fetch('./static/tables-manifest.json');
                 if (resp.ok) {
                     data = await resp.json();
@@ -1815,6 +1818,11 @@
                     const resp2 = await fetch(`${API_BASE}/liblouis/tables`, { credentials: 'same-origin' });
                     if (resp2.ok) data = await resp2.json().catch(() => null);
                 } catch (e) { /* ignore */ }
+=======
+                resp = await fetch('/liblouis/tables', { credentials: 'same-origin' });
+            } catch (e) {
+                return; // Fail silently; defaults remain
+>>>>>>> parent of a913329 (github pages)
             }
             
             if (!data || !Array.isArray(data.tables)) return;
@@ -2059,7 +2067,12 @@
 
         // Kick off language options load ASAP
         loadLanguageOptions();
+<<<<<<< HEAD
         
+=======
+        import { STLLoader } from '/static/STLLoader.js';
+        import { OrbitControls } from '/static/OrbitControls.js';
+>>>>>>> parent of a913329 (github pages)
 
         // Declare 3D scene variables at module scope
         let renderer, scene, camera, mesh, controls;
@@ -2986,6 +2999,42 @@
             log.debug('Shape Type:', shapeType);
             log.debug('Cylinder Params:', cylinderParams);
             
+<<<<<<< HEAD
+=======
+            const res = await fetch('/generate_braille_stl', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    lines: translatedLines,
+                    original_lines: lines,  // Send original text for character indicators
+                    grade: 'g2', 
+                    plate_type: plateType, 
+                    shape_type: shapeType,
+                    cylinder_params: cylinderParams,
+                    settings: settings 
+                })
+            });
+            
+            // Hide loading message
+            errorDiv.style.display = 'none';
+            
+            if (!res.ok) {
+                let msg = 'Error generating STL';
+                try {
+                    const data = await res.json();
+                    if (data.error) msg = data.error;
+                } catch (e) {
+                    msg = `Server error: ${res.status} ${res.statusText}`;
+                }
+                errorText.textContent = msg;
+                errorDiv.style.display = 'flex';
+                errorDiv.className = 'error-message'; // Reset to error style
+                // Re-enable button on error and reset to generate state
+                resetToGenerateState();
+                return;
+            }
+            
+>>>>>>> parent of a913329 (github pages)
             try {
                 // Client-side STL generation (no backend)
                 let object3D;
@@ -3252,7 +3301,7 @@
                 
                 // Test if worker file is accessible first
                 try {
-                    const workerResponse = await fetch('./static/liblouis-worker.js');
+                    const workerResponse = await fetch('/static/liblouis-worker.js');
                     if (!workerResponse.ok) {
                         throw new Error(`Worker file not accessible: ${workerResponse.status}`);
                     }
@@ -3262,7 +3311,7 @@
                     throw new Error('Cannot access worker file: ' + fetchError.message);
                 }
                 
-                liblouisWorker = new Worker('./static/liblouis-worker.js');
+                liblouisWorker = new Worker('/static/liblouis-worker.js');
                 
                 // Handle worker messages
                 liblouisWorker.onmessage = function(e) {

@@ -1,8 +1,0 @@
-{
-  "tables": [
-    { "file": "en-ueb-g2.ctb", "locale": "en", "variant": "UEB", "grade": "2" },
-    { "file": "en-ueb-g1.ctb", "locale": "en", "variant": "UEB", "grade": "1" }
-  ]
-}
-
-

@@ -178,21 +178,12 @@ Attribution: This project was originally based on
 - Backend: single Flask app in `backend.py` used both locally and on Vercel via `wsgi.py`.
 - Frontend: served from `templates/index.html` with static assets in `static/`.
 - Translation: browser-side Liblouis via web worker `static/liblouis-worker.js` and tables under `static/liblouis/tables/`.
-- Endpoints (legacy): `/liblouis/tables`, `/generate_braille_stl`, `/generate_counter_plate_stl`.
-- Static mode: liblouis tables loaded from `static/liblouis/tables/` with a manifest; STL generated client-side.
+- Endpoints: `/liblouis/tables`, `/generate_braille_stl`, `/generate_counter_plate_stl`.
 
 ### Local development
 ```bash
-# Server-backed (legacy):
 pip install -r requirements.txt
 python backend.py  # opens http://localhost:5001
-
-# Static (no backend; GitHub Pages-compatible):
-# Option A: Node
-npx http-server -c-1 .
-# Option B: Python
-python -m http.server 8080
-# Then open http://127.0.0.1:8080/templates/index.html
 ```
 
 ### Vercel deployment

@@ -1779,6 +1779,7 @@
     
     <script type="module">
 <<<<<<< HEAD
+<<<<<<< HEAD
         import * as THREE from './static/three.module.js';
         import { STLLoader } from './static/STLLoader.js';
         import { OrbitControls } from './static/OrbitControls.js';
@@ -1788,6 +1789,9 @@
 =======
         import * as THREE from '/static/three.module.js';
 >>>>>>> parent of a913329 (github pages)
+=======
+        import * as THREE from '/static/three.module.js';
+>>>>>>> parent of 5effdff (feat(static): client-side STL generation + liblouis static tables manifest; update index.html to avoid backend; add export-stl and geometry modules; docs for static run)
         async function loadLanguageOptions() {
             const select = document.getElementById('language-table');
             if (!select) return;
@@ -1803,9 +1807,10 @@
             defaultOptions.forEach(o => defaultGroup.appendChild(o));
             select.appendChild(defaultGroup);
 
-            // Try static manifest first to avoid backend dependency
-            let data = null;
+            // Fetch available tables from backend
+            let resp;
             try {
+<<<<<<< HEAD
 <<<<<<< HEAD
                 const resp = await fetch('./static/tables-manifest.json');
                 if (resp.ok) {
@@ -1823,8 +1828,14 @@
             } catch (e) {
                 return; // Fail silently; defaults remain
 >>>>>>> parent of a913329 (github pages)
+=======
+                resp = await fetch('/liblouis/tables', { credentials: 'same-origin' });
+            } catch (e) {
+                return; // Fail silently; defaults remain
+>>>>>>> parent of 5effdff (feat(static): client-side STL generation + liblouis static tables manifest; update index.html to avoid backend; add export-stl and geometry modules; docs for static run)
             }
-            
+            if (!resp.ok) return;
+            const data = await resp.json().catch(() => null);
             if (!data || !Array.isArray(data.tables)) return;
 
             // Build label for each entry (native-language autonyms)
@@ -2068,11 +2079,16 @@
         // Kick off language options load ASAP
         loadLanguageOptions();
 <<<<<<< HEAD
+<<<<<<< HEAD
         
 =======
         import { STLLoader } from '/static/STLLoader.js';
         import { OrbitControls } from '/static/OrbitControls.js';
 >>>>>>> parent of a913329 (github pages)
+=======
+        import { STLLoader } from '/static/STLLoader.js';
+        import { OrbitControls } from '/static/OrbitControls.js';
+>>>>>>> parent of 5effdff (feat(static): client-side STL generation + liblouis static tables manifest; update index.html to avoid backend; add export-stl and geometry modules; docs for static run)
 
         // Declare 3D scene variables at module scope
         let renderer, scene, camera, mesh, controls;
@@ -3000,7 +3016,10 @@
             log.debug('Cylinder Params:', cylinderParams);
             
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> parent of 5effdff (feat(static): client-side STL generation + liblouis static tables manifest; update index.html to avoid backend; add export-stl and geometry modules; docs for static run)
             const res = await fetch('/generate_braille_stl', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -3025,6 +3044,7 @@
                     if (data.error) msg = data.error;
                 } catch (e) {
                     msg = `Server error: ${res.status} ${res.statusText}`;
+<<<<<<< HEAD
                 }
                 errorText.textContent = msg;
                 errorDiv.style.display = 'flex';
@@ -3042,10 +3062,22 @@
                     object3D = buildCylinderEmbossingPlate(translatedLines, settings, cylinderParams);
                 } else {
                     object3D = buildCardEmbossingPlate(translatedLines, settings);
+=======
+>>>>>>> parent of 5effdff (feat(static): client-side STL generation + liblouis static tables manifest; update index.html to avoid backend; add export-stl and geometry modules; docs for static run)
                 }
-                const stlBlob = exportObjectToAsciiSTL(object3D, `braille_${plateType}_${shapeType}`);
+                errorText.textContent = msg;
+                errorDiv.style.display = 'flex';
+                errorDiv.className = 'error-message'; // Reset to error style
+                // Re-enable button on error and reset to generate state
+                resetToGenerateState();
+                return;
+            }
+            
+            try {
+                // Create blob and URL for 3D preview
+                const blob = await res.blob();
                 if (lastSTLUrl) URL.revokeObjectURL(lastSTLUrl);
-                lastSTLUrl = URL.createObjectURL(stlBlob);
+                lastSTLUrl = URL.createObjectURL(blob);
                 
                 // Generate filename on frontend to match backend logic
                 const plateType = document.querySelector('input[name="plate_type"]:checked').value;

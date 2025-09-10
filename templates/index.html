@@ -7,7 +7,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Braille Plate & Cylinder STL Generator</title>
+    <title>Braille Business Card STL Generator</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
         /* Theme CSS Variables */
@@ -468,7 +468,7 @@
             margin: 0;
             display: flex;
             align-items: flex-start;
-            justify-content: center;
+            justify-content: flex-start;
             padding: 2em;
             color: var(--text-primary);
             -webkit-text-size-adjust: 100%;
@@ -495,7 +495,7 @@
             padding: 2.5em 2.5em 2.5em 2.5em;
             max-width: 1400px;
             width: 100%;
-            margin: 0 auto;
+            margin: 0;
             overflow-x: hidden; /* Prevent horizontal overflow */
             box-sizing: border-box; /* Include padding in width calculation */
         }
@@ -1473,8 +1473,8 @@
         <!-- Title Section at the top -->
         <div class="title-section">
             <h1 id="main-heading">
-                <span class="title-line-1">Braille Plate & Cylinder</span>
-                <span class="title-line-2">STL Generator</span>
+                <span class="title-line-1">Braille Business</span>
+                <span class="title-line-2">Card STL Generator</span>
             </h1>
             
             <!-- Accessibility Controls in top right -->
@@ -1515,7 +1515,7 @@
         <div class="content-area">
             <!-- Left Column - STL Preview Section (45% width) -->
             <div class="preview-section" role="region" aria-label="3D STL Preview">
-                <div id="viewer" role="img" aria-label="3D preview of braille STL model" tabindex="0"></div>
+                <div id="viewer" role="img" aria-label="3D preview of braille business card STL file" tabindex="0"></div>
                 
                 <!-- Text Input Section moved here -->
                 <div class="line-input-group">
@@ -1541,10 +1541,10 @@
             <div class="form-section" role="region" aria-label="Braille Card Configuration">
                 <div class="info-panel">
                     <p><strong>Program Description:</strong></p>
-                    <p>This tool primarily generates <strong>cylindrical braille objects</strong> and matching plates. You can also produce flat business-card plates.</p>
+                    <p>Creates two matching STLs for a standard 3.5″ × 2″ card.</p>
                     <ol style="margin: 0.3em 0; padding-left: 1.5em;">
-                        <li><strong>Embossing Plate</strong> (raised/positive)</li>
-                        <li><strong>Universal Counter Plate</strong> (recessed/negative)</li>
+                        <li><strong>Embossing Plate</strong> (cone dots)</li>
+                        <li><strong>Universal Counter Plate</strong> (hemispherical recessed dots)</li>
                     </ol>
                 </div>
                 
@@ -1554,13 +1554,12 @@
                         <span id="info-toggle-icon">▼</span>
                     </button>
                     <div id="info-content" class="info-content" style="display: none;">
-                        <p><strong>Instructions (Cylinder-first workflow):</strong></p>
+                        <p><strong>Instructions:</strong></p>
                         <ol style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li>Enter up to <strong>4 lines</strong> of text. Click <strong>"Generate STL"</strong>. The app auto-translates to <strong>UEB</strong>.</li>
-                            <li>Leave the <strong>Output Shape</strong> as <strong>Cylinder</strong> (default). Review the 3D preview, then <strong>Download STL</strong>.</li>
-                            <li>If you also need the <strong>Universal Counter Plate</strong>, switch Plate to <strong>Counter Plate</strong> and generate once. You only need to download it again if you change <strong>Expert Mode</strong> settings that affect dot geometry or spacing. Translation changes only affect the embossing plate.</li>
-                            <li>To make flat business-card plates instead, open <strong>Expert Mode</strong> → set <strong>Output Shape</strong> to <strong>Flat Card</strong>, then generate plates.</li>
-                            <li>Use <strong>Expert Mode</strong> to adjust cylinder diameter/height, card dimensions, braille spacing, and dot sizes as needed.</li>
+                            <li>Enter up to <strong>4 lines</strong> of English text, then click <strong>"Generate STL."</strong> The app auto-translates to <strong>Unified English Braille (UEB)</strong>.</li>
+                            <li>Review the 3D preview. If it looks correct, click <strong>"Download STL."</strong></li>
+                            <li>Click <strong>"Universal Counter Plate"</strong> and repeat the steps to generate and download the matching counter plate (if you haven't printed one yet).</li>
+                            <li>Need specific dimensions? Open <strong>Expert Mode</strong> to adjust card size, spacing, and dot parameters.</li>
                         </ol>
                         <p><strong>Acknowledgements:</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">
@@ -1612,6 +1611,27 @@
                         </fieldset>
                     </div>
                     
+                    <!-- Output Shape Selection -->
+                    <div class="grade-selection">
+                        <fieldset>
+                            <legend class="grade-label">Select Output Shape</legend>
+                            <div class="radio-group" role="radiogroup" aria-required="true">
+                                <label class="radio-option">
+                                    <input type="radio" name="shape_type" value="card" checked aria-describedby="card-shape-desc">
+                                    <span class="radio-text">Flat Card</span>
+                                </label>
+                                <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card</span>
+                                <label class="radio-option">
+                                    <input type="radio" name="shape_type" value="cylinder" aria-describedby="cylinder-shape-desc">
+                                    <span class="radio-text">Cylinder</span>
+                                </label>
+                                <span id="cylinder-shape-desc" class="sr-only">Creates a cylindrical braille surface</span>
+                            </div>
+                        </fieldset>
+                    </div>
+                    
+
+
                     <div class="expert-mode-toggle">
                         <button type="button" id="expert-toggle" class="expert-toggle-btn">
                             <span id="expert-toggle-text">Show Expert Mode</span>
@@ -1620,25 +1640,6 @@
                     </div>
 
                     <div id="expert-settings" class="expert-settings" style="display: none;">
-                        <!-- Output Shape Selection (moved into Expert Mode) -->
-                        <div class="grade-selection">
-                            <fieldset>
-                                <legend class="grade-label">Select Output Shape</legend>
-                                <div class="radio-group" role="radiogroup" aria-required="true">
-                                    <label class="radio-option">
-                                        <input type="radio" name="shape_type" value="card" aria-describedby="card-shape-desc" aria-label="Flat Card shape">
-                                        <span class="radio-text">Flat Card</span>
-                                    </label>
-                                    <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card</span>
-                                    <label class="radio-option">
-                                        <input type="radio" name="shape_type" value="cylinder" checked aria-describedby="cylinder-shape-desc" aria-label="Cylinder shape">
-                                        <span class="radio-text">Cylinder</span>
-                                    </label>
-                                    <span id="cylinder-shape-desc" class="sr-only">Creates a cylindrical braille surface</span>
-                                </div>
-                            </fieldset>
-                        </div>
-
                         <div class="expert-info" role="note" aria-label="Expert mode information">
                             Any changes made here will affect both plates.
                         </div>
@@ -3398,19 +3399,20 @@
                     const shapeRadio = document.querySelector(`input[name="shape_type"][value="${savedShapeType}"]`);
                     if (shapeRadio) {
                         shapeRadio.checked = true;
+                        // Update UI to reflect the restored shape
                         updateShapeSettings();
                         log.debug('Restored shape type from localStorage:', savedShapeType);
                     } else {
-                        // Fallback default: Cylinder
-                        document.querySelector('input[name="shape_type"][value="cylinder"]').checked = true;
+                        // If saved shape type doesn't exist, default to card
+                        document.querySelector('input[name="shape_type"][value="card"]').checked = true;
                     }
                 } else {
-                    // No saved shape, default to Cylinder
-                    document.querySelector('input[name="shape_type"][value="cylinder"]').checked = true;
+                    // No saved shape, default to card
+                    document.querySelector('input[name="shape_type"][value="card"]').checked = true;
                 }
             } catch (e) {
-                // If localStorage fails, default to Cylinder
-                document.querySelector('input[name="shape_type"][value="cylinder"]').checked = true;
+                // If localStorage fails, default to card
+                document.querySelector('input[name="shape_type"][value="card"]').checked = true;
                 log.warn('Could not restore shape type from localStorage:', e);
             }
             

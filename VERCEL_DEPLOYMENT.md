@@ -50,7 +50,7 @@ Your app requires these packages (already in requirements.txt):
 - `numpy` - Numerical computing
 - `flask-cors` - Cross-origin support
 - `shapely` - Geometric operations
-- `mapbox-earcut` - Polygon triangulation
+- `manifold3d` - Robust boolean backend for trimesh (optional)
 
 ### File Size Limits
 - **Vercel has a 50MB limit** for serverless functions

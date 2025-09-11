@@ -468,7 +468,7 @@
             margin: 0;
             display: flex;
             align-items: flex-start;
-            justify-content: flex-start;
+            justify-content: center;
             padding: 2em;
             color: var(--text-primary);
             -webkit-text-size-adjust: 100%;
@@ -624,6 +624,14 @@
             user-select: none;
             overflow: hidden; /* Ensure content doesn't overflow rounded corners */
             box-sizing: border-box; /* Include border in size calculation */
+            position: relative; /* Create positioning context for overlay */
+        }
+
+        /* Ensure WebGL canvas sits behind overlay */
+        #viewer canvas {
+            position: relative;
+            z-index: 1;
+            display: block;
         }
         
         /* Mobile viewer optimizations */
@@ -1027,12 +1035,24 @@
             background: var(--error-bg);
             border: 1px solid var(--error-border);
             border-radius: 6px;
-            padding: 0.7em 1em;
-            margin-top: 0.5em;
-            font-size: 1em;
+            padding: 0.9em 1.2em;
+            margin: 0;
+            font-size: 1.25em;
             display: none;
             align-items: center;
-            gap: 0.5em;
+            justify-content: center;
+            gap: 0.7em;
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            transform: translateY(-50%);
+            width: 100%;
+            text-align: center;
+            z-index: 2;
+            pointer-events: none;
+            box-shadow: 0 6px 20px var(--shadow-light);
+            box-sizing: border-box;
         }
         
         #error-message.info {
@@ -1515,7 +1535,12 @@
         <div class="content-area">
             <!-- Left Column - STL Preview Section (45% width) -->
             <div class="preview-section" role="region" aria-label="3D STL Preview">
-                <div id="viewer" role="img" aria-label="3D preview of braille business card STL file" tabindex="0"></div>
+                <div id="viewer" role="img" aria-label="3D preview of braille business card STL file" tabindex="0">
+                    <div id="error-message" role="alert" aria-live="assertive" aria-atomic="true">
+                        <span style="font-weight:bold;" aria-hidden="true">⚠</span> 
+                        <span id="error-text"></span>
+                    </div>
+                </div>
                 
                 <!-- Text Input Section moved here -->
                 <div class="line-input-group">
@@ -1569,11 +1594,6 @@
                     </div>
                 </div>
                 
-                <div id="error-message" role="alert" aria-live="assertive" aria-atomic="true">
-                    <span style="font-weight:bold;" aria-hidden="true">⚠</span> 
-                    <span id="error-text"></span>
-                </div>
-                
                 <form id="braille-form" aria-labelledby="main-heading">
                     <!-- Language Selection -->
                     <div class="grade-selection">
@@ -1611,43 +1631,7 @@
                         </fieldset>
                     </div>
                     
-                    <!-- Dot Shape Selection (for Embossing Plate only) -->
-                    <div class="grade-selection" id="dot-shape-selection" style="display: block;">
-                        <fieldset>
-                            <legend class="grade-label">Select Braille Dot Shape</legend>
-                            <div class="radio-group" role="radiogroup" aria-required="true">
-                                <label class="radio-option">
-                                    <input type="radio" name="dot_shape" value="cone" checked aria-describedby="cone-dot-desc">
-                                    <span class="radio-text">Cone</span>
-                                </label>
-                                <span id="cone-dot-desc" class="sr-only">Creates cone frustum dots</span>
-                                <label class="radio-option">
-                                    <input type="radio" name="dot_shape" value="rounded" aria-describedby="rounded-dot-desc">
-                                    <span class="radio-text">Rounded</span>
-                                </label>
-                                <span id="rounded-dot-desc" class="sr-only">Creates rounded dome dots with a cylinder base</span>
-                            </div>
-                        </fieldset>
-                    </div>
                     
-                    <!-- Output Shape Selection -->
-                    <div class="grade-selection">
-                        <fieldset>
-                            <legend class="grade-label">Select Output Shape</legend>
-                            <div class="radio-group" role="radiogroup" aria-required="true">
-                                <label class="radio-option">
-                                    <input type="radio" name="shape_type" value="card" checked aria-describedby="card-shape-desc">
-                                    <span class="radio-text">Flat Card</span>
-                                </label>
-                                <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card</span>
-                                <label class="radio-option">
-                                    <input type="radio" name="shape_type" value="cylinder" aria-describedby="cylinder-shape-desc">
-                                    <span class="radio-text">Cylinder</span>
-                                </label>
-                                <span id="cylinder-shape-desc" class="sr-only">Creates a cylindrical braille surface</span>
-                            </div>
-                        </fieldset>
-                    </div>
                     
 
 
@@ -1661,6 +1645,43 @@
                     <div id="expert-settings" class="expert-settings" style="display: none;">
                         <div class="expert-info" role="note" aria-label="Expert mode information">
                             Any changes made here will affect both plates.
+                        </div>
+                        <!-- Output Shape Selection (moved into Expert Mode) -->
+                        <div class="grade-selection">
+                            <fieldset>
+                                <legend class="grade-label">Select Output Shape</legend>
+                                <div class="radio-group" role="radiogroup" aria-required="true">
+                                    <label class="radio-option">
+                                        <input type="radio" name="shape_type" value="card" aria-describedby="card-shape-desc">
+                                        <span class="radio-text">Flat Card</span>
+                                    </label>
+                                    <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card</span>
+                                    <label class="radio-option">
+                                        <input type="radio" name="shape_type" value="cylinder" checked aria-describedby="cylinder-shape-desc">
+                                        <span class="radio-text">Cylinder</span>
+                                    </label>
+                                    <span id="cylinder-shape-desc" class="sr-only">Creates a cylindrical braille surface</span>
+                                </div>
+                            </fieldset>
+                        </div>
+
+                        <!-- Dot Shape Selection (for Embossing Plate only) - moved into Expert Mode -->
+                        <div class="grade-selection" id="dot-shape-selection" style="display: block;">
+                            <fieldset>
+                                <legend class="grade-label">Select Braille Dot Shape</legend>
+                                <div class="radio-group" role="radiogroup" aria-required="true">
+                                    <label class="radio-option">
+                                        <input type="radio" name="dot_shape" value="cone" aria-describedby="cone-dot-desc">
+                                        <span class="radio-text">Cone</span>
+                                    </label>
+                                    <span id="cone-dot-desc" class="sr-only">Creates cone frustum dots</span>
+                                    <label class="radio-option">
+                                        <input type="radio" name="dot_shape" value="rounded" checked aria-describedby="rounded-dot-desc">
+                                        <span class="radio-text">Rounded</span>
+                                    </label>
+                                    <span id="rounded-dot-desc" class="sr-only">Creates rounded dome dots with a cylinder base</span>
+                                </div>
+                            </fieldset>
                         </div>
                         <div class="grade-selection">
                             <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
@@ -1704,21 +1725,25 @@
                                 <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1">
                             </div>
                             <hr style="margin: 12px 0; opacity: 0.3;">
-                            <div id="rounded_dot_group" style="margin-top: 8px; padding-left: 16px; display: none;">
+                            <div id="rounded_dot_group" style="margin-top: 8px; padding-left: 16px; display: block;">
                                 <div>
-                                    <label for="rounded_dot_base_diameter">Rounded dot base diameter (mm):</label>
-                                    <input type="number" id="rounded_dot_base_diameter" name="rounded_dot_base_diameter" value="1.5" step="0.1" min="0.5" max="3">
+                                    <label for="rounded_dot_base_diameter">Rounded braille dot base diameter (cone base) (mm):</label>
+                                    <input type="number" id="rounded_dot_base_diameter" name="rounded_dot_base_diameter" value="2.0" step="0.1" min="0.5" max="3">
                                 </div>
                                 <div>
-                                    <label for="rounded_dot_cylinder_height">Rounded dot cylinder base height (mm):</label>
-                                    <input type="number" id="rounded_dot_cylinder_height" name="rounded_dot_cylinder_height" value="0.2" step="0.1" min="0" max="1.0">
+                                    <label for="rounded_dot_base_height">Rounded braille dot base height (cone height) (mm):</label>
+                                    <input type="number" id="rounded_dot_base_height" name="rounded_dot_base_height" value="0.2" step="0.1" min="0" max="2.0">
                                 </div>
                                 <div>
-                                    <label for="rounded_dot_dome_height">Rounded dot dome height (mm):</label>
+                                    <label for="rounded_dot_dome_diameter">Rounded braille dome diameter (linked to cone flat top) (mm):</label>
+                                    <input type="number" id="rounded_dot_dome_diameter" name="rounded_dot_dome_diameter" value="1.5" step="0.1" min="0.5" max="3.0">
+                                </div>
+                                <div>
+                                    <label for="rounded_dot_dome_height">Rounded braille dot dome height (mm):</label>
                                     <input type="number" id="rounded_dot_dome_height" name="rounded_dot_dome_height" value="0.6" step="0.1" min="0.1" max="2.0">
                                 </div>
                                 <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                    The cylinder base sits on the surface; the rounded dome grows from its top.
+                                    The cone base sits on the surface; the dome grows from the cone's flat top. Dome diameter is always equal to the cone flat-top diameter.
                                 </div>
                             </div>
                         </div>
@@ -1754,14 +1779,14 @@
                             <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Cylinder Dimensions</label>
                             <div>
                                 <label for="cylinder_diameter_mm">Cylinder Diameter (mm):</label>
-                                <input type="number" id="cylinder_diameter_mm" name="cylinder_diameter_mm" value="31.35" step="0.1" min="10" max="200">
+                                <input type="number" id="cylinder_diameter_mm" name="cylinder_diameter_mm" value="30.75" step="0.1" min="10" max="200">
                             </div>
                             <div>
                                 <label for="cylinder_height_mm">Cylinder Height (mm):</label>
                                 <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200">
                             </div>
                             <div>
-                                <label for="cylinder_polygonal_cutout_radius_mm">Polygonal Cutout Inscribed Radius (mm):</label>
+                                <label for="cylinder_polygonal_cutout_radius_mm">Polygonal Cutout Circumscribed Radius (mm):</label>
                                 <input type="number" id="cylinder_polygonal_cutout_radius_mm" name="cylinder_polygonal_cutout_radius_mm" value="13" step="0.1" min="0" max="50">
                                 <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                     Creates a 12-point polygonal cutout along the cylinder's length. Set to 0 for no cutout.
@@ -2081,6 +2106,9 @@
             }
 
             select.appendChild(otherGroup);
+            
+            // Always default to UEB grade 2 on each load (no persistence)
+            select.value = 'en-ueb-g2.ctb';
         }
 
         // Kick off language options load ASAP
@@ -2113,14 +2141,8 @@
         };
         
         let currentThemeIndex = 0;
-        const savedTheme = localStorage.getItem('preferred-theme');
-        if (savedTheme && themes.includes(savedTheme)) {
-            currentThemeIndex = themes.indexOf(savedTheme);
-            applyTheme(savedTheme);
-        } else {
-            // Default to dark mode if no saved preference
-            applyTheme('dark');
-        }
+        // Always start in dark mode; do not persist theme
+        applyTheme('dark');
 
         function applyTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
@@ -2140,9 +2162,6 @@
             
             // Update aria-label to show current theme and what will happen next
             themeToggle.setAttribute('aria-label', `Current theme: ${themeNames[theme]}. Click to switch to ${themeNames[nextTheme]} theme`);
-            
-            // Save preference
-            localStorage.setItem('preferred-theme', theme);
             
             // Announce theme change to screen readers
             const announcement = document.createElement('div');
@@ -2255,35 +2274,14 @@
         // Check if mobile device
         const isMobile = window.innerWidth <= 768;
         
-        // Load saved font size preference
-        const savedFontSize = localStorage.getItem('preferred-font-size');
-        if (savedFontSize && !isMobile) {
-            // Only use saved preference on desktop
-            currentFontSizeIndex = fontSizes.indexOf(parseInt(savedFontSize));
-            if (currentFontSizeIndex === -1) currentFontSizeIndex = 2;
-        } else if (isMobile) {
-            // Mobile defaults to 100% unless user has specifically set mobile preference
-            const savedMobileFontSize = localStorage.getItem('preferred-mobile-font-size');
-            if (savedMobileFontSize) {
-                currentFontSizeIndex = fontSizes.indexOf(parseInt(savedMobileFontSize));
-                if (currentFontSizeIndex === -1) currentFontSizeIndex = 2; // Default to 100% on mobile
-            } else {
-                currentFontSizeIndex = 2; // Default to 100% on mobile
-            }
-        }
+        // Always start at default 100%; do not persist font size
+        currentFontSizeIndex = 2;
         
         function applyFontSize(sizeIndex) {
             const size = fontSizes[sizeIndex];
             document.documentElement.style.fontSize = size + '%';
             document.getElementById('current-font-size').textContent = size;
             currentFontSizeIndex = sizeIndex;
-            
-            // Save preference with device-specific key
-            if (window.innerWidth <= 768) {
-                localStorage.setItem('preferred-mobile-font-size', size);
-            } else {
-                localStorage.setItem('preferred-font-size', size);
-            }
             
             // Announce font size change to screen readers
             const announcement = document.createElement('div');
@@ -2396,7 +2394,9 @@
             // Language selection
             const languageSelect = document.getElementById('language-table');
             if (languageSelect) {
-                languageSelect.addEventListener('change', resetToGenerateState);
+                languageSelect.addEventListener('change', function() {
+                    resetToGenerateState();
+                });
             }
             
             // Function to update grid columns based on plate type
@@ -2466,14 +2466,7 @@
                 radio.addEventListener('change', function() {
                     resetToGenerateState();
                     updateShapeSettings();
-                    // Save shape selection to localStorage
-                    try {
-                        localStorage.setItem('brailleGeneratorShapeType', this.value);
-                        log.debug('Saved shape type to localStorage:', this.value);
-                    } catch (e) {
-                        // Silently fail if localStorage is not available
-                        log.warn('Could not save shape type to localStorage:', e);
-                    }
+                    // Do not persist shape selection; always reset on reload
                 });
             });
             
@@ -2562,7 +2555,7 @@
             if (!shapeTypeElement || shapeTypeElement.value !== 'cylinder') return;
             const shapeType = shapeTypeElement.value;
             
-            const diameter = parseFloat(document.getElementById('cylinder_diameter_mm').value) || 31.35;
+            const diameter = parseFloat(document.getElementById('cylinder_diameter_mm').value) || 30.75;
             const height = parseFloat(document.getElementById('cylinder_height_mm').value) || 52;
             const cellSpacing = parseFloat(document.getElementById('cell_spacing').value) || 6.5;
             const dotSpacing = parseFloat(document.getElementById('dot_spacing').value) || 2.5;
@@ -2783,7 +2776,9 @@
             });
             renderer.setSize(viewer.clientWidth, viewer.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 2 : 3));
-            viewer.innerHTML = '';
+            // Preserve overlay children inside #viewer; only remove previous canvas if present
+            const existingCanvas = viewer.querySelector('canvas');
+            if (existingCanvas) viewer.removeChild(existingCanvas);
             viewer.appendChild(renderer.domElement);
             
             // Get theme-appropriate colors with proper fallbacks
@@ -2961,11 +2956,13 @@
                 // Rounded dome settings (optional)
                 use_rounded_dots: (document.querySelector('input[name="dot_shape"]:checked')?.value === 'rounded') ? 1 : 0,
                 // Legacy fallbacks retained for backend compatibility
-                rounded_dot_diameter: document.getElementById('rounded_dot_base_diameter')?.value || '1.5',
+                rounded_dot_diameter: document.getElementById('rounded_dot_dome_diameter')?.value || '1.5',
                 rounded_dot_height: document.getElementById('rounded_dot_dome_height')?.value || '0.6',
                 // New explicit params
-                rounded_dot_base_diameter: document.getElementById('rounded_dot_base_diameter')?.value || '1.5',
-                rounded_dot_cylinder_height: document.getElementById('rounded_dot_cylinder_height')?.value || '0.2',
+                rounded_dot_base_diameter: document.getElementById('rounded_dot_base_diameter')?.value || '2.0',
+                rounded_dot_base_height: document.getElementById('rounded_dot_base_height')?.value || document.getElementById('rounded_dot_cylinder_height')?.value || '0.2',
+                rounded_dot_cylinder_height: document.getElementById('rounded_dot_base_height')?.value || document.getElementById('rounded_dot_cylinder_height')?.value || '0.2',
+                rounded_dot_dome_diameter: document.getElementById('rounded_dot_dome_diameter')?.value || '1.5',
                 rounded_dot_dome_height: document.getElementById('rounded_dot_dome_height')?.value || '0.6'
             };
             
@@ -3401,29 +3398,9 @@
                 }
             }
             
-            // Restore saved shape selection from localStorage
-            try {
-                const savedShapeType = localStorage.getItem('brailleGeneratorShapeType');
-                if (savedShapeType) {
-                    const shapeRadio = document.querySelector(`input[name="shape_type"][value="${savedShapeType}"]`);
-                    if (shapeRadio) {
-                        shapeRadio.checked = true;
-                        // Update UI to reflect the restored shape
-                        updateShapeSettings();
-                        log.debug('Restored shape type from localStorage:', savedShapeType);
-                    } else {
-                        // If saved shape type doesn't exist, default to card
-                        document.querySelector('input[name="shape_type"][value="card"]').checked = true;
-                    }
-                } else {
-                    // No saved shape, default to card
-                    document.querySelector('input[name="shape_type"][value="card"]').checked = true;
-                }
-            } catch (e) {
-                // If localStorage fails, default to card
-                document.querySelector('input[name="shape_type"][value="card"]').checked = true;
-                log.warn('Could not restore shape type from localStorage:', e);
-            }
+            // Always default to cylinder on load; do not restore from storage
+            const cyl = document.querySelector('input[name="shape_type"][value="cylinder"]');
+            if (cyl) cyl.checked = true;
             
             init3D();
             animate();

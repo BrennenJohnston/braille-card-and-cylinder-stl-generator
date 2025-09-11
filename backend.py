@@ -15,8 +15,8 @@ from functools import wraps
 import time
 from collections import defaultdict
 import hashlib
-from matplotlib.textpath import TextPath
-from matplotlib.font_manager import FontProperties
+# Matplotlib imports are intentionally deferred to inside functions that need them
+# to keep the serverless deployment lightweight and optional
 
 app = Flask(__name__)
 # CORS configuration - update with your actual domain before deployment
@@ -182,10 +182,12 @@ def validate_settings(settings_data):
         'use_rounded_dots': (int, 0, 1),
         'rounded_dot_diameter': (float, 0.5, 3),
         'rounded_dot_height': (float, 0.2, 2),
-        # New rounded dot with cylinder base params
+        # New rounded dot with cone base params
         'rounded_dot_base_diameter': (float, 0.5, 3),
-        'rounded_dot_cylinder_height': (float, 0.0, 1.0),
+        'rounded_dot_cylinder_height': (float, 0.0, 2.0),
+        'rounded_dot_base_height': (float, 0.0, 2.0),
         'rounded_dot_dome_height': (float, 0.1, 2.0),
+        'rounded_dot_dome_diameter': (float, 0.5, 3.0),
         'braille_x_adjust': (float, -10, 10),
         'braille_y_adjust': (float, -10, 10),
         'counter_plate_dot_size_offset': (float, 0, 2),
@@ -257,10 +259,12 @@ class CardSettings:
             # Legacy names kept for backward compatibility
             "rounded_dot_diameter": 1.5,  # Legacy: base diameter for rounded dome (mm)
             "rounded_dot_height": 0.6,    # Legacy: total height or dome height
-            # New explicit parameters for rounded dot with cylinder base
-            "rounded_dot_base_diameter": 1.5,   # Base diameter shared by cylinder and dome
-            "rounded_dot_cylinder_height": 0.2, # Cylinder base height (from surface)
-            "rounded_dot_dome_height": 0.6,     # Dome height above cylinder top
+            # New explicit parameters for rounded dot with cone base
+            "rounded_dot_base_diameter": 2.0,   # Cone base diameter at surface
+            "rounded_dot_dome_diameter": 1.5,   # Cone flat top diameter and dome base
+            "rounded_dot_base_height": 0.2,     # Cone base height (from surface)
+            "rounded_dot_cylinder_height": 0.2, # Legacy alias: cylinder base height
+            "rounded_dot_dome_height": 0.6,     # Dome height above cone flat top
             # Offset adjustments
             "braille_y_adjust": 0.0,  # Default to center
             "braille_x_adjust": 0.0,  # Default to center
@@ -357,19 +361,30 @@ class CardSettings:
 
         # Derived: active dot dimensions depending on shape selection
         if getattr(self, 'use_rounded_dots', 0):
-            # Backward compatibility mapping
+            # Backward compatibility and alias mapping
             if not hasattr(self, 'rounded_dot_base_diameter') or self.rounded_dot_base_diameter is None:
                 self.rounded_dot_base_diameter = self.rounded_dot_diameter
             if not hasattr(self, 'rounded_dot_dome_height') or self.rounded_dot_dome_height is None:
                 # If only legacy rounded_dot_height provided, treat it as dome height
                 self.rounded_dot_dome_height = self.rounded_dot_height
-            if not hasattr(self, 'rounded_dot_cylinder_height') or self.rounded_dot_cylinder_height is None:
-                # Default cylinder base height when not provided explicitly
-                self.rounded_dot_cylinder_height = 0.2
+            # Prefer new base height, fall back to legacy cylinder height
+            base_height = getattr(self, 'rounded_dot_base_height', None)
+            if base_height is None:
+                base_height = getattr(self, 'rounded_dot_cylinder_height', 0.2)
+                self.rounded_dot_base_height = base_height
+            else:
+                # Keep legacy alias in sync when provided new param
+                self.rounded_dot_cylinder_height = base_height
+
+            # Prefer explicit dome diameter; fall back to base diameter for back-compat
+            dome_diameter = getattr(self, 'rounded_dot_dome_diameter', None)
+            if dome_diameter is None:
+                dome_diameter = getattr(self, 'rounded_dot_base_diameter', 1.5)
+                self.rounded_dot_dome_diameter = dome_diameter
 
             # Active dimensions for placement on surfaces
             self.active_dot_base_diameter = float(self.rounded_dot_base_diameter)
-            self.active_dot_height = float(self.rounded_dot_cylinder_height) + float(self.rounded_dot_dome_height)
+            self.active_dot_height = float(self.rounded_dot_base_height) + float(self.rounded_dot_dome_height)
         else:
             self.active_dot_height = self.emboss_dot_height
             self.active_dot_base_diameter = self.emboss_dot_base_diameter
@@ -483,38 +498,45 @@ def create_braille_dot(x, y, z, settings: CardSettings):
     - Optional: rounded dome (spherical cap) using rounded parameters
     """
     if getattr(settings, 'use_rounded_dots', 0):
-        # Cylinder base + spherical cap dome
-        base_diameter = float(getattr(settings, 'rounded_dot_base_diameter', settings.rounded_dot_diameter))
-        base_radius = base_diameter / 2.0
-        cyl_h = float(getattr(settings, 'rounded_dot_cylinder_height', 0.2))
-        dome_h = float(getattr(settings, 'rounded_dot_dome_height', settings.rounded_dot_height))
-        if base_radius > 0 and cyl_h >= 0 and dome_h > 0:
+        # Cone frustum base + spherical cap dome (dome diameter equals cone flat-top diameter)
+        base_diameter = float(getattr(settings, 'rounded_dot_base_diameter', getattr(settings, 'rounded_dot_diameter', 2.0)))
+        dome_diameter = float(getattr(settings, 'rounded_dot_dome_diameter', getattr(settings, 'rounded_dot_base_diameter', 1.5)))
+        base_radius = max(0.0, base_diameter / 2.0)
+        top_radius = max(0.0, dome_diameter / 2.0)
+        base_h = float(getattr(settings, 'rounded_dot_base_height', getattr(settings, 'rounded_dot_cylinder_height', 0.2)))
+        dome_h = float(getattr(settings, 'rounded_dot_dome_height', getattr(settings, 'rounded_dot_height', 0.6)))
+        if base_radius > 0 and base_h >= 0 and dome_h > 0:
             parts = []
-            # Cylinder base at z in [-cyl_h/2, +cyl_h/2] before translation to keep dot centered for transforms
-            if cyl_h > 0:
-                cyl = trimesh.creation.cylinder(radius=base_radius, height=cyl_h, sections=32)
-                parts.append(cyl)
+            # Build a conical frustum by scaling the top ring of a cylinder
+            if base_h > 0:
+                frustum = trimesh.creation.cylinder(radius=base_radius, height=base_h, sections=48)
+                # Scale top vertices in XY so top radius equals top_radius
+                if base_radius > 0:
+                    scale_factor = (top_radius / base_radius) if base_radius > 1e-9 else 1.0
+                else:
+                    scale_factor = 1.0
+                top_z = frustum.vertices[:, 2].max()
+                is_top = np.isclose(frustum.vertices[:, 2], top_z)
+                frustum.vertices[is_top, :2] *= scale_factor
+                parts.append(frustum)
 
-            # Spherical cap dome starting at top of cylinder
-            # Compute sphere radius for cap of height dome_h and base radius base_radius
-            R = (base_radius * base_radius + dome_h * dome_h) / (2.0 * dome_h)
-            zc = (cyl_h / 2.0) + (dome_h - R)  # position sphere center so base of cap sits at cylinder top
+            # Spherical cap dome starting at top of frustum; base radius = top_radius
+            R = (top_radius * top_radius + dome_h * dome_h) / (2.0 * dome_h)
+            zc = (base_h / 2.0) + (dome_h - R)  # center so cap base lies at z = base_h/2
             sphere = trimesh.creation.icosphere(radius=R, subdivisions=max(2, int(getattr(settings, 'hemisphere_subdivisions', 1)) + 2))
             sphere.apply_translation([0.0, 0.0, zc])
-            # Intersect with a slab to keep only the cap region z >= cyl_h/2
-            slab_height = 2.0 * R + cyl_h + dome_h
-            slab = trimesh.creation.box(extents=(4.0 * R, 4.0 * R, slab_height))
-            # Place slab so its bottom is at z=cyl_h/2
-            slab.apply_translation([0.0, 0.0, (cyl_h / 2.0) + (slab_height / 2.0)])
+            # Intersect with a slab to keep only z >= base_h/2
+            slab_height = 2.0 * R + base_h + dome_h
+            slab = trimesh.creation.box(extents=(4.0 * R + base_diameter, 4.0 * R + base_diameter, slab_height))
+            slab.apply_translation([0.0, 0.0, (base_h / 2.0) + (slab_height / 2.0)])
             try:
                 cap = trimesh.boolean.intersection([sphere, slab], engine='manifold')
             except Exception:
                 cap = trimesh.boolean.intersection([sphere, slab])
             parts.append(cap)
 
-            # Combine parts, recenter about mid-height, and translate to (x, y, z)
+            # Combine, recenter by shifting down half of dome height, then translate to (x, y, z)
             dot = trimesh.util.concatenate(parts)
-            # Current center along Z is dome_h/2 above 0; shift down so total height is centered at 0
             dot.apply_translation([0.0, 0.0, -dome_h / 2.0])
             dot.apply_translation((x, y, z))
             return dot
@@ -688,7 +710,7 @@ def create_character_shape_3d(character, x, y, settings: CardSettings, height=1.
     Returns:
         Trimesh object representing the 3D character marker
     """
-    print(f"DEBUG: create_character_shape_3d called with character='{character}', x={x}, y={y}, height={height}")
+    # Debug: character marker generation
     
     # Define character size based on braille cell dimensions (scaled 56.25% bigger than original)
     char_height = 2 * settings.dot_spacing + 4.375  # 9.375mm for default 2.5mm dot spacing
@@ -705,13 +727,23 @@ def create_character_shape_3d(character, x, y, settings: CardSettings, height=1.
         return create_card_line_end_marker_3d(x, y, settings, height, for_subtraction)
     
     try:
-        print(f"DEBUG: Starting matplotlib character generation for '{char_upper}'")
+        # Using matplotlib for character outlines if available
+        # Lazy import matplotlib to avoid a hard dependency in serverless
+        try:
+            from matplotlib.textpath import TextPath  # type: ignore
+            from matplotlib.font_manager import FontProperties  # type: ignore
+            from matplotlib.path import Path  # type: ignore
+            import matplotlib.patches as mpatches  # type: ignore
+        except Exception as import_error:
+            print(f"WARNING: Matplotlib not available: {import_error}")
+            raise
+
         # Use Arial Rounded MT Bold for optimal tactile applications
         # Fall back to monospace family if Arial Rounded MT Bold is not available
         try:
             font_prop = FontProperties(family='Arial Rounded MT Bold', weight='bold')
-        except:
-            print(f"DEBUG: Arial Rounded MT Bold not available, falling back to monospace")
+        except Exception:
+            # Fallback family if preferred font not available
             font_prop = FontProperties(family='monospace', weight='bold')
         
         # Create text path - matplotlib expects size in points, we have mm
@@ -724,11 +756,6 @@ def create_character_shape_3d(character, x, y, settings: CardSettings, height=1.
         # Get the path vertices and codes
         vertices = text_path.vertices
         codes = text_path.codes
-        
-        # Convert matplotlib path to shapely polygon
-        # We need to handle the path codes to create proper polygons
-        from matplotlib.path import Path
-        import matplotlib.patches as mpatches
         
         # Create a matplotlib path object
         path = Path(vertices, codes)
@@ -850,7 +877,7 @@ def create_character_shape_3d(character, x, y, settings: CardSettings, height=1.
         print(f"WARNING: Failed to extrude character shape: {e}")
         return create_card_line_end_marker_3d(x, y, settings, height, for_subtraction)
     
-    print(f"DEBUG: Successfully created character shape for '{character}' at position ({x}, {y})")
+    # Debug: character marker generated
     return char_prism
 
 
@@ -1581,7 +1608,7 @@ def create_cylinder_character_shape(character, x_arc, y_local, settings: CardSet
     Returns:
         Trimesh object representing the 3D character marker transformed to cylinder
     """
-    print(f"DEBUG: create_cylinder_character_shape called with character='{character}', height={height_mm}")
+    # Debug: cylinder character marker generation
     
     radius = cylinder_diameter_mm / 2.0
     circumference = np.pi * cylinder_diameter_mm
@@ -1605,13 +1632,23 @@ def create_cylinder_character_shape(character, x_arc, y_local, settings: CardSet
         return create_cylinder_line_end_marker(x_arc, y_local, settings, cylinder_diameter_mm, seam_offset_deg, height_mm, for_subtraction)
     
     try:
-        print(f"DEBUG: Starting matplotlib character generation for cylinder '{char_upper}'")
+        # Using matplotlib for character outlines on cylinder if available
+        # Lazy import matplotlib to avoid a hard dependency in serverless
+        try:
+            from matplotlib.textpath import TextPath  # type: ignore
+            from matplotlib.font_manager import FontProperties  # type: ignore
+            from matplotlib.path import Path  # type: ignore
+            import matplotlib.patches as mpatches  # type: ignore
+        except Exception as import_error:
+            print(f"WARNING: Matplotlib not available: {import_error}")
+            raise
+
         # Use Arial Rounded MT Bold for optimal tactile applications
         # Fall back to monospace family if Arial Rounded MT Bold is not available
         try:
             font_prop = FontProperties(family='Arial Rounded MT Bold', weight='bold')
-        except:
-            print(f"DEBUG: Arial Rounded MT Bold not available, falling back to monospace")
+        except Exception:
+            # Fallback family if preferred font not available
             font_prop = FontProperties(family='monospace', weight='bold')
         
         # Create text path - matplotlib expects size in points, we have mm
@@ -1624,11 +1661,6 @@ def create_cylinder_character_shape(character, x_arc, y_local, settings: CardSet
         # Get the path vertices and codes
         vertices = text_path.vertices
         codes = text_path.codes
-        
-        # Convert matplotlib path to shapely polygon
-        # We need to handle the path codes to create proper polygons
-        from matplotlib.path import Path
-        import matplotlib.patches as mpatches
         
         # Create a matplotlib path object
         path = Path(vertices, codes)
@@ -1766,7 +1798,7 @@ def create_cylinder_character_shape(character, x_arc, y_local, settings: CardSet
         print(f"WARNING: Failed to extrude character shape: {e}")
         return create_cylinder_line_end_marker(x_arc, y_local, settings, cylinder_diameter_mm, seam_offset_deg, height_mm, for_subtraction)
     
-    print(f"DEBUG: Successfully created cylinder character shape for '{character}'")
+    # Debug: cylinder character marker generated
     return char_prism_local
 
 

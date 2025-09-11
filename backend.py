@@ -695,6 +695,110 @@ def create_card_line_end_marker_3d(x, y, settings: CardSettings, height=0.5, for
     return line_prism
 
 
+def _build_character_polygon(char_upper: str, target_width: float, target_height: float):
+    """
+    Build a 2D character outline as a shapely polygon, scaled to fit within
+    the provided target width/height, centered at origin. Uses matplotlib if
+    available; returns None on failure so callers can fall back gracefully.
+    """
+    try:
+        # Lazy import to keep serverless light
+        try:
+            from matplotlib.textpath import TextPath  # type: ignore
+            from matplotlib.font_manager import FontProperties  # type: ignore
+            from matplotlib.path import Path  # type: ignore
+        except Exception:
+            return None
+
+        # Preferred tactile-friendly font with robust fallback
+        try:
+            font_prop = FontProperties(family='Arial Rounded MT Bold', weight='bold')
+        except Exception:
+            font_prop = FontProperties(family='monospace', weight='bold')
+
+        # Matplotlib expects points; approximate 1 mm ≈ 2.835 pt
+        font_size = max(target_height, target_width) * 2.835
+
+        text_path = TextPath((0, 0), char_upper, size=font_size, prop=font_prop)
+        vertices = text_path.vertices
+        codes = text_path.codes
+
+        # Convert matplotlib path codes to polygons
+        polygons = []
+        current_polygon = []
+        i = 0
+        while i < len(codes):
+            code = codes[i]
+            if code == Path.MOVETO:
+                if current_polygon and len(current_polygon) >= 3:
+                    polygons.append(Polygon(current_polygon))
+                current_polygon = [tuple(vertices[i])]
+            elif code == Path.LINETO:
+                current_polygon.append(tuple(vertices[i]))
+            elif code == Path.CURVE3:
+                if i + 1 < len(codes):
+                    current_polygon.append(tuple(vertices[i]))
+                    current_polygon.append(tuple(vertices[i + 1]))
+                    i += 1
+            elif code == Path.CURVE4:
+                if i + 2 < len(codes):
+                    current_polygon.append(tuple(vertices[i]))
+                    current_polygon.append(tuple(vertices[i + 1]))
+                    current_polygon.append(tuple(vertices[i + 2]))
+                    i += 2
+            elif code == Path.CLOSEPOLY:
+                if current_polygon and len(current_polygon) >= 3:
+                    polygons.append(Polygon(current_polygon))
+                current_polygon = []
+            i += 1
+
+        if current_polygon and len(current_polygon) >= 3:
+            polygons.append(Polygon(current_polygon))
+        if not polygons:
+            return None
+
+        char_2d = unary_union(polygons)
+        if char_2d.is_empty:
+            return None
+
+        bounds = char_2d.bounds
+        w = bounds[2] - bounds[0]
+        h = bounds[3] - bounds[1]
+        if w <= 0 or h <= 0:
+            return None
+
+        # Uniform scale to fit within target rectangle with margin
+        scale = min(target_width / w, target_height / h) * 0.8
+        from shapely import affinity as _affinity
+        char_2d = _affinity.scale(char_2d, xfact=scale, yfact=scale, origin=(0, 0))
+        # Center at origin
+        c = char_2d.centroid
+        char_2d = _affinity.translate(char_2d, xoff=-c.x, yoff=-c.y)
+
+        # Simplify slightly to reduce triangulation issues
+        char_2d = char_2d.simplify(0.05, preserve_topology=True)
+        if not char_2d.is_valid:
+            char_2d = char_2d.buffer(0)
+        return char_2d
+    except Exception:
+        return None
+
+
+def _compute_cylinder_frame(x_arc: float, cylinder_diameter_mm: float, seam_offset_deg: float = 0.0):
+    """
+    Compute local orthonormal frame and geometry parameters for a point on a
+    cylinder given arc-length position and seam offset.
+    Returns (r_hat, t_hat, z_hat, radius, circumference, theta).
+    """
+    radius = cylinder_diameter_mm / 2.0
+    circumference = np.pi * cylinder_diameter_mm
+    theta = (x_arc / circumference) * 2.0 * np.pi + np.radians(seam_offset_deg)
+    r_hat = np.array([np.cos(theta), np.sin(theta), 0.0])
+    t_hat = np.array([-np.sin(theta), np.cos(theta), 0.0])
+    z_hat = np.array([0.0, 0.0, 1.0])
+    return r_hat, t_hat, z_hat, radius, circumference, theta
+
+
 def create_character_shape_3d(character, x, y, settings: CardSettings, height=1.0, for_subtraction=True):
     """
     Create a 3D character shape (capital letter A-Z or number 0-9) for end of row marking.
@@ -727,122 +831,14 @@ def create_character_shape_3d(character, x, y, settings: CardSettings, height=1.
         return create_card_line_end_marker_3d(x, y, settings, height, for_subtraction)
     
     try:
-        # Using matplotlib for character outlines if available
-        # Lazy import matplotlib to avoid a hard dependency in serverless
-        try:
-            from matplotlib.textpath import TextPath  # type: ignore
-            from matplotlib.font_manager import FontProperties  # type: ignore
-            from matplotlib.path import Path  # type: ignore
-            import matplotlib.patches as mpatches  # type: ignore
-        except Exception as import_error:
-            print(f"WARNING: Matplotlib not available: {import_error}")
-            raise
+        # Build character polygon using shared helper (handles matplotlib/lazy import)
+        char_2d = _build_character_polygon(char_upper, char_width, char_height)
+        if char_2d is None:
+            return create_card_line_end_marker_3d(x, y, settings, height, for_subtraction)
 
-        # Use Arial Rounded MT Bold for optimal tactile applications
-        # Fall back to monospace family if Arial Rounded MT Bold is not available
-        try:
-            font_prop = FontProperties(family='Arial Rounded MT Bold', weight='bold')
-        except Exception:
-            # Fallback family if preferred font not available
-            font_prop = FontProperties(family='monospace', weight='bold')
-        
-        # Create text path - matplotlib expects size in points, we have mm
-        # Approximate conversion: 1mm ≈ 2.835 points
-        font_size = char_height * 2.835
-        
-        # Create the text path centered at origin
-        text_path = TextPath((0, 0), char_upper, size=font_size, prop=font_prop)
-        
-        # Get the path vertices and codes
-        vertices = text_path.vertices
-        codes = text_path.codes
-        
-        # Create a matplotlib path object
-        path = Path(vertices, codes)
-        
-        # Convert to polygon by getting the path's outline
-        # Create a patch to get the path's polygon representation
-        patch = mpatches.PathPatch(path)
-        
-        # Extract polygon points from the path
-        # We'll create polygons from the path segments
-        polygons = []
-        current_polygon = []
-        
-        i = 0
-        while i < len(codes):
-            if codes[i] == Path.MOVETO:
-                if current_polygon:
-                    # Close previous polygon
-                    if len(current_polygon) >= 3:
-                        polygons.append(Polygon(current_polygon))
-                    current_polygon = []
-                current_polygon.append(tuple(vertices[i]))
-            elif codes[i] == Path.LINETO:
-                current_polygon.append(tuple(vertices[i]))
-            elif codes[i] == Path.CURVE3:
-                # Quadratic Bezier curve - approximate with line segments
-                if i + 1 < len(codes):
-                    # Simple linear approximation
-                    current_polygon.append(tuple(vertices[i]))
-                    current_polygon.append(tuple(vertices[i + 1]))
-                    i += 1
-            elif codes[i] == Path.CURVE4:
-                # Cubic Bezier curve - approximate with line segments
-                if i + 2 < len(codes):
-                    # Simple linear approximation
-                    current_polygon.append(tuple(vertices[i]))
-                    current_polygon.append(tuple(vertices[i + 1]))
-                    current_polygon.append(tuple(vertices[i + 2]))
-                    i += 2
-            elif codes[i] == Path.CLOSEPOLY:
-                if current_polygon and len(current_polygon) >= 3:
-                    polygons.append(Polygon(current_polygon))
-                current_polygon = []
-            i += 1
-        
-        # Close any remaining polygon
-        if current_polygon and len(current_polygon) >= 3:
-            polygons.append(Polygon(current_polygon))
-        
-        if not polygons:
-            print(f"WARNING: No valid polygons created for character '{char_upper}'")
-            return create_card_line_end_marker_3d(x, y, settings, height, for_subtraction)
-        
-        # Union all polygons into one shape
-        char_2d = unary_union(polygons)
-        
-        # Get the bounds of the character to scale it properly
-        bounds = char_2d.bounds  # (minx, miny, maxx, maxy)
-        text_width = bounds[2] - bounds[0]
-        text_height = bounds[3] - bounds[1]
-        
-        if text_width <= 0 or text_height <= 0:
-            print(f"WARNING: Invalid character bounds for '{char_upper}'")
-            return create_card_line_end_marker_3d(x, y, settings, height, for_subtraction)
-        
-        # Scale the character to fit within our target size
-        scale_x = char_width / text_width
-        scale_y = char_height / text_height
-        # Use uniform scaling to maintain aspect ratio
-        scale = min(scale_x, scale_y) * 0.8  # 0.8 to leave some margin
-        
-        # Apply scaling using affine transformation
-        from shapely import affinity
-        char_2d = affinity.scale(char_2d, xfact=scale, yfact=scale, origin=(0, 0))
-        
-        # Center the character at the target position
-        centroid = char_2d.centroid
-        char_2d = affinity.translate(char_2d, 
-                                   xoff=char_x - centroid.x, 
-                                   yoff=char_y - centroid.y)
-        
-        # Ensure the polygon is valid
-        if not char_2d.is_valid:
-            char_2d = char_2d.buffer(0)  # Fix self-intersections
-        
-        # Simplify the polygon slightly to avoid numerical issues
-        char_2d = char_2d.simplify(0.05, preserve_topology=True)
+        # Translate to desired position
+        from shapely import affinity as _affinity
+        char_2d = _affinity.translate(char_2d, xoff=char_x, yoff=char_y)
         
     except Exception as e:
         print(f"WARNING: Failed to create character shape using matplotlib: {e}")
@@ -1428,16 +1424,7 @@ def create_cylinder_triangle_marker(x_arc, y_local, settings: CardSettings, cyli
         for_subtraction: If True, creates a tool for boolean subtraction to make recesses
         point_left: If True, mirror triangle so apex points toward negative tangent (left in unrolled view)
     """
-    radius = cylinder_diameter_mm / 2.0
-    circumference = np.pi * cylinder_diameter_mm
-    
-    # Angle around cylinder for planar x position
-    theta = (x_arc / circumference) * 2.0 * np.pi + np.radians(seam_offset_deg)
-    
-    # Local orthonormal frame at theta
-    r_hat = np.array([np.cos(theta), np.sin(theta), 0.0])      # radial outward
-    t_hat = np.array([-np.sin(theta), np.cos(theta), 0.0])     # tangential
-    z_hat = np.array([0.0, 0.0, 1.0])                          # cylinder axis
+    r_hat, t_hat, z_hat, radius, circumference, theta = _compute_cylinder_frame(x_arc, cylinder_diameter_mm, seam_offset_deg)
     
     # Triangle dimensions - standard guide triangle shape
     base_height = 2.0 * settings.dot_spacing  # Vertical extent
@@ -1632,116 +1619,10 @@ def create_cylinder_character_shape(character, x_arc, y_local, settings: CardSet
         return create_cylinder_line_end_marker(x_arc, y_local, settings, cylinder_diameter_mm, seam_offset_deg, height_mm, for_subtraction)
     
     try:
-        # Using matplotlib for character outlines on cylinder if available
-        # Lazy import matplotlib to avoid a hard dependency in serverless
-        try:
-            from matplotlib.textpath import TextPath  # type: ignore
-            from matplotlib.font_manager import FontProperties  # type: ignore
-            from matplotlib.path import Path  # type: ignore
-            import matplotlib.patches as mpatches  # type: ignore
-        except Exception as import_error:
-            print(f"WARNING: Matplotlib not available: {import_error}")
-            raise
-
-        # Use Arial Rounded MT Bold for optimal tactile applications
-        # Fall back to monospace family if Arial Rounded MT Bold is not available
-        try:
-            font_prop = FontProperties(family='Arial Rounded MT Bold', weight='bold')
-        except Exception:
-            # Fallback family if preferred font not available
-            font_prop = FontProperties(family='monospace', weight='bold')
-        
-        # Create text path - matplotlib expects size in points, we have mm
-        # Approximate conversion: 1mm ≈ 2.835 points
-        font_size = char_height * 2.835
-        
-        # Create the text path centered at origin
-        text_path = TextPath((0, 0), char_upper, size=font_size, prop=font_prop)
-        
-        # Get the path vertices and codes
-        vertices = text_path.vertices
-        codes = text_path.codes
-        
-        # Create a matplotlib path object
-        path = Path(vertices, codes)
-        
-        # Extract polygon points from the path
-        # We'll create polygons from the path segments
-        polygons = []
-        current_polygon = []
-        
-        i = 0
-        while i < len(codes):
-            if codes[i] == Path.MOVETO:
-                if current_polygon:
-                    # Close previous polygon
-                    if len(current_polygon) >= 3:
-                        polygons.append(Polygon(current_polygon))
-                    current_polygon = []
-                current_polygon.append(tuple(vertices[i]))
-            elif codes[i] == Path.LINETO:
-                current_polygon.append(tuple(vertices[i]))
-            elif codes[i] == Path.CURVE3:
-                # Quadratic Bezier curve - approximate with line segments
-                if i + 1 < len(codes):
-                    # Simple linear approximation
-                    current_polygon.append(tuple(vertices[i]))
-                    current_polygon.append(tuple(vertices[i + 1]))
-                    i += 1
-            elif codes[i] == Path.CURVE4:
-                # Cubic Bezier curve - approximate with line segments
-                if i + 2 < len(codes):
-                    # Simple linear approximation
-                    current_polygon.append(tuple(vertices[i]))
-                    current_polygon.append(tuple(vertices[i + 1]))
-                    current_polygon.append(tuple(vertices[i + 2]))
-                    i += 2
-            elif codes[i] == Path.CLOSEPOLY:
-                if current_polygon and len(current_polygon) >= 3:
-                    polygons.append(Polygon(current_polygon))
-                current_polygon = []
-            i += 1
-        
-        # Close any remaining polygon
-        if current_polygon and len(current_polygon) >= 3:
-            polygons.append(Polygon(current_polygon))
-        
-        if not polygons:
-            print(f"WARNING: No valid polygons created for character '{char_upper}'")
+        # Build character polygon using shared helper
+        char_2d = _build_character_polygon(char_upper, char_width, char_height)
+        if char_2d is None:
             return create_cylinder_line_end_marker(x_arc, y_local, settings, cylinder_diameter_mm, seam_offset_deg, height_mm, for_subtraction)
-        
-        # Union all polygons into one shape
-        char_2d = unary_union(polygons)
-        
-        # Get the bounds of the character to scale it properly
-        bounds = char_2d.bounds  # (minx, miny, maxx, maxy)
-        text_width = bounds[2] - bounds[0]
-        text_height = bounds[3] - bounds[1]
-        
-        if text_width <= 0 or text_height <= 0:
-            print(f"WARNING: Invalid character bounds for '{char_upper}'")
-            return create_cylinder_line_end_marker(x_arc, y_local, settings, cylinder_diameter_mm, seam_offset_deg, height_mm, for_subtraction)
-        
-        # Scale the character to fit within our target size
-        scale_x = char_width / text_width
-        scale_y = char_height / text_height
-        # Use uniform scaling to maintain aspect ratio
-        scale = min(scale_x, scale_y) * 0.8  # 0.8 to leave some margin
-        
-        # Apply scaling using affine transformation
-        from shapely import affinity
-        char_2d = affinity.scale(char_2d, xfact=scale, yfact=scale, origin=(0, 0))
-        
-        # Center the character at origin (will be positioned later)
-        centroid = char_2d.centroid
-        char_2d = affinity.translate(char_2d, xoff=-centroid.x, yoff=-centroid.y)
-        
-        # Ensure the polygon is valid
-        if not char_2d.is_valid:
-            char_2d = char_2d.buffer(0)  # Fix self-intersections
-        
-        # Simplify the polygon slightly to avoid numerical issues
-        char_2d = char_2d.simplify(0.05, preserve_topology=True)
         
     except Exception as e:
         print(f"WARNING: Failed to create character shape using matplotlib: {e}")

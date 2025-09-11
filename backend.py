@@ -97,9 +97,6 @@ def validate_lines(lines):
     if not isinstance(lines, list):
         raise ValueError("Lines must be a list")
     
-    if len(lines) != 4:
-        raise ValueError("Must provide exactly 4 lines")
-    
     for i, line in enumerate(lines):
         if not isinstance(line, str):
             raise ValueError(f"Line {i+1} must be a string")
@@ -171,7 +168,7 @@ def validate_settings(settings_data):
         'card_height': (float, 30, 150),
         'card_thickness': (float, 1, 10),
         'grid_columns': (int, 1, 20),
-        'grid_rows': (int, 1, 10),
+        'grid_rows': (int, 1, 200),
         'cell_spacing': (float, 2, 15),
         'line_spacing': (float, 5, 25),
         'dot_spacing': (float, 1, 5),
@@ -190,7 +187,10 @@ def validate_settings(settings_data):
         'rounded_dot_dome_diameter': (float, 0.5, 3.0),
         'braille_x_adjust': (float, -10, 10),
         'braille_y_adjust': (float, -10, 10),
+        # Support legacy offset and new independent counter base diameter.
+        # If both are provided, counter base diameter takes precedence.
         'counter_plate_dot_size_offset': (float, 0, 2),
+        'counter_dot_base_diameter': (float, 0.1, 5.0),
         'hemisphere_subdivisions': (int, 1, 3)
     }
     
@@ -270,7 +270,8 @@ class CardSettings:
             "braille_x_adjust": 0.0,  # Default to center
             # Counter plate specific parameters
             "hemisphere_subdivisions": 1,  # For mesh density control
-            "counter_plate_dot_size_offset": 0.0,  # Default offset from emboss dot diameter
+            "counter_plate_dot_size_offset": 0.0,  # Legacy: offset from emboss dot diameter
+            "counter_dot_base_diameter": 1.8,      # New: independent counter base diameter
             # Legacy parameters (for backward compatibility)
             "dot_base_diameter": 1.8,  # Updated default: 1.8 mm
             "dot_height": 1.0,  # Project brief default: 1.0 mm
@@ -337,6 +338,17 @@ class CardSettings:
         # Handle legacy parameter name for backward compatibility
         if 'negative_plate_offset' in kwargs and 'counter_plate_dot_size_offset' not in kwargs:
             self.counter_plate_dot_size_offset = self.negative_plate_offset
+        
+        # If independent counter base diameter is supplied, derive offset to keep legacy paths working
+        # Otherwise, derive counter base from emboss + offset
+        try:
+            if hasattr(self, 'counter_dot_base_diameter') and self.counter_dot_base_diameter is not None:
+                # Normalize offset for code paths still reading it
+                self.counter_plate_dot_size_offset = float(self.counter_dot_base_diameter) - float(self.emboss_dot_base_diameter)
+            else:
+                self.counter_dot_base_diameter = float(self.emboss_dot_base_diameter) + float(self.counter_plate_dot_size_offset)
+        except Exception:
+            pass
             
         # Ensure consistency between parameter names
         self.dot_top_diameter = self.emboss_dot_flat_hat
@@ -353,8 +365,8 @@ class CardSettings:
         self.counter_plate_dot_height = self.emboss_dot_height + self.negative_plate_offset
         
         # Hemispherical recess parameters (as per project brief)
-        # The hemisphere radius is affected by the counter plate dot size offset
-        self.hemisphere_radius = (self.emboss_dot_base_diameter + self.counter_plate_dot_size_offset) / 2
+        # Hemisphere radius is based on the actual counter base diameter
+        self.hemisphere_radius = float(self.counter_dot_base_diameter) / 2
         self.plate_thickness = self.card_thickness
         self.epsilon = self.epsilon_mm
         self.cylinder_counter_plate_overcut_mm = self.cylinder_counter_plate_overcut_mm
@@ -979,9 +991,13 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None, original_lines=
         # Check if braille text exceeds grid capacity (accounting for both markers taking columns)
         available_columns = settings.grid_columns - 2  # Two less due to text/number indicator and triangle markers
         if len(braille_text) > available_columns:
-            error_msg = f"Error: Line {row_num + 1} contains {len(braille_text)} braille cells, which exceeds the maximum of {available_columns} cells (grid has {settings.grid_columns} total cells with 2 reserved for row indicators)"
-            print(f"ERROR: {error_msg}")
-            raise RuntimeError(error_msg)
+            # Warn and truncate instead of failing hard
+            over = len(braille_text) - available_columns
+            print(
+                f"WARNING: Line {row_num + 1} exceeds available columns by {over} cells. "
+                f"Truncating to {available_columns} cells to continue generation."
+            )
+            braille_text = braille_text[:available_columns]
         
         # Calculate Y position for this row (top-down)
         y_pos = settings.card_height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
@@ -1316,14 +1332,15 @@ def cylindrical_transform(x, y, z, cylinder_diameter_mm, seam_offset_deg=0):
     
     return cyl_x, cyl_y, cyl_z
 
-def create_cylinder_shell(diameter_mm, height_mm, polygonal_cutout_radius_mm, align_vertex_theta_rad=None):
+def create_cylinder_shell(diameter_mm, height_mm, polygonal_cutout_radius_mm, polygonal_cutout_sides=12, align_vertex_theta_rad=None):
     """
-    Create a cylinder with a 12-point polygonal cutout along its length.
+    Create a cylinder with an N-point polygonal cutout along its length.
     
     Args:
         diameter_mm: Outer diameter of the cylinder
         height_mm: Height of the cylinder
-        polygonal_cutout_radius_mm: Inscribed radius of the 12-point polygonal cutout
+        polygonal_cutout_radius_mm: Inscribed radius of the polygonal cutout
+        polygonal_cutout_sides: Number of sides/points of the polygonal cutout (>= 3)
         align_vertex_theta_rad: Optional absolute angle (radians) around Z to rotate
             the polygonal cutout so that one of its vertices aligns with this angle.
             Useful to align a cutout vertex with the triangle indicator column
@@ -1338,15 +1355,16 @@ def create_cylinder_shell(diameter_mm, height_mm, polygonal_cutout_radius_mm, al
     if polygonal_cutout_radius_mm <= 0:
         return main_cylinder
     
-    # Create a 12-point polygonal prism for the cutout
+    # Create an N-point polygonal prism for the cutout
     # The prism extends the full height of the cylinder
     # Calculate the circumscribed radius from the inscribed radius
-    # For a regular 12-gon: circumscribed_radius = inscribed_radius / cos(15°)
-    # cos(15°) = cos(π/12)
-    circumscribed_radius = polygonal_cutout_radius_mm / np.cos(np.pi / 12)
+    # For a regular N-gon: circumscribed_radius = inscribed_radius / cos(pi/N)
+    # Clamp the number of sides for safety
+    polygonal_cutout_sides = max(3, int(polygonal_cutout_sides))
+    circumscribed_radius = polygonal_cutout_radius_mm / np.cos(np.pi / polygonal_cutout_sides)
     
-    # Create the 12-point polygon vertices
-    angles = np.linspace(0, 2*np.pi, 12, endpoint=False)
+    # Create the polygon vertices
+    angles = np.linspace(0, 2*np.pi, polygonal_cutout_sides, endpoint=False)
     vertices_2d = []
     for angle in angles:
         x = circumscribed_radius * np.cos(angle)
@@ -1725,7 +1743,8 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
         cylinder_params: Dictionary with cylinder-specific parameters:
             - diameter_mm: Cylinder diameter
             - height_mm: Cylinder height  
-            - polygonal_cutout_radius_mm: Inscribed radius of 12-point polygonal cutout (0 = no cutout)
+            - polygonal_cutout_radius_mm: Inscribed radius of polygonal cutout (0 = no cutout)
+            - polygonal_cutout_sides: Number of sides for polygonal cutout (>=3)
             - seam_offset_deg: Rotation offset for seam
         original_lines: List of original text lines (before braille conversion) for character indicators
     """
@@ -1737,12 +1756,14 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
             'diameter_mm': 31.35,
             'height_mm': settings.card_height,
             'polygonal_cutout_radius_mm': 13,
+            'polygonal_cutout_sides': 12,
             'seam_offset_deg': 355
         }
     
     diameter = float(cylinder_params.get('diameter_mm', 31.35))
     height = float(cylinder_params.get('height_mm', settings.card_height))
     polygonal_cutout_radius = float(cylinder_params.get('polygonal_cutout_radius_mm', 0))
+    polygonal_cutout_sides = int(cylinder_params.get('polygonal_cutout_sides', 12) or 12)
     seam_offset = float(cylinder_params.get('seam_offset_deg', 355))
     
     print(f"Creating cylinder mesh - Diameter: {diameter}mm, Height: {height}mm, Cutout Radius: {polygonal_cutout_radius}mm")
@@ -1769,7 +1790,13 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
     cutout_align_theta = triangle_angle + seam_offset_rad
     
     # Create cylinder shell with polygon cutout aligned to triangle marker column
-    cylinder_shell = create_cylinder_shell(diameter, height, polygonal_cutout_radius, align_vertex_theta_rad=cutout_align_theta)
+    cylinder_shell = create_cylinder_shell(
+        diameter,
+        height,
+        polygonal_cutout_radius,
+        polygonal_cutout_sides,
+        align_vertex_theta_rad=cutout_align_theta
+    )
     meshes = [cylinder_shell]
     
     # Layout braille cells on cylinder
@@ -1946,7 +1973,8 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         cylinder_params: Dictionary with cylinder-specific parameters:
             - diameter_mm: Cylinder diameter
             - height_mm: Cylinder height  
-            - polygonal_cutout_radius_mm: Inscribed radius of 12-point polygonal cutout (0 = no cutout)
+            - polygonal_cutout_radius_mm: Inscribed radius of polygonal cutout (0 = no cutout)
+            - polygonal_cutout_sides: Number of sides for polygonal cutout (>=3)
             - seam_offset_deg: Rotation offset for seam
     """
     if cylinder_params is None:
@@ -1954,12 +1982,14 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             'diameter_mm': 31.35,
             'height_mm': settings.card_height,
             'polygonal_cutout_radius_mm': 13,
+            'polygonal_cutout_sides': 12,
             'seam_offset_deg': 355
         }
     
     diameter = float(cylinder_params.get('diameter_mm', 31.35))
     height = float(cylinder_params.get('height_mm', settings.card_height))
     polygonal_cutout_radius = float(cylinder_params.get('polygonal_cutout_radius_mm', 0))
+    polygonal_cutout_sides = int(cylinder_params.get('polygonal_cutout_sides', 12) or 12)
     seam_offset = float(cylinder_params.get('seam_offset_deg', 355))
     
     print(f"Creating cylinder counter plate - Diameter: {diameter}mm, Height: {height}mm, Cutout Radius: {polygonal_cutout_radius}mm")
@@ -1991,6 +2021,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         diameter,
         height,
         polygonal_cutout_radius,
+        polygonal_cutout_sides,
         align_vertex_theta_rad=cutout_align_theta
     )
     
@@ -2074,8 +2105,12 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
                 dot_x = cell_x + (dot_col_angle_offsets[dot_pos[1]] * radius)
                 dot_y = y_pos + dot_row_offsets[dot_pos[0]]
                 
-                # Create sphere with radius based on counter plate offset
-                hemisphere_radius = (settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset) / 2
+                # Create sphere with radius based on independent counter base diameter (fallback to offset if missing)
+                try:
+                    counter_base = float(getattr(settings, 'counter_dot_base_diameter'))
+                except Exception:
+                    counter_base = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
+                hemisphere_radius = counter_base / 2
                 sphere = trimesh.creation.icosphere(subdivisions=settings.hemisphere_subdivisions, radius=hemisphere_radius)
                 
                 # Ensure sphere is a valid volume
@@ -2249,7 +2284,7 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
         
     Technical details:
     - Plate thickness: TH (mm). Top surface is z=TH, bottom is z=0.
-    - Hemisphere radius r = (emboss_dot_base_diameter + counter_plate_dot_size_offset) / 2.
+    - Hemisphere radius r = counter_dot_base_diameter / 2 (or legacy: (emboss_dot_base_diameter + counter_plate_dot_size_offset) / 2).
     - For each dot center (x, y) in the braille grid, creates an icosphere with radius r
       and translates its center to (x, y, TH - r + ε) so the lower hemisphere sits inside the slab
       and the equator coincides with the top surface.
@@ -2270,7 +2305,11 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
     dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]  # Map dot index (0-5) to [row, col]
     
     # Calculate hemisphere radius including the counter plate offset
-    hemisphere_radius = (params.emboss_dot_base_diameter + params.counter_plate_dot_size_offset) / 2
+    try:
+        counter_base = float(getattr(params, 'counter_dot_base_diameter'))
+    except Exception:
+        counter_base = params.emboss_dot_base_diameter + params.counter_plate_dot_size_offset
+    hemisphere_radius = counter_base / 2
     print(f"DEBUG: Hemisphere radius: {hemisphere_radius:.3f}mm (base: {params.emboss_dot_base_diameter}mm + offset: {params.counter_plate_dot_size_offset}mm)")
     
     # Create icospheres for ALL possible dot positions
@@ -2830,8 +2869,11 @@ def generate_braille_stl():
                             filename = f'braille_embossing_plate_{sanitized}-{shape_type}'
                         break
         else:
-            # For counter plates, include total diameter (base + offset) in filename
-            total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
+            # For counter plates, include actual counter base diameter in filename
+            try:
+                total_diameter = float(getattr(settings, 'counter_dot_base_diameter'))
+            except Exception:
+                total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
             filename = f'braille_counter_plate_{total_diameter}mm-{shape_type}'
         
         # Additional filename sanitization for security
@@ -2876,8 +2918,11 @@ def generate_counter_plate_stl():
         mesh.export(stl_io, file_type='stl')
         stl_io.seek(0)
         
-        # Include total diameter (base + offset) in filename
-        total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
+        # Include actual counter base diameter in filename
+        try:
+            total_diameter = float(getattr(settings, 'counter_dot_base_diameter'))
+        except Exception:
+            total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
         filename = f"braille_counter_plate_{total_diameter}mm"
         return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl')
         

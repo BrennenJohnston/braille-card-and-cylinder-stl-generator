@@ -182,6 +182,10 @@ def validate_settings(settings_data):
         'use_rounded_dots': (int, 0, 1),
         'rounded_dot_diameter': (float, 0.5, 3),
         'rounded_dot_height': (float, 0.2, 2),
+        # New rounded dot with cylinder base params
+        'rounded_dot_base_diameter': (float, 0.5, 3),
+        'rounded_dot_cylinder_height': (float, 0.0, 1.0),
+        'rounded_dot_dome_height': (float, 0.1, 2.0),
         'braille_x_adjust': (float, -10, 10),
         'braille_y_adjust': (float, -10, 10),
         'counter_plate_dot_size_offset': (float, 0, 2),
@@ -250,8 +254,13 @@ class CardSettings:
             "emboss_dot_flat_hat": 0.4,  # Updated default: 0.4 mm
             # Rounded dome dot parameters (optional alternative to cone)
             "use_rounded_dots": 0,  # 0 = cone (default), 1 = rounded dome
-            "rounded_dot_diameter": 1.5,  # Default base diameter for rounded dome (mm)
-            "rounded_dot_height": 0.6,    # Default height above surface for rounded dome (mm)
+            # Legacy names kept for backward compatibility
+            "rounded_dot_diameter": 1.5,  # Legacy: base diameter for rounded dome (mm)
+            "rounded_dot_height": 0.6,    # Legacy: total height or dome height
+            # New explicit parameters for rounded dot with cylinder base
+            "rounded_dot_base_diameter": 1.5,   # Base diameter shared by cylinder and dome
+            "rounded_dot_cylinder_height": 0.2, # Cylinder base height (from surface)
+            "rounded_dot_dome_height": 0.6,     # Dome height above cylinder top
             # Offset adjustments
             "braille_y_adjust": 0.0,  # Default to center
             "braille_x_adjust": 0.0,  # Default to center
@@ -348,8 +357,19 @@ class CardSettings:
 
         # Derived: active dot dimensions depending on shape selection
         if getattr(self, 'use_rounded_dots', 0):
-            self.active_dot_height = self.rounded_dot_height
-            self.active_dot_base_diameter = self.rounded_dot_diameter
+            # Backward compatibility mapping
+            if not hasattr(self, 'rounded_dot_base_diameter') or self.rounded_dot_base_diameter is None:
+                self.rounded_dot_base_diameter = self.rounded_dot_diameter
+            if not hasattr(self, 'rounded_dot_dome_height') or self.rounded_dot_dome_height is None:
+                # If only legacy rounded_dot_height provided, treat it as dome height
+                self.rounded_dot_dome_height = self.rounded_dot_height
+            if not hasattr(self, 'rounded_dot_cylinder_height') or self.rounded_dot_cylinder_height is None:
+                # Default cylinder base height when not provided explicitly
+                self.rounded_dot_cylinder_height = 0.2
+
+            # Active dimensions for placement on surfaces
+            self.active_dot_base_diameter = float(self.rounded_dot_base_diameter)
+            self.active_dot_height = float(self.rounded_dot_cylinder_height) + float(self.rounded_dot_dome_height)
         else:
             self.active_dot_height = self.emboss_dot_height
             self.active_dot_base_diameter = self.emboss_dot_base_diameter
@@ -463,34 +483,41 @@ def create_braille_dot(x, y, z, settings: CardSettings):
     - Optional: rounded dome (spherical cap) using rounded parameters
     """
     if getattr(settings, 'use_rounded_dots', 0):
-        # Spherical cap parameters
-        a = float(settings.rounded_dot_diameter) / 2.0  # base radius
-        h = float(settings.rounded_dot_height)
-        if h <= 0 or a <= 0:
-            # Fallback to cone if invalid
-            use_rounded = False
-        else:
-            use_rounded = True
-        
-        if use_rounded:
-            # Sphere radius R for cap of height h and base radius a
-            R = (a * a + h * h) / (2.0 * h)
-            zc = h - R  # sphere center z so that base plane is at z=0 and apex at z=h
-            
-            # Build sphere and intersect with slab z in [0, 2R] to keep cap part (z>=0)
+        # Cylinder base + spherical cap dome
+        base_diameter = float(getattr(settings, 'rounded_dot_base_diameter', settings.rounded_dot_diameter))
+        base_radius = base_diameter / 2.0
+        cyl_h = float(getattr(settings, 'rounded_dot_cylinder_height', 0.2))
+        dome_h = float(getattr(settings, 'rounded_dot_dome_height', settings.rounded_dot_height))
+        if base_radius > 0 and cyl_h >= 0 and dome_h > 0:
+            parts = []
+            # Cylinder base at z in [-cyl_h/2, +cyl_h/2] before translation to keep dot centered for transforms
+            if cyl_h > 0:
+                cyl = trimesh.creation.cylinder(radius=base_radius, height=cyl_h, sections=32)
+                parts.append(cyl)
+
+            # Spherical cap dome starting at top of cylinder
+            # Compute sphere radius for cap of height dome_h and base radius base_radius
+            R = (base_radius * base_radius + dome_h * dome_h) / (2.0 * dome_h)
+            zc = (cyl_h / 2.0) + (dome_h - R)  # position sphere center so base of cap sits at cylinder top
             sphere = trimesh.creation.icosphere(radius=R, subdivisions=max(2, int(getattr(settings, 'hemisphere_subdivisions', 1)) + 2))
             sphere.apply_translation([0.0, 0.0, zc])
-            slab = trimesh.creation.box(extents=(4.0 * R, 4.0 * R, 2.0 * R))
-            slab.apply_translation([0.0, 0.0, R])  # lower face at z=0
+            # Intersect with a slab to keep only the cap region z >= cyl_h/2
+            slab_height = 2.0 * R + cyl_h + dome_h
+            slab = trimesh.creation.box(extents=(4.0 * R, 4.0 * R, slab_height))
+            # Place slab so its bottom is at z=cyl_h/2
+            slab.apply_translation([0.0, 0.0, (cyl_h / 2.0) + (slab_height / 2.0)])
             try:
                 cap = trimesh.boolean.intersection([sphere, slab], engine='manifold')
             except Exception:
                 cap = trimesh.boolean.intersection([sphere, slab])
-            
-            # Center cap around z=0 for consistent placement (extents roughly [-h/2, +h/2])
-            cap.apply_translation([0.0, 0.0, -h / 2.0])
-            cap.apply_translation((x, y, z))
-            return cap
+            parts.append(cap)
+
+            # Combine parts, recenter about mid-height, and translate to (x, y, z)
+            dot = trimesh.util.concatenate(parts)
+            # Current center along Z is dome_h/2 above 0; shift down so total height is centered at 0
+            dot.apply_translation([0.0, 0.0, -dome_h / 2.0])
+            dot.apply_translation((x, y, z))
+            return dot
     
     # Default cone frustum path
     cylinder = trimesh.creation.cylinder(

@@ -1779,20 +1779,9 @@
     <script src="/static/liblouis/easy-api.js"></script>
     
     <script type="module">
-<<<<<<< HEAD
-<<<<<<< HEAD
-        import * as THREE from './static/three.module.js';
-        import { STLLoader } from './static/STLLoader.js';
-        import { OrbitControls } from './static/OrbitControls.js';
-        import { buildCardEmbossingPlate, buildCylinderEmbossingPlate } from './static/geometry.js';
-        import { exportObjectToAsciiSTL } from './static/export-stl.js';
-        const API_BASE = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) || '';
-=======
         import * as THREE from '/static/three.module.js';
->>>>>>> parent of a913329 (github pages)
-=======
-        import * as THREE from '/static/three.module.js';
->>>>>>> parent of 5effdff (feat(static): client-side STL generation + liblouis static tables manifest; update index.html to avoid backend; add export-stl and geometry modules; docs for static run)
+        import { STLLoader } from '/static/STLLoader.js';
+        import { OrbitControls } from '/static/OrbitControls.js';
         async function loadLanguageOptions() {
             const select = document.getElementById('language-table');
             if (!select) return;
@@ -1811,31 +1800,11 @@
             // Fetch available tables from backend
             let resp;
             try {
-<<<<<<< HEAD
-<<<<<<< HEAD
-                const resp = await fetch('./static/tables-manifest.json');
-                if (resp.ok) {
-                    data = await resp.json();
-                }
-            } catch (e) { /* ignore */ }
-            // Fallback to backend if available
-            if (!data) {
-                try {
-                    const resp2 = await fetch(`${API_BASE}/liblouis/tables`, { credentials: 'same-origin' });
-                    if (resp2.ok) data = await resp2.json().catch(() => null);
-                } catch (e) { /* ignore */ }
-=======
                 resp = await fetch('/liblouis/tables', { credentials: 'same-origin' });
             } catch (e) {
                 return; // Fail silently; defaults remain
->>>>>>> parent of a913329 (github pages)
-=======
-                resp = await fetch('/liblouis/tables', { credentials: 'same-origin' });
-            } catch (e) {
-                return; // Fail silently; defaults remain
->>>>>>> parent of 5effdff (feat(static): client-side STL generation + liblouis static tables manifest; update index.html to avoid backend; add export-stl and geometry modules; docs for static run)
             }
-            if (!resp.ok) return;
+            if (!resp || !resp.ok) return;
             const data = await resp.json().catch(() => null);
             if (!data || !Array.isArray(data.tables)) return;
 
@@ -2079,17 +2048,7 @@
 
         // Kick off language options load ASAP
         loadLanguageOptions();
-<<<<<<< HEAD
-<<<<<<< HEAD
         
-=======
-        import { STLLoader } from '/static/STLLoader.js';
-        import { OrbitControls } from '/static/OrbitControls.js';
->>>>>>> parent of a913329 (github pages)
-=======
-        import { STLLoader } from '/static/STLLoader.js';
-        import { OrbitControls } from '/static/OrbitControls.js';
->>>>>>> parent of 5effdff (feat(static): client-side STL generation + liblouis static tables manifest; update index.html to avoid backend; add export-stl and geometry modules; docs for static run)
 
         // Declare 3D scene variables at module scope
         let renderer, scene, camera, mesh, controls;
@@ -3016,11 +2975,6 @@
             log.debug('Shape Type:', shapeType);
             log.debug('Cylinder Params:', cylinderParams);
             
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> parent of 5effdff (feat(static): client-side STL generation + liblouis static tables manifest; update index.html to avoid backend; add export-stl and geometry modules; docs for static run)
             const res = await fetch('/generate_braille_stl', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -3045,7 +2999,6 @@
                     if (data.error) msg = data.error;
                 } catch (e) {
                     msg = `Server error: ${res.status} ${res.statusText}`;
-<<<<<<< HEAD
                 }
                 errorText.textContent = msg;
                 errorDiv.style.display = 'flex';
@@ -3055,24 +3008,6 @@
                 return;
             }
             
->>>>>>> parent of a913329 (github pages)
-            try {
-                // Client-side STL generation (no backend)
-                let object3D;
-                if (shapeType === 'cylinder') {
-                    object3D = buildCylinderEmbossingPlate(translatedLines, settings, cylinderParams);
-                } else {
-                    object3D = buildCardEmbossingPlate(translatedLines, settings);
-=======
->>>>>>> parent of 5effdff (feat(static): client-side STL generation + liblouis static tables manifest; update index.html to avoid backend; add export-stl and geometry modules; docs for static run)
-                }
-                errorText.textContent = msg;
-                errorDiv.style.display = 'flex';
-                errorDiv.className = 'error-message'; // Reset to error style
-                // Re-enable button on error and reset to generate state
-                resetToGenerateState();
-                return;
-            }
             
             try {
                 // Create blob and URL for 3D preview

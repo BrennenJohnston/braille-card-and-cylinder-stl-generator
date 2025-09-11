@@ -1,19 +1,9 @@
 {
   "version": 2,
   "builds": [
-    {
-      "src": "wsgi.py",
-      "use": "@vercel/python"
-    }
+    { "src": "wsgi.py", "use": "@vercel/python" }
   ],
-  "rewrites": [
-    {
-      "source": "/static/(.*)",
-      "destination": "/static/$1"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/wsgi.py"
-    }
+  "routes": [
+    { "src": "/(.*)", "dest": "/wsgi.py" }
   ]
 }

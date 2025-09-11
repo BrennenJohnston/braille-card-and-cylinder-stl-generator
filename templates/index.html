@@ -1684,6 +1684,26 @@
                                 <label for="emboss_dot_flat_hat">Flat hat diameter:</label>
                                 <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1">
                             </div>
+                            <hr style="margin: 12px 0; opacity: 0.3;">
+                            <div>
+                                <label for="use_rounded_dots" style="display: inline-flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="use_rounded_dots" name="use_rounded_dots">
+                                    <span>Use rounded dome dots</span>
+                                </label>
+                            </div>
+                            <div id="rounded_dot_group" style="margin-top: 8px; padding-left: 16px; display: none;">
+                                <div>
+                                    <label for="rounded_dot_diameter">Rounded dot diameter (mm):</label>
+                                    <input type="number" id="rounded_dot_diameter" name="rounded_dot_diameter" value="1.5" step="0.1" min="0.5" max="3">
+                                </div>
+                                <div>
+                                    <label for="rounded_dot_height">Rounded dot height (mm):</label>
+                                    <input type="number" id="rounded_dot_height" name="rounded_dot_height" value="0.6" step="0.1" min="0.2" max="2">
+                                </div>
+                                <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                    When enabled, cones are replaced with hemispherical domes sized by these values.
+                                </div>
+                            </div>
                         </div>
 
                         <div class="grade-selection">
@@ -2900,13 +2920,25 @@
                 card_height: document.getElementById('card_height').value,
                 card_thickness: document.getElementById('card_thickness').value,
                 braille_x_adjust: document.getElementById('braille_x_adjust').value,
-                braille_y_adjust: document.getElementById('braille_y_adjust').value
+                braille_y_adjust: document.getElementById('braille_y_adjust').value,
+                // Rounded dome settings (optional)
+                use_rounded_dots: document.getElementById('use_rounded_dots').checked ? 1 : 0,
+                rounded_dot_diameter: document.getElementById('rounded_dot_diameter').value,
+                rounded_dot_height: document.getElementById('rounded_dot_height').value
             };
             
             // Debug: Log the settings being sent
             log.debug('Expert Mode Settings:', settings);
             log.debug('Settings object keys:', Object.keys(settings));
             log.debug('Settings object values:', Object.values(settings));
+            // Toggle rounded-dome inputs visibility dynamically
+            try {
+                const roundedToggle = document.getElementById('use_rounded_dots');
+                const roundedGroup = document.getElementById('rounded_dot_group');
+                if (roundedToggle && roundedGroup) {
+                    roundedGroup.style.display = roundedToggle.checked ? 'block' : 'none';
+                }
+            } catch (e) { /* ignore */ }
             
             // Check if at least one line has content (only for positive plates)
             if (plateType === 'positive' && lines.every(line => !line.trim())) {

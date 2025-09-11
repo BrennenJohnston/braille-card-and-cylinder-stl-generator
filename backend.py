@@ -178,6 +178,10 @@ def validate_settings(settings_data):
         'emboss_dot_base_diameter': (float, 0.5, 3),
         'emboss_dot_height': (float, 0.3, 2),
         'emboss_dot_flat_hat': (float, 0.1, 2),
+        # Rounded dome
+        'use_rounded_dots': (int, 0, 1),
+        'rounded_dot_diameter': (float, 0.5, 3),
+        'rounded_dot_height': (float, 0.2, 2),
         'braille_x_adjust': (float, -10, 10),
         'braille_y_adjust': (float, -10, 10),
         'counter_plate_dot_size_offset': (float, 0, 2),
@@ -244,6 +248,10 @@ class CardSettings:
             "emboss_dot_base_diameter": 1.8,  # Updated default: 1.8 mm
             "emboss_dot_height": 1.0,  # Project brief default: 1.0 mm
             "emboss_dot_flat_hat": 0.4,  # Updated default: 0.4 mm
+            # Rounded dome dot parameters (optional alternative to cone)
+            "use_rounded_dots": 0,  # 0 = cone (default), 1 = rounded dome
+            "rounded_dot_diameter": 1.5,  # Default base diameter for rounded dome (mm)
+            "rounded_dot_height": 0.6,    # Default height above surface for rounded dome (mm)
             # Offset adjustments
             "braille_y_adjust": 0.0,  # Default to center
             "braille_x_adjust": 0.0,  # Default to center
@@ -279,6 +287,11 @@ class CardSettings:
         # Ensure attributes that represent counts are integers
         self.grid_columns = int(self.grid_columns)
         self.grid_rows = int(self.grid_rows)
+        # Normalize boolean-like toggles stored as numbers
+        try:
+            self.use_rounded_dots = int(float(kwargs.get('use_rounded_dots', self.use_rounded_dots)))
+        except Exception:
+            self.use_rounded_dots = int(self.use_rounded_dots)
         
         # Calculate grid dimensions first
         self.grid_width = (self.grid_columns - 1) * self.cell_spacing
@@ -332,6 +345,14 @@ class CardSettings:
         self.plate_thickness = self.card_thickness
         self.epsilon = self.epsilon_mm
         self.cylinder_counter_plate_overcut_mm = self.cylinder_counter_plate_overcut_mm
+
+        # Derived: active dot dimensions depending on shape selection
+        if getattr(self, 'use_rounded_dots', 0):
+            self.active_dot_height = self.rounded_dot_height
+            self.active_dot_base_diameter = self.rounded_dot_diameter
+        else:
+            self.active_dot_height = self.emboss_dot_height
+            self.active_dot_base_diameter = self.emboss_dot_base_diameter
 
     def _validate_margins(self):
         """
@@ -437,30 +458,53 @@ def braille_to_dots(braille_char: str) -> list:
 
 def create_braille_dot(x, y, z, settings: CardSettings):
     """
-    Create a cone-shaped braille dot with specified dimensions from settings.
-    Uses the project brief parameter names.
+    Create a braille dot mesh at the origin, then translate to (x, y, z).
+    - Default: cone frustum using emboss parameters
+    - Optional: rounded dome (spherical cap) using rounded parameters
     """
-    # Create a cylinder with the base diameter
+    if getattr(settings, 'use_rounded_dots', 0):
+        # Spherical cap parameters
+        a = float(settings.rounded_dot_diameter) / 2.0  # base radius
+        h = float(settings.rounded_dot_height)
+        if h <= 0 or a <= 0:
+            # Fallback to cone if invalid
+            use_rounded = False
+        else:
+            use_rounded = True
+        
+        if use_rounded:
+            # Sphere radius R for cap of height h and base radius a
+            R = (a * a + h * h) / (2.0 * h)
+            zc = h - R  # sphere center z so that base plane is at z=0 and apex at z=h
+            
+            # Build sphere and intersect with slab z in [0, 2R] to keep cap part (z>=0)
+            sphere = trimesh.creation.icosphere(radius=R, subdivisions=max(2, int(getattr(settings, 'hemisphere_subdivisions', 1)) + 2))
+            sphere.apply_translation([0.0, 0.0, zc])
+            slab = trimesh.creation.box(extents=(4.0 * R, 4.0 * R, 2.0 * R))
+            slab.apply_translation([0.0, 0.0, R])  # lower face at z=0
+            try:
+                cap = trimesh.boolean.intersection([sphere, slab], engine='manifold')
+            except Exception:
+                cap = trimesh.boolean.intersection([sphere, slab])
+            
+            # Center cap around z=0 for consistent placement (extents roughly [-h/2, +h/2])
+            cap.apply_translation([0.0, 0.0, -h / 2.0])
+            cap.apply_translation((x, y, z))
+            return cap
+    
+    # Default cone frustum path
     cylinder = trimesh.creation.cylinder(
         radius=settings.emboss_dot_base_diameter / 2,
         height=settings.emboss_dot_height,
         sections=16
     )
     
-    # Scale the top vertices to create the cone shape (frustum)
-    # This creates a cone with flat top (as per project brief)
     if settings.emboss_dot_base_diameter > 0:
         scale_factor = settings.emboss_dot_flat_hat / settings.emboss_dot_base_diameter
-        
-        # Apply scaling to vertices that are on the top surface of the cylinder
         top_surface_z = cylinder.vertices[:, 2].max()
-        
-        # A small tolerance for floating point comparison
         is_top_vertex = np.isclose(cylinder.vertices[:, 2], top_surface_z)
-        
         cylinder.vertices[is_top_vertex, :2] *= scale_factor
-        
-    # Position the dot
+    
     cylinder.apply_translation((x, y, z))
     return cylinder
 
@@ -908,12 +952,13 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None, original_lines=
                     dot_pos = dot_positions[i]
                     dot_x = x_pos + dot_col_offsets[dot_pos[1]]
                     dot_y = y_pos + dot_row_offsets[dot_pos[0]]
-                    z = settings.card_thickness + settings.emboss_dot_height / 2
+                    # Position Z by active dot height so the dot sits on the surface
+                    z = settings.card_thickness + settings.active_dot_height / 2
                     
                     dot_mesh = create_braille_dot(dot_x, dot_y, z, settings)
                     meshes.append(dot_mesh)
     
-    print(f"Created positive plate with {len(meshes)-1} cone-shaped dots, {settings.grid_rows} text/number indicators, and {settings.grid_rows} triangle markers")
+    print(f"Created positive plate with {len(meshes)-1} braille dots, {settings.grid_rows} text/number indicators, and {settings.grid_rows} triangle markers")
     
     # Combine all positive meshes (base + dots)
     combined_mesh = trimesh.util.concatenate(meshes)
@@ -1721,7 +1766,8 @@ def create_cylinder_braille_dot(x, y, z, settings: CardSettings, cylinder_diamet
     dot.apply_transform(rot_to_radial)
 
     # Place the dot so its base is flush with the cylinder outer surface
-    dot_height = settings.emboss_dot_height
+    # Use active height (cone or rounded)
+    dot_height = settings.active_dot_height
     center_radial_distance = radius + (dot_height / 2.0)
     center_position = r_hat * center_radial_distance + np.array([0.0, 0.0, y])
     dot.apply_translation(center_position)
@@ -1931,7 +1977,7 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
                 dot_y = cell_y + dot_row_offsets[dot_pos[0]]
                 # Map absolute card Y to cylinder's local Z (centered at 0)
                 dot_z_local = dot_y - (height / 2.0)
-                z = polygonal_cutout_radius + settings.emboss_dot_height / 2  # unused in transform now
+                z = polygonal_cutout_radius + settings.active_dot_height / 2  # unused in transform now
                 
                 dot_mesh = create_cylinder_braille_dot(dot_x, dot_z_local, z, settings, diameter, seam_offset)
                 meshes.append(dot_mesh)

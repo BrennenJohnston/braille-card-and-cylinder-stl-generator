@@ -1102,6 +1102,36 @@
             transform: rotate(180deg);
         }
         
+        /* Reset to Defaults button styling */
+        .reset-container {
+            margin-top: 0.6em;
+        }
+        .reset-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-secondary);
+            border-radius: 8px;
+            padding: 0.8em 1.2em;
+            width: 100%;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+        .reset-btn:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--border-primary);
+        }
+        [data-theme="high-contrast"] .reset-btn {
+            background: #1a1a1a !important;
+            color: #02fe05 !important;
+            border: 2px solid #02fe05 !important;
+        }
+        [data-theme="high-contrast"] .reset-btn:hover {
+            background: #000000 !important;
+            color: #02fe05 !important;
+            border: 2px solid #02fe05 !important;
+        }
+
         .expert-settings {
             margin-top: 1.5em;
             padding-top: 1.5em;
@@ -1581,7 +1611,7 @@
                     <div id="info-content" class="info-content" style="display: none;">
                         <p><strong>Instructions:</strong></p>
                         <ol style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li>Enter up to <strong>4 lines</strong> of English text, then click <strong>"Generate STL."</strong> The app auto-translates to <strong>Unified English Braille (UEB)</strong>.</li>
+                            <li>Enter any number of lines (set in <strong>Expert Mode → Number of Braille Lines</strong>), then click <strong>"Generate STL."</strong> The app auto-translates to <strong>Unified English Braille (UEB)</strong>.</li>
                             <li>Review the 3D preview. If it looks correct, click <strong>"Download STL."</strong></li>
                             <li>Click <strong>"Universal Counter Plate"</strong> and repeat the steps to generate and download the matching counter plate (if you haven't printed one yet).</li>
                             <li>Need specific dimensions? Open <strong>Expert Mode</strong> to adjust card size, spacing, and dot parameters.</li>
@@ -1627,6 +1657,15 @@
                                 </label>
                                 <span id="counter-plate-desc" class="sr-only">Creates recessed dots to support embossing process</span>
 
+                            </div>
+                        </fieldset>
+                    </div>
+                    <!-- Reset Settings menu box -->
+                    <div class="grade-selection">
+                        <fieldset>
+                            <legend class="grade-label">Reset Settings</legend>
+                            <div class="reset-container">
+                                <button type="button" id="reset-defaults-btn" class="reset-btn" aria-label="Reset all settings to default">Reset all settings to default</button>
                             </div>
                         </fieldset>
                     </div>
@@ -1687,9 +1726,9 @@
                             <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
                             <div>
                                 <label for="grid_columns" id="grid_columns_label">Number of Braille Cells (Characters):</label>
-                                <input type="number" id="grid_columns" name="grid_columns" value="12">
+                                <input type="number" id="grid_columns" name="grid_columns" value="13">
                                 <div id="grid_columns_note" class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                    For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 12 cells available for text.
+                                    For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 13 cells available for text.
                                 </div>
                             </div>
                             <div>
@@ -1751,10 +1790,10 @@
                         <div class="grade-selection">
                             <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Counter Dot Dimensions</label>
                             <div>
-                                <label for="counter_plate_dot_size_offset">Counter Dot Diameter Offset (mm):</label>
-                                <input type="number" id="counter_plate_dot_size_offset" name="counter_plate_dot_size_offset" value="0.0" step="0.1" aria-describedby="offset-help" title="Adjusts the counter plate braille dot base diameter relative to the emboss plate diameter">
-                                <div id="offset-help" class="offset-note" style="font-size: 0.85em; margin-top: 2px;">
-                                    Adds or subtracts from the Universal Counter Plate's recessed dot diameter. The dot size mirrors the Embossing Plate's Dot Base Diameter by default.
+                                <label for="counter_dot_base_diameter">Counter Dot Base Diameter (mm):</label>
+                                <input type="number" id="counter_dot_base_diameter" name="counter_dot_base_diameter" value="1.8" step="0.1" min="0.5" max="3" aria-describedby="counter-dot-help">
+                                <div id="counter-dot-help" class="offset-note" style="font-size: 0.85em; margin-top: 2px;">
+                                    Sets the Universal Counter Plate recessed dot diameter independently from the embossing plate.
                                 </div>
                             </div>
                         </div>
@@ -1789,7 +1828,14 @@
                                 <label for="cylinder_polygonal_cutout_radius_mm">Polygonal Cutout Circumscribed Radius (mm):</label>
                                 <input type="number" id="cylinder_polygonal_cutout_radius_mm" name="cylinder_polygonal_cutout_radius_mm" value="13" step="0.1" min="0" max="50">
                                 <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                    Creates a 12-point polygonal cutout along the cylinder's length. Set to 0 for no cutout.
+                                    Creates a polygonal cutout along the cylinder's length. Set to 0 for no cutout.
+                                </div>
+                            </div>
+                            <div>
+                                <label for="cylinder_polygonal_cutout_sides">Polygonal Cutout Points:</label>
+                                <input type="number" id="cylinder_polygonal_cutout_sides" name="cylinder_polygonal_cutout_sides" value="12" step="1" min="3" max="60">
+                                <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                    Lower values create simpler shapes (e.g., 6); higher values approximate a circle.
                                 </div>
                             </div>
                             <div>
@@ -2107,12 +2153,25 @@
 
             select.appendChild(otherGroup);
             
-            // Always default to UEB grade 2 on each load (no persistence)
-            select.value = 'en-ueb-g2.ctb';
+            // Default to UEB grade 2 unless user has a saved preference
+            try {
+                const saved = localStorage.getItem('braille_prefs_language_table');
+                const hasSaved = saved && Array.from(select.options).some(o => o.value === saved);
+                select.value = hasSaved ? saved : 'en-ueb-g2.ctb';
+            } catch (e) {
+                select.value = 'en-ueb-g2.ctb';
+            }
         }
 
         // Kick off language options load ASAP
-        loadLanguageOptions();
+        loadLanguageOptions().then(() => {
+            try {
+                const select = document.getElementById('language-table');
+                select.addEventListener('change', () => {
+                    try { localStorage.setItem('braille_prefs_language_table', select.value); } catch (e) {}
+                });
+            } catch (e) {}
+        });
         
 
         // Declare 3D scene variables at module scope
@@ -2399,7 +2458,7 @@
                 });
             }
             
-            // Function to update grid columns based on plate type
+            // Function to update grid columns based on plate type (promoted to top-level scope below)
             function updateGridColumnsForPlateType(preserveValue = false) {
                 const plateType = document.querySelector('input[name="plate_type"]:checked').value;
                 const gridColumnsInput = document.getElementById('grid_columns');
@@ -2417,8 +2476,8 @@
                     
                     if (!preserveValue) {
                         // Only set default value if not preserving user's custom value
-                        // Show user the available cells (12), backend will add 2 for indicators
-                        gridColumnsInput.value = '12';
+                        // Show user the available cells (13), backend will add 2 for indicators
+                        gridColumnsInput.value = '13';
                     } else {
                         // Convert from backend value (total) to displayed value (available)
                         if (currentValue > 2) {
@@ -2428,13 +2487,13 @@
                 } else {
                     // Counter plate - show available cells (total - 2)
                     gridColumnsLabel.textContent = 'Available Braille Cells for Text:';
-                    gridColumnsNote.textContent = 'For counter plates: 2 cells are reserved for row indicators (start/end markers), leaving 12 cells available for text.';
+                    gridColumnsNote.textContent = 'For counter plates: 2 cells are reserved for row indicators (start/end markers), leaving 13 cells available for text.';
                     gridColumnsNote.style.display = 'block';
                     
                     if (!preserveValue) {
                         // Only set default value if not preserving user's custom value
-                        // Show user the available cells (12), backend will add 2 for indicators
-                        gridColumnsInput.value = '12';
+                        // Show user the available cells (13), backend will add 2 for indicators
+                        gridColumnsInput.value = '13';
                     } else {
                         // Convert from backend value (total) to displayed value (available)
                         if (currentValue > 2) {
@@ -2470,10 +2529,10 @@
                 });
             });
             
-            // Counter plate offset
-            const counterPlateOffset = document.getElementById('counter_plate_dot_size_offset');
-            if (counterPlateOffset) {
-                counterPlateOffset.addEventListener('input', resetToGenerateState);
+            // Counter plate independent base diameter
+            const counterDotBase = document.getElementById('counter_dot_base_diameter');
+            if (counterDotBase) {
+                counterDotBase.addEventListener('input', resetToGenerateState);
             }
             
             // Expert mode parametric dials
@@ -2481,7 +2540,7 @@
                 'emboss_dot_base_diameter',
                 'emboss_dot_height', 
                 'emboss_dot_flat_hat',
-                'counter_plate_dot_size_offset',
+                'counter_dot_base_diameter',
                 'rounded_dot_base_diameter',
                 'rounded_dot_cylinder_height',
                 'rounded_dot_dome_height',
@@ -2509,6 +2568,7 @@
                 'cylinder_diameter_mm',
                 'cylinder_height_mm',
                 'cylinder_polygonal_cutout_radius_mm',
+                'cylinder_polygonal_cutout_sides',
                 'seam_offset_deg'
             ];
             
@@ -2619,10 +2679,6 @@
                 const input = document.getElementById(`line${i}`);
                 lines.push(input ? input.value : '');
             }
-            // Ensure we always return at least 4 lines for backend compatibility
-            while (lines.length < 4) {
-                lines.push('');
-            }
             return lines;
         }
 
@@ -2632,21 +2688,229 @@
             if (gridRowsInput) {
                 gridRowsInput.addEventListener('input', () => {
                     const numLines = parseInt(gridRowsInput.value) || 4;
-                    // Clamp to reasonable limits
-                    const clampedLines = Math.max(1, Math.min(10, numLines));
-                    if (clampedLines !== numLines) {
-                        gridRowsInput.value = clampedLines;
+                    // Enforce only a minimum of 1 line; no artificial upper bound
+                    const safeLines = Math.max(1, numLines);
+                    if (safeLines !== numLines) {
+                        gridRowsInput.value = safeLines;
                     }
-                    createDynamicLineInputs(clampedLines);
+                    createDynamicLineInputs(safeLines);
                     resetToGenerateState();
                 });
             }
         }
         
-        // Initialize dynamic line inputs and listeners
-        createDynamicLineInputs(4); // Start with default 4 lines
+        // Initialize dynamic line inputs and listeners (force default 4 on first load)
+        const gridRowsEl = document.getElementById('grid_rows');
+        if (gridRowsEl) gridRowsEl.value = '4';
+        createDynamicLineInputs(4);
         addInputChangeListeners();
         addGridRowsListener();
+        
+        // Persistence: save and restore user settings
+        function persistValue(key, value) {
+            try { localStorage.setItem(key, value); } catch (e) {}
+        }
+        function readPersisted(key) {
+            try { return localStorage.getItem(key); } catch (e) { return null; }
+        }
+        function clearAllPersistence() {
+            const keys = [
+                'braille_prefs_language_table',
+                'braille_prefs_plate_type',
+                'braille_prefs_shape_type',
+                'braille_prefs_dot_shape',
+                'braille_prefs_expert_visible',
+                'braille_prefs_grid_columns',
+                'braille_prefs_grid_rows',
+                'braille_prefs_cell_spacing',
+                'braille_prefs_line_spacing',
+                'braille_prefs_dot_spacing',
+                'braille_prefs_card_width',
+                'braille_prefs_card_height',
+                'braille_prefs_card_thickness',
+                'braille_prefs_braille_x_adjust',
+                'braille_prefs_braille_y_adjust',
+                'braille_prefs_emboss_dot_base_diameter',
+                'braille_prefs_emboss_dot_height',
+                'braille_prefs_emboss_dot_flat_hat',
+                'braille_prefs_counter_dot_base_diameter',
+                'braille_prefs_rounded_dot_base_diameter',
+                'braille_prefs_rounded_dot_base_height',
+                'braille_prefs_rounded_dot_dome_diameter',
+                'braille_prefs_rounded_dot_dome_height',
+                'braille_prefs_cylinder_diameter_mm',
+                'braille_prefs_cylinder_height_mm',
+                'braille_prefs_cylinder_polygonal_cutout_radius_mm',
+                'braille_prefs_cylinder_polygonal_cutout_sides',
+                'braille_prefs_seam_offset_deg'
+            ];
+            keys.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+        }
+        
+        function applyPersistedSettings() {
+            // Plate type
+            const savedPlate = readPersisted('braille_prefs_plate_type');
+            if (savedPlate === 'positive' || savedPlate === 'negative') {
+                const radio = document.querySelector(`input[name="plate_type"][value="${savedPlate}"]`);
+                if (radio) radio.checked = true;
+            }
+            // Shape type
+            const savedShape = readPersisted('braille_prefs_shape_type');
+            if (savedShape === 'card' || savedShape === 'cylinder') {
+                const radio = document.querySelector(`input[name="shape_type"][value="${savedShape}"]`);
+                if (radio) radio.checked = true;
+            }
+            // Dot shape
+            const savedDot = readPersisted('braille_prefs_dot_shape');
+            if (savedDot === 'cone' || savedDot === 'rounded') {
+                const radio = document.querySelector(`input[name="dot_shape"][value="${savedDot}"]`);
+                if (radio) radio.checked = true;
+                const roundedGroup = document.getElementById('rounded_dot_group');
+                if (roundedGroup) roundedGroup.style.display = savedDot === 'rounded' ? 'block' : 'none';
+            }
+            // Expert visibility
+            const savedExpert = readPersisted('braille_prefs_expert_visible');
+            if (savedExpert === 'true' || savedExpert === 'false') {
+                const visible = savedExpert === 'true';
+                expertSettings.style.display = visible ? 'block' : 'none';
+                expertToggleText.textContent = visible ? 'Hide Expert Mode' : 'Show Expert Mode';
+                expertToggleIcon.textContent = visible ? '▲' : '▼';
+                expertToggleBtn.classList.toggle('active', visible);
+            }
+            // Numeric/text inputs
+            const map = [
+                ['cell_spacing','braille_prefs_cell_spacing'],
+                ['line_spacing','braille_prefs_line_spacing'],
+                ['dot_spacing','braille_prefs_dot_spacing'],
+                ['card_width','braille_prefs_card_width'],
+                ['card_height','braille_prefs_card_height'],
+                ['card_thickness','braille_prefs_card_thickness'],
+                ['braille_x_adjust','braille_prefs_braille_x_adjust'],
+                ['braille_y_adjust','braille_prefs_braille_y_adjust'],
+                ['emboss_dot_base_diameter','braille_prefs_emboss_dot_base_diameter'],
+                ['emboss_dot_height','braille_prefs_emboss_dot_height'],
+                ['emboss_dot_flat_hat','braille_prefs_emboss_dot_flat_hat'],
+                ['counter_dot_base_diameter','braille_prefs_counter_dot_base_diameter'],
+                ['rounded_dot_base_diameter','braille_prefs_rounded_dot_base_diameter'],
+                ['rounded_dot_base_height','braille_prefs_rounded_dot_base_height'],
+                ['rounded_dot_dome_diameter','braille_prefs_rounded_dot_dome_diameter'],
+                ['rounded_dot_dome_height','braille_prefs_rounded_dot_dome_height'],
+                ['cylinder_diameter_mm','braille_prefs_cylinder_diameter_mm'],
+                ['cylinder_height_mm','braille_prefs_cylinder_height_mm'],
+                ['cylinder_polygonal_cutout_radius_mm','braille_prefs_cylinder_polygonal_cutout_radius_mm'],
+                ['cylinder_polygonal_cutout_sides','braille_prefs_cylinder_polygonal_cutout_sides'],
+                ['seam_offset_deg','braille_prefs_seam_offset_deg']
+            ];
+            map.forEach(([id,key]) => {
+                const v = readPersisted(key);
+                if (v !== null && v !== undefined) {
+                    const el = document.getElementById(id);
+                    if (el) el.value = v;
+                }
+            });
+            // grid_columns handled last to avoid preserve conversion
+            const savedCols = readPersisted('braille_prefs_grid_columns');
+            updateShapeSettings();
+            updateGridColumnsForPlateType(true);
+            if (savedCols !== null && savedCols !== undefined) {
+                const gridColsEl = document.getElementById('grid_columns');
+                if (gridColsEl) gridColsEl.value = savedCols;
+            }
+            // Recreate dynamic line inputs in case grid_rows changed
+            const numLines = parseInt(document.getElementById('grid_rows').value) || 4;
+            createDynamicLineInputs(numLines);
+        }
+        
+        function wirePersistenceListeners() {
+            // Plate type
+            document.querySelectorAll('input[name="plate_type"]').forEach(r => {
+                r.addEventListener('change', () => persistValue('braille_prefs_plate_type', document.querySelector('input[name="plate_type"]:checked').value));
+            });
+            // Shape type
+            document.querySelectorAll('input[name="shape_type"]').forEach(r => {
+                r.addEventListener('change', () => persistValue('braille_prefs_shape_type', document.querySelector('input[name="shape_type"]:checked').value));
+            });
+            // Dot shape
+            document.querySelectorAll('input[name="dot_shape"]').forEach(r => {
+                r.addEventListener('change', () => persistValue('braille_prefs_dot_shape', document.querySelector('input[name="dot_shape"]:checked').value));
+            });
+            // Expert visibility
+            expertToggleBtn.addEventListener('click', () => {
+                const isVisible = expertSettings.style.display !== 'none';
+                // After toggle above, visibility will invert; persist the next state
+                const nextVisible = !isVisible;
+                persistValue('braille_prefs_expert_visible', String(nextVisible));
+            });
+            // Numeric/text inputs
+            const map = [
+                ['grid_columns','braille_prefs_grid_columns'],
+                ['cell_spacing','braille_prefs_cell_spacing'],
+                ['line_spacing','braille_prefs_line_spacing'],
+                ['dot_spacing','braille_prefs_dot_spacing'],
+                ['card_width','braille_prefs_card_width'],
+                ['card_height','braille_prefs_card_height'],
+                ['card_thickness','braille_prefs_card_thickness'],
+                ['braille_x_adjust','braille_prefs_braille_x_adjust'],
+                ['braille_y_adjust','braille_prefs_braille_y_adjust'],
+                ['emboss_dot_base_diameter','braille_prefs_emboss_dot_base_diameter'],
+                ['emboss_dot_height','braille_prefs_emboss_dot_height'],
+                ['emboss_dot_flat_hat','braille_prefs_emboss_dot_flat_hat'],
+                ['counter_dot_base_diameter','braille_prefs_counter_dot_base_diameter'],
+                ['rounded_dot_base_diameter','braille_prefs_rounded_dot_base_diameter'],
+                ['rounded_dot_base_height','braille_prefs_rounded_dot_base_height'],
+                ['rounded_dot_dome_diameter','braille_prefs_rounded_dot_dome_diameter'],
+                ['rounded_dot_dome_height','braille_prefs_rounded_dot_dome_height'],
+                ['cylinder_diameter_mm','braille_prefs_cylinder_diameter_mm'],
+                ['cylinder_height_mm','braille_prefs_cylinder_height_mm'],
+                ['cylinder_polygonal_cutout_radius_mm','braille_prefs_cylinder_polygonal_cutout_radius_mm'],
+                ['cylinder_polygonal_cutout_sides','braille_prefs_cylinder_polygonal_cutout_sides'],
+                ['seam_offset_deg','braille_prefs_seam_offset_deg']
+            ];
+            map.forEach(([id,key]) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', () => persistValue(key, el.value));
+                }
+            });
+        }
+        
+        // On load, restore persisted settings, then wire listeners
+        try { applyPersistedSettings(); } catch (e) {}
+        try { wirePersistenceListeners(); } catch (e) {}
+
+        // Reset to defaults button
+        const resetBtn = document.getElementById('reset-defaults-btn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                clearAllPersistence();
+                // Reset selects to their default option values
+                const selectEls = Array.from(document.querySelectorAll('select'));
+                selectEls.forEach(sel => { sel.value = sel.options[0]?.value || sel.defaultValue; });
+                // Reset radio groups to defaultChecked
+                const radioGroups = new Map();
+                document.querySelectorAll('input[type="radio"]').forEach(r => {
+                    if (!radioGroups.has(r.name)) radioGroups.set(r.name, []);
+                    radioGroups.get(r.name).push(r);
+                });
+                radioGroups.forEach(group => {
+                    const def = group.find(r => r.defaultChecked);
+                    if (def) def.checked = true;
+                });
+                // Reset all inputs to their defaultValue
+                document.querySelectorAll('input[type="number"], input[type="text"]').forEach(inp => {
+                    if (inp.defaultValue !== undefined) inp.value = inp.defaultValue;
+                });
+                // Expert visibility default (hidden)
+                expertSettings.style.display = 'none';
+                expertToggleText.textContent = 'Show Expert Mode';
+                expertToggleIcon.textContent = '▼';
+                expertToggleBtn.classList.remove('active');
+                updateShapeSettings();
+                updateGridColumnsForPlateType();
+                checkCylinderOverflow();
+                resetToGenerateState();
+            });
+        }
         
         // Initialize shape settings to show/hide cylinder parameters correctly
         updateShapeSettings();
@@ -2696,6 +2960,7 @@
             'cylinder_diameter_mm',
             'cylinder_height_mm',
             'cylinder_polygonal_cutout_radius_mm',
+            'cylinder_polygonal_cutout_sides',
             'seam_offset_deg'
         ];
         
@@ -2947,7 +3212,9 @@
                 emboss_dot_base_diameter: document.getElementById('emboss_dot_base_diameter').value,
                 emboss_dot_height: document.getElementById('emboss_dot_height').value,
                 emboss_dot_flat_hat: document.getElementById('emboss_dot_flat_hat').value,
-                counter_plate_dot_size_offset: document.getElementById('counter_plate_dot_size_offset').value,
+                // Back-compat: if backend expects offset, compute from difference
+                // but we also send independent counter base diameter explicitly
+                counter_dot_base_diameter: document.getElementById('counter_dot_base_diameter').value,
                 card_width: document.getElementById('card_width').value,
                 card_height: document.getElementById('card_height').value,
                 card_thickness: document.getElementById('card_thickness').value,
@@ -3037,6 +3304,7 @@
                     diameter_mm: document.getElementById('cylinder_diameter_mm').value,
                     height_mm: document.getElementById('cylinder_height_mm').value,
                     polygonal_cutout_radius_mm: document.getElementById('cylinder_polygonal_cutout_radius_mm').value,
+                    polygonal_cutout_sides: document.getElementById('cylinder_polygonal_cutout_sides').value,
                     seam_offset_deg: document.getElementById('seam_offset_deg').value
                 };
             }
@@ -3119,10 +3387,9 @@
                         filename = `braille_embossing_plate-${shapeType}`;
                     }
                 } else {
-                    // For counter plates, include total diameter (base + offset) in filename
-                    const dotDiameter = parseFloat(document.getElementById('emboss_dot_base_diameter').value) || 0;
-                    const counterOffset = parseFloat(document.getElementById('counter_plate_dot_size_offset').value) || 0;
-                    const totalDiameter = dotDiameter + counterOffset;
+                    // For counter plates, include actual counter base diameter in filename
+                    const counterBase = parseFloat(document.getElementById('counter_dot_base_diameter').value) || 0;
+                    const totalDiameter = counterBase;
                     filename = `braille_counter_plate_${totalDiameter}mm-${shapeType}`;
                 }
                 

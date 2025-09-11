@@ -22,7 +22,8 @@ import json
 
 # Import the backend functionality
 try:
-    from backend import translate_with_liblouis, create_braille_mesh
+    # Import optional helpers if they exist in backend
+    from backend import app  # ensure backend is importable
 except ImportError:
     # If backend.py is not in the same directory, we'll need to handle this
     print("Warning: backend.py not found. Some features may not work.")
@@ -151,18 +152,30 @@ The generated STL file can be 3D printed to create tactile braille business card
         """Generate STL in a separate thread."""
         try:
             # Import backend functions
-            from backend import create_braille_mesh
-            
-            # Create the mesh
-            mesh = create_braille_mesh(lines, grade)
+            # Generate via HTTP to reuse single codepath
+            import requests
+            payload = {
+                "lines": lines,
+                "grade": grade,
+                "plate_type": "positive",
+                "shape_type": "card",
+                "settings": {}
+            }
+            r = requests.post("http://localhost:5001/generate_braille_stl", json=payload)
+            if r.status_code != 200:
+                raise RuntimeError(f"Backend error: {r.text}")
+            # Save STL content
+            # If backend returns a file, stream to disk; otherwise handle error
+            filename = self._get_save_filename()
+            if not filename:
+                return
+            with open(filename, "wb") as f:
+                f.write(r.content)
             
             # Ask user where to save the file
             filename = self._get_save_filename()
             if not filename:
                 return
-            
-            # Export to STL
-            mesh.export(filename, file_type='stl')
             
             # Show success message
             self.root.after(0, lambda: self._show_success(filename))

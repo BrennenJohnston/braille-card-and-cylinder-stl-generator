@@ -188,8 +188,14 @@ python backend.py  # opens http://localhost:5001
 
 ### Vercel deployment
 - Project uses `vercel.json` and `wsgi.py` with `@vercel/python`.
-- Install step: `pip install -r requirements_vercel.txt` (smaller footprint for serverless).
+- Install step: `pip install -r requirements_vercel.txt` (minimal set for serverless).
 - Static liblouis tables are bundled and loaded on-demand from `static/liblouis/tables/` in a web worker.
+- Matplotlib is optional at runtime. In serverless, character markers gracefully fall back when matplotlib isn't present.
+
+### Serverless considerations
+- `.vercelignore` excludes heavy directories like `third_party/` and `node_modules/` to keep function size small.
+- `backend.py` defers matplotlib imports inside functions to avoid cold-start bloat and missing dependency failures.
+- Endpoints exposed: `/`, `/health`, `/liblouis/tables`, `/generate_braille_stl`, `/generate_counter_plate_stl`.
 
 ---
 
@@ -199,4 +205,19 @@ python backend.py  # opens http://localhost:5001
 [2] NLS Specification 800 (PDF): https://www.loc.gov/nls/wp-content/uploads/2019/09/Spec800.11October2014.final_.pdf  
 [3] U.S. Access Board — 2010 ADA Standards: https://www.access-board.gov/aba/guides/chapter-7-signs/  
 [4] ICC/ANSI A117.1-2003 — Accessible & Usable Buildings & Facilities
+
+---
+
+## 14. Programmer Standardization Protocols
+
+- Code style: PEP 8 for Python. Favor explicit, descriptive names; avoid abbreviations.
+- Error handling: Guard clauses and clear messages; never swallow exceptions silently.
+- Imports: Standard lib, third-party, local; prefer lazy imports for optional/deployment-heavy deps.
+- Logging: Use `print` only for debug during development; convert persistent logs to a proper logger if needed.
+- Security: Validate inputs, apply CORS and security headers (see `backend.py`). Limit request sizes.
+- API: Return JSON with consistent error formats `{ error: string }` and appropriate HTTP status codes.
+- Performance: Prefer vectorized NumPy operations, avoid deep nesting, early returns where possible.
+- Dependencies: Keep `requirements_vercel.txt` minimal; add heavier packages only to `requirements.txt` when required locally.
+- Assets: Serve static assets from `static/`; avoid runtime reads from `node_modules/` on Vercel.
+- Releases: Test `/health` and `/liblouis/tables` after deploy; smoke-test STL generation for both card and cylinder.
 

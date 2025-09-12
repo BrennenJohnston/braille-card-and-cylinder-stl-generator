@@ -1832,6 +1832,25 @@
                                     </fieldset>
                                 </div>
 
+                                <!-- Recess Shape Selection (for Counter Plate only) -->
+                                <div class="grade-selection" id="recess-shape-selection" style="margin-top: 8px;">
+                                    <fieldset>
+                                        <legend class="grade-label">Select Braille Dot Recess Shape</legend>
+                                        <div class="radio-group" role="radiogroup" aria-required="true">
+                                            <label class="radio-option">
+                                                <input type="radio" name="use_bowl_recess" value="0" checked aria-describedby="hemi-recess-desc">
+                                                <span class="radio-text">Hemisphere</span>
+                                            </label>
+                                            <span id="hemi-recess-desc" class="sr-only">Uses hemisphere recess shape</span>
+                                            <label class="radio-option">
+                                                <input type="radio" name="use_bowl_recess" value="1" aria-describedby="bowl-recess-desc">
+                                                <span class="radio-text">Bowl</span>
+                                            </label>
+                                            <span id="bowl-recess-desc" class="sr-only">Uses spherical-cap bowl recess shape</span>
+                                        </div>
+                                    </fieldset>
+                                </div>
+
                                 <!-- Indicator Shape toggle -->
                                 <div class="grade-selection">
                                     <fieldset>
@@ -1903,10 +1922,22 @@
                                 <div class="grade-selection">
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Counter Dot Dimensions</label>
                                     <div>
-                                        <label for="counter_dot_base_diameter">Counter Dot Base Diameter (mm):</label>
-                                        <input type="number" id="counter_dot_base_diameter" name="counter_dot_base_diameter" value="1.8" step="0.1" min="0.5" max="3" aria-describedby="counter-dot-help">
-                                        <div id="counter-dot-help" class="offset-note" style="font-size: 0.85em; margin-top: 2px;">
-                                            Sets the Universal Counter Plate recessed dot diameter independently from the embossing plate.
+                                        <label for="hemi_counter_dot_base_diameter">Hemisphere Recess Dot Base Diameter (mm):</label>
+                                        <input type="number" id="hemi_counter_dot_base_diameter" name="hemi_counter_dot_base_diameter" value="1.6" step="0.1" min="0.5" max="5">
+                                    </div>
+                                    <div id="hemisphere_dimensions_group" style="margin-top: 4px;">
+                                        <div class="grade-note" style="font-size: 0.85em;">
+                                            Hemisphere depth equals radius at the opening.
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 10px;">
+                                        <label for="bowl_counter_dot_base_diameter">Bowl Recess Dot Base Diameter (mm):</label>
+                                        <input type="number" id="bowl_counter_dot_base_diameter" name="bowl_counter_dot_base_diameter" value="1.6" step="0.1" min="0.5" max="5">
+                                    </div>
+                                    <div id="bowl_dimensions_group" style="margin-top: 4px;">
+                                        <div>
+                                            <label for="counter_dot_depth">Bowl Recess Dot Depth (mm):</label>
+                                            <input type="number" id="counter_dot_depth" name="counter_dot_depth" value="0.6" step="0.1" min="0" max="5">
                                         </div>
                                     </div>
                                 </div>
@@ -2606,19 +2637,41 @@
                     // Do not persist shape selection; always reset on reload
                 });
             });
+            // Plate type radio buttons (to toggle recess UI)
+            document.querySelectorAll('input[name="plate_type"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    resetToGenerateState();
+                    updateShapeSettings();
+                });
+            });
             
-            // Counter plate independent base diameter
-            const counterDotBase = document.getElementById('counter_dot_base_diameter');
-            if (counterDotBase) {
-                counterDotBase.addEventListener('input', resetToGenerateState);
-            }
+            // Counter plate controls
+            const hemiCounterBase = document.getElementById('hemi_counter_dot_base_diameter');
+            const bowlCounterBase = document.getElementById('bowl_counter_dot_base_diameter');
+            const counterDotDepth = document.getElementById('counter_dot_depth');
+            if (hemiCounterBase) hemiCounterBase.addEventListener('input', resetToGenerateState);
+            if (bowlCounterBase) bowlCounterBase.addEventListener('input', resetToGenerateState);
+            if (counterDotDepth) counterDotDepth.addEventListener('input', resetToGenerateState);
+            document.querySelectorAll('input[name="use_bowl_recess"]').forEach(r => {
+                r.addEventListener('change', () => {
+                    resetToGenerateState();
+                    const isBowl = document.querySelector('input[name="use_bowl_recess"]:checked')?.value === '1';
+                    const bowlGroup = document.getElementById('bowl_dimensions_group');
+                    const hemiGroup = document.getElementById('hemisphere_dimensions_group');
+                    if (bowlGroup) bowlGroup.style.display = isBowl ? '' : 'none';
+                    if (hemiGroup) hemiGroup.style.display = isBowl ? 'none' : '';
+                });
+            });
             
             // Expert mode parametric dials
             const expertInputs = [
                 'emboss_dot_base_diameter',
                 'emboss_dot_height', 
                 'emboss_dot_flat_hat',
-                'counter_dot_base_diameter',
+                'hemi_counter_dot_base_diameter',
+                'bowl_counter_dot_base_diameter',
+                'counter_dot_depth',
+                // use_bowl_recess handled via radios
                 'rounded_dot_base_diameter',
                 'rounded_dot_cylinder_height',
                 'rounded_dot_base_height',
@@ -2684,6 +2737,15 @@
             if (cylinderSettings) {
                 cylinderSettings.style.display = 'block';
             }
+            // Toggle recess controls visibility for counter plates
+            const isCounter = document.querySelector('input[name="plate_type"]:checked')?.value === 'negative';
+            const recessSel = document.getElementById('recess-shape-selection');
+            const isBowl = document.querySelector('input[name="use_bowl_recess"]:checked')?.value === '1';
+            if (recessSel) recessSel.style.display = isCounter ? '' : 'none';
+            const bowlGroup = document.getElementById('bowl_dimensions_group');
+            const hemiGroup = document.getElementById('hemisphere_dimensions_group');
+            if (bowlGroup) bowlGroup.style.display = isCounter && isBowl ? '' : 'none';
+            if (hemiGroup) hemiGroup.style.display = isCounter && !isBowl ? '' : 'none';
             
             // Initialize cylinder height with current card height when cylinder is selected
             if (shapeType === 'cylinder') {
@@ -2943,7 +3005,10 @@
                 'braille_prefs_emboss_dot_base_diameter',
                 'braille_prefs_emboss_dot_height',
                 'braille_prefs_emboss_dot_flat_hat',
-                'braille_prefs_counter_dot_base_diameter',
+                'braille_prefs_hemi_counter_dot_base_diameter',
+                'braille_prefs_bowl_counter_dot_base_diameter',
+                'braille_prefs_counter_dot_depth',
+                'braille_prefs_use_bowl_recess',
                 'braille_prefs_rounded_dot_base_diameter',
                 'braille_prefs_rounded_dot_base_height',
                 'braille_prefs_rounded_dot_dome_diameter',
@@ -2998,7 +3063,10 @@
                 ['emboss_dot_base_diameter','braille_prefs_emboss_dot_base_diameter'],
                 ['emboss_dot_height','braille_prefs_emboss_dot_height'],
                 ['emboss_dot_flat_hat','braille_prefs_emboss_dot_flat_hat'],
-                ['counter_dot_base_diameter','braille_prefs_counter_dot_base_diameter'],
+                ['hemi_counter_dot_base_diameter','braille_prefs_hemi_counter_dot_base_diameter'],
+                ['bowl_counter_dot_base_diameter','braille_prefs_bowl_counter_dot_base_diameter'],
+                ['counter_dot_depth','braille_prefs_counter_dot_depth'],
+                ['use_bowl_recess','braille_prefs_use_bowl_recess'],
                 ['rounded_dot_base_diameter','braille_prefs_rounded_dot_base_diameter'],
                 ['rounded_dot_base_height','braille_prefs_rounded_dot_base_height'],
                 ['rounded_dot_dome_diameter','braille_prefs_rounded_dot_dome_diameter'],
@@ -3016,6 +3084,12 @@
                     if (el) el.value = v;
                 }
             });
+            // Restore recess shape radio selection
+            const savedRecess = readPersisted('braille_prefs_use_bowl_recess');
+            if (savedRecess === '0' || savedRecess === '1') {
+                const radio = document.querySelector(`input[name="use_bowl_recess"][value="${savedRecess}"]`);
+                if (radio) radio.checked = true;
+            }
             // grid_columns handled last to avoid preserve conversion
             const savedCols = readPersisted('braille_prefs_grid_columns');
             updateShapeSettings();
@@ -3063,7 +3137,10 @@
                 ['emboss_dot_base_diameter','braille_prefs_emboss_dot_base_diameter'],
                 ['emboss_dot_height','braille_prefs_emboss_dot_height'],
                 ['emboss_dot_flat_hat','braille_prefs_emboss_dot_flat_hat'],
-                ['counter_dot_base_diameter','braille_prefs_counter_dot_base_diameter'],
+                ['hemi_counter_dot_base_diameter','braille_prefs_hemi_counter_dot_base_diameter'],
+                ['bowl_counter_dot_base_diameter','braille_prefs_bowl_counter_dot_base_diameter'],
+                ['counter_dot_depth','braille_prefs_counter_dot_depth'],
+                ['use_bowl_recess','braille_prefs_use_bowl_recess'],
                 ['rounded_dot_base_diameter','braille_prefs_rounded_dot_base_diameter'],
                 ['rounded_dot_base_height','braille_prefs_rounded_dot_base_height'],
                 ['rounded_dot_dome_diameter','braille_prefs_rounded_dot_dome_diameter'],
@@ -3079,6 +3156,13 @@
                 if (el) {
                     el.addEventListener('input', () => persistValue(key, el.value));
                 }
+            });
+            // Recess shape radio persistence
+            document.querySelectorAll('input[name="use_bowl_recess"]').forEach(r => {
+                r.addEventListener('change', () => {
+                    const val = document.querySelector('input[name="use_bowl_recess"]:checked')?.value || '0';
+                    persistValue('braille_prefs_use_bowl_recess', val);
+                });
             });
         }
         
@@ -3181,6 +3265,9 @@
             'emboss_dot_base_diameter',
             'emboss_dot_height', 
             'emboss_dot_flat_hat',
+            'hemi_counter_dot_base_diameter',
+            'bowl_counter_dot_base_diameter',
+            'counter_dot_depth',
             'grid_columns',
             'grid_rows',
             'cell_spacing',
@@ -3214,6 +3301,13 @@
                 log.debug(`Initial value for ${inputId}: ${input.value}`);
             }
         });
+        // Log initial recess shape radio value too
+        (function logInitialRecessShape() {
+            const v = document.querySelector('input[name="use_bowl_recess"]:checked')?.value;
+            if (v !== undefined) {
+                log.debug('Initial value for use_bowl_recess:', v);
+            }
+        })();
         
         // Function to get current Expert Mode values
         window.getCurrentExpertModeValues = function() {
@@ -3564,9 +3658,10 @@
                 // We'll translate the whole text, then wrap to rows based on available cells
             }
             
-            const plateType = document.querySelector('input[name="plate_type"]:checked').value;
+            const plateTypeEl = document.querySelector('input[name="plate_type"]:checked');
+            const plateType = plateTypeEl ? plateTypeEl.value : 'positive';
             const languageSelect = document.getElementById('language-table');
-            const tableName = languageSelect.value;
+            const tableName = languageSelect?.value || 'en-ueb-g2.ctb';
             
             // Translate text to braille only for positive plates
             let translatedLines = [];
@@ -3680,7 +3775,15 @@
                 emboss_dot_flat_hat: document.getElementById('emboss_dot_flat_hat').value,
                 // Back-compat: if backend expects offset, compute from difference
                 // but we also send independent counter base diameter explicitly
-                counter_dot_base_diameter: document.getElementById('counter_dot_base_diameter').value,
+                // Separate diameters per recess shape
+                hemi_counter_dot_base_diameter: document.getElementById('hemi_counter_dot_base_diameter')?.value || '1.6',
+                bowl_counter_dot_base_diameter: document.getElementById('bowl_counter_dot_base_diameter')?.value || '1.6',
+                // Back-compat: provide unified base diameter reflecting current recess selection
+                counter_dot_base_diameter: ((document.querySelector('input[name="use_bowl_recess"]:checked')?.value === '1')
+                    ? (document.getElementById('bowl_counter_dot_base_diameter')?.value || '1.6')
+                    : (document.getElementById('hemi_counter_dot_base_diameter')?.value || '1.6')),
+                counter_dot_depth: document.getElementById('counter_dot_depth')?.value || '0.6',
+                use_bowl_recess: (document.querySelector('input[name="use_bowl_recess"]:checked')?.value === '1') ? 1 : 0,
                 card_width: document.getElementById('card_width').value,
                 card_height: document.getElementById('card_height').value,
                 card_thickness: document.getElementById('card_thickness').value,
@@ -3758,16 +3861,17 @@
             actionBtn.style.opacity = '0.7';
             
             // Get shape type and cylinder params
-            const shapeType = document.querySelector('input[name="shape_type"]:checked').value;
+            const shapeTypeElGen = document.querySelector('input[name="shape_type"]:checked');
+            const shapeType = shapeTypeElGen ? shapeTypeElGen.value : 'card';
             let cylinderParams = {};
             
             if (shapeType === 'cylinder') {
                 cylinderParams = {
-                    diameter_mm: document.getElementById('cylinder_diameter_mm').value,
-                    height_mm: document.getElementById('cylinder_height_mm').value,
-                    polygonal_cutout_radius_mm: document.getElementById('cylinder_polygonal_cutout_radius_mm').value,
-                    polygonal_cutout_sides: document.getElementById('cylinder_polygonal_cutout_sides').value,
-                    seam_offset_deg: document.getElementById('seam_offset_deg').value
+                    diameter_mm: document.getElementById('cylinder_diameter_mm')?.value || '30.75',
+                    height_mm: document.getElementById('cylinder_height_mm')?.value || '52',
+                    polygonal_cutout_radius_mm: document.getElementById('cylinder_polygonal_cutout_radius_mm')?.value || '13',
+                    polygonal_cutout_sides: document.getElementById('cylinder_polygonal_cutout_sides')?.value || '12',
+                    seam_offset_deg: document.getElementById('seam_offset_deg')?.value || '355'
                 };
             }
             
@@ -3876,8 +3980,18 @@
                     }
                 } else {
                     // For counter plates, include actual counter base diameter in filename
-                    const counterBase = parseFloat(document.getElementById('counter_dot_base_diameter').value) || 0;
-                    const totalDiameter = counterBase;
+                    const isBowlSel = document.querySelector('input[name="use_bowl_recess"]:checked')?.value === '1';
+                    let baseStr = '0';
+                    if (isBowlSel) {
+                        baseStr = document.getElementById('bowl_counter_dot_base_diameter')?.value
+                            || document.getElementById('counter_dot_base_diameter')?.value
+                            || '0';
+                    } else {
+                        baseStr = document.getElementById('hemi_counter_dot_base_diameter')?.value
+                            || document.getElementById('counter_dot_base_diameter')?.value
+                            || '0';
+                    }
+                    const totalDiameter = parseFloat(baseStr) || 0;
                     filename = `braille_counter_plate_${totalDiameter}mm-${shapeType}`;
                 }
                 
@@ -4188,4 +4302,5 @@
 
     </script>
 </body>
+</html> 
 </html> 

@@ -194,7 +194,12 @@ def validate_settings(settings_data):
         # If both are provided, counter base diameter takes precedence.
         'counter_plate_dot_size_offset': (float, 0, 2),
         'counter_dot_base_diameter': (float, 0.1, 5.0),
+        'hemi_counter_dot_base_diameter': (float, 0.1, 5.0),
+        'bowl_counter_dot_base_diameter': (float, 0.1, 5.0),
         'hemisphere_subdivisions': (int, 1, 3),
+        # Counter recess shape and depth
+        'use_bowl_recess': (int, 0, 1),
+        'counter_dot_depth': (float, 0.0, 5.0),
         # Indicator shapes toggle (1 = on, 0 = off)
         'indicator_shapes': (int, 0, 1)
     }
@@ -276,7 +281,13 @@ class CardSettings:
             # Counter plate specific parameters
             "hemisphere_subdivisions": 1,  # For mesh density control
             "counter_plate_dot_size_offset": 0.0,  # Legacy: offset from emboss dot diameter
-            "counter_dot_base_diameter": 1.8,      # New: independent counter base diameter
+            "counter_dot_base_diameter": 1.6,      # Deprecated: kept for back-compat
+            # Separate diameters for hemisphere and bowl recesses
+            "hemi_counter_dot_base_diameter": 1.6,
+            "bowl_counter_dot_base_diameter": 1.6,
+            # Bowl recess controls
+            "use_bowl_recess": 0,                 # 0 = hemisphere, 1 = bowl (spherical cap)
+            "counter_dot_depth": 0.6,             # Bowl recess depth (mm)
             # Legacy parameters (for backward compatibility)
             "dot_base_diameter": 1.8,  # Updated default: 1.8 mm
             "dot_height": 1.0,  # Project brief default: 1.0 mm
@@ -317,6 +328,10 @@ class CardSettings:
             self.indicator_shapes = int(float(kwargs.get('indicator_shapes', getattr(self, 'indicator_shapes', 1))))
         except Exception:
             self.indicator_shapes = int(getattr(self, 'indicator_shapes', 1))
+        try:
+            self.use_bowl_recess = int(float(kwargs.get('use_bowl_recess', getattr(self, 'use_bowl_recess', 0))))
+        except Exception:
+            self.use_bowl_recess = int(getattr(self, 'use_bowl_recess', 0))
         
         # Calculate grid dimensions first
         self.grid_width = (self.grid_columns - 1) * self.cell_spacing
@@ -352,12 +367,20 @@ class CardSettings:
         
         # If independent counter base diameter is supplied, derive offset to keep legacy paths working
         # Otherwise, derive counter base from emboss + offset
+        # Normalize legacy unified base diameter into the new split fields when provided
         try:
-            if hasattr(self, 'counter_dot_base_diameter') and self.counter_dot_base_diameter is not None:
-                # Normalize offset for code paths still reading it
-                self.counter_plate_dot_size_offset = float(self.counter_dot_base_diameter) - float(self.emboss_dot_base_diameter)
-            else:
-                self.counter_dot_base_diameter = float(self.emboss_dot_base_diameter) + float(self.counter_plate_dot_size_offset)
+            provided_hemi = getattr(self, 'hemi_counter_dot_base_diameter', None)
+            provided_bowl = getattr(self, 'bowl_counter_dot_base_diameter', None)
+            provided_unified = getattr(self, 'counter_dot_base_diameter', None)
+            if provided_unified is not None and (provided_hemi is None or provided_bowl is None):
+                v = float(provided_unified)
+                if provided_hemi is None:
+                    self.hemi_counter_dot_base_diameter = v
+                if provided_bowl is None:
+                    self.bowl_counter_dot_base_diameter = v
+            # Maintain legacy offset for code paths still referencing it
+            base_for_offset = provided_unified if provided_unified is not None else float(self.hemi_counter_dot_base_diameter)
+            self.counter_plate_dot_size_offset = float(base_for_offset) - float(self.emboss_dot_base_diameter)
         except Exception:
             pass
             
@@ -377,7 +400,15 @@ class CardSettings:
         
         # Hemispherical recess parameters (as per project brief)
         # Hemisphere radius is based on the actual counter base diameter
-        self.hemisphere_radius = float(self.counter_dot_base_diameter) / 2
+        self.hemisphere_radius = float(getattr(self, 'hemi_counter_dot_base_diameter', getattr(self, 'counter_dot_base_diameter', 1.6))) / 2
+        # Bowl (spherical cap) parameters
+        self.bowl_base_radius = float(getattr(self, 'bowl_counter_dot_base_diameter', getattr(self, 'counter_dot_base_diameter', 1.6))) / 2
+        # Clamp depth to safe bounds (0..plate_thickness)
+        try:
+            depth = float(getattr(self, 'counter_dot_depth', 0.6))
+        except Exception:
+            depth = 0.6
+        self.counter_dot_depth = max(0.0, min(depth, self.card_thickness - self.epsilon_mm))
         self.plate_thickness = self.card_thickness
         self.epsilon = self.epsilon_mm
         self.cylinder_counter_plate_overcut_mm = self.cylinder_counter_plate_overcut_mm
@@ -2120,13 +2151,25 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
                 dot_x = cell_x + (dot_col_angle_offsets[dot_pos[1]] * radius)
                 dot_y = y_pos + dot_row_offsets[dot_pos[0]]
                 
-                # Create sphere with radius based on independent counter base diameter (fallback to offset if missing)
+                # Create sphere for hemisphere or bowl cap
+                # Choose base diameter based on selected recess shape
+                use_bowl = int(getattr(settings, 'use_bowl_recess', 0)) == 1
                 try:
-                    counter_base = float(getattr(settings, 'counter_dot_base_diameter'))
+                    if use_bowl:
+                        counter_base = float(getattr(settings, 'bowl_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter')))
+                    else:
+                        counter_base = float(getattr(settings, 'hemi_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter')))
                 except Exception:
                     counter_base = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
-                hemisphere_radius = counter_base / 2
-                sphere = trimesh.creation.icosphere(subdivisions=settings.hemisphere_subdivisions, radius=hemisphere_radius)
+                a = counter_base / 2.0
+                if use_bowl:
+                    h = float(getattr(settings, 'counter_dot_depth', 0.6))
+                    # Guard minimum
+                    h = max(settings.epsilon_mm, h)
+                    sphere_radius = (a * a + h * h) / (2.0 * h)
+                else:
+                    sphere_radius = a
+                sphere = trimesh.creation.icosphere(subdivisions=settings.hemisphere_subdivisions, radius=sphere_radius)
                 
                 # Ensure sphere is a valid volume
                 if not sphere.is_volume:
@@ -2137,9 +2180,19 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
                 # Convert x position to angle
                 theta = (dot_x / (np.pi * diameter)) * 2 * np.pi + np.radians(seam_offset)
                 
-                # Place sphere center at the cylinder's outer radius
+                # Place sphere center at the cylinder's outer radius.
+                # For hemisphere: center on the surface (plus overcut)
+                # For bowl: place the sphere center OUTSIDE the cylinder by (R - h)
+                # so that radial recess depth equals h exactly on the curved surface.
+                # Keep overcut only for hemispheres to avoid altering bowl depth.
                 overcut = max(settings.epsilon, getattr(settings, 'cylinder_counter_plate_overcut_mm', 0.05))
-                center_radius = outer_radius + overcut
+                if use_bowl:
+                    h = float(getattr(settings, 'counter_dot_depth', 0.6))
+                    h = max(settings.epsilon_mm, h)
+                    # Correct formula: r0 = r_c + R - h
+                    center_radius = outer_radius + (sphere_radius - h)
+                else:
+                    center_radius = outer_radius + overcut
                 cyl_x = center_radius * np.cos(theta)
                 cyl_y = center_radius * np.sin(theta)
                 # Map planar Y to cylinder local Z (centered at 0)
@@ -2321,13 +2374,13 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
     
     # Calculate hemisphere radius including the counter plate offset
     try:
-        counter_base = float(getattr(params, 'counter_dot_base_diameter'))
+        counter_base = float(getattr(params, 'hemi_counter_dot_base_diameter', getattr(params, 'counter_dot_base_diameter')))
     except Exception:
         counter_base = params.emboss_dot_base_diameter + params.counter_plate_dot_size_offset
     hemisphere_radius = counter_base / 2
     print(f"DEBUG: Hemisphere radius: {hemisphere_radius:.3f}mm (base: {params.emboss_dot_base_diameter}mm + offset: {params.counter_plate_dot_size_offset}mm)")
     
-    # Create icospheres for ALL possible dot positions
+    # Create icospheres (hemispheres) for ALL possible dot positions
     sphere_meshes = []
     total_spheres = 0
     
@@ -2351,13 +2404,9 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
                 # Create an icosphere with the calculated hemisphere radius
                 # Use hemisphere_subdivisions parameter to control mesh density
                 sphere = trimesh.creation.icosphere(subdivisions=params.hemisphere_subdivisions, radius=hemisphere_radius)
-                
-                # CRITICAL FIX: Position the sphere center AT the plate surface level
-                # This ensures when the sphere is subtracted, it creates a hemispherical recess going DOWN into the plate
-                # The sphere center should be exactly at the top surface (z = plate_thickness)
+                # Position the sphere so its equator lies at the top surface (z = plate_thickness)
                 z_pos = params.plate_thickness
                 sphere.apply_translation((dot_x, dot_y, z_pos))
-                
                 sphere_meshes.append(sphere)
                 total_spheres += 1
     
@@ -2501,6 +2550,122 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
         print("WARNING: Falling back to simple negative plate method.")
         # Final fallback to the simple approach
         return create_simple_negative_plate(params)
+
+def build_counter_plate_bowl(params: CardSettings) -> trimesh.Trimesh:
+    """Create a counter plate with spherical-cap (bowl) recesses of independent depth.
+
+    The opening diameter at the surface is set by `counter_dot_base_diameter`.
+    The recess depth is independently controlled by `counter_dot_depth`.
+
+    For each dot, we compute a sphere of radius R such that a^2 = 2 R h - h^2,
+    where a = opening radius and h = desired depth, and place the sphere center
+    at z = TH - (R - h) so its intersection at the top surface matches the opening.
+    """
+
+    # Base plate
+    plate_mesh = trimesh.creation.box(extents=(params.card_width, params.card_height, params.plate_thickness))
+    plate_mesh.apply_translation((params.card_width/2, params.card_height/2, params.plate_thickness/2))
+
+    dot_col_offsets = [-params.dot_spacing / 2, params.dot_spacing / 2]
+    dot_row_offsets = [params.dot_spacing, 0, -params.dot_spacing]
+    dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
+
+    # Inputs
+    a = float(getattr(params, 'bowl_counter_dot_base_diameter', getattr(params, 'counter_dot_base_diameter', 1.6))) / 2.0
+    h = float(getattr(params, 'counter_dot_depth', 0.6))
+    # Guard against zero or negative depth
+    if h <= max(0.0, float(getattr(params, 'epsilon_mm', 0.001))):
+        # Degenerate: fall back to hemisphere (very shallow)
+        return build_counter_plate_hemispheres(params)
+
+    # Compute sphere radius from opening radius and depth: R = (a^2 + h^2) / (2h)
+    R = (a * a + h * h) / (2.0 * h)
+
+    # Build spheres
+    sphere_meshes = []
+    total_spheres = 0
+    for row in range(params.grid_rows):
+        y_pos = params.card_height - params.top_margin - (row * params.line_spacing) + params.braille_y_adjust
+        reserved = 2 if getattr(params, 'indicator_shapes', 1) else 0
+        for col in range(params.grid_columns - reserved):
+            x_pos = params.left_margin + ((col + (1 if getattr(params, 'indicator_shapes', 1) else 0)) * params.cell_spacing) + params.braille_x_adjust
+            for dot_idx in range(6):
+                dot_pos = dot_positions[dot_idx]
+                dot_x = x_pos + dot_col_offsets[dot_pos[1]]
+                dot_y = y_pos + dot_row_offsets[dot_pos[0]]
+
+                sphere = trimesh.creation.icosphere(subdivisions=params.hemisphere_subdivisions, radius=R)
+                # Place center below the surface by c = R - h
+                zc = params.plate_thickness - (R - h)
+                sphere.apply_translation((dot_x, dot_y, zc))
+                sphere_meshes.append(sphere)
+                total_spheres += 1
+
+    print(f"DEBUG: Created {total_spheres} bowl caps for counter plate (a={a:.3f}mm, h={h:.3f}mm, R={R:.3f}mm)")
+
+    # Markers (same as hemispheres)
+    line_end_meshes = []
+    triangle_meshes = []
+    for row_num in range(params.grid_rows):
+        y_pos = params.card_height - params.top_margin - (row_num * params.line_spacing) + params.braille_y_adjust
+        x_pos_first = params.left_margin + params.braille_x_adjust
+        line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, params, height=0.5, for_subtraction=True)
+        line_end_meshes.append(line_end_mesh)
+        x_pos_last = params.left_margin + ((params.grid_columns - 1) * params.cell_spacing) + params.braille_x_adjust
+        triangle_mesh = create_card_triangle_marker_3d(x_pos_last, y_pos, params, height=0.5, for_subtraction=True)
+        triangle_meshes.append(triangle_mesh)
+
+    if not sphere_meshes:
+        print("WARNING: No spheres were generated. Returning base plate.")
+        return plate_mesh
+
+    # Boolean operations
+    engines_to_try = ['manifold', 'blender', None]
+    for engine in engines_to_try:
+        try:
+            engine_name = engine if engine else "trimesh-default"
+            print(f"DEBUG: Bowl boolean ops with {engine_name}...")
+
+            if len(sphere_meshes) == 1:
+                union_spheres = sphere_meshes[0]
+            else:
+                union_spheres = trimesh.boolean.union(sphere_meshes, engine=engine)
+
+            union_triangles = None
+            if triangle_meshes:
+                if len(triangle_meshes) == 1:
+                    union_triangles = triangle_meshes[0]
+                else:
+                    union_triangles = trimesh.boolean.union(triangle_meshes, engine=engine)
+
+            if line_end_meshes:
+                if len(line_end_meshes) == 1:
+                    union_line_ends = line_end_meshes[0]
+                else:
+                    union_line_ends = trimesh.boolean.union(line_end_meshes, engine=engine)
+
+            cutouts_list = [union_spheres]
+            if line_end_meshes:
+                cutouts_list.append(union_line_ends)
+            if union_triangles is not None:
+                cutouts_list.append(union_triangles)
+
+            if len(cutouts_list) > 1:
+                all_cutouts = trimesh.boolean.union(cutouts_list, engine=engine)
+            else:
+                all_cutouts = cutouts_list[0]
+
+            counter_plate_mesh = trimesh.boolean.difference([plate_mesh, all_cutouts], engine=engine)
+            if not counter_plate_mesh.is_watertight:
+                counter_plate_mesh.fill_holes()
+            print(f"DEBUG: Counter plate with bowl recess completed: {len(counter_plate_mesh.vertices)} verts")
+            return counter_plate_mesh
+        except Exception as e:
+            print(f"ERROR: Bowl boolean with {engine_name} failed: {e}")
+            if engine == engines_to_try[-1]:
+                print("WARNING: Falling back to simple negative plate method.")
+                return create_simple_negative_plate(params)
+            continue
 
 @app.route('/health')
 def health_check():
@@ -2788,10 +2953,14 @@ def generate_braille_stl():
                 # Use provided original_lines (manual lines or auto-derived indicators)
                 mesh = create_positive_plate_mesh(lines, grade, settings, original_lines)
             elif plate_type == 'negative':
-                # Counter plate uses hemispherical recesses as per project brief
+                # Counter plate: choose recess shape
                 # It does NOT depend on text input - always creates ALL 6 dots per cell
-                print("DEBUG: Generating counter plate with hemispherical recesses (all positions)")
-                mesh = build_counter_plate_hemispheres(settings)
+                if int(getattr(settings, 'use_bowl_recess', 0)) == 1:
+                    print("DEBUG: Generating counter plate with bowl (spherical cap) recesses (all positions)")
+                    mesh = build_counter_plate_bowl(settings)
+                else:
+                    print("DEBUG: Generating counter plate with hemispherical recesses (all positions)")
+                    mesh = build_counter_plate_hemispheres(settings)
             else:
                 return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
         
@@ -2800,7 +2969,7 @@ def generate_braille_stl():
             if plate_type == 'positive':
                 mesh = generate_cylinder_stl(lines, grade, settings, cylinder_params, original_lines)
             elif plate_type == 'negative':
-                # Cylinder counter plate - needs implementation
+                # Cylinder counter plate
                 mesh = generate_cylinder_counter_plate(lines, settings, cylinder_params)
             else:
                 return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
@@ -2857,7 +3026,11 @@ def generate_braille_stl():
                 "braille_x_adjust": settings.braille_x_adjust,
                 "braille_y_adjust": settings.braille_y_adjust,
                 # Counter plate specific
-                "hemisphere_subdivisions": settings.hemisphere_subdivisions if plate_type == 'negative' else "n/a"
+                "hemisphere_subdivisions": settings.hemisphere_subdivisions if plate_type == 'negative' else "n/a",
+                "hemi_counter_dot_base_diameter": getattr(settings, 'hemi_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter', 'n/a')) if plate_type == 'negative' else "n/a",
+                "bowl_counter_dot_base_diameter": getattr(settings, 'bowl_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter', 'n/a')) if plate_type == 'negative' else "n/a",
+                "use_bowl_recess": int(getattr(settings, 'use_bowl_recess', 0)) if plate_type == 'negative' else "n/a",
+                "counter_dot_depth": float(getattr(settings, 'counter_dot_depth', 0.6)) if (plate_type == 'negative' and int(getattr(settings, 'use_bowl_recess', 0)) == 1) else ("n/a" if plate_type != 'negative' else 0.0)
             },
             "mesh_info": {
                 "vertices": len(mesh.vertices),
@@ -2889,7 +3062,10 @@ def generate_braille_stl():
         else:
             # For counter plates, include actual counter base diameter in filename
             try:
-                total_diameter = float(getattr(settings, 'counter_dot_base_diameter'))
+                if int(getattr(settings, 'use_bowl_recess', 0)) == 1:
+                    total_diameter = float(getattr(settings, 'bowl_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter')))
+                else:
+                    total_diameter = float(getattr(settings, 'hemi_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter')))
             except Exception:
                 total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
             filename = f'braille_counter_plate_{total_diameter}mm-{shape_type}'
@@ -2938,7 +3114,10 @@ def generate_counter_plate_stl():
         
         # Include actual counter base diameter in filename
         try:
-            total_diameter = float(getattr(settings, 'counter_dot_base_diameter'))
+            if int(getattr(settings, 'use_bowl_recess', 0)) == 1:
+                total_diameter = float(getattr(settings, 'bowl_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter')))
+            else:
+                total_diameter = float(getattr(settings, 'hemi_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter')))
         except Exception:
             total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
         filename = f"braille_counter_plate_{total_diameter}mm"

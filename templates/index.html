@@ -1720,8 +1720,10 @@
                             <legend class="grade-label">Select Language:</legend>
                             <div style="margin-bottom: 0.8em;">
                                 <select id="language-table" name="language_table" class="language-select" aria-describedby="language-help">
-                                    <option value="en-ueb-g2.ctb" selected>English, U.S., contracted (UEB grade 2)</option>
-                                    <option value="en-ueb-g1.ctb">English, U.S., uncontracted (UEB grade 1)</option>
+                                    <option value="en-ueb-g2.ctb" selected>English (UEB), United States — contracted (grade 2)</option>
+                                    <option value="en-ueb-g1.ctb">English (UEB), United States — uncontracted (grade 1)</option>
+                                    <option value="en-us-g2.ctb">English (EBAE), United States — contracted (grade 2)</option>
+                                    <option value="en-us-g1.ctb">English (EBAE), United States — uncontracted (grade 1)</option>
                                 </select>
                                 <div id="language-help" class="grade-note" style="margin-top: 6px; font-size: 0.85em;">
                                     NOTE: English, U.S., contracted (UEB grade 2) is the default standard for all U.S. English braille translations. Please only select another language or grade for special use cases.
@@ -2043,8 +2045,8 @@
             const select = document.getElementById('language-table');
             if (!select) return;
 
-            // Preserve the first two default English UEB options
-            const defaultValues = new Set(['en-ueb-g2.ctb', 'en-ueb-g1.ctb']);
+            // Preserve the four top U.S. English defaults (UEB and EBAE)
+            const defaultValues = new Set(['en-ueb-g2.ctb', 'en-ueb-g1.ctb', 'en-us-g2.ctb', 'en-us-g1.ctb']);
             const defaultOptions = Array.from(select.querySelectorAll('option')).filter(o => defaultValues.has(o.value));
 
             // Clear existing and re-add defaults in an optgroup
@@ -2085,148 +2087,56 @@
                 return af < bf ? -1 : af > bf ? 1 : 0;
             });
 
-            // Language name mappings with native scripts (autonyms)
-            const languageNames = {
-                'af': 'Afrikaans',
-                'ar': 'العربية', // Arabic
-                'as': 'অসমীয়া', // Assamese  
-                'aw': 'अवधी', // Awadhi
-                'be': 'বাংলা', // Bengali
-                'bg': 'Български', // Bulgarian
-                'bh': 'भोजपुरी', // Bhojpuri
-                'bn': 'বাংলা', // Bengali
-                'bo': 'བོད་སྐད་', // Tibetan
-                'br': 'ब्राज', // Braj
-                'ca': 'Català', // Catalan
-                'chr': 'ᏣᎳᎩ', // Cherokee
-                'ckb': 'کوردی', // Central Kurdish
-                'cs': 'Čeština', // Czech
-                'cy': 'Cymraeg', // Welsh
-                'da': 'Dansk', // Danish
-                'de': 'Deutsch', // German
-                'dra': 'द्राविड़', // Dravidian
-                'el': 'Ελληνικά', // Greek
-                'en': 'English',
-                'eo': 'Esperanto',
-                'es': 'Español', // Spanish
-                'et': 'Eesti', // Estonian
-                'fa': 'فارسی', // Persian/Farsi
-                'fi': 'Suomi', // Finnish
-                'fr': 'Français', // French
-                'ga': 'Gaeilge', // Irish
-                'gd': 'Gàidhlig', // Scottish Gaelic
-                'gez': 'ግዕዝ', // Ge'ez
-                'gon': 'गोंडी', // Gondi
-                'gu': 'ગુજરાતી', // Gujarati
-                'haw': 'ʻŌlelo Hawaiʻi', // Hawaiian
-                'he': 'עברית', // Hebrew
-                'hi': 'हिन्दी', // Hindi
-                'hr': 'Hrvatski', // Croatian
-                'hu': 'Magyar', // Hungarian
-                'hy': 'Հայերեն', // Armenian
-                'is': 'Íslenska', // Icelandic
-                'it': 'Italiano', // Italian
-                'iu': 'ᐃᓄᒃᑎᑐᑦ', // Inuktitut
-                'ka': 'ಕನ್ನಡ', // Kannada
-                'kh': 'ខ្មែរ', // Khmer
-                'kn': 'ಕನ್ನಡ', // Kannada
-                'ko': '한국어', // Korean
-                'kok': 'कोंकणी', // Konkani
-                'kru': 'कुरुख', // Kurukh
-                'ks': 'कॉशुर', // Kashmiri
-                'lt': 'Lietuvių', // Lithuanian
-                'lv': 'Latviešu', // Latvian
-                'mao': 'Te Reo Māori', // Maori
-                'ml': 'മലയാളം', // Malayalam
-                'mn': 'Монгол', // Mongolian
-                'mni': 'মৈতৈলোন্', // Manipuri
-                'mr': 'मराठी', // Marathi
-                'mt': 'Malti', // Maltese
-                'mun': 'मुंडारी', // Mundari
-                'mwr': 'मारवाड़ी', // Marwari
-                'ne': 'नेपाली', // Nepali
-                'nl': 'Nederlands', // Dutch
-                'no': 'Norsk', // Norwegian
-                'np': 'नेपाली', // Nepali
-                'or': 'ଓଡ଼ିଆ', // Odia
-                'pa': 'ਪੰਜਾਬੀ', // Punjabi
-                'pi': 'पालि', // Pali
-                'pl': 'Polski', // Polish
-                'pt': 'Português', // Portuguese
-                'pu': 'ਪੰਜਾਬੀ', // Punjabi
-                'ro': 'Română', // Romanian
-                'ru': 'Русский', // Russian
-                'sa': 'संस्कृतम्', // Sanskrit
-                'sd': 'سنڌي', // Sindhi
-                'se': 'Sámegiella', // Northern Sami
-                'si': 'සිංහල', // Sinhala
-                'sk': 'Slovenčina', // Slovak
-                'sl': 'Slovenščina', // Slovenian
-                'sot': 'Sesotho', // Southern Sotho
-                'sr': 'Српски', // Serbian
-                'sv': 'Svenska', // Swedish
-                'ta': 'தமிழ்', // Tamil
-                'te': 'తెలుగు', // Telugu
-                'tr': 'Türkçe', // Turkish
-                'tsn': 'Setswana', // Tswana
-                'ur': 'اردو', // Urdu
-                'vi': 'Tiếng Việt', // Vietnamese
-                'zh': '中文', // Chinese
+            // Name helpers using Intl.DisplayNames for correctness
+            const getLanguageAutonym = (lang) => {
+                try {
+                    // Use the language's own locale to get its autonym
+                    const dn = new Intl.DisplayNames([lang], { type: 'language' });
+                    return dn.of(lang) || lang;
+                } catch (e) {
+                    // Fallback capitalization
+                    return lang.charAt(0).toUpperCase() + lang.slice(1);
+                }
             };
 
-            // Region/country names where needed
-            const regionNames = {
-                'ZA': 'South Africa',
-                'IN': 'India', 
-                'US': 'United States',
-                'GB': 'United Kingdom',
-                'CA': 'Canada',
-                'NZ': 'New Zealand',
-                'CHN': 'China (Simplified)',
-                'TW': 'Taiwan (Traditional)',
-                'HK': 'Hong Kong',
-                'CH': 'Switzerland',
-                'DE': 'Germany',
-                'ES': 'Spain',
-                'FR': 'France',
-                'BE': 'Belgium',
-                'NL': 'Netherlands',
-                'PT': 'Portugal',
-                'AT': 'Austria',
-                'MN': 'Mongolia',
-                'PK': 'Pakistan',
-                'IR': 'Iran',
+            const getLanguageEnglish = (lang) => {
+                try {
+                    const dn = new Intl.DisplayNames(['en'], { type: 'language' });
+                    return dn.of(lang) || lang;
+                } catch (e) {
+                    return lang.charAt(0).toUpperCase() + lang.slice(1);
+                }
             };
 
-            // Helper to get language name
-            const getLanguageName = (locale) => {
-                if (!locale) return '';
-                const parts = locale.split('-');
-                const lang = parts[0].toLowerCase();
-                return languageNames[lang] || lang.charAt(0).toUpperCase() + lang.slice(1);
+            const getRegionEnglish = (region) => {
+                if (!region) return '';
+                try {
+                    const dn = new Intl.DisplayNames(['en'], { type: 'region' });
+                    return dn.of(region) || region;
+                } catch (e) {
+                    return region;
+                }
             };
 
-            // Helper to get full display name
+            // Helper to get full display name: autonym first, then English
             const getDisplayName = (t) => {
                 const locale = (t.locale || '').replace('_', '-');
                 const parts = locale.split('-');
-                const langCode = parts[0].toLowerCase();
+                const langCode = (parts[0] || 'und').toLowerCase();
                 const region = parts[1] ? parts[1].toUpperCase() : '';
-                
-                let displayName = getLanguageName(locale);
-                
-                // Add region if present and meaningful
-                if (region && regionNames[region]) {
-                    displayName += `, ${regionNames[region]}`;
-                } else if (region && region.length === 2) {
-                    displayName += ` (${region})`;
-                }
-                
+
+                const auto = getLanguageAutonym(langCode);
+                const eng = getLanguageEnglish(langCode);
+                const regionEng = getRegionEnglish(region);
+
+                let displayName = auto === eng ? auto : `${auto} — ${eng}`;
+                if (regionEng) displayName += `, ${regionEng}`;
+
                 return displayName;
             };
 
             // Process entries
-            const usedLabels = new Map(); // Track label -> count
+            const usedSemantic = new Set(); // Deduplicate by semantic identity (locale+variant+grade+type+dots)
 
             for (const t of entries) {
                 const file = t.file;
@@ -2268,13 +2178,21 @@
                 
                 // Special naming for specific files
                 if (file === 'en-ueb-g2.ctb') {
-                    baseName = 'English, U.S.';
+                    baseName = 'English (UEB), United States';
                     parts.length = 0;
-                    parts.push('contracted', 'UEB grade 2');
+                    parts.push('contracted', 'grade 2');
                 } else if (file === 'en-ueb-g1.ctb') {
-                    baseName = 'English, U.S.';
+                    baseName = 'English (UEB), United States';
                     parts.length = 0;
-                    parts.push('uncontracted', 'UEB grade 1');
+                    parts.push('uncontracted', 'grade 1');
+                } else if (file === 'en-us-g2.ctb') {
+                    baseName = 'English (EBAE), United States';
+                    parts.length = 0;
+                    parts.push('contracted', 'grade 2');
+                } else if (file === 'en-us-g1.ctb') {
+                    baseName = 'English (EBAE), United States';
+                    parts.length = 0;
+                    parts.push('uncontracted', 'grade 1');
                 } else if (file.includes('-comp')) {
                     if (!parts.includes('computer') && !parts.includes('8-dot computer')) {
                         parts.push('computer braille');
@@ -2286,13 +2204,19 @@
                 if (parts.length > 0) {
                     label += ` (${parts.join(', ')})`;
                 }
-                
-                // Handle duplicates
-                const labelCount = usedLabels.get(label) || 0;
-                if (labelCount > 0) {
-                    label += ` [${file}]`;
+
+                // Deduplicate by semantic identity to avoid near-duplicate entries
+                const semanticKey = [
+                    (t.locale || '').toLowerCase(),
+                    (t.variant || '').toLowerCase(),
+                    (t.grade || '').toString().toLowerCase(),
+                    (t.type || '').toLowerCase(),
+                    (t.dots == null ? '' : String(t.dots))
+                ].join('|');
+                if (usedSemantic.has(semanticKey)) {
+                    continue; // Skip duplicates
                 }
-                usedLabels.set(label, labelCount + 1);
+                usedSemantic.add(semanticKey);
 
                 const opt = document.createElement('option');
                 opt.value = file;

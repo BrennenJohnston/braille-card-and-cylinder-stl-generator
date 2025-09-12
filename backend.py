@@ -191,7 +191,9 @@ def validate_settings(settings_data):
         # If both are provided, counter base diameter takes precedence.
         'counter_plate_dot_size_offset': (float, 0, 2),
         'counter_dot_base_diameter': (float, 0.1, 5.0),
-        'hemisphere_subdivisions': (int, 1, 3)
+        'hemisphere_subdivisions': (int, 1, 3),
+        # Indicator shapes toggle (1 = on, 0 = off)
+        'indicator_shapes': (int, 0, 1)
     }
     
     for key, value in settings_data.items():
@@ -282,6 +284,8 @@ class CardSettings:
             "epsilon_mm": 0.001,
             # Cylinder counter plate robustness (how much the sphere crosses the outer surface)
             "cylinder_counter_plate_overcut_mm": 0.05,
+            # Indicator shapes (row start/end markers) toggle
+            "indicator_shapes": 1,
         }
         
         # Set attributes from kwargs or defaults, while being tolerant of "empty" inputs
@@ -306,6 +310,10 @@ class CardSettings:
             self.use_rounded_dots = int(float(kwargs.get('use_rounded_dots', self.use_rounded_dots)))
         except Exception:
             self.use_rounded_dots = int(self.use_rounded_dots)
+        try:
+            self.indicator_shapes = int(float(kwargs.get('indicator_shapes', getattr(self, 'indicator_shapes', 1))))
+        except Exception:
+            self.indicator_shapes = int(getattr(self, 'indicator_shapes', 1))
         
         # Calculate grid dimensions first
         self.grid_width = (self.grid_columns - 1) * self.cell_spacing
@@ -926,45 +934,46 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None, original_lines=
         # Calculate Y position for this row
         y_pos = settings.card_height - settings.top_margin - (row_num * settings.line_spacing) + settings.braille_y_adjust
         
-        # Add end-of-row text/number indicator at the first cell position (column 0)
-        # Calculate X position for the first column
-        x_pos_first = settings.left_margin + settings.braille_x_adjust
-        
-        # Determine which character to use for end-of-row indicator
-        print(f"DEBUG: Row {row_num}, original_lines provided: {original_lines is not None}, length: {len(original_lines) if original_lines else 0}")
-        if original_lines and row_num < len(original_lines):
-            original_text = original_lines[row_num].strip()
-            print(f"DEBUG: Original text for row {row_num}: '{original_text}'")
-            if original_text:
-                # Get the first character (letter or number)
-                first_char = original_text[0]
-                print(f"DEBUG: First character: '{first_char}', isalpha: {first_char.isalpha()}, isdigit: {first_char.isdigit()}")
-                if first_char.isalpha() or first_char.isdigit():
-                    # Create character shape for end-of-row indicator (1.0mm deep)
-                    print(f"DEBUG: Creating character shape for '{first_char}' at first cell")
-                    line_end_mesh = create_character_shape_3d(first_char, x_pos_first, y_pos, settings, height=1.0, for_subtraction=True)
+        if getattr(settings, 'indicator_shapes', 1):
+            # Add end-of-row text/number indicator at the first cell position (column 0)
+            # Calculate X position for the first column
+            x_pos_first = settings.left_margin + settings.braille_x_adjust
+            
+            # Determine which character to use for end-of-row indicator
+            print(f"DEBUG: Row {row_num}, original_lines provided: {original_lines is not None}, length: {len(original_lines) if original_lines else 0}")
+            if original_lines and row_num < len(original_lines):
+                original_text = original_lines[row_num].strip()
+                print(f"DEBUG: Original text for row {row_num}: '{original_text}'")
+                if original_text:
+                    # Get the first character (letter or number)
+                    first_char = original_text[0]
+                    print(f"DEBUG: First character: '{first_char}', isalpha: {first_char.isalpha()}, isdigit: {first_char.isdigit()}")
+                    if first_char.isalpha() or first_char.isdigit():
+                        # Create character shape for end-of-row indicator (1.0mm deep)
+                        print(f"DEBUG: Creating character shape for '{first_char}' at first cell")
+                        line_end_mesh = create_character_shape_3d(first_char, x_pos_first, y_pos, settings, height=1.0, for_subtraction=True)
+                    else:
+                        # Fall back to rectangle for non-alphanumeric first characters
+                        print(f"DEBUG: First character '{first_char}' is not alphanumeric, using rectangle")
+                        line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, settings, height=0.5, for_subtraction=True)
                 else:
-                    # Fall back to rectangle for non-alphanumeric first characters
-                    print(f"DEBUG: First character '{first_char}' is not alphanumeric, using rectangle")
+                    # Empty line, use rectangle
+                    print(f"DEBUG: Empty line at row {row_num}, using rectangle")
                     line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, settings, height=0.5, for_subtraction=True)
             else:
-                # Empty line, use rectangle
-                print(f"DEBUG: Empty line at row {row_num}, using rectangle")
+                # No original text provided, use rectangle as fallback
+                print(f"DEBUG: No original text for row {row_num}, using rectangle")
                 line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, settings, height=0.5, for_subtraction=True)
-        else:
-            # No original text provided, use rectangle as fallback
-            print(f"DEBUG: No original text for row {row_num}, using rectangle")
-            line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, settings, height=0.5, for_subtraction=True)
-        
-        marker_meshes.append(line_end_mesh)
-        
-        # Add triangle marker at the last cell position (grid_columns - 1)
-        # Calculate X position for the last column
-        x_pos_last = settings.left_margin + ((settings.grid_columns - 1) * settings.cell_spacing) + settings.braille_x_adjust
-        
-        # Create triangle marker for this row (recessed for embossing plate)
-        triangle_mesh = create_card_triangle_marker_3d(x_pos_last, y_pos, settings, height=0.6, for_subtraction=True)
-        marker_meshes.append(triangle_mesh)
+            
+            marker_meshes.append(line_end_mesh)
+            
+            # Add triangle marker at the last cell position (grid_columns - 1)
+            # Calculate X position for the last column
+            x_pos_last = settings.left_margin + ((settings.grid_columns - 1) * settings.cell_spacing) + settings.braille_x_adjust
+            
+            # Create triangle marker for this row (recessed for embossing plate)
+            triangle_mesh = create_card_triangle_marker_3d(x_pos_last, y_pos, settings, height=0.6, for_subtraction=True)
+            marker_meshes.append(triangle_mesh)
     
     # Process each line in top-down order
     for row_num in range(settings.grid_rows):
@@ -988,8 +997,9 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None, original_lines=
             print(f"ERROR: {error_msg}")
             raise RuntimeError(error_msg)
         
-        # Check if braille text exceeds grid capacity (accounting for both markers taking columns)
-        available_columns = settings.grid_columns - 2  # Two less due to text/number indicator and triangle markers
+        # Check if braille text exceeds grid capacity
+        reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
+        available_columns = settings.grid_columns - reserved
         if len(braille_text) > available_columns:
             # Warn and truncate instead of failing hard
             over = len(braille_text) - available_columns
@@ -1009,8 +1019,8 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None, original_lines=
                 
             dots = braille_to_dots(braille_char)
             
-            # Calculate X position for this column (shifted by one cell due to text/number indicator)
-            x_pos = settings.left_margin + ((col_num + 1) * settings.cell_spacing) + settings.braille_x_adjust
+            # Calculate X position for this column. Shift by one cell if indicators are enabled.
+            x_pos = settings.left_margin + ((col_num + (1 if getattr(settings, 'indicator_shapes', 1) else 0)) * settings.cell_spacing) + settings.braille_x_adjust
             
             # Create dots for this cell
             for i, dot_val in enumerate(dots):
@@ -1024,13 +1034,16 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None, original_lines=
                     dot_mesh = create_braille_dot(dot_x, dot_y, z, settings)
                     meshes.append(dot_mesh)
     
-    print(f"Created positive plate with {len(meshes)-1} braille dots, {settings.grid_rows} text/number indicators, and {settings.grid_rows} triangle markers")
+    if getattr(settings, 'indicator_shapes', 1):
+        print(f"Created positive plate with {len(meshes)-1} braille dots, {settings.grid_rows} text/number indicators, and {settings.grid_rows} triangle markers")
+    else:
+        print(f"Created positive plate with {len(meshes)-1} braille dots and no indicator shapes")
     
     # Combine all positive meshes (base + dots)
     combined_mesh = trimesh.util.concatenate(meshes)
     
     # Subtract marker recesses from the combined mesh
-    if marker_meshes:
+    if getattr(settings, 'indicator_shapes', 1) and marker_meshes:
         try:
             # Union all markers for efficient boolean operation
             if len(marker_meshes) == 1:
@@ -1299,10 +1312,12 @@ def layout_cylindrical_cells(braille_lines, settings: CardSettings, cylinder_dia
         # Calculate Y position for this row with vertical centering
         y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
         
-        # Process each character up to grid_columns-2 (two less due to text/number indicator and triangle markers)
-        for col_num, braille_char in enumerate(line[:settings.grid_columns-2]):
-            # Calculate angular position for this column (shifted by one cell due to text/number indicator)
-            angle = start_angle + ((col_num + 1) * cell_spacing_angle)
+        # Process each character up to available columns (reserve 2 if indicators enabled)
+        reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
+        max_cols = settings.grid_columns - reserved
+        for col_num, braille_char in enumerate(line[:max_cols]):
+            # Calculate angular position for this column (shift by one if indicators enabled)
+            angle = start_angle + ((col_num + (1 if getattr(settings, 'indicator_shapes', 1) else 0)) * cell_spacing_angle)
             x_pos = angle * radius  # Convert to arc length for compatibility
             cells.append((braille_char, x_pos, y_pos))
     
@@ -1835,54 +1850,55 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
         # Y position in local cylinder coordinates
         y_local = y_pos - (height / 2.0)
         
-        # Add end-of-row text/number indicator at the first cell position (column 0)
-        text_number_x = start_angle * radius
-        
-        # Determine which character to use for end-of-row indicator
-        if original_lines and row_num < len(original_lines):
-            original_text = original_lines[row_num].strip()
-            if original_text:
-                # Get the first character (letter or number)
-                first_char = original_text[0]
-                if first_char.isalpha() or first_char.isdigit():
-                    # Create character shape for end-of-row indicator (1.0mm deep)
-                    text_number_mesh = create_cylinder_character_shape(
-                        first_char, text_number_x, y_local, settings, diameter, seam_offset, height_mm=1.0, for_subtraction=True
-                    )
+        if getattr(settings, 'indicator_shapes', 1):
+            # Add end-of-row text/number indicator at the first cell position (column 0)
+            text_number_x = start_angle * radius
+            
+            # Determine which character to use for end-of-row indicator
+            if original_lines and row_num < len(original_lines):
+                original_text = original_lines[row_num].strip()
+                if original_text:
+                    # Get the first character (letter or number)
+                    first_char = original_text[0]
+                    if first_char.isalpha() or first_char.isdigit():
+                        # Create character shape for end-of-row indicator (1.0mm deep)
+                        text_number_mesh = create_cylinder_character_shape(
+                            first_char, text_number_x, y_local, settings, diameter, seam_offset, height_mm=1.0, for_subtraction=True
+                        )
+                    else:
+                        # Fall back to rectangle for non-alphanumeric first characters
+                        text_number_mesh = create_cylinder_line_end_marker(
+                            text_number_x, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
+                        )
                 else:
-                    # Fall back to rectangle for non-alphanumeric first characters
+                    # Empty line, use rectangle
                     text_number_mesh = create_cylinder_line_end_marker(
                         text_number_x, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
                     )
             else:
-                # Empty line, use rectangle
+                # No original text provided, use rectangle as fallback
                 text_number_mesh = create_cylinder_line_end_marker(
                     text_number_x, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
                 )
-        else:
-            # No original text provided, use rectangle as fallback
-            text_number_mesh = create_cylinder_line_end_marker(
-                text_number_x, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
+            
+            text_number_meshes.append(text_number_mesh)
+            
+            # Add triangle marker at the last cell position (grid_columns - 1)
+            # Calculate X position for the last column
+            triangle_angle = start_angle + ((settings.grid_columns - 1) * settings.cell_spacing / radius)
+            triangle_x = triangle_angle * radius
+            
+            # Create triangle marker for subtraction (will create recess)
+            triangle_mesh = create_cylinder_triangle_marker(
+                triangle_x, y_local, settings, diameter, seam_offset, height_mm=0.6, for_subtraction=True
             )
-        
-        text_number_meshes.append(text_number_mesh)
-        
-        # Add triangle marker at the last cell position (grid_columns - 1)
-        # Calculate X position for the last column
-        triangle_angle = start_angle + ((settings.grid_columns - 1) * settings.cell_spacing / radius)
-        triangle_x = triangle_angle * radius
-        
-        # Create triangle marker for subtraction (will create recess)
-        triangle_mesh = create_cylinder_triangle_marker(
-            triangle_x, y_local, settings, diameter, seam_offset, height_mm=0.6, for_subtraction=True
-        )
-        triangle_meshes.append(triangle_mesh)
+            triangle_meshes.append(triangle_mesh)
     
     # Subtract text/number indicators and triangle markers to recess them into the surface
     print(f"DEBUG: Creating {len(text_number_meshes)} text/number recesses and {len(triangle_meshes)} triangle recesses on emboss cylinder")
     
     # Combine all markers (text/number indicators and triangles) for efficient boolean operations
-    all_markers = text_number_meshes + triangle_meshes
+    all_markers = (text_number_meshes + triangle_meshes) if getattr(settings, 'indicator_shapes', 1) else []
     
     if all_markers:
         try:
@@ -1912,12 +1928,13 @@ def generate_cylinder_stl(lines, grade="g1", settings=None, cylinder_params=None
     
     meshes = [cylinder_shell]
     
-    # Check for overflow based on grid dimensions (accounting for both markers)
+    # Check for overflow based on grid dimensions (accounting for reserved columns when indicators enabled)
     total_cells_needed = sum(len(line.strip()) for line in lines if line.strip())
-    total_cells_available = (settings.grid_columns - 2) * settings.grid_rows  # Two less columns due to text/number indicators and triangles
+    reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
+    total_cells_available = (settings.grid_columns - reserved) * settings.grid_rows
     
     if total_cells_needed > total_cells_available:
-        print(f"Warning: Text requires {total_cells_needed} cells but grid has {total_cells_available} cells ({settings.grid_columns-2}×{settings.grid_rows} after row markers)")
+        print(f"Warning: Text requires {total_cells_needed} cells but grid has {total_cells_available} cells ({settings.grid_columns-reserved}×{settings.grid_rows} after row markers)")
     
     # Check if grid wraps too far around cylinder
     if grid_angle_deg > 360:
@@ -2064,21 +2081,22 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
         y_local = y_pos - (height / 2.0)
         
-        # For counter plate: triangle at first column (apex pointing left), line at last column
-        # First column (triangle):
-        triangle_x_first = start_angle * radius
-        triangle_mesh = create_cylinder_triangle_marker(
-            triangle_x_first, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True, point_left=True
-        )
-        triangle_meshes.append(triangle_mesh)
+        if getattr(settings, 'indicator_shapes', 1):
+            # For counter plate: triangle at first column (apex pointing left), line at last column
+            # First column (triangle):
+            triangle_x_first = start_angle * radius
+            triangle_mesh = create_cylinder_triangle_marker(
+                triangle_x_first, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True, point_left=True
+            )
+            triangle_meshes.append(triangle_mesh)
 
-        # Last column (line end):
-        last_col_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle)
-        line_end_x_last = last_col_angle * radius
-        line_end_mesh = create_cylinder_line_end_marker(
-            line_end_x_last, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
-        )
-        line_end_meshes.append(line_end_mesh)
+            # Last column (line end):
+            last_col_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle)
+            line_end_x_last = last_col_angle * radius
+            line_end_mesh = create_cylinder_line_end_marker(
+                line_end_x_last, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
+            )
+            line_end_meshes.append(line_end_mesh)
     
     # Create spheres for ALL dot positions in ALL cells (universal counter plate)
     sphere_meshes = []
@@ -2321,10 +2339,11 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
         # Calculate Y position for this row (same as embossing plate, using safe margin)
         y_pos = params.card_height - params.top_margin - (row * params.line_spacing) + params.braille_y_adjust
         
-        # Process ALL columns (minus two for first cell indicator and last cell triangle)
-        for col in range(params.grid_columns - 2):
-            # Calculate X position for this column (shifted by one cell due to first cell indicator)
-            x_pos = params.left_margin + ((col + 1) * params.cell_spacing) + params.braille_x_adjust
+        # Process columns (reserve two if indicators enabled)
+        reserved = 2 if getattr(params, 'indicator_shapes', 1) else 0
+        for col in range(params.grid_columns - reserved):
+            # Calculate X position for this column (shift by one if indicators enabled)
+            x_pos = params.left_margin + ((col + (1 if getattr(params, 'indicator_shapes', 1) else 0)) * params.cell_spacing) + params.braille_x_adjust
             
             # Create spheres for ALL 6 dots in this cell
             for dot_idx in range(6):

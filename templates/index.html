@@ -1213,6 +1213,45 @@
             color: var(--text-secondary);
         }
         
+        /* Expert submenus */
+        .expert-submenu {
+            margin-top: 0.8em;
+        }
+        .expert-submenu-toggle {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 8px;
+            padding: 0.8em 1em;
+            font-size: 0.95em;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .expert-submenu-toggle:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--border-secondary);
+        }
+        .expert-submenu-toggle.active {
+            background: var(--border-focus);
+            color: #fff;
+            border-color: var(--border-focus);
+        }
+        .expert-submenu-toggle.active .expert-submenu-title {
+            color: #fff;
+        }
+        .expert-submenu-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 8px;
+            padding: 1em;
+            margin-top: 0.5em;
+        }
+        
         .info-content p {
             margin: 0.3em 0;
         }
@@ -1685,185 +1724,225 @@
                         <div class="expert-info" role="note" aria-label="Expert mode information">
                             Any changes made here will affect both plates.
                         </div>
-                        <!-- Output Shape Selection (moved into Expert Mode) -->
-                        <div class="grade-selection">
-                            <fieldset>
-                                <legend class="grade-label">Select Output Shape</legend>
-                                <div class="radio-group" role="radiogroup" aria-required="true">
-                                    <label class="radio-option">
-                                        <input type="radio" name="shape_type" value="card" aria-describedby="card-shape-desc">
-                                        <span class="radio-text">Flat Card</span>
-                                    </label>
-                                    <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card</span>
-                                    <label class="radio-option">
-                                        <input type="radio" name="shape_type" value="cylinder" checked aria-describedby="cylinder-shape-desc">
-                                        <span class="radio-text">Cylinder</span>
-                                    </label>
-                                    <span id="cylinder-shape-desc" class="sr-only">Creates a cylindrical braille surface</span>
-                                </div>
-                            </fieldset>
-                        </div>
 
-                        <!-- Dot Shape Selection (for Embossing Plate only) - moved into Expert Mode -->
-                        <div class="grade-selection" id="dot-shape-selection" style="display: block;">
-                            <fieldset>
-                                <legend class="grade-label">Select Braille Dot Shape</legend>
-                                <div class="radio-group" role="radiogroup" aria-required="true">
-                                    <label class="radio-option">
-                                        <input type="radio" name="dot_shape" value="cone" aria-describedby="cone-dot-desc">
-                                        <span class="radio-text">Cone</span>
-                                    </label>
-                                    <span id="cone-dot-desc" class="sr-only">Creates cone frustum dots</span>
-                                    <label class="radio-option">
-                                        <input type="radio" name="dot_shape" value="rounded" checked aria-describedby="rounded-dot-desc">
-                                        <span class="radio-text">Rounded</span>
-                                    </label>
-                                    <span id="rounded-dot-desc" class="sr-only">Creates rounded dome dots with a cylinder base</span>
-                                </div>
-                            </fieldset>
-                        </div>
-                        <div class="grade-selection">
-                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
-                            <div>
-                                <label for="grid_columns" id="grid_columns_label">Number of Braille Cells (Characters):</label>
-                                <input type="number" id="grid_columns" name="grid_columns" value="13">
-                                <div id="grid_columns_note" class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                    For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 13 cells available for text.
-                                </div>
-                            </div>
-                            <div>
-                                <label for="grid_rows">Number of Braille Lines:</label>
-                                <input type="number" id="grid_rows" name="grid_rows" value="4">
-                            </div>
-                            <div>
-                                <label for="cell_spacing">Braille Cell Spacing:</label>
-                                <input type="number" id="cell_spacing" name="cell_spacing" value="6.5" step="0.1">
-                            </div>
-                            <div>
-                                <label for="line_spacing">Braille Line Spacing:</label>
-                                <input type="number" id="line_spacing" name="line_spacing" value="10.0" step="0.1">
-                            </div>
-                            <div>
-                                <label for="dot_spacing">Braille Dot Spacing:</label>
-                                <input type="number" id="dot_spacing" name="dot_spacing" value="2.5" step="0.1">
-                            </div>
-                        </div>
-
-                        <div class="grade-selection">
-                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Dot Dimensions</label>
-                            <div>
-                                <label for="emboss_dot_base_diameter">Dot diameter:</label>
-                                <input type="number" id="emboss_dot_base_diameter" name="emboss_dot_base_diameter" value="1.8" step="0.1">
-                            </div>
-                            <div>
-                                <label for="emboss_dot_height">Dot height:</label>
-                                <input type="number" id="emboss_dot_height" name="emboss_dot_height" value="1.0" step="0.1">
-                            </div>
-                            <div>
-                                <label for="emboss_dot_flat_hat">Flat hat diameter:</label>
-                                <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1">
-                            </div>
-                            <hr style="margin: 12px 0; opacity: 0.3;">
-                            <div id="rounded_dot_group" style="margin-top: 8px; padding-left: 16px; display: block;">
-                                <div>
-                                    <label for="rounded_dot_base_diameter">Rounded braille dot base diameter (cone base) (mm):</label>
-                                    <input type="number" id="rounded_dot_base_diameter" name="rounded_dot_base_diameter" value="2.0" step="0.1" min="0.5" max="3">
-                                </div>
-                                <div>
-                                    <label for="rounded_dot_base_height">Rounded braille dot base height (cone height) (mm):</label>
-                                    <input type="number" id="rounded_dot_base_height" name="rounded_dot_base_height" value="0.2" step="0.1" min="0" max="2.0">
-                                </div>
-                                <div>
-                                    <label for="rounded_dot_dome_diameter">Rounded braille dome diameter (linked to cone flat top) (mm):</label>
-                                    <input type="number" id="rounded_dot_dome_diameter" name="rounded_dot_dome_diameter" value="1.5" step="0.1" min="0.5" max="3.0">
-                                </div>
-                                <div>
-                                    <label for="rounded_dot_dome_height">Rounded braille dot dome height (mm):</label>
-                                    <input type="number" id="rounded_dot_dome_height" name="rounded_dot_dome_height" value="0.6" step="0.1" min="0.1" max="2.0">
-                                </div>
-                                <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                    The cone base sits on the surface; the dome grows from the cone's flat top. Dome diameter is always equal to the cone flat-top diameter.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="grade-selection">
-                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Counter Dot Dimensions</label>
-                            <div>
-                                <label for="counter_dot_base_diameter">Counter Dot Base Diameter (mm):</label>
-                                <input type="number" id="counter_dot_base_diameter" name="counter_dot_base_diameter" value="1.8" step="0.1" min="0.5" max="3" aria-describedby="counter-dot-help">
-                                <div id="counter-dot-help" class="offset-note" style="font-size: 0.85em; margin-top: 2px;">
-                                    Sets the Universal Counter Plate recessed dot diameter independently from the embossing plate.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="grade-selection">
-                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Plate Dimensions</label>
-                            <div>
-                                <label for="card_width">Plate Width:</label>
-                                <input type="number" id="card_width" name="card_width" value="90" step="0.1">
-                            </div>
-                            <div>
-                                <label for="card_height">Plate Height:</label>
-                                <input type="number" id="card_height" name="card_height" value="52" step="0.1">
-                            </div>
-                            <div>
-                                <label for="card_thickness">Plate Thickness:</label>
-                                <input type="number" id="card_thickness" name="card_thickness" value="2.0" step="0.1">
-                            </div>
-                        </div>
-
-                        <div class="grade-selection">
-                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Cylinder Dimensions</label>
-                            <div>
-                                <label for="cylinder_diameter_mm">Cylinder Diameter (mm):</label>
-                                <input type="number" id="cylinder_diameter_mm" name="cylinder_diameter_mm" value="30.75" step="0.1" min="10" max="200">
-                            </div>
-                            <div>
-                                <label for="cylinder_height_mm">Cylinder Height (mm):</label>
-                                <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200">
-                            </div>
-                            <div>
-                                <label for="cylinder_polygonal_cutout_radius_mm">Polygonal Cutout Circumscribed Radius (mm):</label>
-                                <input type="number" id="cylinder_polygonal_cutout_radius_mm" name="cylinder_polygonal_cutout_radius_mm" value="13" step="0.1" min="0" max="50">
-                                <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                    Creates a polygonal cutout along the cylinder's length. Set to 0 for no cutout.
-                                </div>
-                            </div>
-                            <div>
-                                <label for="cylinder_polygonal_cutout_sides">Polygonal Cutout Points:</label>
-                                <input type="number" id="cylinder_polygonal_cutout_sides" name="cylinder_polygonal_cutout_sides" value="12" step="1" min="3" max="60">
-                                <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                    Lower values create simpler shapes (e.g., 6); higher values approximate a circle.
-                                </div>
-                            </div>
-                            <div>
-                                <label for="seam_offset_deg">Seam Offset (degrees):</label>
-                                <input type="number" id="seam_offset_deg" name="seam_offset_deg" value="355" step="1" min="0" max="360">
-                                <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                    Rotates the starting position of braille text around the cylinder
-                                </div>
-                            </div>
-                            <div id="cylinder-overflow-warning" class="grade-note" style="margin-top: 10px; color: #d73502; display: none;">
-                                <strong>Warning:</strong> <span id="cylinder-overflow-message"></span>
-                            </div>
-                        </div>
-
-                        <div class="grade-selection">
-                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille / Card Positioning</label>
-                            <div>
-                                <label for="braille_y_adjust">Y Adjust:</label>
-                                <input type="number" id="braille_y_adjust" name="braille_y_adjust" value="0.0" step="0.1">
-                            </div>
-                            <div>
-                                <label for="braille_x_adjust">X Adjust:</label>
-                                <input type="number" id="braille_x_adjust" name="braille_x_adjust" value="0.0" step="0.1">
-                            </div>
-                        </div>
-                        
-                        <div style="margin-top: 1.5em; text-align: center;">
+                        <!-- Preview button moved to the top of Expert Mode -->
+                        <div style="margin-top: 1em; margin-bottom: 0.5em; text-align: center;">
                             <button type="button" id="preview-braille-btn">Preview Braille Translation</button>
+                        </div>
+
+                        <!-- Submenu: Shape Selection -->
+                        <div class="expert-submenu">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                                <span class="expert-submenu-title">Shape Selection</span>
+                                <span class="expert-submenu-icon">▼</span>
+                            </button>
+                            <div class="expert-submenu-content" style="display: none;">
+                                <!-- Output Shape Selection (moved into Expert Mode) -->
+                                <div class="grade-selection">
+                                    <fieldset>
+                                        <legend class="grade-label">Select Output Shape</legend>
+                                        <div class="radio-group" role="radiogroup" aria-required="true">
+                                            <label class="radio-option">
+                                                <input type="radio" name="shape_type" value="card" aria-describedby="card-shape-desc">
+                                                <span class="radio-text">Flat Card</span>
+                                            </label>
+                                            <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card</span>
+                                            <label class="radio-option">
+                                                <input type="radio" name="shape_type" value="cylinder" checked aria-describedby="cylinder-shape-desc">
+                                                <span class="radio-text">Cylinder</span>
+                                            </label>
+                                            <span id="cylinder-shape-desc" class="sr-only">Creates a cylindrical braille surface</span>
+                                        </div>
+                                    </fieldset>
+                                </div>
+
+                                <!-- Dot Shape Selection (for Embossing Plate only) -->
+                                <div class="grade-selection" id="dot-shape-selection" style="display: block;">
+                                    <fieldset>
+                                        <legend class="grade-label">Select Braille Dot Shape</legend>
+                                        <div class="radio-group" role="radiogroup" aria-required="true">
+                                            <label class="radio-option">
+                                                <input type="radio" name="dot_shape" value="cone" aria-describedby="cone-dot-desc">
+                                                <span class="radio-text">Cone</span>
+                                            </label>
+                                            <span id="cone-dot-desc" class="sr-only">Creates cone frustum dots</span>
+                                            <label class="radio-option">
+                                                <input type="radio" name="dot_shape" value="rounded" checked aria-describedby="rounded-dot-desc">
+                                                <span class="radio-text">Rounded</span>
+                                            </label>
+                                            <span id="rounded-dot-desc" class="sr-only">Creates rounded dome dots with a cylinder base</span>
+                                        </div>
+                                    </fieldset>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submenu: Braille Dot Adjustments -->
+                        <div class="expert-submenu">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                                <span class="expert-submenu-title">Braille Dot Adjustments</span>
+                                <span class="expert-submenu-icon">▼</span>
+                            </button>
+                            <div class="expert-submenu-content" style="display: none;">
+                                <div class="grade-selection">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Cone Dot Dimension</label>
+                                    <div>
+                                        <label for="emboss_dot_base_diameter">Dot diameter:</label>
+                                        <input type="number" id="emboss_dot_base_diameter" name="emboss_dot_base_diameter" value="1.8" step="0.1">
+                                    </div>
+                                    <div>
+                                        <label for="emboss_dot_height">Dot height:</label>
+                                        <input type="number" id="emboss_dot_height" name="emboss_dot_height" value="1.0" step="0.1">
+                                    </div>
+                                    <div>
+                                        <label for="emboss_dot_flat_hat">Flat hat diameter:</label>
+                                        <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1">
+                                    </div>
+                                </div>
+
+                                <div class="grade-selection" id="rounded_dot_group" style="margin-top: 8px;">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Rounded Dot Dimensions</label>
+                                    <div>
+                                        <label for="rounded_dot_base_diameter">Rounded braille dot base diameter (cone base) (mm):</label>
+                                        <input type="number" id="rounded_dot_base_diameter" name="rounded_dot_base_diameter" value="2.0" step="0.1" min="0.5" max="3">
+                                    </div>
+                                    <div>
+                                        <label for="rounded_dot_base_height">Rounded braille dot base height (cone height) (mm):</label>
+                                        <input type="number" id="rounded_dot_base_height" name="rounded_dot_base_height" value="0.2" step="0.1" min="0" max="2.0">
+                                    </div>
+                                    <div>
+                                        <label for="rounded_dot_dome_diameter">Rounded braille dome diameter (linked to cone flat top) (mm):</label>
+                                        <input type="number" id="rounded_dot_dome_diameter" name="rounded_dot_dome_diameter" value="1.5" step="0.1" min="0.5" max="3.0">
+                                    </div>
+                                    <div>
+                                        <label for="rounded_dot_dome_height">Rounded braille dot dome height (mm):</label>
+                                        <input type="number" id="rounded_dot_dome_height" name="rounded_dot_dome_height" value="0.6" step="0.1" min="0.1" max="2.0">
+                                    </div>
+                                    <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                        The cone base sits on the surface; the dome grows from the cone's flat top. Dome diameter is always equal to the cone flat-top diameter.
+                                    </div>
+                                </div>
+
+                                <div class="grade-selection">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Counter Dot Dimensions</label>
+                                    <div>
+                                        <label for="counter_dot_base_diameter">Counter Dot Base Diameter (mm):</label>
+                                        <input type="number" id="counter_dot_base_diameter" name="counter_dot_base_diameter" value="1.8" step="0.1" min="0.5" max="3" aria-describedby="counter-dot-help">
+                                        <div id="counter-dot-help" class="offset-note" style="font-size: 0.85em; margin-top: 2px;">
+                                            Sets the Universal Counter Plate recessed dot diameter independently from the embossing plate.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submenu: Surface Dimensions -->
+                        <div class="expert-submenu">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                                <span class="expert-submenu-title">Surface Dimensions</span>
+                                <span class="expert-submenu-icon">▼</span>
+                            </button>
+                            <div class="expert-submenu-content" style="display: none;">
+                                <div class="grade-selection">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Plate Dimensions</label>
+                                    <div>
+                                        <label for="card_width">Plate Width:</label>
+                                        <input type="number" id="card_width" name="card_width" value="90" step="0.1">
+                                    </div>
+                                    <div>
+                                        <label for="card_height">Plate Height:</label>
+                                        <input type="number" id="card_height" name="card_height" value="52" step="0.1">
+                                    </div>
+                                    <div>
+                                        <label for="card_thickness">Plate Thickness:</label>
+                                        <input type="number" id="card_thickness" name="card_thickness" value="2.0" step="0.1">
+                                    </div>
+                                </div>
+
+                                <div class="grade-selection">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Cylinder Dimensions</label>
+                                    <div>
+                                        <label for="cylinder_diameter_mm">Cylinder Diameter (mm):</label>
+                                        <input type="number" id="cylinder_diameter_mm" name="cylinder_diameter_mm" value="30.75" step="0.1" min="10" max="200">
+                                    </div>
+                                    <div>
+                                        <label for="cylinder_height_mm">Cylinder Height (mm):</label>
+                                        <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200">
+                                    </div>
+                                    <div>
+                                        <label for="cylinder_polygonal_cutout_radius_mm">Polygonal Cutout Circumscribed Radius (mm):</label>
+                                        <input type="number" id="cylinder_polygonal_cutout_radius_mm" name="cylinder_polygonal_cutout_radius_mm" value="13" step="0.1" min="0" max="50">
+                                        <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                            Creates a polygonal cutout along the cylinder's length. Set to 0 for no cutout.
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label for="cylinder_polygonal_cutout_sides">Polygonal Cutout Points:</label>
+                                        <input type="number" id="cylinder_polygonal_cutout_sides" name="cylinder_polygonal_cutout_sides" value="12" step="1" min="3" max="60">
+                                        <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                            Lower values create simpler shapes (e.g., 6); higher values approximate a circle.
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label for="seam_offset_deg">Seam Offset (degrees):</label>
+                                        <input type="number" id="seam_offset_deg" name="seam_offset_deg" value="355" step="1" min="0" max="360">
+                                        <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                            Rotates the starting position of braille text around the cylinder
+                                        </div>
+                                    </div>
+                                    <div id="cylinder-overflow-warning" class="grade-note" style="margin-top: 10px; color: #d73502; display: none;">
+                                        <strong>Warning:</strong> <span id="cylinder-overflow-message"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submenu: Braille Spacing -->
+                        <div class="expert-submenu">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                                <span class="expert-submenu-title">Braille Spacing</span>
+                                <span class="expert-submenu-icon">▼</span>
+                            </button>
+                            <div class="expert-submenu-content" style="display: none;">
+                                <div class="grade-selection">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
+                                    <div>
+                                        <label for="grid_columns" id="grid_columns_label">Number of Braille Cells (Characters):</label>
+                                        <input type="number" id="grid_columns" name="grid_columns" value="13">
+                                        <div id="grid_columns_note" class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                            For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 13 cells available for text.
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label for="grid_rows">Number of Braille Lines:</label>
+                                        <input type="number" id="grid_rows" name="grid_rows" value="4">
+                                    </div>
+                                    <div>
+                                        <label for="cell_spacing">Braille Cell Spacing:</label>
+                                        <input type="number" id="cell_spacing" name="cell_spacing" value="6.5" step="0.1">
+                                    </div>
+                                    <div>
+                                        <label for="line_spacing">Braille Line Spacing:</label>
+                                        <input type="number" id="line_spacing" name="line_spacing" value="10.0" step="0.1">
+                                    </div>
+                                    <div>
+                                        <label for="dot_spacing">Braille Dot Spacing:</label>
+                                        <input type="number" id="dot_spacing" name="dot_spacing" value="2.5" step="0.1">
+                                    </div>
+                                </div>
+
+                                <div class="grade-selection">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille / Card Positioning</label>
+                                    <div>
+                                        <label for="braille_y_adjust">Y Adjust:</label>
+                                        <input type="number" id="braille_y_adjust" name="braille_y_adjust" value="0.0" step="0.1">
+                                    </div>
+                                    <div>
+                                        <label for="braille_x_adjust">X Adjust:</label>
+                                        <input type="number" id="braille_x_adjust" name="braille_x_adjust" value="0.0" step="0.1">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -2543,6 +2622,8 @@
                 'counter_dot_base_diameter',
                 'rounded_dot_base_diameter',
                 'rounded_dot_cylinder_height',
+                'rounded_dot_base_height',
+                'rounded_dot_dome_diameter',
                 'rounded_dot_dome_height',
                 'grid_columns',
                 'grid_rows',
@@ -2765,8 +2846,6 @@
             if (savedDot === 'cone' || savedDot === 'rounded') {
                 const radio = document.querySelector(`input[name="dot_shape"][value="${savedDot}"]`);
                 if (radio) radio.checked = true;
-                const roundedGroup = document.getElementById('rounded_dot_group');
-                if (roundedGroup) roundedGroup.style.display = savedDot === 'rounded' ? 'block' : 'none';
             }
             // Expert visibility
             const savedExpert = readPersisted('braille_prefs_expert_visible');
@@ -2909,6 +2988,17 @@
                 updateGridColumnsForPlateType();
                 checkCylinderOverflow();
                 resetToGenerateState();
+
+                // Inform the user to refresh the page to fully reset preview and state
+                try {
+                    errorText.textContent = 'Settings reset to defaults. Please refresh the page to fully reset and clear the preview.';
+                    errorDiv.style.display = 'flex';
+                    errorDiv.className = 'error-message info';
+                    setTimeout(() => {
+                        errorDiv.style.display = 'none';
+                        errorDiv.className = 'error-message';
+                    }, 5000);
+                } catch (e) { /* ignore */ }
             });
         }
         
@@ -2923,16 +3013,14 @@
             expertToggleBtn.classList.toggle('active', !isVisible);
         });
 
-        // Dot shape radio buttons: toggle rounded parameter group visibility
+        // Dot shape radio buttons
         document.querySelectorAll('input[name="dot_shape"]').forEach(radio => {
             radio.addEventListener('change', function() {
                 resetToGenerateState();
-                const roundedGroup = document.getElementById('rounded_dot_group');
-                if (roundedGroup) {
-                    roundedGroup.style.display = this.value === 'rounded' ? 'block' : 'none';
-                }
             });
         });
+
+        // Removed redundant toggle-dot-shape button
 
         infoToggleBtn.addEventListener('click', () => {
             const isVisible = infoContent.style.display !== 'none';
@@ -2941,6 +3029,23 @@
             infoToggleIcon.textContent = isVisible ? '▼' : '▲';
             infoToggleBtn.classList.toggle('active', !isVisible);
         });
+
+        // Wire Expert submenus (expand/collapse)
+        (function initExpertSubmenus() {
+            const submenuToggles = Array.from(document.querySelectorAll('.expert-submenu-toggle'));
+            submenuToggles.forEach(toggle => {
+                toggle.addEventListener('click', () => {
+                    const content = toggle.parentElement?.querySelector('.expert-submenu-content');
+                    if (!content) return;
+                    const isOpen = content.style.display !== 'none';
+                    content.style.display = isOpen ? 'none' : 'block';
+                    toggle.classList.toggle('active', !isOpen);
+                    toggle.setAttribute('aria-expanded', String(!isOpen));
+                    const icon = toggle.querySelector('.expert-submenu-icon');
+                    if (icon) icon.textContent = isOpen ? '▼' : '▲';
+                });
+            });
+        })();
 
         // Add real-time debugging for Expert Mode parametric dials
         const expertInputs = [
@@ -3237,14 +3342,7 @@
             log.debug('Expert Mode Settings:', settings);
             log.debug('Settings object keys:', Object.keys(settings));
             log.debug('Settings object values:', Object.values(settings));
-            // Toggle rounded-dome inputs visibility dynamically
-            try {
-                const roundedGroup = document.getElementById('rounded_dot_group');
-                const dotShape = document.querySelector('input[name="dot_shape"]:checked')?.value;
-                if (roundedGroup) {
-                    roundedGroup.style.display = dotShape === 'rounded' ? 'block' : 'none';
-                }
-            } catch (e) { /* ignore */ }
+            // Rounded-dome inputs are always visible for embossing plate; no dynamic toggle
             
             // Check if at least one line has content (only for positive plates)
             if (plateType === 'positive' && lines.every(line => !line.trim())) {

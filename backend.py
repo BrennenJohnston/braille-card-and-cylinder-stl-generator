@@ -129,6 +129,9 @@ def validate_braille_lines(lines, plate_type='positive'):
         if line.strip():  # Only validate non-empty lines
             # Check each character in the line
             for j, char in enumerate(line):
+                # Allow standard ASCII space characters which represent blank braille cells in our pipeline
+                if char == ' ':
+                    continue
                 char_code = ord(char)
                 if char_code < BRAILLE_START or char_code > BRAILLE_END:
                     errors.append({
@@ -939,30 +942,24 @@ def create_positive_plate_mesh(lines, grade="g1", settings=None, original_lines=
             # Calculate X position for the first column
             x_pos_first = settings.left_margin + settings.braille_x_adjust
             
-            # Determine which character to use for end-of-row indicator
+            # Determine which character to use for beginning-of-row indicator
+            # In manual mode: first character from the corresponding manual line
+            # In auto mode: original_lines is an array of per-row indicator characters
             print(f"DEBUG: Row {row_num}, original_lines provided: {original_lines is not None}, length: {len(original_lines) if original_lines else 0}")
             if original_lines and row_num < len(original_lines):
-                original_text = original_lines[row_num].strip()
-                print(f"DEBUG: Original text for row {row_num}: '{original_text}'")
-                if original_text:
-                    # Get the first character (letter or number)
-                    first_char = original_text[0]
-                    print(f"DEBUG: First character: '{first_char}', isalpha: {first_char.isalpha()}, isdigit: {first_char.isdigit()}")
-                    if first_char.isalpha() or first_char.isdigit():
-                        # Create character shape for end-of-row indicator (1.0mm deep)
-                        print(f"DEBUG: Creating character shape for '{first_char}' at first cell")
-                        line_end_mesh = create_character_shape_3d(first_char, x_pos_first, y_pos, settings, height=1.0, for_subtraction=True)
-                    else:
-                        # Fall back to rectangle for non-alphanumeric first characters
-                        print(f"DEBUG: First character '{first_char}' is not alphanumeric, using rectangle")
-                        line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, settings, height=0.5, for_subtraction=True)
+                orig = (original_lines[row_num] or '').strip()
+                # If auto supplied a single indicator character per row, just use it
+                indicator_char = orig[0] if orig else ''
+                print(f"DEBUG: Row {row_num} indicator candidate: '{indicator_char}'")
+                if indicator_char and (indicator_char.isalpha() or indicator_char.isdigit()):
+                    print(f"DEBUG: Creating character shape for '{indicator_char}' at first cell")
+                    line_end_mesh = create_character_shape_3d(indicator_char, x_pos_first, y_pos, settings, height=1.0, for_subtraction=True)
                 else:
-                    # Empty line, use rectangle
-                    print(f"DEBUG: Empty line at row {row_num}, using rectangle")
+                    print(f"DEBUG: Indicator not alphanumeric or empty, using rectangle for row {row_num}")
                     line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, settings, height=0.5, for_subtraction=True)
             else:
-                # No original text provided, use rectangle as fallback
-                print(f"DEBUG: No original text for row {row_num}, using rectangle")
+                # No indicator info; default to rectangle
+                print(f"DEBUG: No indicator info for row {row_num}, using rectangle")
                 line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, settings, height=0.5, for_subtraction=True)
             
             marker_meshes.append(line_end_mesh)
@@ -2743,6 +2740,7 @@ def generate_braille_stl():
         
         lines = data.get('lines', ['', '', '', ''])
         original_lines = data.get('original_lines', None)  # Optional: original text before braille conversion
+        placement_mode = data.get('placement_mode', 'manual')
         plate_type = data.get('plate_type', 'positive')
         grade = data.get('grade', 'g2')
         settings_data = data.get('settings', {})
@@ -2787,6 +2785,7 @@ def generate_braille_stl():
         if shape_type == 'card':
             # Original card generation logic
             if plate_type == 'positive':
+                # Use provided original_lines (manual lines or auto-derived indicators)
                 mesh = create_positive_plate_mesh(lines, grade, settings, original_lines)
             elif plate_type == 'negative':
                 # Counter plate uses hemispherical recesses as per project brief

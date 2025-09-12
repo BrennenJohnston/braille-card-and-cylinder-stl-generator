@@ -107,7 +107,7 @@ self.onmessage = async function(e) {
                 console.log('Worker: Using table format:', tableFormat);
                 
                 try {
-                    result = liblouisInstance.translateString(tableFormat, text);
+                    const result = liblouisInstance.translateString(tableFormat, text);
                     console.log('Worker: Translation successful:', result);
                     
                     // Verify the result contains proper braille Unicode characters

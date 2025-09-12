@@ -1774,6 +1774,26 @@
                                         </div>
                                     </fieldset>
                                 </div>
+
+                                <!-- Indicator Shape toggle -->
+                                <div class="grade-selection">
+                                    <fieldset>
+                                        <legend class="grade-label" style="font-size: 1.2em; font-weight: 700;">Indicator Shape</legend>
+                                        <div class="radio-group" role="radiogroup" aria-label="Indicator Shape toggle">
+                                            <label class="radio-option">
+                                                <input type="radio" name="indicator_shapes" id="indicator_on" value="1" checked>
+                                                <span class="radio-text">On</span>
+                                            </label>
+                                            <label class="radio-option">
+                                                <input type="radio" name="indicator_shapes" id="indicator_off" value="0">
+                                                <span class="radio-text">Off</span>
+                                            </label>
+                                        </div>
+                                        <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                            When On: 2 cells are reserved per row for start/end markers. When Off: all cells are available for text.
+                                        </div>
+                                    </fieldset>
+                                </div>
                             </div>
                         </div>
 
@@ -2543,44 +2563,33 @@
                 const gridColumnsInput = document.getElementById('grid_columns');
                 const gridColumnsLabel = document.getElementById('grid_columns_label');
                 const gridColumnsNote = document.getElementById('grid_columns_note');
+                const indicatorOn = document.querySelector('input[name="indicator_shapes"]:checked')?.value === '1';
                 
                 // Store current value before update
                 const currentValue = parseInt(gridColumnsInput.value);
                 
                 if (plateType === 'positive') {
-                    // Embossing plate - show available cells (total - 2)
+                    // Embossing plate - available cells depend on indicator toggle
                     gridColumnsLabel.textContent = 'Number of Available Braille Cells:';
                     gridColumnsNote.style.display = 'block';
-                    gridColumnsNote.textContent = 'For embossing plates: 2 cells are reserved for row indicators (start/end markers).';
-                    
-                    if (!preserveValue) {
-                        // Only set default value if not preserving user's custom value
-                        // Show user the available cells (13), backend will add 2 for indicators
-                        gridColumnsInput.value = '13';
-                    } else {
-                        // Convert from backend value (total) to displayed value (available)
-                        if (currentValue > 2) {
-                            gridColumnsInput.value = String(currentValue - 2);
-                        }
-                    }
+                    gridColumnsNote.textContent = indicatorOn
+                        ? 'For embossing plates: 2 cells are reserved for row indicators (start/end markers).'
+                        : 'Indicators off: all columns are available for text.';
+                    // Always normalize the dial to the recommended default to avoid drift
+                    gridColumnsInput.value = indicatorOn ? '13' : '15';
                 } else {
-                    // Counter plate - show available cells (total - 2)
+                    // Counter plate - available cells depend on indicator toggle
                     gridColumnsLabel.textContent = 'Available Braille Cells for Text:';
-                    gridColumnsNote.textContent = 'For counter plates: 2 cells are reserved for row indicators (start/end markers), leaving 13 cells available for text.';
+                    gridColumnsNote.textContent = indicatorOn
+                        ? 'For counter plates: 2 cells are reserved for row indicators (start/end markers), leaving 13 cells available for text.'
+                        : 'Indicators off: all columns are available for text.';
                     gridColumnsNote.style.display = 'block';
-                    
-                    if (!preserveValue) {
-                        // Only set default value if not preserving user's custom value
-                        // Show user the available cells (13), backend will add 2 for indicators
-                        gridColumnsInput.value = '13';
-                    } else {
-                        // Convert from backend value (total) to displayed value (available)
-                        if (currentValue > 2) {
-                            gridColumnsInput.value = String(currentValue - 2);
-                        }
-                    }
+                    // Always normalize the dial to the recommended default to avoid drift
+                    gridColumnsInput.value = indicatorOn ? '13' : '15';
                 }
             }
+            // Expose for other handlers safely
+            try { window.updateGridColumnsForPlateType = updateGridColumnsForPlateType; } catch (e) {}
             
             // Plate type radio buttons
             document.querySelectorAll('input[name="plate_type"]').forEach(radio => {
@@ -2598,6 +2607,13 @@
             
             // Initialize grid columns on page load
             updateGridColumnsForPlateType();
+            // Wire indicator toggle listeners
+            document.querySelectorAll('input[name="indicator_shapes"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    resetToGenerateState();
+                    updateGridColumnsForPlateType(true);
+                });
+            });
             
             // Shape type radio buttons
             document.querySelectorAll('input[name="shape_type"]').forEach(radio => {
@@ -2634,13 +2650,20 @@
                 'card_height',
                 'card_thickness',
                 'braille_x_adjust',
-                'braille_y_adjust'
+                'braille_y_adjust',
+                // Custom: indicator shapes toggle changes available cells view
+                'indicator_shapes'
             ];
             
             expertInputs.forEach(inputId => {
                 const input = document.getElementById(inputId);
                 if (input) {
-                    input.addEventListener('input', resetToGenerateState);
+                    input.addEventListener('input', function() {
+                        resetToGenerateState();
+                        if (inputId === 'indicator_shapes') {
+                            updateGridColumnsForPlateType(true);
+                        }
+                    });
                 }
             });
             
@@ -3307,9 +3330,10 @@
                 log.debug('Counter plate selected - no text translation needed');
             }
             const settings = {
-                // For both plate types, add 2 to account for reserved cells (indicators)
-                // The frontend displays the available cells, but backend needs total cells
-                grid_columns: String(parseInt(document.getElementById('grid_columns').value) + 2),
+                // Add 2 only if indicator shapes are ON; otherwise send exact cells
+                grid_columns: (document.querySelector('input[name="indicator_shapes"]:checked')?.value === '1')
+                    ? String(parseInt(document.getElementById('grid_columns').value) + 2)
+                    : String(parseInt(document.getElementById('grid_columns').value)),
                 grid_rows: document.getElementById('grid_rows').value,
                 cell_spacing: document.getElementById('cell_spacing').value,
                 line_spacing: document.getElementById('line_spacing').value,
@@ -3335,7 +3359,9 @@
                 rounded_dot_base_height: document.getElementById('rounded_dot_base_height')?.value || document.getElementById('rounded_dot_cylinder_height')?.value || '0.2',
                 rounded_dot_cylinder_height: document.getElementById('rounded_dot_base_height')?.value || document.getElementById('rounded_dot_cylinder_height')?.value || '0.2',
                 rounded_dot_dome_diameter: document.getElementById('rounded_dot_dome_diameter')?.value || '1.5',
-                rounded_dot_dome_height: document.getElementById('rounded_dot_dome_height')?.value || '0.6'
+                rounded_dot_dome_height: document.getElementById('rounded_dot_dome_height')?.value || '0.6',
+                // New: indicator shapes toggle
+                indicator_shapes: (document.querySelector('input[name="indicator_shapes"]:checked')?.value === '1') ? 1 : 0
             };
             
             // Debug: Log the settings being sent
@@ -3353,11 +3379,11 @@
             
             // Validate braille character limits AFTER translation
             const gridColumnsValue = parseInt(document.getElementById('grid_columns').value);
+            const indicatorsOn = document.querySelector('input[name="indicator_shapes"]:checked')?.value === '1';
             if (plateType === 'positive') {
-                // For embossing plates, we need to account for 2 reserved cells
-                // Use the actual grid columns value from the input (not hardcoded)
-                const actualGridColumns = gridColumnsValue + 2; // Add back the 2 reserved cells
-                const availableColumns = gridColumnsValue; // What the user sees is available cells
+                // For embossing plates, account for reserved cells only when indicators are on
+                const actualGridColumns = indicatorsOn ? (gridColumnsValue + 2) : gridColumnsValue;
+                const availableColumns = indicatorsOn ? gridColumnsValue : gridColumnsValue;
                 
                 for (let i = 0; i < translatedLines.length; i++) {
                     const brailleLine = translatedLines[i];

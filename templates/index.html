@@ -1526,6 +1526,13 @@
             border: 2px solid #ff0000 !important;
         }
 
+        /* Subline under each preview line for computer shorthand */
+        .preview-subline {
+            font-size: 0.9em;
+            opacity: 0.85;
+            margin-top: 0.25em;
+        }
+
         /* Section Title Styling - Larger Font for All Themes */
         .info-panel strong,
         .info-panel p strong {
@@ -1550,6 +1557,29 @@
             font-size: 1.2em !important;
             font-weight: 600 !important;
         }
+
+        /* Auto placement textarea styling to visually align with manual inputs */
+        #auto-input-container textarea#auto-text {
+            width: 100%;
+            min-height: 6.5em; /* approx 4 lines */
+            line-height: 1.4;
+            padding: 0.8em;
+            font-size: 1em;
+            font-family: inherit;
+            border: 1.5px solid var(--border-secondary);
+            border-radius: 8px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            transition: border 0.2s;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        #auto-input-container textarea#auto-text:focus {
+            border: 1.5px solid var(--border-focus);
+            outline: none;
+            background: var(--bg-primary);
+        }
+        /* High contrast maintains theme variables already set */
     </style>
 </head>
 <body>
@@ -1617,6 +1647,26 @@
                         <legend class="grade-label">Enter Text for Braille Translation</legend>
                         <div class="grade-note" style="margin-bottom: 0.8em; font-size: 0.85em;">
                             <strong>Note:</strong> Contracted braille combines letters into single cells, so the character limit is only confirmed <em>after translation</em> — the program will warn you automatically if it's too long.
+                        </div>
+                        <!-- Placement mode toggle -->
+                        <div class="line-input-mode-toggle" style="margin-bottom: 0.8em; display: flex; align-items: center; gap: 1em;">
+                            <label class="line-label" for="placement_mode_auto" style="margin: 0;">Placement Mode:</label>
+                            <label style="display: inline-flex; align-items: center; gap: 0.4em;">
+                                <input type="radio" name="placement_mode" value="auto" id="placement_mode_auto" checked>
+                                Auto Placement
+                            </label>
+                            <label style="display: inline-flex; align-items: center; gap: 0.4em;">
+                                <input type="radio" name="placement_mode" value="manual" id="placement_mode_manual">
+                                Manual Placement
+                            </label>
+                        </div>
+                        <!-- Auto placement textarea (hidden by default) -->
+                        <div id="auto-input-container" style="display: none;">
+                            <label for="auto-text" class="line-label">Auto Placement Text</label>
+                            <textarea id="auto-text" rows="4" placeholder="Type all your text here. It will be translated to braille and auto-wrapped across rows based on available cells." style="width: 100%; resize: vertical;"></textarea>
+                            <div id="auto-overflow-warning" class="grade-note" style="margin-top: 0.6em; color: #d73502; display: none;">
+                                <strong>Warning:</strong> <span id="auto-overflow-message"></span>
+                            </div>
                         </div>
                         <!-- Dynamic line inputs container -->
                         <div id="dynamic-line-inputs">
@@ -2602,6 +2652,9 @@
                     }
                     const roundedGroup = document.getElementById('rounded_dot_group');
                     if (roundedGroup && this.value !== 'positive') roundedGroup.style.display = 'none';
+                    if (document.querySelector('input[name="placement_mode"]:checked')?.value === 'auto') {
+                        computeAutoOverflow();
+                    }
                 });
             });
             
@@ -2612,6 +2665,9 @@
                 radio.addEventListener('change', function() {
                     resetToGenerateState();
                     updateGridColumnsForPlateType(true);
+                    if (document.querySelector('input[name=\"placement_mode\"]:checked')?.value === 'auto') {
+                        computeAutoOverflow();
+                    }
                 });
             });
             
@@ -2620,6 +2676,9 @@
                 radio.addEventListener('change', function() {
                     resetToGenerateState();
                     updateShapeSettings();
+                    if (document.querySelector('input[name=\"placement_mode\"]:checked')?.value === 'auto') {
+                        computeAutoOverflow();
+                    }
                     // Do not persist shape selection; always reset on reload
                 });
             });
@@ -2786,6 +2845,45 @@
             return lines;
         }
 
+        // When in auto mode, show overall overflow for cylinders too
+        const cylinderOverflowDiv = document.getElementById('cylinder-overflow-warning');
+        const cylinderOverflowMsg = document.getElementById('cylinder-overflow-message');
+        const originalCheckCylinderOverflow = checkCylinderOverflow;
+        checkCylinderOverflow = function() {
+            const placementMode = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
+            if (placementMode === 'manual') {
+                return originalCheckCylinderOverflow();
+            }
+            // Auto mode: compute based on auto text
+            const diameter = parseFloat(document.getElementById('cylinder_diameter_mm').value) || 30.75;
+            const height = parseFloat(document.getElementById('cylinder_height_mm').value) || 52;
+            const cellSpacing = parseFloat(document.getElementById('cell_spacing').value) || 6.5;
+            const lineSpacing = parseFloat(document.getElementById('line_spacing').value) || 10;
+            const circumference = Math.PI * diameter;
+            const cellsPerRow = Math.floor(circumference / cellSpacing);
+            const rowsOnCylinder = Math.floor(height / lineSpacing);
+            const totalCellsAvailable = cellsPerRow * rowsOnCylinder;
+            const src = (document.getElementById('auto-text')?.value || '').trim();
+            if (!src) {
+                cylinderOverflowDiv.style.display = 'none';
+                return;
+            }
+            // Translate then compare
+            translateWithLiblouis(src, 'g2', document.getElementById('language-table')?.value || 'en-ueb-g2.ctb')
+                .then(braille => {
+                    const totalCellsNeeded = braille.length;
+                    if (totalCellsNeeded > totalCellsAvailable) {
+                        cylinderOverflowMsg.textContent = `Text requires ${totalCellsNeeded} cells but cylinder can fit ${totalCellsAvailable} cells. Some text may be cut off.`;
+                        cylinderOverflowDiv.style.display = 'block';
+                    } else {
+                        cylinderOverflowDiv.style.display = 'none';
+                    }
+                })
+                .catch(() => {
+                    // Ignore
+                });
+        };
+
         // Function to add listener for grid_rows changes
         function addGridRowsListener() {
             const gridRowsInput = document.getElementById('grid_rows');
@@ -2809,6 +2907,90 @@
         createDynamicLineInputs(4);
         addInputChangeListeners();
         addGridRowsListener();
+
+        // Placement mode logic
+        const placementRadios = document.querySelectorAll('input[name="placement_mode"]');
+        const autoContainer = document.getElementById('auto-input-container');
+        const dynamicContainer = document.getElementById('dynamic-line-inputs');
+        const autoText = document.getElementById('auto-text');
+        const autoWarning = document.getElementById('auto-overflow-warning');
+        const autoWarningMsg = document.getElementById('auto-overflow-message');
+
+        function isIndicatorsOn() {
+            return document.querySelector('input[name="indicator_shapes"]:checked')?.value === '1';
+        }
+
+        function getAvailableColumns() {
+            const gridColumnsValue = parseInt(document.getElementById('grid_columns').value) || 15;
+            // The UI dial shows usable text cells; use it directly for wrapping
+            return gridColumnsValue;
+        }
+
+        function getTotalCellsAvailable() {
+            const rows = parseInt(document.getElementById('grid_rows').value) || 4;
+            const cols = getAvailableColumns();
+            return rows * cols;
+        }
+
+        function updatePlacementUI() {
+            const mode = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
+            if (mode === 'auto') {
+                autoContainer.style.display = '';
+                dynamicContainer.style.display = 'none';
+            } else {
+                autoContainer.style.display = 'none';
+                dynamicContainer.style.display = '';
+            }
+            resetToGenerateState();
+        }
+
+        placementRadios.forEach(r => r.addEventListener('change', () => {
+            updatePlacementUI();
+        }));
+
+        // Update UI on relevant changes to show/compute warnings
+        ['grid_rows','grid_columns','cell_spacing','line_spacing','cylinder_diameter_mm','cylinder_height_mm','indicator_shapes']
+            .forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', () => {
+                        if (document.querySelector('input[name="placement_mode"]:checked')?.value === 'auto') {
+                            computeAutoOverflow();
+                        }
+                    });
+                }
+            });
+
+        async function computeAutoOverflow() {
+            autoWarning.style.display = 'none';
+            autoWarningMsg.textContent = '';
+            const languageSelect = document.getElementById('language-table');
+            const tableName = languageSelect?.value || 'en-ueb-g2.ctb';
+            const src = (autoText?.value || '').trim();
+            if (!src) return;
+            try {
+                const braille = await translateWithLiblouis(src, 'g2', tableName);
+                const totalCellsNeeded = braille.length;
+                const totalCellsAvailable = getTotalCellsAvailable();
+                if (totalCellsNeeded > totalCellsAvailable) {
+                    const over = totalCellsNeeded - totalCellsAvailable;
+                    autoWarningMsg.textContent = `Your text exceeds the number of available braille cells by ${over} cells.`;
+                    autoWarning.style.display = 'block';
+                }
+            } catch (e) {
+                // Ignore preview warning if translation not available
+            }
+        }
+
+        if (autoText) {
+            autoText.addEventListener('input', () => {
+                resetToGenerateState();
+                computeAutoOverflow();
+            });
+        }
+
+        // Initialize placement UI
+        updatePlacementUI();
         
         // Persistence: save and restore user settings
         function persistValue(key, value) {
@@ -3121,41 +3303,221 @@
             return values;
         };
 
-        // Preview braille translation using real liblouis
+        // Convert a unicode braille string to computer shorthand tokens with brief indicators
+        function brailleToComputerShorthand(brailleStr) {
+            // Common UEB contractions and indicators
+            const contractionMap = {
+                '⠡': 'ch',
+                '⠩': 'sh',
+                '⠹': 'th',
+                '⠱': 'wh',
+                '⠫': 'ed',
+                '⠻': 'er',
+                '⠳': 'ou',
+                '⠪': 'ow',
+                '⠜': 'ar',
+                '⠬': 'ing',
+                '⠢': 'en',
+                '⠔': 'in',
+                '⠌': 'st',
+                '⠮': 'the',
+                '⠯': 'and',
+                '⠷': 'of',
+                '⠿': 'for',
+                '⠾': 'with'
+            };
+
+            const indicatorMap = {
+                '⠠': '[Capital Symbol]',
+                '⠼': '[Number Symbol]'
+            };
+
+            const punctuationMap = {
+                '⠂': ',',
+                '⠆': ';',
+                '⠒': ':',
+                '⠲': '.',
+                '⠖': '!',
+                '⠦': '?',
+                '⠤': '-',
+                '⠄': '\''
+            };
+
+            const letterMap = {
+                '⠁':'a','⠃':'b','⠉':'c','⠙':'d','⠑':'e','⠋':'f','⠛':'g','⠓':'h','⠊':'i','⠚':'j',
+                '⠅':'k','⠇':'l','⠍':'m','⠝':'n','⠕':'o','⠏':'p','⠟':'q','⠗':'r','⠎':'s','⠞':'t',
+                '⠥':'u','⠧':'v','⠺':'w','⠭':'x','⠽':'y','⠵':'z'
+            };
+
+            const digitMap = {
+                '⠁':'1','⠃':'2','⠉':'3','⠙':'4','⠑':'5','⠋':'6','⠛':'7','⠓':'8','⠊':'9','⠚':'0'
+            };
+
+            let result = '';
+            let numericMode = false;
+            let pendingWordGap = false;
+
+            for (const ch of brailleStr) {
+                if (ch === ' ') {
+                    // Word boundary
+                    numericMode = false;
+                    pendingWordGap = true;
+                    continue;
+                }
+
+                if (indicatorMap[ch]) {
+                    if (result.length > 0) {
+                        result += pendingWordGap ? '  ' : ' ';
+                    }
+                    result += indicatorMap[ch];
+                    pendingWordGap = false;
+                    if (ch === '⠼') numericMode = true;
+                    continue;
+                }
+
+                if (contractionMap[ch]) {
+                    if (result.length > 0) {
+                        result += pendingWordGap ? '  ' : ' ';
+                    }
+                    result += `[${contractionMap[ch]}]`;
+                    pendingWordGap = false;
+                    // contractions end numeric mode
+                    numericMode = false;
+                    continue;
+                }
+
+                if (numericMode && digitMap[ch]) {
+                    if (result.length > 0) {
+                        result += pendingWordGap ? '  ' : ' ';
+                    }
+                    result += digitMap[ch];
+                    pendingWordGap = false;
+                    continue;
+                }
+
+                if (letterMap[ch]) {
+                    if (result.length > 0) {
+                        result += pendingWordGap ? '  ' : ' ';
+                    }
+                    result += letterMap[ch];
+                    pendingWordGap = false;
+                    // letters in numeric mode that are not digits will end numeric mode
+                    numericMode = false;
+                    continue;
+                }
+
+                if (punctuationMap[ch]) {
+                    if (result.length > 0) {
+                        result += pendingWordGap ? '  ' : ' ';
+                    }
+                    result += punctuationMap[ch];
+                    pendingWordGap = false;
+                    numericMode = false;
+                    continue;
+                }
+
+                // Fallback: show the braille cell itself
+                if (result.length > 0) {
+                    result += pendingWordGap ? '  ' : ' ';
+                }
+                result += ch;
+                pendingWordGap = false;
+                numericMode = false;
+            }
+
+            return result;
+        }
+
+        // Preview braille translation using real liblouis (supports manual and auto placement)
         previewBrailleBtn.addEventListener('click', async () => {
             // Reset button state when previewing (user is making changes)
             resetToGenerateState();
-            const lines = getDynamicLineValues();
-            
+
             const languageSelect = document.getElementById('language-table');
             const tableName = languageSelect.value;
-            
-            if (lines.every(line => !line.trim())) {
-                errorText.textContent = 'Please enter text in at least one line.';
-                errorDiv.style.display = 'flex';
-                return;
-            }
 
+            const placementMode = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
             errorDiv.style.display = 'none';
             let previewHTML = '';
-            
-            for (let i = 0; i < lines.length; i++) {
-                if (lines[i].trim()) {
-                    try {
-                        // Use real liblouis translation with selected table
-                        const braille = await translateWithLiblouis(lines[i].trim(), 'g2', tableName);
-                        previewHTML += `<div class="preview-line-success">
-                            <strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → "${braille}"
-                        </div>`;
-                    } catch (error) {
-                        log.error('Translation failed for line', i + 1, ':', error);
-                        previewHTML += `<div class="preview-line-error">
-                            <strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → Error: ${error.message}
-                        </div>`;
+
+            if (placementMode === 'manual') {
+                const lines = getDynamicLineValues();
+                if (lines.every(line => !line.trim())) {
+                    errorText.textContent = 'Please enter text in at least one line.';
+                    errorDiv.style.display = 'flex';
+                    return;
+                }
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].trim()) {
+                        try {
+                            const braille = await translateWithLiblouis(lines[i].trim(), 'g2', tableName);
+                            const shorthand = brailleToComputerShorthand(braille);
+                            previewHTML += `<div class="preview-line-success">
+                                <div><strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → "${braille}"</div>
+                                <div class="preview-subline">Computer shorthand: "${shorthand}"</div>
+                            </div>`;
+                        } catch (error) {
+                            log.error('Translation failed for line', i + 1, ':', error);
+                            previewHTML += `<div class="preview-line-error">
+                                <strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → Error: ${error.message}
+                            </div>`;
+                        }
                     }
                 }
+            } else {
+                // Auto mode: translate full text then wrap into rows for preview
+                const src = (document.getElementById('auto-text')?.value || '').trim();
+                if (!src) {
+                    errorText.textContent = 'Please enter text in the Auto Placement field.';
+                    errorDiv.style.display = 'flex';
+                    return;
+                }
+                try {
+                    const brailleText = await translateWithLiblouis(src, 'g2', tableName);
+                    const shapeTypeEl = document.querySelector('input[name="shape_type"]:checked');
+                    const shapeTypeVal = shapeTypeEl ? shapeTypeEl.value : 'card';
+                    let cols;
+                    if (shapeTypeVal === 'cylinder') {
+                        const diameter = parseFloat(document.getElementById('cylinder_diameter_mm').value) || 30.75;
+                        const cellSpacing = parseFloat(document.getElementById('cell_spacing').value) || 6.5;
+                        const circumference = Math.PI * diameter;
+                        cols = Math.floor(circumference / cellSpacing);
+                    } else {
+                        const gridColumnsValue = parseInt(document.getElementById('grid_columns').value) || 15;
+                        cols = gridColumnsValue;
+                    }
+                    const rows = parseInt(document.getElementById('grid_rows').value) || 4;
+                    const totalCellsAvailable = cols * rows;
+                    if (brailleText.length > totalCellsAvailable) {
+                        const over = brailleText.length - totalCellsAvailable;
+                        errorText.textContent = `Text requires ${brailleText.length} cells but only ${totalCellsAvailable} are available. Over by ${over} cells.`;
+                        errorDiv.style.display = 'flex';
+                        errorDiv.className = 'error-message';
+                    }
+                    let idx = 0;
+                    for (let r = 0; r < rows; r++) {
+                        const slice = brailleText.slice(idx, idx + cols);
+                        if (slice) {
+                            const shorthand = brailleToComputerShorthand(slice);
+                            previewHTML += `<div class="preview-line-success">
+                                <div><strong>Row ${r + 1}:</strong> "${slice}"</div>
+                                <div class="preview-subline">Computer shorthand: "${shorthand}"</div>
+                            </div>`;
+                        } else {
+                            previewHTML += `<div class="preview-line-success">
+                                <strong>Row ${r + 1}:</strong> ""
+                            </div>`;
+                        }
+                        idx += cols;
+                    }
+                } catch (error) {
+                    log.error('Translation failed for auto text:', error);
+                    previewHTML += `<div class="preview-line-error">
+                        <strong>Auto Placement:</strong> Error: ${error.message}
+                    </div>`;
+                }
             }
-            
+
             previewContent.innerHTML = previewHTML;
             braillePreview.style.display = 'block';
         });
@@ -3265,8 +3627,18 @@
             errorDiv.style.display = 'none';
             errorText.textContent = '';
             
-            // Collect all dynamic line inputs
-            const lines = getDynamicLineValues();
+            // Collect input depending on placement mode
+            const placementMode = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
+            let lines = [];
+            let originalLines = [];
+            if (placementMode === 'manual') {
+                lines = getDynamicLineValues();
+                originalLines = [...lines];
+            } else {
+                const src = (document.getElementById('auto-text')?.value || '').trim();
+                originalLines = [src];
+                // We'll translate the whole text, then wrap to rows based on available cells
+            }
             
             const plateType = document.querySelector('input[name="plate_type"]:checked').value;
             const languageSelect = document.getElementById('language-table');
@@ -3276,28 +3648,69 @@
             let translatedLines = [];
             let translationErrors = [];
             if (plateType === 'positive') {
-                // Translate text to braille before sending to backend
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i].trim();
-                    if (line) {
-                        try {
-                            log.debug(`Translating line ${i + 1}: '${line}' to braille using table: ${tableName}...`);
-                            const brailleText = await translateWithLiblouis(line, 'g2', tableName);
-                            log.debug(`Line ${i + 1} translated: '${line}' → '${brailleText}'`);
-                            translatedLines.push(brailleText);
-                        } catch (error) {
-                            log.error(`Failed to translate line ${i + 1}:`, error);
-                            // Track translation failure
-                            translationErrors.push({
-                                line: i + 1,
-                                text: line,
-                                error: error.toString()
-                            });
-                            // Push empty string to maintain line alignment
+                if (placementMode === 'manual') {
+                    // Per-line translation
+                    for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if (line) {
+                            try {
+                                log.debug(`Translating line ${i + 1}: '${line}' to braille using table: ${tableName}...`);
+                                const brailleText = await translateWithLiblouis(line, 'g2', tableName);
+                                log.debug(`Line ${i + 1} translated: '${line}' → '${brailleText}'`);
+                                translatedLines.push(brailleText);
+                            } catch (error) {
+                                log.error(`Failed to translate line ${i + 1}:`, error);
+                                translationErrors.push({ line: i + 1, text: line, error: error.toString() });
+                                translatedLines.push('');
+                            }
+                        } else {
                             translatedLines.push('');
                         }
+                    }
+                } else {
+                    // Auto mode: translate entire text, then wrap to rows
+                    const src = (document.getElementById('auto-text')?.value || '').trim();
+                    if (!src) {
+                        translatedLines = Array(parseInt(document.getElementById('grid_rows').value) || 4).fill('');
                     } else {
-                        translatedLines.push('');
+                        try {
+                            const brailleText = await translateWithLiblouis(src, 'g2', tableName);
+                            const shapeTypeEl = document.querySelector('input[name="shape_type"]:checked');
+                            const shapeTypeVal = shapeTypeEl ? shapeTypeEl.value : 'card';
+                            let totalCellsAvailable;
+                            let cols;
+                            if (shapeTypeVal === 'cylinder') {
+                                // Derive cells per row from cylinder geometry
+                                const diameter = parseFloat(document.getElementById('cylinder_diameter_mm').value) || 30.75;
+                                const cellSpacing = parseFloat(document.getElementById('cell_spacing').value) || 6.5;
+                                const circumference = Math.PI * diameter;
+                                cols = Math.floor(circumference / cellSpacing);
+                            } else {
+                                const gridColumnsValue = parseInt(document.getElementById('grid_columns').value) || 15;
+                                cols = gridColumnsValue; // indicators reserved are handled in mesh/layout
+                            }
+                            const rows = parseInt(document.getElementById('grid_rows').value) || 4;
+                            totalCellsAvailable = cols * rows;
+                            // Warn if overflow (global)
+                            if (brailleText.length > totalCellsAvailable) {
+                                const over = brailleText.length - totalCellsAvailable;
+                                errorText.textContent = `Text requires ${brailleText.length} cells but only ${totalCellsAvailable} are available. Over by ${over} cells.`;
+                                errorDiv.style.display = 'flex';
+                                errorDiv.className = 'error-message';
+                            }
+                            // Wrap into row strings left-to-right
+                            translatedLines = [];
+                            let idx = 0;
+                            for (let r = 0; r < rows; r++) {
+                                const slice = brailleText.slice(idx, idx + cols);
+                                translatedLines.push(slice);
+                                idx += cols;
+                            }
+                        } catch (error) {
+                            log.error('Failed to translate auto text:', error);
+                            translationErrors.push({ line: 1, text: src, error: error.toString() });
+                            translatedLines = Array(parseInt(document.getElementById('grid_rows').value) || 4).fill('');
+                        }
                     }
                 }
                 log.debug('Original lines:', lines);
@@ -3371,7 +3784,8 @@
             // Rounded-dome inputs are always visible for embossing plate; no dynamic toggle
             
             // Check if at least one line has content (only for positive plates)
-            if (plateType === 'positive' && lines.every(line => !line.trim())) {
+            const hasContent = placementMode === 'manual' ? lines.some(l => l && l.trim()) : ((originalLines[0] || '').trim().length > 0);
+            if (plateType === 'positive' && !hasContent) {
                 errorText.textContent = 'Please enter text in at least one line.';
                 errorDiv.style.display = 'flex';
                 return;
@@ -3381,18 +3795,18 @@
             const gridColumnsValue = parseInt(document.getElementById('grid_columns').value);
             const indicatorsOn = document.querySelector('input[name="indicator_shapes"]:checked')?.value === '1';
             if (plateType === 'positive') {
-                // For embossing plates, account for reserved cells only when indicators are on
-                const actualGridColumns = indicatorsOn ? (gridColumnsValue + 2) : gridColumnsValue;
-                const availableColumns = indicatorsOn ? gridColumnsValue : gridColumnsValue;
-                
-                for (let i = 0; i < translatedLines.length; i++) {
-                    const brailleLine = translatedLines[i];
-                    if (brailleLine && brailleLine.length > availableColumns) {
-                        const over = brailleLine.length - availableColumns;
-                        errorText.textContent = `Line ${i + 1} exceeds ${availableColumns} available braille cells by ${over} cells after translation. Please shorten your text.`;
-                        errorDiv.style.display = 'flex';
-                        errorDiv.className = 'error-message';
-                        return;
+                const availableColumns = gridColumnsValue;
+                // In auto mode, we already wrapped by row capacity; skip line-specific error.
+                if (placementMode === 'manual') {
+                    for (let i = 0; i < translatedLines.length; i++) {
+                        const brailleLine = translatedLines[i];
+                        if (brailleLine && brailleLine.length > availableColumns) {
+                            const over = brailleLine.length - availableColumns;
+                            errorText.textContent = `Line ${i + 1} exceeds ${availableColumns} available braille cells by ${over} cells after translation. Please shorten your text.`;
+                            errorDiv.style.display = 'flex';
+                            errorDiv.className = 'error-message';
+                            return;
+                        }
                     }
                 }
             } else {
@@ -3438,12 +3852,33 @@
             log.debug('Shape Type:', shapeType);
             log.debug('Cylinder Params:', cylinderParams);
             
+            // Build original_lines for indicators
+            let originalForIndicators = null;
+            if (placementMode === 'manual') {
+                originalForIndicators = lines;
+            } else {
+                const srcAuto = (document.getElementById('auto-text')?.value || '').trim();
+                const tokens = srcAuto.split(/\s+/).filter(Boolean);
+                const rowsCount = parseInt(document.getElementById('grid_rows').value) || 4;
+                // Derive per-row indicator from first alphanumeric of each token
+                const indicators = tokens.map(tok => {
+                    const m = tok.match(/[A-Za-z0-9]/);
+                    return m ? m[0] : '';
+                });
+                // Map indicators to rows cyclically or truncated
+                originalForIndicators = new Array(rowsCount).fill('');
+                for (let r = 0; r < rowsCount; r++) {
+                    originalForIndicators[r] = indicators[r] || '';
+                }
+            }
+
             const res = await fetch('/generate_braille_stl', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     lines: translatedLines,
-                    original_lines: lines,  // Send original text for character indicators
+                    original_lines: originalForIndicators,
+                    placement_mode: placementMode,
                     grade: 'g2', 
                     plate_type: plateType, 
                     shape_type: shapeType,
@@ -3485,11 +3920,16 @@
                 
                 if (plateType === 'positive') {
                     // Get the current lines from the form
-                    const gridRows = parseInt(document.getElementById('grid_rows').value) || 4;
-                    const lines = [];
-                    for (let i = 1; i <= gridRows; i++) {
-                        const input = document.getElementById(`line${i}`);
-                        lines.push(input ? input.value : '');
+                    const placementModeNow = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
+                    let lines = [];
+                    if (placementModeNow === 'manual') {
+                        const gridRows = parseInt(document.getElementById('grid_rows').value) || 4;
+                        for (let i = 1; i <= gridRows; i++) {
+                            const input = document.getElementById(`line${i}`);
+                            lines.push(input ? input.value : '');
+                        }
+                    } else {
+                        lines = [document.getElementById('auto-text')?.value || ''];
                     }
                     
                     // Find first non-empty line (prioritizing Line 1)

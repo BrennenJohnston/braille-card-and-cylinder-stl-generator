@@ -1705,6 +1705,12 @@
                             <li>Click <strong>"Universal Counter Plate"</strong> and repeat the steps to generate and download the matching counter plate (if you haven't printed one yet).</li>
                             <li>Need specific dimensions? Open <strong>Expert Mode</strong> to adjust card size, spacing, and dot parameters.</li>
                         </ol>
+                        <p><strong>Business card guidance:</strong></p>
+                        <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                            <li><strong>Default:</strong> English (UEB), United States — uncontracted (grade 1). See BANA’s <a href="https://www.brailleauthority.org/bana-position-statements-and-fact-sheets" target="_blank" style="color: #3182ce; text-decoration: none;">Business Cards Fact Sheet (March 2024)</a>.</li>
+                            <li><strong>What to include:</strong> pick two key items (e.g., your name and either email or phone). It’s fine to break long emails across lines at logical places.</li>
+                            <li><em>“Braille business cards … work best with letter-for-letter substitution – known as Grade 1 Braille. It helps to cut down on potential confusion or misinterpretation… Grade 2 … is an option if you’re unable to fit the information you need.”</em> — <a href="https://brailleworks.com/braille-business-cards-411/" target="_blank" style="color: #3182ce; text-decoration: none;">Braille Works, The 411 on Braille Business Cards</a></li>
+                        </ul>
                         <p><strong>Acknowledgements:</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">
                             <li>Powered by <a href="https://liblouis.io/" target="_blank" style="color: #3182ce; text-decoration: none;"><strong>Liblouis</strong></a>, an open-source professional braille translator.</li>
@@ -1720,13 +1726,13 @@
                             <legend class="grade-label">Select Language:</legend>
                             <div style="margin-bottom: 0.8em;">
                                 <select id="language-table" name="language_table" class="language-select" aria-describedby="language-help">
-                                    <option value="en-ueb-g2.ctb" selected>English (UEB), United States — contracted (grade 2)</option>
-                                    <option value="en-ueb-g1.ctb">English (UEB), United States — uncontracted (grade 1)</option>
+                                    <option value="en-ueb-g2.ctb">English (UEB), United States — contracted (grade 2)</option>
+                                    <option value="en-ueb-g1.ctb" selected>English (UEB), United States — uncontracted (grade 1)</option>
                                     <option value="en-us-g2.ctb">English (EBAE), United States — contracted (grade 2)</option>
                                     <option value="en-us-g1.ctb">English (EBAE), United States — uncontracted (grade 1)</option>
                                 </select>
                                 <div id="language-help" class="grade-note" style="margin-top: 6px; font-size: 0.85em;">
-                                    NOTE: English, U.S., contracted (UEB grade 2) is the default standard for all U.S. English braille translations. Please only select another language or grade for special use cases.
+                                    Default: English (UEB), United States — uncontracted (grade 1). Chosen to align with BANA guidance for business cards and to minimize ambiguity for names, emails, and short contact info. Use contracted (grade 2) only when space is limited.
                                 </div>
                             </div>
                         </fieldset>
@@ -2257,13 +2263,13 @@
 
             select.appendChild(otherGroup);
             
-            // Default to UEB grade 2 unless user has a saved preference
+            // Default to UEB grade 1 unless user has a saved preference (business card-friendly)
             try {
                 const saved = localStorage.getItem('braille_prefs_language_table');
                 const hasSaved = saved && Array.from(select.options).some(o => o.value === saved);
-                select.value = hasSaved ? saved : 'en-ueb-g2.ctb';
+                select.value = hasSaved ? saved : 'en-ueb-g1.ctb';
             } catch (e) {
-                select.value = 'en-ueb-g2.ctb';
+                select.value = 'en-ueb-g1.ctb';
             }
         }
 
@@ -2852,7 +2858,7 @@
                 return;
             }
             // Translate then compare
-            translateWithLiblouis(src, 'g2', document.getElementById('language-table')?.value || 'en-ueb-g2.ctb')
+            translateWithLiblouis(src, 'g2', document.getElementById('language-table')?.value || 'en-ueb-g1.ctb')
                 .then(braille => {
                     const totalCellsNeeded = braille.length;
                     if (totalCellsNeeded > totalCellsAvailable) {
@@ -2948,7 +2954,7 @@
             autoWarning.style.display = 'none';
             autoWarningMsg.textContent = '';
             const languageSelect = document.getElementById('language-table');
-            const tableName = languageSelect?.value || 'en-ueb-g2.ctb';
+            const tableName = languageSelect?.value || 'en-ueb-g1.ctb';
             const src = (autoText?.value || '').trim();
             if (!src) return;
             try {
@@ -3178,6 +3184,14 @@
                 // Reset selects to their default option values
                 const selectEls = Array.from(document.querySelectorAll('select'));
                 selectEls.forEach(sel => { sel.value = sel.options[0]?.value || sel.defaultValue; });
+                // Ensure language resets to UEB Grade 1
+                try {
+                    const langSelect = document.getElementById('language-table');
+                    if (langSelect) {
+                        langSelect.value = 'en-ueb-g1.ctb';
+                        try { localStorage.setItem('braille_prefs_language_table', 'en-ueb-g1.ctb'); } catch (e) {}
+                    }
+                } catch (e) {}
                 // Reset radio groups to defaultChecked
                 const radioGroups = new Map();
                 document.querySelectorAll('input[type="radio"]').forEach(r => {
@@ -3661,7 +3675,7 @@
             const plateTypeEl = document.querySelector('input[name="plate_type"]:checked');
             const plateType = plateTypeEl ? plateTypeEl.value : 'positive';
             const languageSelect = document.getElementById('language-table');
-            const tableName = languageSelect?.value || 'en-ueb-g2.ctb';
+            const tableName = languageSelect?.value || 'en-ueb-g1.ctb';
             
             // Translate text to braille only for positive plates
             let translatedLines = [];

@@ -284,10 +284,10 @@ class CardSettings:
             "counter_dot_base_diameter": 1.6,      # Deprecated: kept for back-compat
             # Separate diameters for hemisphere and bowl recesses
             "hemi_counter_dot_base_diameter": 1.6,
-            "bowl_counter_dot_base_diameter": 1.6,
+            "bowl_counter_dot_base_diameter": 1.8,
             # Bowl recess controls
-            "use_bowl_recess": 0,                 # 0 = hemisphere, 1 = bowl (spherical cap)
-            "counter_dot_depth": 0.6,             # Bowl recess depth (mm)
+            "use_bowl_recess": 1,                 # 0 = hemisphere, 1 = bowl (spherical cap)
+            "counter_dot_depth": 0.8,             # Bowl recess depth (mm)
             # Legacy parameters (for backward compatibility)
             "dot_base_diameter": 1.8,  # Updated default: 1.8 mm
             "dot_height": 1.0,  # Project brief default: 1.0 mm
@@ -402,10 +402,10 @@ class CardSettings:
         # Hemisphere radius is based on the actual counter base diameter
         self.hemisphere_radius = float(getattr(self, 'hemi_counter_dot_base_diameter', getattr(self, 'counter_dot_base_diameter', 1.6))) / 2
         # Bowl (spherical cap) parameters
-        self.bowl_base_radius = float(getattr(self, 'bowl_counter_dot_base_diameter', getattr(self, 'counter_dot_base_diameter', 1.6))) / 2
+        self.bowl_base_radius = float(getattr(self, 'bowl_counter_dot_base_diameter', getattr(self, 'counter_dot_base_diameter', 1.8))) / 2
         # Clamp depth to safe bounds (0..plate_thickness)
         try:
-            depth = float(getattr(self, 'counter_dot_depth', 0.6))
+            depth = float(getattr(self, 'counter_dot_depth', 0.8))
         except Exception:
             depth = 0.6
         self.counter_dot_depth = max(0.0, min(depth, self.card_thickness - self.epsilon_mm))

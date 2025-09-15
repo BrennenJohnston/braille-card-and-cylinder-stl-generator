@@ -2911,6 +2911,7 @@ def generate_braille_stl():
         settings_data = data.get('settings', {})
         shape_type = data.get('shape_type', 'card')  # New: default to 'card' for backward compatibility
         cylinder_params = data.get('cylinder_params', {})  # New: optional cylinder parameters
+        per_line_language_tables = data.get('per_line_language_tables', None)  # Optional: per-line liblouis tables used
         
         # Validate inputs
         validate_lines(lines)
@@ -3007,6 +3008,7 @@ def generate_braille_stl():
             "grade": grade if plate_type == 'positive' else "n/a",
             "text_lines": lines if plate_type == 'positive' else ["Counter plate - all positions"],
             "cylinder_params": cylinder_params if shape_type == 'cylinder' else "n/a",
+            "per_line_language_tables": per_line_language_tables if per_line_language_tables else "n/a",
             "settings": {
                 # Card parameters
                 "card_width": settings.card_width,

@@ -755,8 +755,30 @@
         }
         .line-input {
             display: flex;
-            align-items: center;
+            flex-direction: column;
+            align-items: stretch;
             gap: 0.8em;
+        }
+        .line-translation-row,
+        .line-text-row {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.4em;
+        }
+        .line-text-row input[type="text"] {
+            width: 100%;
+        }
+        /* Ensure even vertical spacing between each manual line group */
+        #dynamic-line-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 1em;
+        }
+        /* Normalize label spacing within rows */
+        .line-translation-row .line-label,
+        .line-text-row .line-label {
+            margin: 0;
         }
         
         /* Mobile line input optimization */
@@ -2277,9 +2299,19 @@
         loadLanguageOptions().then(() => {
             try {
                 const select = document.getElementById('language-table');
+                // Force default to English (UEB) uncontracted grade 1 if available
+                try {
+                    const desiredDefault = 'en-ueb-g1.ctb';
+                    const hasDesired = Array.from(select.options).some(o => o.value === desiredDefault);
+                    if (hasDesired) select.value = desiredDefault;
+                } catch (e) {}
                 select.addEventListener('change', () => {
                     try { localStorage.setItem('braille_prefs_language_table', select.value); } catch (e) {}
+                    // Keep per-line language dropdowns in sync with available options
+                    try { syncLineLanguageSelects(); } catch (e) {}
                 });
+                // Populate per-line selects once options are loaded
+                try { syncLineLanguageSelects(); } catch (e) {}
             } catch (e) {}
         });
         
@@ -2812,15 +2844,42 @@
                 const lineDiv = document.createElement('div');
                 lineDiv.className = 'line-input';
                 lineDiv.innerHTML = `
-                    <label for="line${i}" class="line-label">Line ${i}</label>
-                    <input type="text" id="line${i}" name="line${i}" placeholder="Enter English text here..." maxlength="50" aria-describedby="line${i}-help">
-                    <span id="line${i}-help" class="sr-only">Maximum 50 characters for line ${i}</span>
+                    <div class="line-translation-row">
+                        <label for="line_lang_${i}" class="line-label">Line ${i} Translation</label>
+                        <select id="line_lang_${i}" name="line_lang_${i}" class="language-select line-language-select" aria-describedby="line${i}-lang-help"></select>
+                        <span id="line${i}-lang-help" class="sr-only">Select translation language for line ${i}</span>
+                    </div>
+                    <div class="line-text-row">
+                        <label for="line${i}" class="line-label">Line ${i}</label>
+                        <input type="text" id="line${i}" name="line${i}" placeholder="Enter English text here..." maxlength="50" aria-describedby="line${i}-help">
+                        <span id="line${i}-help" class="sr-only">Maximum 50 characters for line ${i}</span>
+                    </div>
                 `;
                 container.appendChild(lineDiv);
             }
             
+            // Populate per-line language selects with available options
+            syncLineLanguageSelects();
+            
             // Re-add event listeners for the new inputs
             addInputChangeListeners();
+        }
+
+        // Populate all per-line language selects from the master language-table options
+        function syncLineLanguageSelects() {
+            const master = document.getElementById('language-table');
+            if (!master) return;
+            const optionsHTML = master.innerHTML;
+            const masterValue = master.value;
+            document.querySelectorAll('.line-language-select').forEach(sel => {
+                const previous = sel.value;
+                sel.innerHTML = optionsHTML;
+                // Prefer keeping prior choice; otherwise prefer English UEB Grade 1; otherwise fallback to master
+                const hasPrev = previous && Array.from(sel.options).some(o => o.value === previous);
+                const desiredDefault = 'en-ueb-g1.ctb';
+                const hasDesired = Array.from(sel.options).some(o => o.value === desiredDefault);
+                sel.value = hasPrev ? previous : (hasDesired ? desiredDefault : masterValue);
+            });
         }
 
         // Function to collect all dynamic line values
@@ -2929,6 +2988,8 @@
             } else {
                 autoContainer.style.display = 'none';
                 dynamicContainer.style.display = '';
+                // Ensure per-line language selects are populated when switching to manual
+                syncLineLanguageSelects();
             }
             resetToGenerateState();
         }
@@ -3482,7 +3543,8 @@
                 for (let i = 0; i < lines.length; i++) {
                     if (lines[i].trim()) {
                         try {
-                            const braille = await translateWithLiblouis(lines[i].trim(), 'g2', tableName);
+                            const perLineTable = (document.getElementById(`line_lang_${i+1}`)?.value) || tableName;
+                            const braille = await translateWithLiblouis(lines[i].trim(), 'g2', perLineTable);
                             const shorthand = brailleToComputerShorthand(braille);
                             previewHTML += `<div class="preview-line-success">
                                 <div><strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → "${braille}"</div>
@@ -3679,16 +3741,20 @@
             
             // Translate text to braille only for positive plates
             let translatedLines = [];
+            let perLineLanguageTables = [];
             let translationErrors = [];
             if (plateType === 'positive') {
                 if (placementMode === 'manual') {
                     // Per-line translation
+                    perLineLanguageTables = new Array(lines.length).fill(tableName);
                     for (let i = 0; i < lines.length; i++) {
                         const line = lines[i].trim();
                         if (line) {
                             try {
-                                log.debug(`Translating line ${i + 1}: '${line}' to braille using table: ${tableName}...`);
-                                const brailleText = await translateWithLiblouis(line, 'g2', tableName);
+                                const perLineTable = (document.getElementById(`line_lang_${i+1}`)?.value) || tableName;
+                                perLineLanguageTables[i] = perLineTable;
+                                log.debug(`Translating line ${i + 1}: '${line}' to braille using table: ${perLineTable}...`);
+                                const brailleText = await translateWithLiblouis(line, 'g2', perLineTable);
                                 log.debug(`Line ${i + 1} translated: '${line}' → '${brailleText}'`);
                                 translatedLines.push(brailleText);
                             } catch (error) {
@@ -3925,6 +3991,7 @@
                     plate_type: plateType, 
                     shape_type: shapeType,
                     cylinder_params: cylinderParams,
+                    per_line_language_tables: perLineLanguageTables,
                     settings: settings 
                 })
             });

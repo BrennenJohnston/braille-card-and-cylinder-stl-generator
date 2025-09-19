@@ -197,8 +197,15 @@ def validate_settings(settings_data):
         'hemi_counter_dot_base_diameter': (float, 0.1, 5.0),
         'bowl_counter_dot_base_diameter': (float, 0.1, 5.0),
         'hemisphere_subdivisions': (int, 1, 3),
+        'cone_segments': (int, 8, 32),  # Control polygon count for cone shapes
         # Counter recess shape and depth
         'use_bowl_recess': (int, 0, 1),
+        # New tri-state recess selector: 0=hemisphere, 1=bowl, 2=cone
+        'recess_shape': (int, 0, 2),
+        # New cone (recess) parameters
+        'cone_counter_dot_base_diameter': (float, 0.1, 5.0),
+        'cone_counter_dot_height': (float, 0.0, 5.0),
+        'cone_counter_dot_flat_hat': (float, 0.0, 5.0),
         'counter_dot_depth': (float, 0.0, 5.0),
         # Indicator shapes toggle (1 = on, 0 = off)
         'indicator_shapes': (int, 0, 1)
@@ -280,6 +287,7 @@ class CardSettings:
             "braille_x_adjust": 0.0,  # Default to center
             # Counter plate specific parameters
             "hemisphere_subdivisions": 1,  # For mesh density control
+            "cone_segments": 16,  # Default cone polygon count (8-32 range)
             "counter_plate_dot_size_offset": 0.0,  # Legacy: offset from emboss dot diameter
             "counter_dot_base_diameter": 1.6,      # Deprecated: kept for back-compat
             # Separate diameters for hemisphere and bowl recesses
@@ -287,6 +295,12 @@ class CardSettings:
             "bowl_counter_dot_base_diameter": 1.8,
             # Bowl recess controls
             "use_bowl_recess": 1,                 # 0 = hemisphere, 1 = bowl (spherical cap)
+            # New tri-state recess shape selector: 0=hemisphere, 1=bowl, 2=cone
+            "recess_shape": 1,
+            # Cone recess default parameters
+            "cone_counter_dot_base_diameter": 1.6,
+            "cone_counter_dot_height": 0.8,
+            "cone_counter_dot_flat_hat": 0.4,
             "counter_dot_depth": 0.8,             # Bowl recess depth (mm)
             # Legacy parameters (for backward compatibility)
             "dot_base_diameter": 1.8,  # Updated default: 1.8 mm
@@ -332,6 +346,11 @@ class CardSettings:
             self.use_bowl_recess = int(float(kwargs.get('use_bowl_recess', getattr(self, 'use_bowl_recess', 0))))
         except Exception:
             self.use_bowl_recess = int(getattr(self, 'use_bowl_recess', 0))
+        # Normalize recess_shape (0=hemi,1=bowl,2=cone)
+        try:
+            self.recess_shape = int(float(kwargs.get('recess_shape', getattr(self, 'recess_shape', 1))))
+        except Exception:
+            self.recess_shape = int(getattr(self, 'recess_shape', 1))
         
         # Calculate grid dimensions first
         self.grid_width = (self.grid_columns - 1) * self.cell_spacing
@@ -2126,8 +2145,11 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             )
             line_end_meshes.append(line_end_mesh)
     
-    # Create spheres for ALL dot positions in ALL cells (universal counter plate)
+    # Create recess tools for ALL dot positions in ALL cells (universal counter plate)
     sphere_meshes = []
+    
+    # Get recess shape once outside the loop
+    recess_shape = int(getattr(settings, 'recess_shape', 1))
     
     # Process ALL cells in the grid (not just those with braille content)
     # Mirror horizontally (right-to-left) so the counter plate reads R→L when printed
@@ -2144,64 +2166,114 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             cell_angle = start_angle + ((mirrored_idx + 1) * cell_spacing_angle)
             cell_x = cell_angle * radius  # Convert to arc length
             
-            # Create spheres for ALL 6 dots in this cell
+            # Create recess tool for ALL 6 dots in this cell
             for dot_idx in range(6):
                 dot_pos = dot_positions[dot_idx]
                 # Use angular offset for horizontal spacing, converted back to arc length
                 dot_x = cell_x + (dot_col_angle_offsets[dot_pos[1]] * radius)
                 dot_y = y_pos + dot_row_offsets[dot_pos[0]]
                 
-                # Create sphere for hemisphere or bowl cap
-                # Choose base diameter based on selected recess shape
-                use_bowl = int(getattr(settings, 'use_bowl_recess', 0)) == 1
-                try:
+                if recess_shape == 2:
+                    # Cone frustum on cylinder surface oriented along radial direction
+                    base_d = float(getattr(settings, 'cone_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter', 1.6)))
+                    hat_d = float(getattr(settings, 'cone_counter_dot_flat_hat', 0.4))
+                    h_cone = float(getattr(settings, 'cone_counter_dot_height', 0.8))
+                    base_r = max(settings.epsilon_mm, base_d / 2.0)
+                    hat_r = max(settings.epsilon_mm, hat_d / 2.0)
+                    # Ensure recess height exceeds radial overcut so it properly intersects the outer surface
+                    radial_overcut = max(settings.epsilon_mm, getattr(settings, 'cylinder_counter_plate_overcut_mm', 0.05))
+                    h_cone = max(settings.epsilon_mm, h_cone + radial_overcut)
+                    segments = 24
+                    # Build local frustum along +Z with base at z=0 and bottom at z=-h_cone
+                    angles = np.linspace(0, 2*np.pi, segments, endpoint=False)
+                    top_ring = np.column_stack([base_r*np.cos(angles), base_r*np.sin(angles), np.zeros_like(angles)])
+                    bot_ring = np.column_stack([hat_r*np.cos(angles), hat_r*np.sin(angles), -h_cone*np.ones_like(angles)])
+                    vertices = np.vstack([top_ring, bot_ring, [[0,0,0]], [[0,0,-h_cone]]])
+                    top_center_index = 2*segments
+                    bot_center_index = 2*segments + 1
+                    faces = []
+                    for i in range(segments):
+                        j = (i + 1) % segments
+                        # indices
+                        ti = i
+                        tj = j
+                        bi = segments + i
+                        bj = segments + j
+                        # side quad as two triangles (ensure correct orientation for outward normals)
+                        faces.append([ti, bi, tj])
+                        faces.append([bi, bj, tj])
+                        # top cap - outward normal pointing up
+                        faces.append([top_center_index, ti, tj])
+                        # bottom cap - outward normal pointing down
+                        faces.append([bot_center_index, bj, bi])
+                    frustum = trimesh.Trimesh(vertices=vertices, faces=np.array(faces), process=True)
+                    if not frustum.is_volume:
+                        try:
+                            frustum.fix_normals()
+                            # Ensure the mesh is watertight and has proper orientation
+                            if not frustum.is_watertight:
+                                frustum.fill_holes()
+                            # Force recomputation of volume properties
+                            frustum._cache.clear()
+                            if not frustum.is_volume:
+                                # If still not a volume, try to repair it
+                                frustum = frustum.repair()
+                        except Exception:
+                            pass
+                    # Transform to cylinder surface with local frame
+                    outer_radius = diameter / 2
+                    theta = (dot_x / (np.pi * diameter)) * 2 * np.pi + np.radians(seam_offset)
+                    r_hat = np.array([np.cos(theta), np.sin(theta), 0.0])
+                    t_hat = np.array([-np.sin(theta), np.cos(theta), 0.0])
+                    z_hat = np.array([0.0, 0.0, 1.0])
+                    # Base center on cylinder surface
+                    overcut = max(settings.epsilon, getattr(settings, 'cylinder_counter_plate_overcut_mm', 0.05))
+                    base_center = r_hat * (outer_radius + overcut) + z_hat * (dot_y - (height / 2.0))
+                    T = np.eye(4)
+                    T[:3, 0] = t_hat
+                    T[:3, 1] = z_hat
+                    T[:3, 2] = r_hat
+                    T[:3, 3] = base_center
+                    frustum.apply_transform(T)
+                    sphere_meshes.append(frustum)
+                else:
+                    # Create sphere for hemisphere or bowl cap
+                    # Choose base diameter based on selected recess shape
+                    use_bowl = (recess_shape == 1)
+                    try:
+                        if use_bowl:
+                            counter_base = float(getattr(settings, 'bowl_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter')))
+                        else:
+                            counter_base = float(getattr(settings, 'hemi_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter')))
+                    except Exception:
+                        counter_base = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
+                    a = counter_base / 2.0
                     if use_bowl:
-                        counter_base = float(getattr(settings, 'bowl_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter')))
+                        h = float(getattr(settings, 'counter_dot_depth', 0.6))
+                        # Guard minimum
+                        h = max(settings.epsilon_mm, h)
+                        sphere_radius = (a * a + h * h) / (2.0 * h)
                     else:
-                        counter_base = float(getattr(settings, 'hemi_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter')))
-                except Exception:
-                    counter_base = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
-                a = counter_base / 2.0
-                if use_bowl:
-                    h = float(getattr(settings, 'counter_dot_depth', 0.6))
-                    # Guard minimum
-                    h = max(settings.epsilon_mm, h)
-                    sphere_radius = (a * a + h * h) / (2.0 * h)
-                else:
-                    sphere_radius = a
-                sphere = trimesh.creation.icosphere(subdivisions=settings.hemisphere_subdivisions, radius=sphere_radius)
-                
-                # Ensure sphere is a valid volume
-                if not sphere.is_volume:
-                    sphere.fix_normals()
-                
-                # Transform to cylindrical coordinates on OUTER surface
-                outer_radius = diameter / 2
-                # Convert x position to angle
-                theta = (dot_x / (np.pi * diameter)) * 2 * np.pi + np.radians(seam_offset)
-                
-                # Place sphere center at the cylinder's outer radius.
-                # For hemisphere: center on the surface (plus overcut)
-                # For bowl: place the sphere center OUTSIDE the cylinder by (R - h)
-                # so that radial recess depth equals h exactly on the curved surface.
-                # Keep overcut only for hemispheres to avoid altering bowl depth.
-                overcut = max(settings.epsilon, getattr(settings, 'cylinder_counter_plate_overcut_mm', 0.05))
-                if use_bowl:
-                    h = float(getattr(settings, 'counter_dot_depth', 0.6))
-                    h = max(settings.epsilon_mm, h)
-                    # Correct formula: r0 = r_c + R - h
-                    center_radius = outer_radius + (sphere_radius - h)
-                else:
-                    center_radius = outer_radius + overcut
-                cyl_x = center_radius * np.cos(theta)
-                cyl_y = center_radius * np.sin(theta)
-                # Map planar Y to cylinder local Z (centered at 0)
-                cyl_z = dot_y - (height / 2.0)
-                
-                sphere.apply_translation([cyl_x, cyl_y, cyl_z])
-                sphere_meshes.append(sphere)
+                        sphere_radius = a
+                    sphere = trimesh.creation.icosphere(subdivisions=settings.hemisphere_subdivisions, radius=sphere_radius)
+                    if not sphere.is_volume:
+                        sphere.fix_normals()
+                    outer_radius = diameter / 2
+                    theta = (dot_x / (np.pi * diameter)) * 2 * np.pi + np.radians(seam_offset)
+                    overcut = max(settings.epsilon, getattr(settings, 'cylinder_counter_plate_overcut_mm', 0.05))
+                    if use_bowl:
+                        h = float(getattr(settings, 'counter_dot_depth', 0.6))
+                        h = max(settings.epsilon_mm, h)
+                        center_radius = outer_radius + (sphere_radius - h)
+                    else:
+                        center_radius = outer_radius + overcut
+                    cyl_x = center_radius * np.cos(theta)
+                    cyl_y = center_radius * np.sin(theta)
+                    cyl_z = dot_y - (height / 2.0)
+                    sphere.apply_translation([cyl_x, cyl_y, cyl_z])
+                    sphere_meshes.append(sphere)
     
-    print(f"DEBUG: Creating {len(sphere_meshes)} hemispherical recesses on cylinder counter plate")
+    print(f"DEBUG: Creating {len(sphere_meshes)} recess tools on cylinder counter plate (recess_shape={recess_shape})")
     
     if not sphere_meshes:
         print("WARNING: No spheres were generated for cylinder counter plate. Returning base shell.")
@@ -2213,6 +2285,40 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         
         return cylinder_shell
     
+    # Special-case: for cone frusta, prefer individual subtraction for robustness
+    if recess_shape == 2 and sphere_meshes:
+        try:
+            print("DEBUG: Cylinder cone mode - subtracting frusta individually for robustness...")
+            result_shell = cylinder_shell.copy()
+            for i, tool in enumerate(sphere_meshes):
+                try:
+                    print(f"DEBUG: Cylinder subtract recess tool {i+1}/{len(sphere_meshes)}")
+                    result_shell = trimesh.boolean.difference([result_shell, tool])
+                except Exception as e_tool:
+                    print(f"WARNING: Cylinder cone subtraction failed for tool {i+1}: {e_tool}")
+                    continue
+            for i, triangle in enumerate(triangle_meshes):
+                try:
+                    result_shell = trimesh.boolean.difference([result_shell, triangle])
+                except Exception as e_tri:
+                    print(f"WARNING: Cylinder triangle subtraction failed {i+1}: {e_tri}")
+                    continue
+            for i, line_end in enumerate(line_end_meshes):
+                try:
+                    result_shell = trimesh.boolean.difference([result_shell, line_end])
+                except Exception as e_line:
+                    print(f"WARNING: Cylinder line-end subtraction failed {i+1}: {e_line}")
+                    continue
+            if not result_shell.is_watertight:
+                result_shell.fill_holes()
+            min_z = result_shell.bounds[0][2]
+            result_shell.apply_translation([0, 0, -min_z])
+            print(f"DEBUG: Cylinder cone plate completed: {len(result_shell.vertices)} vertices")
+            return result_shell
+        except Exception as e_cyl_cone:
+            print(f"ERROR: Cylinder cone individual subtraction failed: {e_cyl_cone}")
+            # Fall through to robust boolean strategy below as a last attempt
+
     # More robust boolean strategy:
     # 1) Start with the cylinder shell (which already has the polygonal cutout)
     # 2) Subtract the union of all spheres and triangles to create outer recesses
@@ -2666,6 +2772,210 @@ def build_counter_plate_bowl(params: CardSettings) -> trimesh.Trimesh:
                 print("WARNING: Falling back to simple negative plate method.")
                 return create_simple_negative_plate(params)
             continue
+def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
+    """Create a counter plate with conical frustum recesses.
+
+    The opening diameter at the surface is set by `cone_counter_dot_base_diameter`.
+    The recess height is `cone_counter_dot_height`.
+    The flat hat diameter at the tip is `cone_counter_dot_flat_hat`.
+    """
+
+    # Base plate
+    plate_mesh = trimesh.creation.box(extents=(params.card_width, params.card_height, params.plate_thickness))
+    plate_mesh.apply_translation((params.card_width/2, params.card_height/2, params.plate_thickness/2))
+
+    dot_col_offsets = [-params.dot_spacing / 2, params.dot_spacing / 2]
+    dot_row_offsets = [params.dot_spacing, 0, -params.dot_spacing]
+    dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
+
+    # Inputs
+    base_d = float(getattr(params, 'cone_counter_dot_base_diameter', getattr(params, 'counter_dot_base_diameter', 1.6)))
+    hat_d = float(getattr(params, 'cone_counter_dot_flat_hat', 0.4))
+    height_h = float(getattr(params, 'cone_counter_dot_height', 0.8))
+    base_r = max(params.epsilon_mm, base_d / 2.0)
+    hat_r = max(params.epsilon_mm, hat_d / 2.0)
+    height_h = max(params.epsilon_mm, min(height_h, params.plate_thickness - params.epsilon_mm))
+    # Small positive overlap above the top surface to avoid coplanar boolean issues
+    overcut_z = max(params.epsilon_mm, 0.05)
+
+    # OPTIMIZATION: Use configurable segments for better performance while maintaining shape quality
+    # Default to 16 segments - still provides good circular approximation, but allow user control
+    segments = int(getattr(params, 'cone_segments', 16))
+    segments = max(8, min(32, segments))  # Clamp to valid range
+    
+    # OPTIMIZATION: Pre-calculate common values to avoid repeated computation
+    angles = np.linspace(0, 2*np.pi, segments, endpoint=False)
+    cos_angles = np.cos(angles)
+    sin_angles = np.sin(angles)
+    
+    # Create conical frustum solids for subtraction using optimized approach
+    recess_meshes = []
+    total_recess = 0
+    for row in range(params.grid_rows):
+        y_pos = params.card_height - params.top_margin - (row * params.line_spacing) + params.braille_y_adjust
+        reserved = 2 if getattr(params, 'indicator_shapes', 1) else 0
+        for col in range(params.grid_columns - reserved):
+            x_pos = params.left_margin + ((col + (1 if getattr(params, 'indicator_shapes', 1) else 0)) * params.cell_spacing) + params.braille_x_adjust
+            for dot_idx in range(6):
+                dot_pos = dot_positions[dot_idx]
+                dot_x = x_pos + dot_col_offsets[dot_pos[1]]
+                dot_y = y_pos + dot_row_offsets[dot_pos[0]]
+
+                # OPTIMIZATION: Use pre-calculated trigonometric values
+                top_ring = np.column_stack([base_r*cos_angles, base_r*sin_angles, np.zeros_like(angles)])
+                bot_ring = np.column_stack([hat_r*cos_angles, hat_r*sin_angles, -height_h*np.ones_like(angles)])
+                vertices = np.vstack([top_ring, bot_ring, [[0,0,0]], [[0,0,-height_h]]])
+                top_center_index = 2*segments
+                bot_center_index = 2*segments + 1
+                
+                # OPTIMIZATION: Pre-allocate faces array for better performance
+                faces = np.zeros((segments * 4, 3), dtype=int)
+                face_idx = 0
+                
+                for i in range(segments):
+                    j = (i + 1) % segments
+                    ti = i
+                    tj = j
+                    bi = segments + i
+                    bj = segments + j
+                    # side quads as two triangles (ensure correct orientation for outward normals)
+                    faces[face_idx] = [ti, bi, tj]
+                    faces[face_idx + 1] = [bi, bj, tj]
+                    # top cap (at z=0) - outward normal pointing up
+                    faces[face_idx + 2] = [top_center_index, ti, tj]
+                    # bottom cap (at z=-height_h) - outward normal pointing down
+                    faces[face_idx + 3] = [bot_center_index, bj, bi]
+                    face_idx += 4
+                
+                # OPTIMIZATION: Create mesh with minimal processing and skip extensive repair operations
+                frustum = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
+                
+                # OPTIMIZATION: Only perform essential mesh validation
+                if not frustum.is_volume:
+                    try:
+                        frustum.fix_normals()
+                        if not frustum.is_watertight:
+                            frustum.fill_holes()
+                    except Exception:
+                        # Skip extensive repair operations for better performance
+                        pass
+                
+                # Position with slight overlap so top cap is slightly above the surface to ensure robust boolean subtraction
+                frustum.apply_translation((dot_x, dot_y, params.plate_thickness + overcut_z))
+                recess_meshes.append(frustum)
+                total_recess += 1
+
+    # Markers (same as hemispheres/bowl)
+    line_end_meshes = []
+    triangle_meshes = []
+    for row_num in range(params.grid_rows):
+        y_pos = params.card_height - params.top_margin - (row_num * params.line_spacing) + params.braille_y_adjust
+        x_pos_first = params.left_margin + params.braille_x_adjust
+        line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, params, height=0.5, for_subtraction=True)
+        line_end_meshes.append(line_end_mesh)
+        x_pos_last = params.left_margin + ((params.grid_columns - 1) * params.cell_spacing) + params.braille_x_adjust
+        triangle_mesh = create_card_triangle_marker_3d(x_pos_last, y_pos, params, height=0.5, for_subtraction=True)
+        triangle_meshes.append(triangle_mesh)
+
+    if not recess_meshes:
+        print("WARNING: No cone recesses were generated. Returning base plate.")
+        return plate_mesh
+
+    print(f"DEBUG: Created {total_recess} cone frusta for counter plate (base_d={base_d:.3f}mm, hat_d={hat_d:.3f}mm, h={height_h:.3f}mm)")
+
+    # OPTIMIZATION: Use union operations like bowl/hemisphere for better performance
+    try:
+        # Union all recess meshes first (like bowl/hemisphere approach)
+        if len(recess_meshes) == 1:
+            union_recesses = recess_meshes[0]
+        else:
+            # Try different engines for better performance
+            engines_to_try = ['manifold', 'blender', None]
+            union_recesses = None
+            for engine in engines_to_try:
+                try:
+                    engine_name = engine if engine else "trimesh-default"
+                    print(f"DEBUG: Cone union with {engine_name}...")
+                    union_recesses = trimesh.boolean.union(recess_meshes, engine=engine)
+                    break
+                except Exception as e:
+                    print(f"WARNING: Failed to union with {engine_name}: {e}")
+                    continue
+            
+            if union_recesses is None:
+                raise Exception("All union engines failed")
+
+        # Union markers
+        union_triangles = None
+        if triangle_meshes:
+            if len(triangle_meshes) == 1:
+                union_triangles = triangle_meshes[0]
+            else:
+                union_triangles = trimesh.boolean.union(triangle_meshes, engine='manifold')
+
+        union_line_ends = None
+        if line_end_meshes:
+            if len(line_end_meshes) == 1:
+                union_line_ends = line_end_meshes[0]
+            else:
+                union_line_ends = trimesh.boolean.union(line_end_meshes, engine='manifold')
+
+        # Combine all cutouts
+        cutouts_list = [union_recesses]
+        if union_line_ends is not None:
+            cutouts_list.append(union_line_ends)
+        if union_triangles is not None:
+            cutouts_list.append(union_triangles)
+
+        # Single difference operation (much faster than individual subtractions)
+        if len(cutouts_list) > 1:
+            union_cutouts = trimesh.boolean.union(cutouts_list, engine='manifold')
+        else:
+            union_cutouts = cutouts_list[0]
+
+        result_mesh = trimesh.boolean.difference([plate_mesh, union_cutouts], engine='manifold')
+        
+        if not result_mesh.is_watertight:
+            result_mesh.fill_holes()
+        print(f"DEBUG: Cone recess (optimized union approach) completed: {len(result_mesh.vertices)} verts")
+        return result_mesh
+        
+    except Exception as e_final:
+        print(f"ERROR: Cone recess union approach failed: {e_final}")
+        print("WARNING: Falling back to individual subtraction method.")
+        
+        # Fallback to individual subtraction if union approach fails
+        try:
+            result_mesh = plate_mesh.copy()
+            for i, recess in enumerate(recess_meshes):
+                try:
+                    if (i % 50) == 0:
+                        print(f"DEBUG: Subtracting cone frustum {i+1}/{len(recess_meshes)}...")
+                    result_mesh = trimesh.boolean.difference([result_mesh, recess])
+                except Exception as e_sub:
+                    print(f"WARNING: Failed to subtract frustum {i+1}: {e_sub}")
+                    continue
+            for i, triangle in enumerate(triangle_meshes):
+                try:
+                    result_mesh = trimesh.boolean.difference([result_mesh, triangle])
+                except Exception as e_tri:
+                    print(f"WARNING: Failed to subtract triangle {i+1}: {e_tri}")
+                    continue
+            for i, line_end in enumerate(line_end_meshes):
+                try:
+                    result_mesh = trimesh.boolean.difference([result_mesh, line_end])
+                except Exception as e_line:
+                    print(f"WARNING: Failed to subtract line end {i+1}: {e_line}")
+                    continue
+            if not result_mesh.is_watertight:
+                result_mesh.fill_holes()
+            print(f"DEBUG: Cone recess (fallback individual subtraction) completed: {len(result_mesh.vertices)} verts")
+            return result_mesh
+        except Exception as e_fallback:
+            print(f"ERROR: All cone recess methods failed: {e_fallback}")
+            print("WARNING: Returning simple negative plate method.")
+            return create_simple_negative_plate(params)
+
 
 @app.route('/health')
 def health_check():
@@ -2956,12 +3266,19 @@ def generate_braille_stl():
             elif plate_type == 'negative':
                 # Counter plate: choose recess shape
                 # It does NOT depend on text input - always creates ALL 6 dots per cell
-                if int(getattr(settings, 'use_bowl_recess', 0)) == 1:
+                recess_shape = int(getattr(settings, 'recess_shape', 1))
+                if recess_shape == 1:
                     print("DEBUG: Generating counter plate with bowl (spherical cap) recesses (all positions)")
                     mesh = build_counter_plate_bowl(settings)
-                else:
+                elif recess_shape == 0:
                     print("DEBUG: Generating counter plate with hemispherical recesses (all positions)")
                     mesh = build_counter_plate_hemispheres(settings)
+                elif recess_shape == 2:
+                    print("DEBUG: Generating counter plate with conical (frustum) recesses (all positions)")
+                    mesh = build_counter_plate_cone(settings)
+                else:
+                    print("WARNING: Unknown recess_shape value, defaulting to bowl")
+                    mesh = build_counter_plate_bowl(settings)
             else:
                 return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
         
@@ -3029,6 +3346,7 @@ def generate_braille_stl():
                 "braille_y_adjust": settings.braille_y_adjust,
                 # Counter plate specific
                 "hemisphere_subdivisions": settings.hemisphere_subdivisions if plate_type == 'negative' else "n/a",
+                "cone_segments": settings.cone_segments if plate_type == 'negative' else "n/a",
                 "hemi_counter_dot_base_diameter": getattr(settings, 'hemi_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter', 'n/a')) if plate_type == 'negative' else "n/a",
                 "bowl_counter_dot_base_diameter": getattr(settings, 'bowl_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter', 'n/a')) if plate_type == 'negative' else "n/a",
                 "use_bowl_recess": int(getattr(settings, 'use_bowl_recess', 0)) if plate_type == 'negative' else "n/a",
@@ -3106,8 +3424,21 @@ def generate_counter_plate_stl():
         return jsonify({'error': 'Invalid request data'}), 400
     
     try:
-        print("DEBUG: Generating counter plate with hemispherical recesses (all positions)")
-        mesh = build_counter_plate_hemispheres(settings)
+        # Counter plate: choose recess shape
+        # It does NOT depend on text input - always creates ALL 6 dots per cell
+        recess_shape = int(getattr(settings, 'recess_shape', 1))
+        if recess_shape == 1:
+            print("DEBUG: Generating counter plate with bowl (spherical cap) recesses (all positions)")
+            mesh = build_counter_plate_bowl(settings)
+        elif recess_shape == 0:
+            print("DEBUG: Generating counter plate with hemispherical recesses (all positions)")
+            mesh = build_counter_plate_hemispheres(settings)
+        elif recess_shape == 2:
+            print("DEBUG: Generating counter plate with conical (frustum) recesses (all positions)")
+            mesh = build_counter_plate_cone(settings)
+        else:
+            print(f"WARNING: Unknown recess_shape={recess_shape}, defaulting to hemisphere")
+            mesh = build_counter_plate_hemispheres(settings)
         
         # Export to STL
         stl_io = io.BytesIO()
@@ -3116,9 +3447,11 @@ def generate_counter_plate_stl():
         
         # Include actual counter base diameter in filename
         try:
-            if int(getattr(settings, 'use_bowl_recess', 0)) == 1:
+            if recess_shape == 1:  # Bowl
                 total_diameter = float(getattr(settings, 'bowl_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter')))
-            else:
+            elif recess_shape == 2:  # Cone
+                total_diameter = float(getattr(settings, 'cone_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter')))
+            else:  # Hemisphere (recess_shape == 0)
                 total_diameter = float(getattr(settings, 'hemi_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter')))
         except Exception:
             total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset

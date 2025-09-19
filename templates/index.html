@@ -1866,15 +1866,20 @@
                                         <legend class="grade-label">Select Braille Dot Recess Shape</legend>
                                         <div class="radio-group" role="radiogroup" aria-required="true">
                                             <label class="radio-option">
-                                                <input type="radio" name="use_bowl_recess" value="0" aria-describedby="hemi-recess-desc">
+                                                <input type="radio" name="recess_shape" value="0" aria-describedby="hemi-recess-desc">
                                                 <span class="radio-text">Hemisphere</span>
                                             </label>
                                             <span id="hemi-recess-desc" class="sr-only">Uses hemisphere recess shape</span>
                                             <label class="radio-option">
-                                                <input type="radio" name="use_bowl_recess" value="1" checked aria-describedby="bowl-recess-desc">
+                                                <input type="radio" name="recess_shape" value="1" checked aria-describedby="bowl-recess-desc">
                                                 <span class="radio-text">Bowl</span>
                                             </label>
                                             <span id="bowl-recess-desc" class="sr-only">Uses spherical-cap bowl recess shape</span>
+                                            <label class="radio-option">
+                                                <input type="radio" name="recess_shape" value="2" aria-describedby="cone-recess-desc">
+                                                <span class="radio-text">Cone</span>
+                                            </label>
+                                            <span id="cone-recess-desc" class="sr-only">Uses conical frustum recess shape</span>
                                         </div>
                                     </fieldset>
                                 </div>
@@ -1967,6 +1972,23 @@
                                             <label for="counter_dot_depth">Bowl Recess Dot Depth (mm):</label>
                                             <input type="number" id="counter_dot_depth" name="counter_dot_depth" value="0.8" step="0.1" min="0" max="5">
                                         </div>
+                                    </div>
+                                </div>
+
+                                <!-- Cone-specific counter dot dimensions -->
+                                <div class="grade-selection" id="cone_dimensions_group" style="margin-top: 8px; display: none;">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Cone Counter Dot Dimensions</label>
+                                    <div>
+                                        <label for="cone_counter_dot_base_diameter">Dot Base Diameter (mm):</label>
+                                        <input type="number" id="cone_counter_dot_base_diameter" name="cone_counter_dot_base_diameter" value="1.6" step="0.1" min="0.1" max="5">
+                                    </div>
+                                    <div>
+                                        <label for="cone_counter_dot_height">Dot Height (mm):</label>
+                                        <input type="number" id="cone_counter_dot_height" name="cone_counter_dot_height" value="0.8" step="0.1" min="0" max="5">
+                                    </div>
+                                    <div>
+                                        <label for="cone_counter_dot_flat_hat">Dot Flat Hat Diameter (mm):</label>
+                                        <input type="number" id="cone_counter_dot_flat_hat" name="cone_counter_dot_flat_hat" value="0.4" step="0.1" min="0" max="5">
                                     </div>
                                 </div>
                             </div>
@@ -2685,17 +2707,29 @@
             const hemiCounterBase = document.getElementById('hemi_counter_dot_base_diameter');
             const bowlCounterBase = document.getElementById('bowl_counter_dot_base_diameter');
             const counterDotDepth = document.getElementById('counter_dot_depth');
+            const coneCounterBase = document.getElementById('cone_counter_dot_base_diameter');
+            const coneCounterHeight = document.getElementById('cone_counter_dot_height');
+            const coneCounterHat = document.getElementById('cone_counter_dot_flat_hat');
             if (hemiCounterBase) hemiCounterBase.addEventListener('input', resetToGenerateState);
             if (bowlCounterBase) bowlCounterBase.addEventListener('input', resetToGenerateState);
             if (counterDotDepth) counterDotDepth.addEventListener('input', resetToGenerateState);
-            document.querySelectorAll('input[name="use_bowl_recess"]').forEach(r => {
+            if (coneCounterBase) coneCounterBase.addEventListener('input', resetToGenerateState);
+            if (coneCounterHeight) coneCounterHeight.addEventListener('input', resetToGenerateState);
+            if (coneCounterHat) coneCounterHat.addEventListener('input', resetToGenerateState);
+
+            // Legacy radios replaced by tri-state recess_shape
+            document.querySelectorAll('input[name="recess_shape"]').forEach(r => {
                 r.addEventListener('change', () => {
                     resetToGenerateState();
-                    const isBowl = document.querySelector('input[name="use_bowl_recess"]:checked')?.value === '1';
+                    const recessVal = document.querySelector('input[name="recess_shape"]:checked')?.value || '1';
+                    const isBowl = recessVal === '1';
+                    const isCone = recessVal === '2';
                     const bowlGroup = document.getElementById('bowl_dimensions_group');
                     const hemiGroup = document.getElementById('hemisphere_dimensions_group');
+                    const coneGroup = document.getElementById('cone_dimensions_group');
                     if (bowlGroup) bowlGroup.style.display = isBowl ? '' : 'none';
-                    if (hemiGroup) hemiGroup.style.display = isBowl ? 'none' : '';
+                    if (hemiGroup) hemiGroup.style.display = (!isBowl && !isCone) ? '' : 'none';
+                    if (coneGroup) coneGroup.style.display = isCone ? '' : 'none';
                 });
             });
             
@@ -2707,6 +2741,9 @@
                 'hemi_counter_dot_base_diameter',
                 'bowl_counter_dot_base_diameter',
                 'counter_dot_depth',
+                'cone_counter_dot_base_diameter',
+                'cone_counter_dot_height',
+                'cone_counter_dot_flat_hat',
                 // use_bowl_recess handled via radios
                 'rounded_dot_base_diameter',
                 'rounded_dot_cylinder_height',
@@ -2775,12 +2812,16 @@
             }
             // Recess controls always visible; toggle sub-groups by chosen recess
             const recessSel = document.getElementById('recess-shape-selection');
-            const isBowl = document.querySelector('input[name="use_bowl_recess"]:checked')?.value === '1';
+            const recessValInit = document.querySelector('input[name="recess_shape"]:checked')?.value || '1';
+            const isBowl = recessValInit === '1';
+            const isCone = recessValInit === '2';
             if (recessSel) recessSel.style.display = '';
             const bowlGroup = document.getElementById('bowl_dimensions_group');
             const hemiGroup = document.getElementById('hemisphere_dimensions_group');
+            const coneGroup = document.getElementById('cone_dimensions_group');
             if (bowlGroup) bowlGroup.style.display = isBowl ? '' : 'none';
-            if (hemiGroup) hemiGroup.style.display = isBowl ? 'none' : '';
+            if (hemiGroup) hemiGroup.style.display = (!isBowl && !isCone) ? '' : 'none';
+            if (coneGroup) coneGroup.style.display = isCone ? '' : 'none';
             
             // Initialize cylinder height with current card height when cylinder is selected
             if (shapeType === 'cylinder') {
@@ -3072,7 +3113,11 @@
                 'braille_prefs_hemi_counter_dot_base_diameter',
                 'braille_prefs_bowl_counter_dot_base_diameter',
                 'braille_prefs_counter_dot_depth',
-                'braille_prefs_use_bowl_recess',
+                'braille_prefs_use_bowl_recess', // legacy
+                'braille_prefs_recess_shape',
+                'braille_prefs_cone_counter_dot_base_diameter',
+                'braille_prefs_cone_counter_dot_height',
+                'braille_prefs_cone_counter_dot_flat_hat',
                 'braille_prefs_rounded_dot_base_diameter',
                 'braille_prefs_rounded_dot_base_height',
                 'braille_prefs_rounded_dot_dome_diameter',
@@ -3130,7 +3175,10 @@
                 ['hemi_counter_dot_base_diameter','braille_prefs_hemi_counter_dot_base_diameter'],
                 ['bowl_counter_dot_base_diameter','braille_prefs_bowl_counter_dot_base_diameter'],
                 ['counter_dot_depth','braille_prefs_counter_dot_depth'],
-                ['use_bowl_recess','braille_prefs_use_bowl_recess'],
+                ['cone_counter_dot_base_diameter','braille_prefs_cone_counter_dot_base_diameter'],
+                ['cone_counter_dot_height','braille_prefs_cone_counter_dot_height'],
+                ['cone_counter_dot_flat_hat','braille_prefs_cone_counter_dot_flat_hat'],
+                ['recess_shape','braille_prefs_recess_shape'],
                 ['rounded_dot_base_diameter','braille_prefs_rounded_dot_base_diameter'],
                 ['rounded_dot_base_height','braille_prefs_rounded_dot_base_height'],
                 ['rounded_dot_dome_diameter','braille_prefs_rounded_dot_dome_diameter'],
@@ -3148,14 +3196,14 @@
                     if (el) el.value = v;
                 }
             });
-            // Restore recess shape radio selection (default to Bowl when no saved value)
-            const savedRecess = readPersisted('braille_prefs_use_bowl_recess');
-            if (savedRecess === '0' || savedRecess === '1') {
-                const radio = document.querySelector(`input[name="use_bowl_recess"][value="${savedRecess}"]`);
-                if (radio) radio.checked = true;
+            // Restore recess shape selection (default to Bowl when no saved value)
+            const savedRecessShape = readPersisted('braille_prefs_recess_shape');
+            if (savedRecessShape === '0' || savedRecessShape === '1' || savedRecessShape === '2') {
+                const r = document.querySelector(`input[name="recess_shape"][value="${savedRecessShape}"]`);
+                if (r) r.checked = true;
             } else {
-                const radio = document.querySelector('input[name="use_bowl_recess"][value="1"]');
-                if (radio) radio.checked = true;
+                const r = document.querySelector('input[name="recess_shape"][value="1"]');
+                if (r) r.checked = true;
             }
             // grid_columns handled last to avoid preserve conversion
             const savedCols = readPersisted('braille_prefs_grid_columns');
@@ -3207,7 +3255,10 @@
                 ['hemi_counter_dot_base_diameter','braille_prefs_hemi_counter_dot_base_diameter'],
                 ['bowl_counter_dot_base_diameter','braille_prefs_bowl_counter_dot_base_diameter'],
                 ['counter_dot_depth','braille_prefs_counter_dot_depth'],
-                ['use_bowl_recess','braille_prefs_use_bowl_recess'],
+                ['cone_counter_dot_base_diameter','braille_prefs_cone_counter_dot_base_diameter'],
+                ['cone_counter_dot_height','braille_prefs_cone_counter_dot_height'],
+                ['cone_counter_dot_flat_hat','braille_prefs_cone_counter_dot_flat_hat'],
+                ['recess_shape','braille_prefs_recess_shape'],
                 ['rounded_dot_base_diameter','braille_prefs_rounded_dot_base_diameter'],
                 ['rounded_dot_base_height','braille_prefs_rounded_dot_base_height'],
                 ['rounded_dot_dome_diameter','braille_prefs_rounded_dot_dome_diameter'],
@@ -3224,11 +3275,11 @@
                     el.addEventListener('input', () => persistValue(key, el.value));
                 }
             });
-            // Recess shape radio persistence
-            document.querySelectorAll('input[name="use_bowl_recess"]').forEach(r => {
+            // Recess shape radio persistence (tri-state)
+            document.querySelectorAll('input[name="recess_shape"]').forEach(r => {
                 r.addEventListener('change', () => {
-                    const val = document.querySelector('input[name="use_bowl_recess"]:checked')?.value || '0';
-                    persistValue('braille_prefs_use_bowl_recess', val);
+                    const val = document.querySelector('input[name="recess_shape"]:checked')?.value || '1';
+                    persistValue('braille_prefs_recess_shape', val);
                 });
             });
         }
@@ -3859,11 +3910,19 @@
                 hemi_counter_dot_base_diameter: document.getElementById('hemi_counter_dot_base_diameter')?.value || '1.6',
                 bowl_counter_dot_base_diameter: document.getElementById('bowl_counter_dot_base_diameter')?.value || '1.6',
                 // Back-compat: provide unified base diameter reflecting current recess selection
-                counter_dot_base_diameter: ((document.querySelector('input[name="use_bowl_recess"]:checked')?.value === '1')
-                    ? (document.getElementById('bowl_counter_dot_base_diameter')?.value || '1.6')
-                    : (document.getElementById('hemi_counter_dot_base_diameter')?.value || '1.6')),
+                counter_dot_base_diameter: (() => {
+                    const recessVal = document.querySelector('input[name="recess_shape"]:checked')?.value || '1';
+                    if (recessVal === '1') return (document.getElementById('bowl_counter_dot_base_diameter')?.value || '1.6');
+                    if (recessVal === '0') return (document.getElementById('hemi_counter_dot_base_diameter')?.value || '1.6');
+                    return (document.getElementById('cone_counter_dot_base_diameter')?.value || '1.6');
+                })(),
                 counter_dot_depth: document.getElementById('counter_dot_depth')?.value || '0.6',
-                use_bowl_recess: (document.querySelector('input[name="use_bowl_recess"]:checked')?.value === '1') ? 1 : 0,
+                use_bowl_recess: (document.querySelector('input[name="recess_shape"]:checked')?.value === '1') ? 1 : 0,
+                recess_shape: parseInt(document.querySelector('input[name="recess_shape"]:checked')?.value || '1'),
+                // Cone parameters
+                cone_counter_dot_base_diameter: document.getElementById('cone_counter_dot_base_diameter')?.value || '1.6',
+                cone_counter_dot_height: document.getElementById('cone_counter_dot_height')?.value || '0.8',
+                cone_counter_dot_flat_hat: document.getElementById('cone_counter_dot_flat_hat')?.value || '0.4',
                 card_width: document.getElementById('card_width').value,
                 card_height: document.getElementById('card_height').value,
                 card_thickness: document.getElementById('card_thickness').value,

@@ -3009,8 +3009,16 @@ def favicon():
     """Handle favicon requests to prevent 404 errors"""
     return '', 204  # Return empty response with "No Content" status
 
-@app.route('/static/<path:filename>')
+@app.route('/static/<path:filename>', methods=['GET', 'OPTIONS'])
 def static_files(filename):
+    # Handle CORS preflight requests
+    if request.method == 'OPTIONS':
+        response = jsonify({'message': 'OK'})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return response
+    
     try:
         # Security: Prevent path traversal attacks
         if '..' in filename or filename.startswith('/'):
@@ -3035,7 +3043,18 @@ def static_files(filename):
         if not os.path.abspath(full_path).startswith(os.path.abspath('static')):
             return jsonify({'error': 'Invalid file path'}), 400
         
-        return send_from_directory('static', safe_path)
+        response = send_from_directory('static', safe_path)
+        
+        # Add CORS headers for liblouis files to ensure they can be loaded by web workers
+        if 'liblouis' in safe_path:
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+            # Set appropriate content type for liblouis table files
+            if safe_path.endswith('.ctb') or safe_path.endswith('.utb') or safe_path.endswith('.dis'):
+                response.headers['Content-Type'] = 'text/plain; charset=utf-8'
+        
+        return response
     except Exception as e:
         app.logger.error(f"Failed to serve static file {filename}: {e}")
         return jsonify({'error': 'Failed to serve file'}), 500

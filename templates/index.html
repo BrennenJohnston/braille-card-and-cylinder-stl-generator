@@ -1890,6 +1890,54 @@
                             </div>
                         </div>
 
+                        <!-- Submenu: Braille Spacing -->
+                        <div class="expert-submenu">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                                <span class="expert-submenu-title">Braille Spacing</span>
+                                <span class="expert-submenu-icon">▼</span>
+                            </button>
+                            <div class="expert-submenu-content" style="display: none;">
+                                <div class="grade-selection">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
+                                    <div>
+                                        <label for="grid_columns" id="grid_columns_label">Number of Braille Cells (Characters):</label>
+                                        <input type="number" id="grid_columns" name="grid_columns" value="13" style="width: 110px;">
+                                        <div id="grid_columns_note" class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                            For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 13 cells available for text.
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="grid_rows">Number of Braille Lines:</label>
+                                        <input type="number" id="grid_rows" name="grid_rows" value="4" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="cell_spacing">Braille Cell Spacing:</label>
+                                        <input type="number" id="cell_spacing" name="cell_spacing" value="6.5" step="0.1" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="line_spacing">Braille Line Spacing:</label>
+                                        <input type="number" id="line_spacing" name="line_spacing" value="10.0" step="0.1" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="dot_spacing">Braille Dot Spacing:</label>
+                                        <input type="number" id="dot_spacing" name="dot_spacing" value="2.5" step="0.1" style="width: 110px;">
+                                    </div>
+                                </div>
+
+                                <div class="grade-selection" style="margin-top: 8px;">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille / Card Positioning</label>
+                                    <div>
+                                        <label for="braille_y_adjust">Y Adjust:</label>
+                                        <input type="number" id="braille_y_adjust" name="braille_y_adjust" value="0.0" step="0.1" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="braille_x_adjust">X Adjust:</label>
+                                        <input type="number" id="braille_x_adjust" name="braille_x_adjust" value="0.0" step="0.1" style="width: 110px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Submenu: Braille Dot Adjustments -->
                         <div class="expert-submenu">
                             <button type="button" class="expert-submenu-toggle" aria-expanded="false">
@@ -1897,84 +1945,84 @@
                                 <span class="expert-submenu-icon">▼</span>
                             </button>
                             <div class="expert-submenu-content" style="display: none;">
-                                <div class="grade-selection">
-                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Embossing Braille Dot Dimensions (Cone Shape)</label>
-                                    <div>
-                                        <label for="emboss_dot_base_diameter">Dot diameter:</label>
-                                        <input type="number" id="emboss_dot_base_diameter" name="emboss_dot_base_diameter" value="1.8" step="0.1">
-                                    </div>
-                                    <div>
-                                        <label for="emboss_dot_height">Dot height:</label>
-                                        <input type="number" id="emboss_dot_height" name="emboss_dot_height" value="1.0" step="0.1">
-                                    </div>
-                                    <div>
-                                        <label for="emboss_dot_flat_hat">Flat hat diameter:</label>
-                                        <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1">
-                                    </div>
-                                </div>
-
                                 <div class="grade-selection" id="rounded_dot_group" style="margin-top: 8px;">
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Embossing Braille Dot Dimensions (Rounded Shape)</label>
                                     <div>
                                         <label for="rounded_dot_base_diameter">Rounded braille dot base diameter (cone base) (mm):</label>
-                                        <input type="number" id="rounded_dot_base_diameter" name="rounded_dot_base_diameter" value="2.0" step="0.1" min="0.5" max="3">
+                                        <input type="number" id="rounded_dot_base_diameter" name="rounded_dot_base_diameter" value="2.0" step="0.1" min="0.5" max="3" style="width: 110px;">
                                     </div>
-                                    <div>
+                                    <div style="margin-top: 6px;">
                                         <label for="rounded_dot_base_height">Rounded braille dot base height (cone height) (mm):</label>
-                                        <input type="number" id="rounded_dot_base_height" name="rounded_dot_base_height" value="0.2" step="0.1" min="0" max="2.0">
+                                        <input type="number" id="rounded_dot_base_height" name="rounded_dot_base_height" value="0.2" step="0.1" min="0" max="2.0" style="width: 110px;">
                                     </div>
-                                    <div>
+                                    <div style="margin-top: 6px;">
                                         <label for="rounded_dot_dome_diameter">Rounded braille dome diameter (linked to cone flat top) (mm):</label>
-                                        <input type="number" id="rounded_dot_dome_diameter" name="rounded_dot_dome_diameter" value="1.5" step="0.1" min="0.5" max="3.0">
+                                        <input type="number" id="rounded_dot_dome_diameter" name="rounded_dot_dome_diameter" value="1.5" step="0.1" min="0.5" max="3.0" style="width: 110px;">
                                     </div>
-                                    <div>
+                                    <div style="margin-top: 6px;">
                                         <label for="rounded_dot_dome_height">Rounded braille dot dome height (mm):</label>
-                                        <input type="number" id="rounded_dot_dome_height" name="rounded_dot_dome_height" value="0.6" step="0.1" min="0.1" max="2.0">
+                                        <input type="number" id="rounded_dot_dome_height" name="rounded_dot_dome_height" value="0.6" step="0.1" min="0.1" max="2.0" style="width: 110px;">
                                     </div>
                                     <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                         The cone base sits on the surface; the dome grows from the cone's flat top. Dome diameter is always equal to the cone flat-top diameter.
                                     </div>
                                 </div>
 
+                                <div class="grade-selection" style="margin-top: 8px;">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Embossing Braille Dot Dimensions (Cone Shape)</label>
+                                    <div>
+                                        <label for="emboss_dot_base_diameter">Dot diameter:</label>
+                                        <input type="number" id="emboss_dot_base_diameter" name="emboss_dot_base_diameter" value="1.8" step="0.1" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="emboss_dot_height">Dot height:</label>
+                                        <input type="number" id="emboss_dot_height" name="emboss_dot_height" value="1.0" step="0.1" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="emboss_dot_flat_hat">Flat hat diameter:</label>
+                                        <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1" style="width: 110px;">
+                                    </div>
+                                </div>
+
                                 <!-- Counter Braille Recessed Dot Dimensions (Rounded Shape) -->
-                                <div class="grade-selection">
+                                <div class="grade-selection" style="margin-top: 8px;">
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Counter Braille Recessed Dot Dimensions (Rounded Shape)</label>
                                     <!-- Hidden hemisphere dial for future use -->
                                     <div style="display: none;">
                                         <label for="hemi_counter_dot_base_diameter">Hemisphere Recess Dot Base Diameter (mm):</label>
                                         <input type="number" id="hemi_counter_dot_base_diameter" name="hemi_counter_dot_base_diameter" value="1.6" step="0.1" min="0.5" max="5">
                                     </div>
-                                    <div id="hemisphere_dimensions_group" style="margin-top: 4px; display: none;">
+                                    <div id="hemisphere_dimensions_group" style="margin-top: 6px; display: none;">
                                         <div class="grade-note" style="font-size: 0.85em;">
                                             Hemisphere depth equals radius at the opening.
                                         </div>
                                     </div>
-                                    <div style="margin-top: 10px;">
+                                    <div style="margin-top: 6px;">
                                         <label for="bowl_counter_dot_base_diameter">Bowl Recess Dot Base Diameter (mm):</label>
-                                        <input type="number" id="bowl_counter_dot_base_diameter" name="bowl_counter_dot_base_diameter" value="1.8" step="0.1" min="0.5" max="5">
+                                        <input type="number" id="bowl_counter_dot_base_diameter" name="bowl_counter_dot_base_diameter" value="1.8" step="0.1" min="0.5" max="5" style="width: 110px;">
                                     </div>
-                                    <div id="bowl_dimensions_group" style="margin-top: 4px;">
+                                    <div id="bowl_dimensions_group" style="margin-top: 6px;">
                                         <div>
                                             <label for="counter_dot_depth">Bowl Recess Dot Depth (mm):</label>
-                                            <input type="number" id="counter_dot_depth" name="counter_dot_depth" value="0.8" step="0.1" min="0" max="5">
+                                            <input type="number" id="counter_dot_depth" name="counter_dot_depth" value="0.8" step="0.1" min="0" max="5" style="width: 110px;">
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Counter Braille Recessed Dot Dimensions (Cone Shape) -->
-                                <div class="grade-selection" id="cone_dimensions_group" style="margin-top: 8px; display: none;">
+                                <div class="grade-selection" id="cone_dimensions_group" style="margin-top: 8px;">
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Counter Braille Recessed Dot Dimensions (Cone Shape)</label>
                                     <div>
                                         <label for="cone_counter_dot_base_diameter">Dot Base Diameter (mm):</label>
-                                        <input type="number" id="cone_counter_dot_base_diameter" name="cone_counter_dot_base_diameter" value="1.6" step="0.1" min="0.1" max="5">
+                                        <input type="number" id="cone_counter_dot_base_diameter" name="cone_counter_dot_base_diameter" value="1.6" step="0.1" min="0.1" max="5" style="width: 110px;">
                                     </div>
-                                    <div>
+                                    <div style="margin-top: 6px;">
                                         <label for="cone_counter_dot_height">Dot Height (mm):</label>
-                                        <input type="number" id="cone_counter_dot_height" name="cone_counter_dot_height" value="0.8" step="0.1" min="0" max="5">
+                                        <input type="number" id="cone_counter_dot_height" name="cone_counter_dot_height" value="0.8" step="0.1" min="0" max="5" style="width: 110px;">
                                     </div>
-                                    <div>
+                                    <div style="margin-top: 6px;">
                                         <label for="cone_counter_dot_flat_hat">Dot Flat Hat Diameter (mm):</label>
-                                        <input type="number" id="cone_counter_dot_flat_hat" name="cone_counter_dot_flat_hat" value="0.4" step="0.1" min="0" max="5">
+                                        <input type="number" id="cone_counter_dot_flat_hat" name="cone_counter_dot_flat_hat" value="0.4" step="0.1" min="0" max="5" style="width: 110px;">
                                     </div>
                                 </div>
                             </div>
@@ -1988,48 +2036,32 @@
                             </button>
                             <div class="expert-submenu-content" style="display: none;">
                                 <div class="grade-selection">
-                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Plate Dimensions</label>
-                                    <div>
-                                        <label for="card_width">Plate Width:</label>
-                                        <input type="number" id="card_width" name="card_width" value="90" step="0.1">
-                                    </div>
-                                    <div>
-                                        <label for="card_height">Plate Height:</label>
-                                        <input type="number" id="card_height" name="card_height" value="52" step="0.1">
-                                    </div>
-                                    <div>
-                                        <label for="card_thickness">Plate Thickness:</label>
-                                        <input type="number" id="card_thickness" name="card_thickness" value="2.0" step="0.1">
-                                    </div>
-                                </div>
-
-                                <div class="grade-selection">
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Cylinder Dimensions</label>
                                     <div>
                                         <label for="cylinder_diameter_mm">Cylinder Diameter (mm):</label>
-                                        <input type="number" id="cylinder_diameter_mm" name="cylinder_diameter_mm" value="30.75" step="0.1" min="10" max="200">
+                                        <input type="number" id="cylinder_diameter_mm" name="cylinder_diameter_mm" value="30.75" step="0.1" min="10" max="200" style="width: 110px;">
                                     </div>
-                                    <div>
+                                    <div style="margin-top: 6px;">
                                         <label for="cylinder_height_mm">Cylinder Height (mm):</label>
-                                        <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200">
+                                        <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200" style="width: 110px;">
                                     </div>
-                                    <div>
+                                    <div style="margin-top: 6px;">
                                         <label for="cylinder_polygonal_cutout_radius_mm">Polygonal Cutout Circumscribed Radius (mm):</label>
-                                        <input type="number" id="cylinder_polygonal_cutout_radius_mm" name="cylinder_polygonal_cutout_radius_mm" value="13" step="0.1" min="0" max="50">
+                                        <input type="number" id="cylinder_polygonal_cutout_radius_mm" name="cylinder_polygonal_cutout_radius_mm" value="13" step="0.1" min="0" max="50" style="width: 110px;">
                                         <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                             Creates a polygonal cutout along the cylinder's length. Set to 0 for no cutout.
                                         </div>
                                     </div>
-                                    <div>
+                                    <div style="margin-top: 6px;">
                                         <label for="cylinder_polygonal_cutout_sides">Polygonal Cutout Points:</label>
-                                        <input type="number" id="cylinder_polygonal_cutout_sides" name="cylinder_polygonal_cutout_sides" value="12" step="1" min="3" max="60">
+                                        <input type="number" id="cylinder_polygonal_cutout_sides" name="cylinder_polygonal_cutout_sides" value="12" step="1" min="3" max="60" style="width: 110px;">
                                         <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                             Lower values create simpler shapes (e.g., 6); higher values approximate a circle.
                                         </div>
                                     </div>
-                                    <div>
+                                    <div style="margin-top: 6px;">
                                         <label for="seam_offset_deg">Seam Offset (degrees):</label>
-                                        <input type="number" id="seam_offset_deg" name="seam_offset_deg" value="355" step="1" min="0" max="360">
+                                        <input type="number" id="seam_offset_deg" name="seam_offset_deg" value="355" step="1" min="0" max="360" style="width: 110px;">
                                         <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                             Rotates the starting position of braille text around the cylinder
                                         </div>
@@ -2038,52 +2070,20 @@
                                         <strong>Warning:</strong> <span id="cylinder-overflow-message"></span>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- Submenu: Braille Spacing -->
-                        <div class="expert-submenu">
-                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
-                                <span class="expert-submenu-title">Braille Spacing</span>
-                                <span class="expert-submenu-icon">▼</span>
-                            </button>
-                            <div class="expert-submenu-content" style="display: none;">
-                                <div class="grade-selection">
-                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
+                                <div class="grade-selection" style="margin-top: 8px;">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Plate Dimensions</label>
                                     <div>
-                                        <label for="grid_columns" id="grid_columns_label">Number of Braille Cells (Characters):</label>
-                                        <input type="number" id="grid_columns" name="grid_columns" value="13">
-                                        <div id="grid_columns_note" class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                            For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 13 cells available for text.
-                                        </div>
+                                        <label for="card_width">Plate Width:</label>
+                                        <input type="number" id="card_width" name="card_width" value="90" step="0.1" style="width: 110px;">
                                     </div>
-                                    <div>
-                                        <label for="grid_rows">Number of Braille Lines:</label>
-                                        <input type="number" id="grid_rows" name="grid_rows" value="4">
+                                    <div style="margin-top: 6px;">
+                                        <label for="card_height">Plate Height:</label>
+                                        <input type="number" id="card_height" name="card_height" value="52" step="0.1" style="width: 110px;">
                                     </div>
-                                    <div>
-                                        <label for="cell_spacing">Braille Cell Spacing:</label>
-                                        <input type="number" id="cell_spacing" name="cell_spacing" value="6.5" step="0.1">
-                                    </div>
-                                    <div>
-                                        <label for="line_spacing">Braille Line Spacing:</label>
-                                        <input type="number" id="line_spacing" name="line_spacing" value="10.0" step="0.1">
-                                    </div>
-                                    <div>
-                                        <label for="dot_spacing">Braille Dot Spacing:</label>
-                                        <input type="number" id="dot_spacing" name="dot_spacing" value="2.5" step="0.1">
-                                    </div>
-                                </div>
-
-                                <div class="grade-selection">
-                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille / Card Positioning</label>
-                                    <div>
-                                        <label for="braille_y_adjust">Y Adjust:</label>
-                                        <input type="number" id="braille_y_adjust" name="braille_y_adjust" value="0.0" step="0.1">
-                                    </div>
-                                    <div>
-                                        <label for="braille_x_adjust">X Adjust:</label>
-                                        <input type="number" id="braille_x_adjust" name="braille_x_adjust" value="0.0" step="0.1">
+                                    <div style="margin-top: 6px;">
+                                        <label for="card_thickness">Plate Thickness:</label>
+                                        <input type="number" id="card_thickness" name="card_thickness" value="2.0" step="0.1" style="width: 110px;">
                                     </div>
                                 </div>
                             </div>
@@ -2650,7 +2650,7 @@
                     const combinedShapeSel = document.getElementById('combined-shape-selection');
                     if (combinedShapeSel) { combinedShapeSel.style.display = 'block'; }
                     const roundedGroup = document.getElementById('rounded_dot_group');
-                    if (roundedGroup) roundedGroup.style.display = this.value === 'positive' ? '' : 'none';
+                    if (roundedGroup) roundedGroup.style.display = '';
                     if (document.querySelector('input[name="placement_mode"]:checked')?.value === 'auto') {
                         computeAutoOverflow();
                     }
@@ -2742,8 +2742,8 @@
                     // Update dimension groups visibility
                     const bowlGroup = document.getElementById('bowl_dimensions_group');
                     const coneGroup = document.getElementById('cone_dimensions_group');
-                    if (bowlGroup) bowlGroup.style.display = isRounded ? '' : 'none';
-                    if (coneGroup) coneGroup.style.display = isCone ? '' : 'none';
+                    if (bowlGroup) bowlGroup.style.display = '';
+                    if (coneGroup) coneGroup.style.display = '';
                     
                     // Debug: Log current values
                     const currentDotShape = document.querySelector('input[name="dot_shape"]:checked')?.value;
@@ -2838,9 +2838,9 @@
             const bowlGroup = document.getElementById('bowl_dimensions_group');
             const hemiGroup = document.getElementById('hemisphere_dimensions_group');
             const coneGroup = document.getElementById('cone_dimensions_group');
-            if (bowlGroup) bowlGroup.style.display = isBowl ? '' : 'none';
-            if (hemiGroup) hemiGroup.style.display = (!isBowl && !isCone) ? '' : 'none';
-            if (coneGroup) coneGroup.style.display = isCone ? '' : 'none';
+            if (bowlGroup) bowlGroup.style.display = '';
+            if (hemiGroup) hemiGroup.style.display = 'none';
+            if (coneGroup) coneGroup.style.display = '';
             
             // Initialize cylinder height with current card height when cylinder is selected
             if (shapeType === 'cylinder') {

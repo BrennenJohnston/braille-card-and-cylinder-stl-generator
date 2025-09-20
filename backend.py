@@ -352,6 +352,16 @@ class CardSettings:
         except Exception:
             self.recess_shape = int(getattr(self, 'recess_shape', 1))
         
+        # Map dot_shape to use_rounded_dots for backend compatibility
+        try:
+            dot_shape = kwargs.get('dot_shape', 'rounded')
+            if dot_shape == 'rounded':
+                self.use_rounded_dots = 1
+            elif dot_shape == 'cone':
+                self.use_rounded_dots = 0
+        except Exception:
+            pass  # Keep existing use_rounded_dots value
+        
         # Calculate grid dimensions first
         self.grid_width = (self.grid_columns - 1) * self.cell_spacing
         self.grid_height = (self.grid_rows - 1) * self.line_spacing

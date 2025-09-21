@@ -1,5 +1,41 @@
 {
+  "name": "braille-stl-generator",
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:unit": "vitest tests/unit --run",
+    "test:integration": "vitest tests/integration --run",
+    "test:performance": "vitest tests/performance --run",
+    "test:all": "vitest tests --run",
+    "test:coverage": "vitest tests --coverage --run",
+    "test:phase6": "node tests/test-runner.js",
+    "lint": "eslint src --ext .js,.jsx",
+    "deploy": "node scripts/deploy.js",
+    "deploy:manual": "npm run build && npx wrangler pages deploy dist",
+    "deploy:preview": "npm run build && npx wrangler pages deploy dist --env preview",
+    "deploy:staging": "npm run build && npx wrangler pages deploy dist --env staging",
+    "deploy:verify": "node scripts/verify-deployment.js",
+    "deploy:check": "npm run build && npm run deploy:verify"
+  },
   "dependencies": {
-    "liblouis": "^0.4.0"
+    "comlink": "^4.4.1",
+    "idb": "^8.0.0",
+    "three": "^0.160.0",
+    "three-bvh-csg": "^0.0.17",
+    "three-stlexporter": "^1.0.0"
+  },
+  "devDependencies": {
+    "@vitest/ui": "^1.0.0",
+    "eslint": "^8.55.0",
+    "jsdom": "^27.0.0",
+    "terser": "^5.44.0",
+    "vite": "^5.0.0",
+    "vitest": "^1.0.0",
+    "wrangler": "^3.0.0"
   }
 }

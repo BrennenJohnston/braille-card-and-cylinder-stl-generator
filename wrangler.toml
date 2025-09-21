@@ -1,0 +1,53 @@
+name = "braille-stl-generator"
+compatibility_date = "2024-09-21"
+
+[env.production]
+pages_build_output_dir = "dist"
+
+[build]
+command = "npm run build"
+cwd = "."
+
+[build.environment_variables]
+NODE_VERSION = "20"
+NPM_FLAGS = "--legacy-peer-deps"
+
+# Pages configuration
+[[pages_build_config]]
+build_command = "npm run build"
+destination_dir = "dist"
+root_dir = "."
+
+# Environment variables for build
+[pages_build_config.environment_variables]
+NODE_VERSION = "20"
+VITE_APP_NAME = "Braille STL Generator"
+VITE_APP_VERSION = "2.0.0"
+VITE_CLOUDFLARE_PAGES = "true"
+
+# Cloudflare Pages settings
+[site]
+bucket = "dist"
+
+# Custom domains (to be configured)
+# [[env.production.route]]
+# pattern = "braille-stl.your-domain.com"
+# zone_name = "your-domain.com"
+
+# Worker routes (if needed for future API endpoints)
+# [[env.production.routes]]
+# pattern = "braille-stl.your-domain.com/api/*"
+# script = "api-worker"
+
+# Analytics (optional)
+[analytics]
+enabled = true
+
+# Security settings
+[security]
+headers = true  # Use cloudflare/_headers file
+
+# Performance settings
+[performance]
+minify = true
+bundle = true

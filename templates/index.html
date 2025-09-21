@@ -7,7 +7,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Braille Business Card STL Generator</title>
+    <title>Custom Braille STL Generator</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
         /* Theme CSS Variables */
@@ -461,19 +461,27 @@
             color: #fdfe00 !important; /* Yellow for all note text */
         }
 
+        html {
+            background: linear-gradient(120deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            min-height: 100%;
+            overscroll-behavior: none;
+        }
+
         body {
             background: linear-gradient(120deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-            min-height: 100vh;
+            min-height: 100%;
             font-family: 'Inter', system-ui, Arial, sans-serif;
             margin: 0;
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
+            display: block;
             padding: 2em;
             color: var(--text-primary);
             -webkit-text-size-adjust: 100%;
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
+            box-sizing: border-box; /* Include padding inside viewport height to prevent bottom overflow */
+            overflow-x: hidden;
+            overflow-y: auto;
+            overscroll-behavior: none;
         }
         
         /* Mobile-specific body adjustments */
@@ -495,9 +503,13 @@
             padding: 2.5em 2.5em 2.5em 2.5em;
             max-width: 1400px;
             width: 100%;
-            margin: 0;
+            margin: 0 auto; /* center within page when body is block */
             overflow-x: hidden; /* Prevent horizontal overflow */
+            /* Let the main layout grow to fit content; columns handle their own scrolling */
+            /* height removed to avoid collapsing content like the STL viewer */
+            overflow-y: visible;
             box-sizing: border-box; /* Include padding in width calculation */
+            /* natural height based on content to preserve background around frame */
         }
         
         /* Mobile layout optimization */
@@ -507,6 +519,10 @@
                 border-radius: 16px;
                 gap: 1.5em;
                 box-shadow: 0 4px 16px var(--shadow-light);
+                /* Natural page scroll on mobile */
+                height: auto;
+                min-height: 0;
+                overflow-y: visible;
             }
         }
         
@@ -530,21 +546,24 @@
         .title-section h1 {
             margin: 0;
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
+            align-items: baseline;
+            gap: 0.4em;
             line-height: 1.1;
+            white-space: nowrap;
         }
         
         .title-line-1 {
-            font-size: 1.8em;
+            font-size: 19.6pt;
             font-weight: 700;
             color: var(--text-primary); /* Default theme color */
         }
         
         .title-line-2 {
-            font-size: 1.6em;
+            font-size: 19.6pt;
             font-weight: 600;
             color: var(--text-secondary); /* Default theme color */
-            margin-top: 0.1em;
+            margin: 0;
         }
         
         /* High contrast mode - bright violet title */
@@ -556,17 +575,26 @@
         /* Top Accessibility Controls */
         .accessibility-controls-top {
             display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            align-items: flex-end;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.8rem;
             margin-left: 1rem;
+            flex-wrap: nowrap;
         }
+        /* Ensure theme toggle appears before font-size controls (to the left) */
+        .accessibility-controls-top .theme-toggle-section { order: 0; }
+        .accessibility-controls-top .font-size-controls { order: 1; }
         
         /* Content Area - Two Column Layout */
         .content-area {
             display: flex;
             gap: 2.5em;
             width: 100%;
+            /* Allow content area to size by content; columns will scroll themselves */
+            flex: 0 0 auto;
+            min-height: 0; /* Keeps column scrolling working when max-heights apply */
+            overflow: visible;
         }
         
         /* Left Column - Preview Section (45% width) */
@@ -576,7 +604,12 @@
             flex-direction: column;
             align-items: flex-start;
             justify-content: flex-start;
-            overflow: visible; /* Ensure rounded corners aren't cut off */
+            /* Make left column independently scrollable without collapsing viewer */
+            max-height: none;
+            min-height: 0;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+            overflow-x: hidden;
             padding-right: 1em; /* Add padding to prevent cutoff */
         }
         
@@ -588,6 +621,11 @@
             justify-content: flex-start;
             min-width: 320px;
             max-width: calc(55% - 2em); /* Prevent form from extending past background */
+            /* Make right column independently scrollable without collapsing viewer */
+            max-height: none;
+            min-height: 0;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
             overflow-x: hidden; /* Prevent horizontal overflow */
         }
         
@@ -596,27 +634,31 @@
             .content-area {
                 flex-direction: column;
                 gap: 1.5em;
+                overflow: visible;
             }
             
             .preview-section,
             .form-section {
                 flex: none;
                 width: 100%;
+                height: auto;
+                max-height: none;
+                overflow: visible; /* Use normal page scroll on mobile */
             }
         }
 
         #viewer {
-            width: calc(100% - 2px); /* Account for border width */
+            width: 100%;
             min-width: 320px;
-            max-width: calc(100% - 2px);
-            height: 420px;
+            max-width: 100%;
+            height: 420px; /* Height defines frame aspect; renderer matches it */
             border-radius: 18px;
             border: 2px solid var(--border-primary);
             background: var(--bg-tertiary);
             box-shadow: 0 4px 24px var(--shadow-light);
             display: flex;
-            align-items: center;
-            justify-content: center;
+            align-items: center; /* vertically center canvas */
+            justify-content: center; /* horizontally center canvas */
             margin: 0 0 1.5em 0;
             transition: box-shadow 0.2s;
             touch-action: pan-x pan-y pinch-zoom;
@@ -627,11 +669,13 @@
             position: relative; /* Create positioning context for overlay */
         }
 
-        /* Ensure WebGL canvas sits behind overlay */
+        /* Canvas should fill the content box and be clipped by the rounded frame */
         #viewer canvas {
             position: relative;
             z-index: 1;
             display: block;
+            width: 100%;
+            height: 100%;
         }
         
         /* Mobile viewer optimizations */
@@ -647,9 +691,7 @@
         }
         
         @media (max-width: 480px) {
-            #viewer {
-                height: 240px;
-            }
+            #viewer { height: 240px; border-radius: 12px; }
         }
         #viewer:focus-within, #viewer:active {
             box-shadow: 0 8px 32px var(--shadow-medium);
@@ -1387,7 +1429,7 @@
             display: flex;
             align-items: center;
             gap: 0.8em;
-            margin-left: auto;
+            margin-left: 0;
         }
 
         .theme-label-box {
@@ -1457,11 +1499,11 @@
             }
             
             .title-line-1 {
-                font-size: 1.5em;
+                font-size: 16pt;
             }
             
             .title-line-2 {
-                font-size: 1.3em;
+                font-size: 16pt;
             }
             
             .accessibility-controls-top {
@@ -1484,11 +1526,11 @@
         
         @media (max-width: 480px) {
             .title-line-1 {
-                font-size: 1.3em;
+                font-size: 13.6pt;
             }
             
             .title-line-2 {
-                font-size: 1.1em;
+                font-size: 13.6pt;
             }
         }
         
@@ -1614,8 +1656,8 @@
         <!-- Title Section at the top -->
         <div class="title-section">
             <h1 id="main-heading">
-                <span class="title-line-1">Braille Business</span>
-                <span class="title-line-2">Card STL Generator</span>
+                <span class="title-line-1">Custom Braille</span>
+                <span class="title-line-2">STL Generator</span>
             </h1>
             
             <!-- Accessibility Controls in top right -->
@@ -1662,41 +1704,6 @@
                         <span id="error-text"></span>
                     </div>
                 </div>
-                
-                <!-- Text Input Section moved here -->
-                <div class="line-input-group">
-                    <fieldset class="line-input-fieldset">
-                        <legend class="grade-label">Enter Text for Braille Translation</legend>
-                        <div class="grade-note" style="margin-bottom: 0.8em; font-size: 0.85em;">
-                            <strong>Note:</strong> Contracted braille combines letters into single cells, so the character limit is only confirmed <em>after translation</em> — the program will warn you automatically if it's too long.
-                        </div>
-                        <!-- Placement mode toggle -->
-                        <div class="line-input-mode-toggle" style="margin-bottom: 0.8em; display: flex; align-items: center; gap: 1em;">
-                            <label class="line-label" for="placement_mode_auto" style="margin: 0;">Placement Mode:</label>
-                            <label style="display: inline-flex; align-items: center; gap: 0.4em;">
-                                <input type="radio" name="placement_mode" value="auto" id="placement_mode_auto" checked>
-                                Auto Placement
-                            </label>
-                            <label style="display: inline-flex; align-items: center; gap: 0.4em;">
-                                <input type="radio" name="placement_mode" value="manual" id="placement_mode_manual">
-                                Manual Placement
-                            </label>
-                        </div>
-                        <!-- Auto placement textarea (hidden by default) -->
-                        <div id="auto-input-container" style="display: none;">
-                            <label for="auto-text" class="line-label">Auto Placement Text</label>
-                            <textarea id="auto-text" rows="4" placeholder="Type all your text here. It will be translated to braille and auto-wrapped across rows based on available cells." style="width: 100%; resize: vertical;"></textarea>
-                            <div id="auto-overflow-warning" class="grade-note" style="margin-top: 0.6em; color: #d73502; display: none;">
-                                <strong>Warning:</strong> <span id="auto-overflow-message"></span>
-                            </div>
-                        </div>
-                        <!-- Dynamic line inputs container -->
-                        <div id="dynamic-line-inputs">
-                            <!-- Line inputs will be dynamically generated here based on grid_rows value -->
-                        </div>
-                    </fieldset>
-                </div>
-                
                 <!-- Action Button moved here -->
                 <div class="button-row" style="margin-top: 1em;">
                     <button type="button" id="action-btn" class="generate-state" aria-label="Generate STL file from entered text" data-state="generate">Generate STL</button>
@@ -1742,6 +1749,39 @@
                 </div>
                 
                 <form id="braille-form" aria-labelledby="main-heading">
+                    <!-- Text Input Section moved into form (separate scrollable pane) -->
+                    <div class="line-input-group">
+                        <fieldset class="line-input-fieldset">
+                            <legend class="grade-label">Enter Text for Braille Translation</legend>
+                            <div class="grade-note" style="margin-bottom: 0.8em; font-size: 0.85em;">
+                                <strong>Note:</strong> Contracted braille combines letters into single cells, so the character limit is only confirmed <em>after translation</em> — the program will warn you automatically if it's too long.
+                            </div>
+                            <!-- Placement mode toggle -->
+                            <div class="line-input-mode-toggle" style="margin-bottom: 0.8em; display: flex; align-items: center; gap: 1em;">
+                                <label class="line-label" for="placement_mode_auto" style="margin: 0;">Placement Mode:</label>
+                                <label style="display: inline-flex; align-items: center; gap: 0.4em;">
+                                    <input type="radio" name="placement_mode" value="auto" id="placement_mode_auto" checked>
+                                    Auto Placement
+                                </label>
+                                <label style="display: inline-flex; align-items: center; gap: 0.4em;">
+                                    <input type="radio" name="placement_mode" value="manual" id="placement_mode_manual">
+                                    Manual Placement
+                                </label>
+                            </div>
+                            <!-- Auto placement textarea (hidden by default) -->
+                            <div id="auto-input-container" style="display: none;">
+                                <label for="auto-text" class="line-label">Auto Placement Text</label>
+                                <textarea id="auto-text" rows="4" placeholder="Type all your text here. It will be translated to braille and auto-wrapped across rows based on available cells." style="width: 100%; resize: vertical;"></textarea>
+                                <div id="auto-overflow-warning" class="grade-note" style="margin-top: 0.6em; color: #d73502; display: none;">
+                                    <strong>Warning:</strong> <span id="auto-overflow-message"></span>
+                                </div>
+                            </div>
+                            <!-- Dynamic line inputs container -->
+                            <div id="dynamic-line-inputs">
+                                <!-- Line inputs will be dynamically generated here based on grid_rows value -->
+                            </div>
+                        </fieldset>
+                    </div>
                     <!-- Language Selection -->
                     <div class="grade-selection">
                         <fieldset>
@@ -3725,7 +3765,9 @@
                 antialias: !isMobile, // Disable antialiasing on mobile for performance
                 powerPreference: isMobile ? "low-power" : "high-performance"
             });
-            renderer.setSize(viewer.clientWidth, viewer.clientHeight);
+            const initW = viewer.clientWidth;
+            const initH = viewer.clientHeight || 420;
+            renderer.setSize(initW, initH, false);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 2 : 3));
             // Preserve overlay children inside #viewer; only remove previous canvas if present
             const existingCanvas = viewer.querySelector('canvas');
@@ -3743,7 +3785,7 @@
             scene = new THREE.Scene();
             scene.background = new THREE.Color(stlBackground);
             
-            camera = new THREE.PerspectiveCamera(45, viewer.clientWidth/viewer.clientHeight, 0.1, 1000);
+            camera = new THREE.PerspectiveCamera(45, initW / initH, 0.1, 1000);
             camera.position.set(0, 0, 120);
             camera.up.set(0, 1, 0); // Default Y-up
             camera.lookAt(0, 0, 0);
@@ -3808,9 +3850,11 @@
         }
         
         function onWindowResize() {
-            camera.aspect = viewer.clientWidth / viewer.clientHeight;
+            const targetW = viewer.clientWidth;
+            const targetH = viewer.clientHeight || 420;
+            camera.aspect = targetW / targetH;
             camera.updateProjectionMatrix();
-            renderer.setSize(viewer.clientWidth, viewer.clientHeight);
+            renderer.setSize(targetW, targetH, false);
             render();
         }
 
@@ -4385,7 +4429,15 @@
                 input.addEventListener('focus', () => {
                     // Scroll input into view when keyboard appears
                     setTimeout(() => {
-                        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        const scrollParent = input.closest('.preview-section, .form-section') || document.scrollingElement;
+                        if (scrollParent && scrollParent !== document.scrollingElement) {
+                            const parentRect = scrollParent.getBoundingClientRect();
+                            const inputRect = input.getBoundingClientRect();
+                            const offset = (inputRect.top + inputRect.height / 2) - (parentRect.top + parentRect.height / 2);
+                            scrollParent.scrollBy({ top: offset, behavior: 'smooth' });
+                        } else {
+                            input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
                     }, 300);
                 });
             });

@@ -339,12 +339,10 @@
             outline-offset: 2px !important;
         }
 
-        /* Mobile-optimized scroll containers */
+        /* Mobile-optimized containers */
         @media (max-width: 768px) {
             .main-layout {
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-                max-height: calc(100vh - 1em);
+                overflow-y: auto; /* Allow main scroll on mobile if needed */
             }
             
             /* Sticky generate button on mobile */
@@ -463,33 +461,37 @@
 
         html {
             background: linear-gradient(120deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-            min-height: 100%;
+            min-height: 100vh; /* Ensure background covers viewport */
             overscroll-behavior: none;
         }
 
         body {
-            background: linear-gradient(120deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-            min-height: 100%;
+            background: transparent; /* Inherit gradient from html */
+            min-height: 100vh; /* Minimum viewport height, can grow if needed */
             font-family: 'Inter', system-ui, Arial, sans-serif;
             margin: 0;
-            display: block;
-            padding: 2em;
+            display: flex;
+            align-items: flex-start; /* Align to top to prevent centering issues */
+            justify-content: center;
+            padding: 0; /* Remove padding to extend to browser edges */
             color: var(--text-primary);
             -webkit-text-size-adjust: 100%;
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
-            box-sizing: border-box; /* Include padding inside viewport height to prevent bottom overflow */
+            box-sizing: border-box;
             overflow-x: hidden;
-            overflow-y: auto;
+            overflow-y: auto; /* Allow scrolling if content overflows */
             overscroll-behavior: none;
         }
         
         /* Mobile-specific body adjustments */
         @media (max-width: 768px) {
             body {
-                padding: 0.5em;
+                padding: 0; /* Remove padding on mobile too */
                 min-height: 100vh;
+                overflow-y: auto; /* Allow scrolling on mobile if needed */
                 overflow-x: hidden;
+                align-items: flex-start; /* Align to top on mobile */
             }
         }
         
@@ -498,38 +500,34 @@
             flex-direction: column;
             gap: 2em;
             background: var(--bg-primary);
-            border-radius: 22px;
-            box-shadow: 0 8px 32px var(--shadow-light);
-            padding: 2.5em 2.5em 2.5em 2.5em;
-            max-width: 1400px;
+            border-radius: 0; /* Remove border radius to extend to edges */
+            box-shadow: none; /* Remove shadow since we're edge-to-edge */
+            padding: 2.5em;
             width: 100%;
-            margin: 0 auto; /* center within page when body is block */
-            overflow-x: hidden; /* Prevent horizontal overflow */
-            /* Let the main layout grow to fit content; columns handle their own scrolling */
-            /* height removed to avoid collapsing content like the STL viewer */
-            overflow-y: visible;
-            box-sizing: border-box; /* Include padding in width calculation */
-            /* natural height based on content to preserve background around frame */
+            min-height: 100vh; /* Minimum full viewport height, can grow if needed */
+            margin: 0;
+            overflow-y: auto; /* Allow main scroll if content overflows */
+            overflow-x: hidden;
+            box-sizing: border-box;
         }
         
         /* Mobile layout optimization */
         @media (max-width: 768px) {
             .main-layout {
                 padding: 1.5em;
-                border-radius: 16px;
+                border-radius: 0; /* Remove border radius on mobile too */
                 gap: 1.5em;
-                box-shadow: 0 4px 16px var(--shadow-light);
-                /* Natural page scroll on mobile */
-                height: auto;
-                min-height: 0;
-                overflow-y: visible;
+                box-shadow: none; /* Remove shadow on mobile too */
+                min-height: 100vh; /* Minimum full height on mobile */
+                overflow-y: auto; /* Allow main scroll on mobile if needed */
+                overflow-x: hidden;
             }
         }
         
         @media (max-width: 480px) {
             .main-layout {
                 padding: 1em;
-                border-radius: 12px;
+                border-radius: 0; /* Remove border radius on small mobile too */
                 gap: 1em;
             }
         }
@@ -591,10 +589,9 @@
             display: flex;
             gap: 2.5em;
             width: 100%;
-            /* Allow content area to size by content; columns will scroll themselves */
-            flex: 0 0 auto;
-            min-height: 0; /* Keeps column scrolling working when max-heights apply */
-            overflow: visible;
+            flex: 1; /* Take remaining space after title */
+            min-height: 0; /* Allow shrinking for scrolling to work */
+            overflow: visible; /* Allow content to be visible */
         }
         
         /* Left Column - Preview Section (45% width) */
@@ -621,12 +618,42 @@
             justify-content: flex-start;
             min-width: 320px;
             max-width: calc(55% - 2em); /* Prevent form from extending past background */
-            /* Make right column independently scrollable without collapsing viewer */
-            max-height: none;
+            /* Make right column independently scrollable - separate from left column */
+            max-height: calc(100vh - 10em); /* Account for main-layout padding (5em) and title section (~5em) */
             min-height: 0;
-            overflow-y: visible;
+            overflow-y: auto; /* Enable scrolling for right column menu boxes */
             -webkit-overflow-scrolling: touch;
             overflow-x: hidden; /* Prevent horizontal overflow */
+            scrollbar-width: auto; /* Firefox standard scrollbar */
+            scrollbar-color: var(--border-primary) var(--bg-tertiary); /* Firefox scrollbar colors */
+            /* Distinct background for scrollable area */
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.2em;
+            border: 1px solid var(--border-secondary);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Custom scrollbar styling for webkit browsers - larger and more visible */
+        .form-section::-webkit-scrollbar {
+            width: 14px; /* Increased from 8px for better visibility */
+        }
+
+        .form-section::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+            border-radius: 7px;
+            margin: 4px 0; /* Add some margin at top and bottom */
+        }
+
+        .form-section::-webkit-scrollbar-thumb {
+            background: var(--border-primary);
+            border-radius: 7px;
+            border: 2px solid var(--bg-tertiary); /* Creates space around thumb */
+        }
+
+        .form-section::-webkit-scrollbar-thumb:hover {
+            background: var(--text-primary);
+            border-color: var(--bg-tertiary);
         }
         
         /* Mobile layout - stack columns */
@@ -634,16 +661,58 @@
             .content-area {
                 flex-direction: column;
                 gap: 1.5em;
-                overflow: visible;
+                overflow: visible; /* Allow content to be visible on mobile */
             }
             
-            .preview-section,
-            .form-section {
+            .preview-section {
                 flex: none;
                 width: 100%;
                 height: auto;
                 max-height: none;
-                overflow: visible; /* Use normal page scroll on mobile */
+                overflow: visible;
+            }
+            
+            .form-section {
+                flex: 1; /* Take remaining space */
+                width: 100%;
+                max-height: none; /* Remove height restriction on mobile */
+                overflow-y: auto; /* Enable scrolling within the container */
+                overflow-x: hidden;
+                /* Keep scrollable styling on mobile for inner content */
+                background: var(--bg-secondary);
+                border: 1px solid var(--border-primary);
+                border-radius: 12px;
+                padding: 1.2em;
+                box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+            }
+        }
+        
+        /* Desktop layout - sticky left preview, separate right column scrolling */
+        @media (min-width: 769px) {
+            .preview-section {
+                position: sticky;
+                top: 0;
+                align-self: flex-start; /* ensure sticky positions relative to content area */
+            }
+            
+            /* Ensure right column scrolling is properly configured for desktop */
+            .form-section {
+                max-height: calc(100vh - 10em); /* Account for main-layout padding and title section */
+                overflow-y: auto;
+                position: relative; /* For scroll indicator positioning */
+            }
+            
+            /* Visual scroll indicator - shadow at bottom when scrollable */
+            .form-section::after {
+                content: '';
+                position: sticky;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 20px;
+                background: linear-gradient(to top, var(--bg-secondary), transparent);
+                pointer-events: none;
+                opacity: 0.8;
             }
         }
 
@@ -651,7 +720,7 @@
             width: 100%;
             min-width: 320px;
             max-width: 100%;
-            height: 420px; /* Height defines frame aspect; renderer matches it */
+            height: calc(100vh - 16em); /* Adjust for new layout spacing */
             border-radius: 18px;
             border: 2px solid var(--border-primary);
             background: var(--bg-tertiary);
@@ -681,7 +750,7 @@
         /* Mobile viewer optimizations */
         @media (max-width: 768px) {
             #viewer {
-                height: 280px;
+                height: calc(40vh - 1em); /* Responsive height for tablets - leave more room for content */
                 min-width: unset;
                 width: 100%;
                 max-width: 100%;
@@ -691,7 +760,10 @@
         }
         
         @media (max-width: 480px) {
-            #viewer { height: 240px; border-radius: 12px; }
+            #viewer { 
+                height: calc(35vh - 1em); /* Responsive height for phones - more compact */
+                border-radius: 12px; 
+            }
         }
         #viewer:focus-within, #viewer:active {
             box-shadow: 0 8px 32px var(--shadow-medium);
@@ -1348,10 +1420,9 @@
                 gap: 0.8em;
             }
             
-            /* Ensure scroll behavior is smooth on mobile */
+            /* Mobile optimizations */
             html {
                 scroll-behavior: smooth;
-                -webkit-overflow-scrolling: touch;
             }
         }
         

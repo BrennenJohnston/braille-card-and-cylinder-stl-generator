@@ -33,7 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
     app.destroy();
   });
   
-  console.log('🚀 Application initialized successfully!');
+  console.log('🚀 Application initialized with Phase 8 optimizations!');
+  console.log('⚡ Live deployment: https://ae3f5145.braille-card-and-cylinder-stl-generator.pages.dev/');
 });
 
 /**

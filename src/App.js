@@ -8,18 +8,22 @@ import { BrailleInput } from './components/BrailleInput.js';
 import { ProgressBar } from './components/ProgressBar.js';
 import { STLViewer } from './components/STLViewer.js';
 import { downloadFile } from './utils/file-utils.js';
+import { PerformanceMonitor } from './lib/performance-monitor.js';
+import { CacheManager } from './lib/cache-manager.js';
 
 export class BrailleGeneratorApp {
   constructor(container) {
     this.container = container;
     this.workerManager = new WorkerManager();
+    this.performanceMonitor = new PerformanceMonitor();
+    this.cacheManager = new CacheManager();
     this.brailleInput = null;
     this.progressBar = null;
     this.stlViewer = null;
     this.currentJob = null;
     this.currentSTLData = null;
     
-    console.log('📱 Initializing BrailleGeneratorApp with full UI...');
+    console.log('📱 Initializing BrailleGeneratorApp with Phase 8 optimizations...');
     this.init();
   }
 
@@ -31,8 +35,8 @@ export class BrailleGeneratorApp {
           <h1>🔤 Braille Card & Cylinder STL Generator</h1>
           <p class="subtitle">Client-side processing powered by Cloudflare Pages</p>
           <div class="header-status">
-            <span class="status-indicator">🌐</span>
-            <span class="status-text">Phase 7: Cloudflare Pages Deployment Ready</span>
+            <span class="status-indicator">⚡</span>
+            <span class="status-text">Phase 8: Performance Optimized - Live on Cloudflare Pages!</span>
           </div>
         </header>
         
@@ -73,9 +77,10 @@ export class BrailleGeneratorApp {
     console.log('🎨 UI structure created, initializing components...');
     await this.initializeComponents();
     this.setupEventHandlers();
+    await this.initializePhase8Optimizations();
     this.showWelcomeMessage();
     
-    console.log('✨ Phase 5 complete - Full UI initialized!');
+    console.log('✨ Phase 8 complete - Performance optimized application ready!');
   }
 
   async initializeComponents() {
@@ -101,6 +106,32 @@ export class BrailleGeneratorApp {
     } catch (error) {
       console.error('❌ Component initialization failed:', error);
       this.showError('Failed to initialize components: ' + error.message);
+    }
+  }
+
+  async initializePhase8Optimizations() {
+    try {
+      console.log('⚡ Initializing Phase 8 performance optimizations...');
+      
+      // Enable advanced caching
+      await this.cacheManager.enablePredictiveCaching();
+      
+      // Enable performance monitoring  
+      this.performanceMonitor.enableAutoOptimization();
+      this.performanceMonitor.createPerformanceDashboard();
+      
+      // Enable progressive loading
+      await this.cacheManager.enableProgressiveLoading();
+      
+      // Set up periodic cache maintenance
+      setInterval(() => {
+        this.cacheManager.smartCacheEviction();
+      }, 5 * 60 * 1000); // Every 5 minutes
+      
+      console.log('✅ Phase 8 optimizations enabled');
+      
+    } catch (error) {
+      console.error('❌ Phase 8 optimization setup failed:', error);
     }
   }
 
@@ -161,6 +192,28 @@ export class BrailleGeneratorApp {
   async generateSTL(data) {
     const { brailleLines, shapeType, settings, originalText } = data;
     
+    // Check cache first (Phase 8 optimization)
+    const cachedSTL = await this.cacheManager.getCachedSTL(originalText, brailleLines, settings);
+    if (cachedSTL) {
+      console.log('⚡ Loading STL from cache (instant!)');
+      await this.stlViewer.loadSTL(cachedSTL.stlBuffer, {
+        ...cachedSTL.stats,
+        shapeType,
+        originalText,
+        fromCache: true
+      });
+      this.currentSTLData = cachedSTL.stlBuffer;
+      this.showSuccessMessage(`STL loaded from cache! ${this.formatFileSize(cachedSTL.stats.fileSize)}`);
+      return;
+    }
+    
+    // Start performance monitoring
+    const generationId = this.performanceMonitor.startSTLGeneration({
+      shapeType,
+      textLength: originalText.length,
+      complexity: brailleLines.reduce((sum, line) => sum + line.length, 0)
+    });
+    
     try {
       console.log('🚀 Starting STL generation workflow...');
       console.log('Shape type:', shapeType);
@@ -173,16 +226,37 @@ export class BrailleGeneratorApp {
       this.progressBar.show('Starting generation...');
       this.stlViewer.clear();
       
+      // Get adaptive settings based on device performance
+      const devicePerformance = {
+        cores: navigator.hardwareConcurrency || 4,
+        mobile: /Mobile|Android|iPhone|iPad/.test(navigator.userAgent),
+        memory: performance.memory?.jsHeapSizeLimit || 0
+      };
+      
+      const adaptedSettings = this.cacheManager.getAdaptiveSettings(settings, devicePerformance);
+      console.log('🎯 Using adaptive settings for device performance');
+      
       // Generate STL using worker
       const result = await this.workerManager.generateSTL(
         shapeType,
         brailleLines,
-        settings,
+        adaptedSettings,
         (progress, message) => {
           this.progressBar.setProgress(progress, message);
           console.log(`Progress: ${Math.round(progress)}% - ${message}`);
         }
       );
+      
+      // End performance monitoring
+      this.performanceMonitor.endSTLGeneration(generationId, {
+        success: true,
+        fileSize: result.stlBuffer.byteLength,
+        triangles: result.stats.faces,
+        duration: result.stats.totalTime
+      });
+      
+      // Cache the result for future use (Phase 8 optimization)
+      await this.cacheManager.cacheSTL(originalText, brailleLines, settings, result.stlBuffer, result.stats);
       
       // Show completion
       this.progressBar.setComplete(result.stats);
@@ -196,8 +270,22 @@ export class BrailleGeneratorApp {
       
       this.currentSTLData = result.stlBuffer;
       
-      // Show success
-      this.showSuccessMessage(`STL generated successfully! ${this.formatFileSize(result.stats.fileSize)}`);
+      // Show success with performance info
+      const perfInfo = result.stats.totalTime < 5000 ? 
+        ` (⚡ ${(result.stats.totalTime / 1000).toFixed(1)}s)` : 
+        ` (${(result.stats.totalTime / 1000).toFixed(1)}s)`;
+      
+      this.showSuccessMessage(`STL generated successfully! ${this.formatFileSize(result.stats.fileSize)}${perfInfo}`);
+      
+      // Dispatch custom event for analytics
+      document.dispatchEvent(new CustomEvent('stl-generation-complete', {
+        detail: {
+          duration: result.stats.totalTime,
+          shapeType,
+          fileSize: result.stlBuffer.byteLength,
+          success: true
+        }
+      }));
       
       // Hide progress after delay
       setTimeout(() => {
@@ -206,6 +294,13 @@ export class BrailleGeneratorApp {
       
     } catch (error) {
       console.error('❌ STL generation failed:', error);
+      
+      // End performance monitoring with error
+      this.performanceMonitor.endSTLGeneration(generationId, {
+        success: false,
+        error: error.message
+      });
+      
       this.progressBar.setError(error);
       this.showError('Generation failed: ' + error.message);
       

@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "three": "^0.160.0",
+    "three-mesh-bvh": "^0.9.0",
     "three-bvh-csg": "^0.0.17",
     "three-stlexporter": "^1.0.0",
     "comlink": "^4.4.1",

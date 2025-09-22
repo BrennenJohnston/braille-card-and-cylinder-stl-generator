@@ -17,6 +17,19 @@ When deploying to Cloudflare Pages, use these **exact** settings:
 
 The Cloudflare Pages build system automatically runs `npm clean-install` before your build command, so additional `npm install` commands are unnecessary and can be harmful.
 
+## wrangler.toml Configuration
+
+### Option 1: Minimal wrangler.toml (Recommended)
+Keep only the essential fields:
+```toml
+name = "braille-stl-generator"
+compatibility_date = "2024-09-21"
+pages_build_output_dir = "dist"
+```
+
+### Option 2: No wrangler.toml
+If deployment still fails, remove wrangler.toml entirely and configure everything through the Cloudflare Pages dashboard.
+
 ## Environment Variables
 
 Set these in your Cloudflare Pages dashboard:
@@ -29,10 +42,10 @@ VITE_CLOUDFLARE_PAGES=true
 
 ## Deployment Steps
 
-1. **Commit the fixed package-lock.json**
+1. **Commit the fixed files**
    ```bash
    git add package-lock.json wrangler.toml
-   git commit -m "fix: Use lockfileVersion 2 for Cloudflare Pages compatibility"
+   git commit -m "fix: Minimal wrangler.toml for Pages compatibility"
    git push origin feature/cloudflare-client
    ```
 
@@ -48,6 +61,10 @@ VITE_CLOUDFLARE_PAGES=true
    - Go to "Deployments" and click "Retry deployment"
 
 ## Troubleshooting
+
+### If you see "unable to read wrangler.toml"
+- The file might have unsupported sections for Pages
+- Either use minimal configuration or remove the file entirely
 
 ### If you see "vite: not found"
 - Check that your build command is exactly `npm run build`
@@ -86,6 +103,18 @@ npm run build
 # Preview the built site
 npm run preview
 ```
+
+## Alternative: Remove wrangler.toml
+
+If issues persist, you can remove wrangler.toml entirely:
+
+```bash
+git rm wrangler.toml
+git commit -m "fix: Remove wrangler.toml for Pages compatibility"
+git push origin feature/cloudflare-client
+```
+
+Then configure everything through the Cloudflare Pages dashboard.
 
 ## Support
 

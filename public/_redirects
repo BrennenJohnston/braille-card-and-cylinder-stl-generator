@@ -1,0 +1,27 @@
+# Cloudflare Pages Redirects and Routing Configuration
+# Braille STL Generator - Client-side Application
+
+# Main application routes - serve index.html for SPA
+/ /index.html 200
+/index /index.html 200  
+/home /index.html 200
+
+# Legacy redirects from old Vercel deployment (disabled)
+# /api/* https://your-old-vercel-domain.vercel.app/api/:splat 301
+# /generate_braille_stl https://your-old-vercel-domain.vercel.app/generate_braille_stl 301
+
+# Worker files - ensure proper routing
+/workers/* /:splat 200
+/geometry-worker.js /geometry-worker.js 200
+/liblouis-worker.js /liblouis-worker.js 200
+
+# Static assets routing
+# Serve static assets directly from dist/static as referenced by /static/* paths
+/static/* /static/:splat 200
+/assets/* /:splat 200
+
+# STL file downloads (client-generated)
+/*.stl /index.html 200
+
+# 404 fallback - serve main app
+/* /index.html 200

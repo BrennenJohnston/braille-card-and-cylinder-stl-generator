@@ -137,33 +137,47 @@ export class BrailleGeneratorApp {
 
   setupEventHandlers() {
     // Handle generate button click from input component
-    this.brailleInput.addEventListener('generate', async (event) => {
-      await this.generateSTL(event.detail);
-    });
+    if (this.brailleInput) {
+      this.brailleInput.addEventListener('generate', async (event) => {
+        await this.generateSTL(event.detail);
+      });
+    }
     
     // Handle download button click from viewer
-    this.stlViewer.addEventListener('download', (event) => {
-      this.handleDownload(event.detail);
-    });
+    if (this.stlViewer) {
+      this.stlViewer.addEventListener('download', (event) => {
+        this.handleDownload(event.detail);
+      });
+    }
     
     // Handle new generation request
-    this.stlViewer.addEventListener('new-generation', () => {
-      this.startNewGeneration();
-    });
+    if (this.stlViewer) {
+      this.stlViewer.addEventListener('new-generation', () => {
+        this.startNewGeneration();
+      });
+    }
     
     // Handle cancel button from progress bar
-    this.progressBar.addEventListener('cancel', () => {
-      this.cancelGeneration();
-    });
+    if (this.progressBar) {
+      this.progressBar.addEventListener('cancel', () => {
+        this.cancelGeneration();
+      });
+    }
 
     // Footer actions
-    this.container.querySelector('#demo-btn').addEventListener('click', () => {
-      this.loadDemo();
-    });
+    const demoBtn = this.container.querySelector('#demo-btn');
+    if (demoBtn) {
+      demoBtn.addEventListener('click', () => {
+        this.loadDemo();
+      });
+    }
 
-    this.container.querySelector('#reset-btn').addEventListener('click', () => {
-      this.resetApplication();
-    });
+    const resetBtn = this.container.querySelector('#reset-btn');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        this.resetApplication();
+      });
+    }
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {

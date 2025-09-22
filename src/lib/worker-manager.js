@@ -3,6 +3,10 @@
  * Provides a clean API for managing geometry and liblouis workers
  */
 
+import * as THREE from 'three';
+import { BrailleGenerator } from '../lib/braille-generator.js';
+import { STLExporter } from '../lib/stl-exporter.js';
+
 export class WorkerManager {
   constructor() {
     this.workers = new Map();
@@ -23,25 +27,36 @@ export class WorkerManager {
       
       let worker;
       try {
+        const browserHasWorkers = (typeof Worker !== 'undefined') && (typeof window !== 'undefined');
+
         if (type === 'geometry') {
-          // Use Vite's worker import syntax
-          worker = new Worker(
-            new URL('../workers/geometry-worker.js', import.meta.url),
-            { type: 'module' }
-          );
+          if (browserHasWorkers) {
+            // Use Vite's worker import syntax in browser
+            worker = new Worker(
+              new URL('../workers/geometry-worker.js', import.meta.url),
+              { type: 'module' }
+            );
+          } else {
+            // Test/Node environment fallback: local in-process worker shim
+            worker = new LocalGeometryWorker();
+          }
         } else if (type === 'liblouis') {
-          // Use existing liblouis worker
-          worker = new Worker('/liblouis-worker.js');
+          if (browserHasWorkers) {
+            worker = new Worker('/liblouis-worker.js');
+          } else {
+            // Minimal shim for tests that do not require real translation
+            worker = new LocalLouisWorker();
+          }
         } else {
           throw new Error(`Unknown worker type: ${type}`);
         }
-        
+
         // Initialize worker
         await this.initializeWorker(worker, type);
         this.workers.set(type, worker);
-        
+
         console.log(`✅ ${type} worker created and initialized`);
-        
+
       } catch (error) {
         console.error(`❌ Failed to create ${type} worker:`, error);
         throw new Error(`Failed to create ${type} worker: ${error.message}`);
@@ -371,4 +386,185 @@ export class WorkerManager {
   areWorkersReady() {
     return this.workers.size > 0;
   }
+}
+
+// ===== Test/Node environment worker shims =====
+
+class LocalGeometryWorker extends EventTarget {
+  constructor() {
+    super();
+    this.generator = null;
+    this.exporter = null;
+    this.initialized = false;
+  }
+
+  postMessage(message) {
+    const { type, id, data } = message;
+
+    switch (type) {
+      case 'INIT': {
+        try {
+          this.generator = new BrailleGenerator();
+          this.exporter = new STLExporter();
+          this.initialized = true;
+          queueMicrotask(() => {
+            this.dispatchEvent(new MessageEvent('message', {
+              data: {
+                type: 'READY',
+                id,
+                capabilities: {
+                  brailleGeneration: true,
+                  stlExport: true,
+                  cardGeneration: true,
+                  cylinderGeneration: true
+                }
+              }
+            }));
+          });
+        } catch (error) {
+          this.dispatchError(id, error);
+        }
+        break;
+      }
+
+      case 'GENERATE_CARD': {
+        if (!this.initialized) return this.dispatchError(id, new Error('Worker not initialized'));
+        const { brailleLines, options = {} } = data || {};
+        if (!Array.isArray(brailleLines)) return this.dispatchError(id, new Error('Invalid brailleLines provided'));
+        const onProgress = (progress, message) => {
+          this.dispatchEvent(new MessageEvent('message', {
+            data: { type: 'PROGRESS', id, progress, message, stage: 'generation' }
+          }));
+        };
+        this.generator.generateCard(brailleLines, { ...options, onProgress })
+          .then((geometry) => {
+            const payload = serializeGeometry(geometry);
+            this.dispatchEvent(new MessageEvent('message', {
+              data: {
+                type: 'GENERATION_COMPLETE',
+                id,
+                result: { geometry: payload, stats: basicGeometryStats(geometry) }
+              }
+            }));
+          })
+          .catch((err) => this.dispatchError(id, err));
+        break;
+      }
+
+      case 'GENERATE_CYLINDER': {
+        if (!this.initialized) return this.dispatchError(id, new Error('Worker not initialized'));
+        const { brailleLines, options = {} } = data || {};
+        if (!Array.isArray(brailleLines)) return this.dispatchError(id, new Error('Invalid brailleLines provided'));
+        const onProgress = (progress, message) => {
+          this.dispatchEvent(new MessageEvent('message', {
+            data: { type: 'PROGRESS', id, progress, message, stage: 'generation' }
+          }));
+        };
+        this.generator.generateCylinder(brailleLines, { ...options, onProgress })
+          .then((geometry) => {
+            const payload = serializeGeometry(geometry);
+            this.dispatchEvent(new MessageEvent('message', {
+              data: {
+                type: 'GENERATION_COMPLETE',
+                id,
+                result: { geometry: payload, stats: basicGeometryStats(geometry) }
+              }
+            }));
+          })
+          .catch((err) => this.dispatchError(id, err));
+        break;
+      }
+
+      case 'EXPORT_STL': {
+        if (!this.initialized) return this.dispatchError(id, new Error('Worker not initialized'));
+        const { geometry, format = 'binary' } = data || {};
+        try {
+          const reconstructed = reconstructGeometry(geometry);
+          this.exporter.validateGeometry(reconstructed);
+          const result = format === 'ascii' ? this.exporter.exportASCII(reconstructed) : this.exporter.exportBinary(reconstructed);
+          this.dispatchEvent(new MessageEvent('message', {
+            data: {
+              type: 'EXPORT_COMPLETE',
+              id,
+              result: { data: result, format, stats: this.exporter.getStats(reconstructed) }
+            }
+          }));
+        } catch (error) {
+          this.dispatchError(id, error);
+        }
+        break;
+      }
+
+      case 'GET_STATUS': {
+        this.dispatchEvent(new MessageEvent('message', {
+          data: {
+            type: 'STATUS',
+            id,
+            status: { initialized: this.initialized, busy: false }
+          }
+        }));
+        break;
+      }
+
+      case 'CANCEL': {
+        // No-op for local worker shim
+        this.dispatchEvent(new MessageEvent('message', {
+          data: { type: 'CANCELLED', id }
+        }));
+        break;
+      }
+    }
+  }
+
+  dispatchError(id, error) {
+    this.dispatchEvent(new MessageEvent('message', {
+      data: { type: 'ERROR', id, error: { message: error.message, stack: error.stack } }
+    }));
+  }
+
+  terminate() {
+    // No background thread to terminate in shim
+  }
+}
+
+class LocalLouisWorker extends EventTarget {
+  postMessage(message) {
+    const { text, table, id } = message;
+    // Simple identity translation for tests
+    const result = (Array.isArray(text) ? text.join('\n') : String(text || '')).toString();
+    queueMicrotask(() => {
+      this.dispatchEvent(new MessageEvent('message', { data: { result, id } }));
+    });
+  }
+  terminate() {}
+}
+
+function serializeGeometry(geometry) {
+  return {
+    positions: geometry.attributes.position?.array || new Float32Array(),
+    normals: geometry.attributes.normal?.array || null,
+    indices: geometry.index?.array || null
+  };
+}
+
+function reconstructGeometry(geometryData) {
+  const geometry = new THREE.BufferGeometry();
+  if (geometryData?.positions) {
+    geometry.setAttribute('position', new THREE.BufferAttribute(geometryData.positions, 3));
+  }
+  if (geometryData?.normals) {
+    geometry.setAttribute('normal', new THREE.BufferAttribute(geometryData.normals, 3));
+  }
+  if (geometryData?.indices) {
+    geometry.setIndex(new THREE.BufferAttribute(geometryData.indices, 1));
+  }
+  return geometry;
+}
+
+function basicGeometryStats(geometry) {
+  return {
+    vertices: geometry.attributes.position?.count || 0,
+    faces: geometry.index ? geometry.index.count / 3 : (geometry.attributes.position?.count || 0) / 3,
+    processingTime: 0
+  };
 }

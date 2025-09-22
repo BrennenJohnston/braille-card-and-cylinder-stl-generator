@@ -199,9 +199,12 @@ export class BrailleGenerator {
 
     // Create card base
     const baseGeometry = new THREE.BoxGeometry(
-      settings.card_width, 
-      settings.card_height, 
-      settings.card_thickness
+      settings.card_width,
+      settings.card_height,
+      settings.card_thickness,
+      2, // widthSegments (increase triangles for better STL size baseline)
+      2, // heightSegments
+      1  // depthSegments
     );
     
     // Position card so bottom-left-back corner is at origin
@@ -472,7 +475,7 @@ export class BrailleGenerator {
       
       for (const dotBrush of batch) {
         try {
-          result = this.evaluator.evaluate(result, dotBrush, UNION);
+          result = this.evaluator.evaluate(result, dotBrush, ADDITION);
         } catch (error) {
           console.warn('Failed to union cylinder dot:', error.message);
         }

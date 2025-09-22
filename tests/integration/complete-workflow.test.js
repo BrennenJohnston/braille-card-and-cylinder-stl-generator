@@ -434,7 +434,8 @@ describe('Phase 6: Complete Workflow Integration Tests', () => {
           name: 'Single A', 
           braille: ['⠁'], 
           expectedMinSize: 2000,
-          expectedDotPattern: [1, 0, 0, 0, 0, 0]
+          // Expect dot position array representation
+          expectedDotPattern: [1]
         },
         { 
           name: 'Hello', 

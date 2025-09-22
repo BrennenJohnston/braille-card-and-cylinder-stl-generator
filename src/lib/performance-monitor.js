@@ -29,7 +29,7 @@ export class PerformanceMonitor {
   }
 
   trackPageLoad() {
-    if (typeof performance !== 'undefined' && performance.timing) {
+    if (typeof performance !== 'undefined' && performance.timing && typeof window !== 'undefined') {
       window.addEventListener('load', () => {
         const timing = performance.timing;
         const loadTime = timing.loadEventEnd - timing.navigationStart;
@@ -118,7 +118,7 @@ export class PerformanceMonitor {
   }
 
   observePerformanceEntry(type, callback) {
-    if ('PerformanceObserver' in window) {
+    if (typeof window !== 'undefined' && 'PerformanceObserver' in window) {
       try {
         const observer = new PerformanceObserver((list) => {
           callback(list.getEntries());
@@ -161,8 +161,8 @@ export class PerformanceMonitor {
     const startMetrics = this.metrics.get(generationId);
     if (!startMetrics) return;
     
-    const endTime = performance.now();
-    const duration = endTime - startMetrics.startTime;
+    const endTime = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    const duration = endTime - (startMetrics.startTime || 0);
     const endMemory = performance.memory?.usedJSHeapSize || 0;
     const memoryDelta = endMemory - startMetrics.startMemory;
     
@@ -216,8 +216,8 @@ export class PerformanceMonitor {
       name,
       value,
       timestamp: Date.now(),
-      url: window.location.href,
-      userAgent: navigator.userAgent.substring(0, 100),
+      url: typeof window !== 'undefined' && window.location ? window.location.href : 'node',
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 100) : 'node',
       metadata
     };
     
@@ -261,21 +261,21 @@ export class PerformanceMonitor {
       timestamp: new Date().toISOString(),
       pageMetrics: this.metrics.get('page_metrics') || [],
       stlMetrics: this.stlGenerationMetrics,
-      currentMemory: performance.memory ? {
+      currentMemory: (typeof performance !== 'undefined' && performance.memory) ? {
         used: performance.memory.usedJSHeapSize,
         total: performance.memory.totalJSHeapSize,
         limit: performance.memory.jsHeapSizeLimit,
         usagePercent: (performance.memory.usedJSHeapSize / performance.memory.jsHeapSizeLimit) * 100
       } : null,
-      connection: navigator.connection ? {
+      connection: (typeof navigator !== 'undefined' && navigator.connection) ? {
         effectiveType: navigator.connection.effectiveType,
         downlink: navigator.connection.downlink,
         rtt: navigator.connection.rtt
       } : null,
       deviceInfo: {
-        cores: navigator.hardwareConcurrency || 'unknown',
-        platform: navigator.platform,
-        mobile: /Mobile|Android|iPhone|iPad/.test(navigator.userAgent)
+        cores: (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) ? navigator.hardwareConcurrency : 'unknown',
+        platform: typeof navigator !== 'undefined' ? navigator.platform : 'node',
+        mobile: typeof navigator !== 'undefined' ? /Mobile|Android|iPhone|iPad/.test(navigator.userAgent) : false
       }
     };
     
@@ -288,12 +288,14 @@ export class PerformanceMonitor {
       type: 'application/json' 
     });
     
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `braille-stl-performance-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    if (typeof URL !== 'undefined' && typeof document !== 'undefined') {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `braille-stl-performance-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
     
     console.log('📊 Performance data exported');
   }

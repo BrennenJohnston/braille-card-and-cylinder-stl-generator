@@ -7,13 +7,41 @@ import { openDB } from 'idb';
 
 export class CacheManager {
   constructor() {
-    this.dbPromise = this.initDB();
+    this.dbPromise = this.safeInitDB();
     this.serviceWorker = null;
     this.memoryCache = new Map();
     this.maxMemoryCacheSize = 50; // Maximum items in memory cache
     
     console.log('💾 Cache Manager initializing...');
     this.initServiceWorker();
+  }
+
+  safeInitDB() {
+    // In Node/test environments, indexedDB may not exist
+    if (typeof indexedDB === 'undefined') {
+      console.warn('⚠️ IndexedDB not available; falling back to in-memory cache for tests');
+      // Provide a minimal stub with the APIs we use so code paths continue to work
+      return Promise.resolve({
+        transaction() {
+          return {
+            store: {
+              put: async () => {},
+              clear: async () => {},
+              getAll: async () => [],
+              get: async () => null,
+              index() {
+                return {
+                  getAllKeys: async () => [],
+                  get: async () => null
+                };
+              }
+            },
+            done: Promise.resolve()
+          };
+        }
+      });
+    }
+    return this.initDB();
   }
 
   async initDB() {
@@ -62,7 +90,7 @@ export class CacheManager {
   }
 
   async initServiceWorker() {
-    if ('serviceWorker' in navigator) {
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
       try {
         const registration = await navigator.serviceWorker.register('/sw.js');
         this.serviceWorker = registration;
@@ -523,14 +551,14 @@ export class CacheManager {
     const adaptedSettings = { ...baseSettings };
     
     // Reduce quality on low-end devices
-    if (devicePerformance.cores < 4 || devicePerformance.mobile) {
+    if ((devicePerformance.cores || 0) < 4 || devicePerformance.mobile) {
       adaptedSettings.geometry_resolution = 'medium';
       adaptedSettings.worker_batch_size = 25; // Smaller batches
       adaptedSettings.enable_progressive_generation = true;
     }
     
     // High-end device optimizations
-    if (devicePerformance.cores >= 8 && !devicePerformance.mobile) {
+    if ((devicePerformance.cores || 0) >= 8 && !devicePerformance.mobile) {
       adaptedSettings.geometry_resolution = 'high';
       adaptedSettings.worker_batch_size = 100; // Larger batches
       adaptedSettings.enable_parallel_workers = true;

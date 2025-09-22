@@ -23,19 +23,19 @@
     "deploy:check": "npm run build && npm run deploy:verify"
   },
   "dependencies": {
-    "comlink": "^4.4.1",
-    "idb": "^8.0.0",
     "three": "^0.160.0",
     "three-bvh-csg": "^0.0.17",
-    "three-stlexporter": "^1.0.0"
+    "three-stlexporter": "^1.0.0",
+    "comlink": "^4.4.1",
+    "idb": "^8.0.0"
   },
   "devDependencies": {
-    "@vitest/ui": "^1.0.0",
-    "eslint": "^8.55.0",
-    "jsdom": "^27.0.0",
-    "terser": "^5.44.0",
     "vite": "^5.0.0",
     "vitest": "^1.0.0",
-    "wrangler": "^3.0.0"
+    "@vitest/ui": "^1.0.0",
+    "eslint": "^8.55.0",
+    "wrangler": "^3.0.0",
+    "terser": "^5.44.0",
+    "jsdom": "^27.0.0"
   }
 }

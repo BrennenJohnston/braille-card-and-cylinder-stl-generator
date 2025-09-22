@@ -21,13 +21,14 @@ import hashlib
 app = Flask(__name__)
 # CORS configuration - update with your actual domain before deployment
 allowed_origins = [
-    'https://your-vercel-domain.vercel.app',  # Replace with your actual Vercel domain
+    'https://your-vercel-domain.vercel.app',  # Replace with your actual Vercel backend domain
+    'https://your-cloudflare-pages.pages.dev',  # Replace with your Cloudflare Pages domain
     'https://your-custom-domain.com'  # Replace with your custom domain if any
 ]
 
 # For development, allow localhost
 if os.environ.get('FLASK_ENV') == 'development':
-    allowed_origins.extend(['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5001'])
+    allowed_origins.extend(['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5001', 'http://localhost:8080'])
 
 CORS(app, origins=allowed_origins, supports_credentials=True)
 

@@ -3,5 +3,4 @@ trimesh==3.23.5
 numpy==1.24.3
 flask-cors==4.0.0
 shapely==2.0.1
-mapbox-earcut==1.0.1
 manifold3d==0.0.1

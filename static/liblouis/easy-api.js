@@ -207,14 +207,18 @@ IMPL.lou = {
 		var mode = 0;
 
 		var inbuff_ptr = this.mem.transfer(this.capi, inbuf);
-		var bufflen = this.mem.getBufferLength(inbuf);
-		var outbuff_ptr = this.capi._malloc(bufflen);
+		var inbuff_bytes = this.mem.getBufferLength(inbuf);
+		// Allocate a generously sized output buffer in wide characters to avoid overflow
+		// Grade 2 contractions and special symbols can expand output length significantly
+		var outCapacityChars = Math.max(inbuf.length * 6 + 32, 256);
+		var outbuff_ptr = this.capi._malloc(outCapacityChars * this.charSize());
 
 		var bufflen_ptr = this.capi._malloc(4);
 		var strlen_ptr = this.capi._malloc(4);
 
-		this.capi.setValue(bufflen_ptr, bufflen, "i32");
-		this.capi.setValue(strlen_ptr, bufflen, "i32");
+		// Pass lengths in wide characters (not bytes) for unicode builds
+		this.capi.setValue(bufflen_ptr, outCapacityChars, "i32");
+		this.capi.setValue(strlen_ptr, inbuf.length, "i32");
 
 		var success = this.capi.ccall(backtranslate ?
 				'lou_backTranslateString' :

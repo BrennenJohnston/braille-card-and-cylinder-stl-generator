@@ -7,20 +7,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Braille Plate & Cylinder STL Generator</title>
+    <title>Custom Braille STL Generator</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="icon" href="./static/favicon.svg" type="image/svg+xml">
-    <base href="/braille-card-and-cylinder-stl-generator-githubpages/">
-    <script async src="https://unpkg.com/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "./static/three.module.js",
-                "three-mesh-bvh": "https://unpkg.com/three-mesh-bvh@0.7.6?module",
-                "three-bvh-csg": "https://unpkg.com/three-bvh-csg@0.0.17?module"
-            }
-        }
-    </script>
     <style>
         /* Theme CSS Variables */
         :root {
@@ -351,12 +339,10 @@
             outline-offset: 2px !important;
         }
 
-        /* Mobile-optimized scroll containers */
+        /* Mobile-optimized containers */
         @media (max-width: 768px) {
             .main-layout {
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-                max-height: calc(100vh - 1em);
+                overflow-y: auto; /* Allow main scroll on mobile if needed */
             }
             
             /* Sticky generate button on mobile */
@@ -473,27 +459,39 @@
             color: #fdfe00 !important; /* Yellow for all note text */
         }
 
-        body {
+        html {
             background: linear-gradient(120deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-            min-height: 100vh;
+            min-height: 100vh; /* Ensure background covers viewport */
+            overscroll-behavior: none;
+        }
+
+        body {
+            background: transparent; /* Inherit gradient from html */
+            min-height: 100vh; /* Minimum viewport height, can grow if needed */
             font-family: 'Inter', system-ui, Arial, sans-serif;
             margin: 0;
             display: flex;
-            align-items: flex-start;
+            align-items: flex-start; /* Align to top to prevent centering issues */
             justify-content: center;
-            padding: 2em;
+            padding: 0; /* Remove padding to extend to browser edges */
             color: var(--text-primary);
             -webkit-text-size-adjust: 100%;
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
+            box-sizing: border-box;
+            overflow-x: hidden;
+            overflow-y: auto; /* Allow scrolling if content overflows */
+            overscroll-behavior: none;
         }
         
         /* Mobile-specific body adjustments */
         @media (max-width: 768px) {
             body {
-                padding: 0.5em;
+                padding: 0; /* Remove padding on mobile too */
                 min-height: 100vh;
+                overflow-y: auto; /* Allow scrolling on mobile if needed */
                 overflow-x: hidden;
+                align-items: flex-start; /* Align to top on mobile */
             }
         }
         
@@ -502,30 +500,34 @@
             flex-direction: column;
             gap: 2em;
             background: var(--bg-primary);
-            border-radius: 22px;
-            box-shadow: 0 8px 32px var(--shadow-light);
-            padding: 2.5em 2.5em 2.5em 2.5em;
-            max-width: 1400px;
+            border-radius: 0; /* Remove border radius to extend to edges */
+            box-shadow: none; /* Remove shadow since we're edge-to-edge */
+            padding: 2.5em;
             width: 100%;
-            margin: 0 auto;
-            overflow-x: hidden; /* Prevent horizontal overflow */
-            box-sizing: border-box; /* Include padding in width calculation */
+            min-height: 100vh; /* Minimum full viewport height, can grow if needed */
+            margin: 0;
+            overflow-y: auto; /* Allow main scroll if content overflows */
+            overflow-x: hidden;
+            box-sizing: border-box;
         }
         
         /* Mobile layout optimization */
         @media (max-width: 768px) {
             .main-layout {
                 padding: 1.5em;
-                border-radius: 16px;
+                border-radius: 0; /* Remove border radius on mobile too */
                 gap: 1.5em;
-                box-shadow: 0 4px 16px var(--shadow-light);
+                box-shadow: none; /* Remove shadow on mobile too */
+                min-height: 100vh; /* Minimum full height on mobile */
+                overflow-y: auto; /* Allow main scroll on mobile if needed */
+                overflow-x: hidden;
             }
         }
         
         @media (max-width: 480px) {
             .main-layout {
                 padding: 1em;
-                border-radius: 12px;
+                border-radius: 0; /* Remove border radius on small mobile too */
                 gap: 1em;
             }
         }
@@ -542,21 +544,24 @@
         .title-section h1 {
             margin: 0;
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
+            align-items: baseline;
+            gap: 0.4em;
             line-height: 1.1;
+            white-space: nowrap;
         }
         
         .title-line-1 {
-            font-size: 1.8em;
+            font-size: 19.6pt;
             font-weight: 700;
             color: var(--text-primary); /* Default theme color */
         }
         
         .title-line-2 {
-            font-size: 1.6em;
+            font-size: 19.6pt;
             font-weight: 600;
             color: var(--text-secondary); /* Default theme color */
-            margin-top: 0.1em;
+            margin: 0;
         }
         
         /* High contrast mode - bright violet title */
@@ -568,17 +573,25 @@
         /* Top Accessibility Controls */
         .accessibility-controls-top {
             display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            align-items: flex-end;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.8rem;
             margin-left: 1rem;
+            flex-wrap: nowrap;
         }
+        /* Ensure theme toggle appears before font-size controls (to the left) */
+        .accessibility-controls-top .theme-toggle-section { order: 0; }
+        .accessibility-controls-top .font-size-controls { order: 1; }
         
         /* Content Area - Two Column Layout */
         .content-area {
             display: flex;
             gap: 2.5em;
             width: 100%;
+            flex: 1; /* Take remaining space after title */
+            min-height: 0; /* Allow shrinking for scrolling to work */
+            overflow: visible; /* Allow content to be visible */
         }
         
         /* Left Column - Preview Section (45% width) */
@@ -588,7 +601,12 @@
             flex-direction: column;
             align-items: flex-start;
             justify-content: flex-start;
-            overflow: visible; /* Ensure rounded corners aren't cut off */
+            /* Make left column independently scrollable without collapsing viewer */
+            max-height: none;
+            min-height: 0;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+            overflow-x: hidden;
             padding-right: 1em; /* Add padding to prevent cutoff */
         }
         
@@ -600,7 +618,42 @@
             justify-content: flex-start;
             min-width: 320px;
             max-width: calc(55% - 2em); /* Prevent form from extending past background */
+            /* Make right column independently scrollable - separate from left column */
+            max-height: calc(100vh - 10em); /* Account for main-layout padding (5em) and title section (~5em) */
+            min-height: 0;
+            overflow-y: auto; /* Enable scrolling for right column menu boxes */
+            -webkit-overflow-scrolling: touch;
             overflow-x: hidden; /* Prevent horizontal overflow */
+            scrollbar-width: auto; /* Firefox standard scrollbar */
+            scrollbar-color: var(--border-primary) var(--bg-tertiary); /* Firefox scrollbar colors */
+            /* Distinct background for scrollable area */
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.2em;
+            border: 1px solid var(--border-secondary);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Custom scrollbar styling for webkit browsers - larger and more visible */
+        .form-section::-webkit-scrollbar {
+            width: 14px; /* Increased from 8px for better visibility */
+        }
+
+        .form-section::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+            border-radius: 7px;
+            margin: 4px 0; /* Add some margin at top and bottom */
+        }
+
+        .form-section::-webkit-scrollbar-thumb {
+            background: var(--border-primary);
+            border-radius: 7px;
+            border: 2px solid var(--bg-tertiary); /* Creates space around thumb */
+        }
+
+        .form-section::-webkit-scrollbar-thumb:hover {
+            background: var(--text-primary);
+            border-color: var(--bg-tertiary);
         }
         
         /* Mobile layout - stack columns */
@@ -608,27 +661,73 @@
             .content-area {
                 flex-direction: column;
                 gap: 1.5em;
+                overflow: visible; /* Allow content to be visible on mobile */
             }
             
-            .preview-section,
-            .form-section {
+            .preview-section {
                 flex: none;
                 width: 100%;
+                height: auto;
+                max-height: none;
+                overflow: visible;
+            }
+            
+            .form-section {
+                flex: 1; /* Take remaining space */
+                width: 100%;
+                max-height: none; /* Remove height restriction on mobile */
+                overflow-y: auto; /* Enable scrolling within the container */
+                overflow-x: hidden;
+                /* Keep scrollable styling on mobile for inner content */
+                background: var(--bg-secondary);
+                border: 1px solid var(--border-primary);
+                border-radius: 12px;
+                padding: 1.2em;
+                box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+            }
+        }
+        
+        /* Desktop layout - sticky left preview, separate right column scrolling */
+        @media (min-width: 769px) {
+            .preview-section {
+                position: sticky;
+                top: 0;
+                align-self: flex-start; /* ensure sticky positions relative to content area */
+            }
+            
+            /* Ensure right column scrolling is properly configured for desktop */
+            .form-section {
+                max-height: calc(100vh - 10em); /* Account for main-layout padding and title section */
+                overflow-y: auto;
+                position: relative; /* For scroll indicator positioning */
+            }
+            
+            /* Visual scroll indicator - shadow at bottom when scrollable */
+            .form-section::after {
+                content: '';
+                position: sticky;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 20px;
+                background: linear-gradient(to top, var(--bg-secondary), transparent);
+                pointer-events: none;
+                opacity: 0.8;
             }
         }
 
         #viewer {
-            width: calc(100% - 2px); /* Account for border width */
+            width: 100%;
             min-width: 320px;
-            max-width: calc(100% - 2px);
-            height: 420px;
+            max-width: 100%;
+            height: calc(100vh - 16em); /* Adjust for new layout spacing */
             border-radius: 18px;
             border: 2px solid var(--border-primary);
             background: var(--bg-tertiary);
             box-shadow: 0 4px 24px var(--shadow-light);
             display: flex;
-            align-items: center;
-            justify-content: center;
+            align-items: center; /* vertically center canvas */
+            justify-content: center; /* horizontally center canvas */
             margin: 0 0 1.5em 0;
             transition: box-shadow 0.2s;
             touch-action: pan-x pan-y pinch-zoom;
@@ -636,12 +735,22 @@
             user-select: none;
             overflow: hidden; /* Ensure content doesn't overflow rounded corners */
             box-sizing: border-box; /* Include border in size calculation */
+            position: relative; /* Create positioning context for overlay */
+        }
+
+        /* Canvas should fill the content box and be clipped by the rounded frame */
+        #viewer canvas {
+            position: relative;
+            z-index: 1;
+            display: block;
+            width: 100%;
+            height: 100%;
         }
         
         /* Mobile viewer optimizations */
         @media (max-width: 768px) {
             #viewer {
-                height: 280px;
+                height: calc(40vh - 1em); /* Responsive height for tablets - leave more room for content */
                 min-width: unset;
                 width: 100%;
                 max-width: 100%;
@@ -651,8 +760,9 @@
         }
         
         @media (max-width: 480px) {
-            #viewer {
-                height: 240px;
+            #viewer { 
+                height: calc(35vh - 1em); /* Responsive height for phones - more compact */
+                border-radius: 12px; 
             }
         }
         #viewer:focus-within, #viewer:active {
@@ -759,8 +869,30 @@
         }
         .line-input {
             display: flex;
-            align-items: center;
+            flex-direction: column;
+            align-items: stretch;
             gap: 0.8em;
+        }
+        .line-translation-row,
+        .line-text-row {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.4em;
+        }
+        .line-text-row input[type="text"] {
+            width: 100%;
+        }
+        /* Ensure even vertical spacing between each manual line group */
+        #dynamic-line-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 1em;
+        }
+        /* Normalize label spacing within rows */
+        .line-translation-row .line-label,
+        .line-text-row .line-label {
+            margin: 0;
         }
         
         /* Mobile line input optimization */
@@ -1039,12 +1171,24 @@
             background: var(--error-bg);
             border: 1px solid var(--error-border);
             border-radius: 6px;
-            padding: 0.7em 1em;
-            margin-top: 0.5em;
-            font-size: 1em;
+            padding: 0.9em 1.2em;
+            margin: 0;
+            font-size: 1.25em;
             display: none;
             align-items: center;
-            gap: 0.5em;
+            justify-content: center;
+            gap: 0.7em;
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            transform: translateY(-50%);
+            width: 100%;
+            text-align: center;
+            z-index: 2;
+            pointer-events: none;
+            box-shadow: 0 6px 20px var(--shadow-light);
+            box-sizing: border-box;
         }
         
         #error-message.info {
@@ -1094,6 +1238,36 @@
             transform: rotate(180deg);
         }
         
+        /* Reset to Defaults button styling */
+        .reset-container {
+            margin-top: 0.6em;
+        }
+        .reset-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-secondary);
+            border-radius: 8px;
+            padding: 0.8em 1.2em;
+            width: 100%;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+        .reset-btn:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--border-primary);
+        }
+        [data-theme="high-contrast"] .reset-btn {
+            background: #1a1a1a !important;
+            color: #02fe05 !important;
+            border: 2px solid #02fe05 !important;
+        }
+        [data-theme="high-contrast"] .reset-btn:hover {
+            background: #000000 !important;
+            color: #02fe05 !important;
+            border: 2px solid #02fe05 !important;
+        }
+
         .expert-settings {
             margin-top: 1.5em;
             padding-top: 1.5em;
@@ -1175,6 +1349,45 @@
             color: var(--text-secondary);
         }
         
+        /* Expert submenus */
+        .expert-submenu {
+            margin-top: 0.8em;
+        }
+        .expert-submenu-toggle {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 8px;
+            padding: 0.8em 1em;
+            font-size: 0.95em;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .expert-submenu-toggle:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--border-secondary);
+        }
+        .expert-submenu-toggle.active {
+            background: var(--border-focus);
+            color: #fff;
+            border-color: var(--border-focus);
+        }
+        .expert-submenu-toggle.active .expert-submenu-title {
+            color: #fff;
+        }
+        .expert-submenu-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 8px;
+            padding: 1em;
+            margin-top: 0.5em;
+        }
+        
         .info-content p {
             margin: 0.3em 0;
         }
@@ -1207,10 +1420,9 @@
                 gap: 0.8em;
             }
             
-            /* Ensure scroll behavior is smooth on mobile */
+            /* Mobile optimizations */
             html {
                 scroll-behavior: smooth;
-                -webkit-overflow-scrolling: touch;
             }
         }
         
@@ -1288,7 +1500,7 @@
             display: flex;
             align-items: center;
             gap: 0.8em;
-            margin-left: auto;
+            margin-left: 0;
         }
 
         .theme-label-box {
@@ -1358,11 +1570,11 @@
             }
             
             .title-line-1 {
-                font-size: 1.5em;
+                font-size: 16pt;
             }
             
             .title-line-2 {
-                font-size: 1.3em;
+                font-size: 16pt;
             }
             
             .accessibility-controls-top {
@@ -1385,11 +1597,11 @@
         
         @media (max-width: 480px) {
             .title-line-1 {
-                font-size: 1.3em;
+                font-size: 13.6pt;
             }
             
             .title-line-2 {
-                font-size: 1.1em;
+                font-size: 13.6pt;
             }
         }
         
@@ -1449,6 +1661,13 @@
             border: 2px solid #ff0000 !important;
         }
 
+        /* Subline under each preview line for computer shorthand */
+        .preview-subline {
+            font-size: 0.9em;
+            opacity: 0.85;
+            margin-top: 0.25em;
+        }
+
         /* Section Title Styling - Larger Font for All Themes */
         .info-panel strong,
         .info-panel p strong {
@@ -1473,6 +1692,29 @@
             font-size: 1.2em !important;
             font-weight: 600 !important;
         }
+
+        /* Auto placement textarea styling to visually align with manual inputs */
+        #auto-input-container textarea#auto-text {
+            width: 100%;
+            min-height: 6.5em; /* approx 4 lines */
+            line-height: 1.4;
+            padding: 0.8em;
+            font-size: 1em;
+            font-family: inherit;
+            border: 1.5px solid var(--border-secondary);
+            border-radius: 8px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            transition: border 0.2s;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        #auto-input-container textarea#auto-text:focus {
+            border: 1.5px solid var(--border-focus);
+            outline: none;
+            background: var(--bg-primary);
+        }
+        /* High contrast maintains theme variables already set */
     </style>
 </head>
 <body>
@@ -1485,7 +1727,7 @@
         <!-- Title Section at the top -->
         <div class="title-section">
             <h1 id="main-heading">
-                <span class="title-line-1">Braille Plate & Cylinder</span>
+                <span class="title-line-1">Custom Braille</span>
                 <span class="title-line-2">STL Generator</span>
             </h1>
             
@@ -1527,22 +1769,12 @@
         <div class="content-area">
             <!-- Left Column - STL Preview Section (45% width) -->
             <div class="preview-section" role="region" aria-label="3D STL Preview">
-                <div id="viewer" role="img" aria-label="3D preview of braille STL model" tabindex="0"></div>
-                
-                <!-- Text Input Section moved here -->
-                <div class="line-input-group">
-                    <fieldset class="line-input-fieldset">
-                        <legend class="grade-label">Enter Text for Braille Translation</legend>
-                        <div class="grade-note" style="margin-bottom: 0.8em; font-size: 0.85em;">
-                            <strong>Note:</strong> Contracted braille combines letters into single cells, so the character limit is only confirmed <em>after translation</em> — the program will warn you automatically if it's too long.
-                        </div>
-                        <!-- Dynamic line inputs container -->
-                        <div id="dynamic-line-inputs">
-                            <!-- Line inputs will be dynamically generated here based on grid_rows value -->
-                        </div>
-                    </fieldset>
+                <div id="viewer" role="img" aria-label="3D preview of braille business card STL file" tabindex="0">
+                    <div id="error-message" role="alert" aria-live="assertive" aria-atomic="true">
+                        <span style="font-weight:bold;" aria-hidden="true">⚠</span> 
+                        <span id="error-text"></span>
+                    </div>
                 </div>
-                
                 <!-- Action Button moved here -->
                 <div class="button-row" style="margin-top: 1em;">
                     <button type="button" id="action-btn" class="generate-state" aria-label="Generate STL file from entered text" data-state="generate">Generate STL</button>
@@ -1553,10 +1785,10 @@
             <div class="form-section" role="region" aria-label="Braille Card Configuration">
                 <div class="info-panel">
                     <p><strong>Program Description:</strong></p>
-                    <p>This tool primarily generates <strong>cylindrical braille objects</strong> and matching plates. You can also produce flat business-card plates.</p>
+                    <p>Creates two matching STLs for a standard 3.5″ × 2″ card.</p>
                     <ol style="margin: 0.3em 0; padding-left: 1.5em;">
-                        <li><strong>Embossing Plate</strong> (raised/positive)</li>
-                        <li><strong>Universal Counter Plate</strong> (recessed/negative)</li>
+                        <li><strong>Embossing Plate</strong> (cone dots)</li>
+                        <li><strong>Universal Counter Plate</strong> (hemispherical recessed dots)</li>
                     </ol>
                 </div>
                 
@@ -1566,14 +1798,19 @@
                         <span id="info-toggle-icon">▼</span>
                     </button>
                     <div id="info-content" class="info-content" style="display: none;">
-                        <p><strong>Instructions (Cylinder-first workflow):</strong></p>
+                        <p><strong>Instructions:</strong></p>
                         <ol style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li>Enter up to <strong>4 lines</strong> of text. Click <strong>"Generate STL"</strong>. The app auto-translates to <strong>UEB</strong>.</li>
-                            <li>Leave the <strong>Output Shape</strong> as <strong>Cylinder</strong> (default). Review the 3D preview, then <strong>Download STL</strong>.</li>
-                            <li>If you also need the <strong>Universal Counter Plate</strong>, switch Plate to <strong>Counter Plate</strong> and generate once. You only need to download it again if you change <strong>Expert Mode</strong> settings that affect dot geometry or spacing. Translation changes only affect the embossing plate.</li>
-                            <li>To make flat business-card plates instead, open <strong>Expert Mode</strong> → set <strong>Output Shape</strong> to <strong>Flat Card</strong>, then generate plates.</li>
-                            <li>Use <strong>Expert Mode</strong> to adjust cylinder diameter/height, card dimensions, braille spacing, and dot sizes as needed.</li>
+                            <li>Enter any number of lines (set in <strong>Expert Mode → Number of Braille Lines</strong>), then click <strong>"Generate STL."</strong> The app auto-translates to <strong>Unified English Braille (UEB)</strong>.</li>
+                            <li>Review the 3D preview. If it looks correct, click <strong>"Download STL."</strong></li>
+                            <li>Click <strong>"Universal Counter Plate"</strong> and repeat the steps to generate and download the matching counter plate (if you haven't printed one yet).</li>
+                            <li>Need specific dimensions? Open <strong>Expert Mode</strong> to adjust card size, spacing, and dot parameters.</li>
                         </ol>
+                        <p><strong>Business card guidance:</strong></p>
+                        <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                            <li><strong>Default:</strong> English (UEB), United States — uncontracted (grade 1). See BANA’s <a href="https://www.brailleauthority.org/bana-position-statements-and-fact-sheets" target="_blank" style="color: #3182ce; text-decoration: none;">Business Cards Fact Sheet (March 2024)</a>.</li>
+                            <li><strong>What to include:</strong> pick two key items (e.g., your name and either email or phone). It’s fine to break long emails across lines at logical places.</li>
+                            <li><em>“Braille business cards … work best with letter-for-letter substitution – known as Grade 1 Braille. It helps to cut down on potential confusion or misinterpretation… Grade 2 … is an option if you’re unable to fit the information you need.”</em> — <a href="https://brailleworks.com/braille-business-cards-411/" target="_blank" style="color: #3182ce; text-decoration: none;">Braille Works, The 411 on Braille Business Cards</a></li>
+                        </ul>
                         <p><strong>Acknowledgements:</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">
                             <li>Powered by <a href="https://liblouis.io/" target="_blank" style="color: #3182ce; text-decoration: none;"><strong>Liblouis</strong></a>, an open-source professional braille translator.</li>
@@ -1582,23 +1819,53 @@
                     </div>
                 </div>
                 
-                <div id="error-message" role="alert" aria-live="assertive" aria-atomic="true">
-                    <span style="font-weight:bold;" aria-hidden="true">⚠</span> 
-                    <span id="error-text"></span>
-                </div>
-                
                 <form id="braille-form" aria-labelledby="main-heading">
+                    <!-- Text Input Section moved into form (separate scrollable pane) -->
+                    <div class="line-input-group">
+                        <fieldset class="line-input-fieldset">
+                            <legend class="grade-label">Enter Text for Braille Translation</legend>
+                            <div class="grade-note" style="margin-bottom: 0.8em; font-size: 0.85em;">
+                                <strong>Note:</strong> Contracted braille combines letters into single cells, so the character limit is only confirmed <em>after translation</em> — the program will warn you automatically if it's too long.
+                            </div>
+                            <!-- Placement mode toggle -->
+                            <div class="line-input-mode-toggle" style="margin-bottom: 0.8em; display: flex; align-items: center; gap: 1em;">
+                                <label class="line-label" for="placement_mode_auto" style="margin: 0;">Placement Mode:</label>
+                                <label style="display: inline-flex; align-items: center; gap: 0.4em;">
+                                    <input type="radio" name="placement_mode" value="auto" id="placement_mode_auto" checked>
+                                    Auto Placement
+                                </label>
+                                <label style="display: inline-flex; align-items: center; gap: 0.4em;">
+                                    <input type="radio" name="placement_mode" value="manual" id="placement_mode_manual">
+                                    Manual Placement
+                                </label>
+                            </div>
+                            <!-- Auto placement textarea (hidden by default) -->
+                            <div id="auto-input-container" style="display: none;">
+                                <label for="auto-text" class="line-label">Auto Placement Text</label>
+                                <textarea id="auto-text" rows="4" placeholder="Type all your text here. It will be translated to braille and auto-wrapped across rows based on available cells." style="width: 100%; resize: vertical;"></textarea>
+                                <div id="auto-overflow-warning" class="grade-note" style="margin-top: 0.6em; color: #d73502; display: none;">
+                                    <strong>Warning:</strong> <span id="auto-overflow-message"></span>
+                                </div>
+                            </div>
+                            <!-- Dynamic line inputs container -->
+                            <div id="dynamic-line-inputs">
+                                <!-- Line inputs will be dynamically generated here based on grid_rows value -->
+                            </div>
+                        </fieldset>
+                    </div>
                     <!-- Language Selection -->
                     <div class="grade-selection">
                         <fieldset>
                             <legend class="grade-label">Select Language:</legend>
                             <div style="margin-bottom: 0.8em;">
                                 <select id="language-table" name="language_table" class="language-select" aria-describedby="language-help">
-                                    <option value="en-ueb-g2.ctb" selected>English, U.S., contracted (UEB grade 2)</option>
-                                    <option value="en-ueb-g1.ctb">English, U.S., uncontracted (UEB grade 1)</option>
+                                    <option value="en-ueb-g2.ctb">English (UEB), United States — contracted (grade 2)</option>
+                                    <option value="en-ueb-g1.ctb" selected>English (UEB), United States — uncontracted (grade 1)</option>
+                                    <option value="en-us-g2.ctb">English (EBAE), United States — contracted (grade 2)</option>
+                                    <option value="en-us-g1.ctb">English (EBAE), United States — uncontracted (grade 1)</option>
                                 </select>
                                 <div id="language-help" class="grade-note" style="margin-top: 6px; font-size: 0.85em;">
-                                    NOTE: English, U.S., contracted (UEB grade 2) is the default standard for all U.S. English braille translations. Please only select another language or grade for special use cases.
+                                    Default: English (UEB), United States — uncontracted (grade 1). Chosen to align with BANA guidance for business cards and to minimize ambiguity for names, emails, and short contact info. Use contracted (grade 2) only when space is limited.
                                 </div>
                             </div>
                         </fieldset>
@@ -1623,7 +1890,20 @@
                             </div>
                         </fieldset>
                     </div>
+                    <!-- Reset Settings menu box -->
+                    <div class="grade-selection">
+                        <fieldset>
+                            <legend class="grade-label">Reset Settings</legend>
+                            <div class="reset-container">
+                                <button type="button" id="reset-defaults-btn" class="reset-btn" aria-label="Reset all settings to default">Reset all settings to default</button>
+                            </div>
+                        </fieldset>
+                    </div>
                     
+                    
+                    
+
+
                     <div class="expert-mode-toggle">
                         <button type="button" id="expert-toggle" class="expert-toggle-btn">
                             <span id="expert-toggle-text">Show Expert Mode</span>
@@ -1632,141 +1912,292 @@
                     </div>
 
                     <div id="expert-settings" class="expert-settings" style="display: none;">
-                        <!-- Output Shape Selection (moved into Expert Mode) -->
-                        <div class="grade-selection">
-                            <fieldset>
-                                <legend class="grade-label">Select Output Shape</legend>
-                                <div class="radio-group" role="radiogroup" aria-required="true">
-                                    <label class="radio-option">
-                                        <input type="radio" name="shape_type" value="card" aria-describedby="card-shape-desc" aria-label="Flat Card shape">
-                                        <span class="radio-text">Flat Card</span>
-                                    </label>
-                                    <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card</span>
-                                    <label class="radio-option">
-                                        <input type="radio" name="shape_type" value="cylinder" checked aria-describedby="cylinder-shape-desc" aria-label="Cylinder shape">
-                                        <span class="radio-text">Cylinder</span>
-                                    </label>
-                                    <span id="cylinder-shape-desc" class="sr-only">Creates a cylindrical braille surface</span>
-                                </div>
-                            </fieldset>
-                        </div>
-
                         <div class="expert-info" role="note" aria-label="Expert mode information">
                             Any changes made here will affect both plates.
                         </div>
-                        <div class="grade-selection">
-                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
-                            <div>
-                                <label for="grid_columns" id="grid_columns_label">Number of Braille Cells (Characters):</label>
-                                <input type="number" id="grid_columns" name="grid_columns" value="12">
-                                <div id="grid_columns_note" class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                    For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 12 cells available for text.
-                                </div>
-                            </div>
-                            <div>
-                                <label for="grid_rows">Number of Braille Lines:</label>
-                                <input type="number" id="grid_rows" name="grid_rows" value="4">
-                            </div>
-                            <div>
-                                <label for="cell_spacing">Braille Cell Spacing:</label>
-                                <input type="number" id="cell_spacing" name="cell_spacing" value="6.5" step="0.1">
-                            </div>
-                            <div>
-                                <label for="line_spacing">Braille Line Spacing:</label>
-                                <input type="number" id="line_spacing" name="line_spacing" value="10.0" step="0.1">
-                            </div>
-                            <div>
-                                <label for="dot_spacing">Braille Dot Spacing:</label>
-                                <input type="number" id="dot_spacing" name="dot_spacing" value="2.5" step="0.1">
-                            </div>
-                        </div>
 
-                        <div class="grade-selection">
-                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Dot Dimensions</label>
-                            <div>
-                                <label for="emboss_dot_base_diameter">Dot diameter:</label>
-                                <input type="number" id="emboss_dot_base_diameter" name="emboss_dot_base_diameter" value="1.8" step="0.1">
-                            </div>
-                            <div>
-                                <label for="emboss_dot_height">Dot height:</label>
-                                <input type="number" id="emboss_dot_height" name="emboss_dot_height" value="1.0" step="0.1">
-                            </div>
-                            <div>
-                                <label for="emboss_dot_flat_hat">Flat hat diameter:</label>
-                                <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1">
-                            </div>
-                        </div>
-
-                        <div class="grade-selection">
-                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Counter Dot Dimensions</label>
-                            <div>
-                                <label for="counter_plate_dot_size_offset">Counter Dot Diameter Offset (mm):</label>
-                                <input type="number" id="counter_plate_dot_size_offset" name="counter_plate_dot_size_offset" value="0.0" step="0.1" aria-describedby="offset-help" title="Adjusts the counter plate braille dot base diameter relative to the emboss plate diameter">
-                                <div id="offset-help" class="offset-note" style="font-size: 0.85em; margin-top: 2px;">
-                                    Adds or subtracts from the Universal Counter Plate's recessed dot diameter. The dot size mirrors the Embossing Plate's Dot Base Diameter by default.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="grade-selection">
-                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Plate Dimensions</label>
-                            <div>
-                                <label for="card_width">Plate Width:</label>
-                                <input type="number" id="card_width" name="card_width" value="90" step="0.1">
-                            </div>
-                            <div>
-                                <label for="card_height">Plate Height:</label>
-                                <input type="number" id="card_height" name="card_height" value="52" step="0.1">
-                            </div>
-                            <div>
-                                <label for="card_thickness">Plate Thickness:</label>
-                                <input type="number" id="card_thickness" name="card_thickness" value="2.0" step="0.1">
-                            </div>
-                        </div>
-
-                        <div class="grade-selection">
-                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Cylinder Dimensions</label>
-                            <div>
-                                <label for="cylinder_diameter_mm">Cylinder Diameter (mm):</label>
-                                <input type="number" id="cylinder_diameter_mm" name="cylinder_diameter_mm" value="31.35" step="0.1" min="10" max="200">
-                            </div>
-                            <div>
-                                <label for="cylinder_height_mm">Cylinder Height (mm):</label>
-                                <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200">
-                            </div>
-                            <div>
-                                <label for="cylinder_polygonal_cutout_radius_mm">Polygonal Cutout Inscribed Radius (mm):</label>
-                                <input type="number" id="cylinder_polygonal_cutout_radius_mm" name="cylinder_polygonal_cutout_radius_mm" value="13" step="0.1" min="0" max="50">
-                                <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                    Creates a 12-point polygonal cutout along the cylinder's length. Set to 0 for no cutout.
-                                </div>
-                            </div>
-                            <div>
-                                <label for="seam_offset_deg">Seam Offset (degrees):</label>
-                                <input type="number" id="seam_offset_deg" name="seam_offset_deg" value="355" step="1" min="0" max="360">
-                                <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                    Rotates the starting position of braille text around the cylinder
-                                </div>
-                            </div>
-                            <div id="cylinder-overflow-warning" class="grade-note" style="margin-top: 10px; color: #d73502; display: none;">
-                                <strong>Warning:</strong> <span id="cylinder-overflow-message"></span>
-                            </div>
-                        </div>
-
-                        <div class="grade-selection">
-                            <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille / Card Positioning</label>
-                            <div>
-                                <label for="braille_y_adjust">Y Adjust:</label>
-                                <input type="number" id="braille_y_adjust" name="braille_y_adjust" value="0.0" step="0.1">
-                            </div>
-                            <div>
-                                <label for="braille_x_adjust">X Adjust:</label>
-                                <input type="number" id="braille_x_adjust" name="braille_x_adjust" value="0.0" step="0.1">
-                            </div>
-                        </div>
-                        
-                        <div style="margin-top: 1.5em; text-align: center;">
+                        <!-- Preview button moved to the top of Expert Mode -->
+                        <div style="margin-top: 1em; margin-bottom: 0.5em; text-align: center;">
                             <button type="button" id="preview-braille-btn">Preview Braille Translation</button>
+                        </div>
+
+                        <div id="braille-preview" class="braille-preview" style="display: none;" role="region" aria-label="Braille translation preview">
+                            <h3 class="preview-heading">Braille Translation Preview:</h3>
+                            <div id="preview-content"></div>
+                        </div>
+
+                        <!-- Submenu: Shape Selection -->
+                        <div class="expert-submenu">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                                <span class="expert-submenu-title">Shape Selection</span>
+                                <span class="expert-submenu-icon">▼</span>
+                            </button>
+                            <div class="expert-submenu-content" style="display: none;">
+                                <!-- Output Shape Selection (moved into Expert Mode) -->
+                                <div class="grade-selection">
+                                    <fieldset>
+                                        <legend class="grade-label">Output Shape (Emboss and Counter)</legend>
+                                        <div class="radio-group" role="radiogroup" aria-required="true">
+                                            <label class="radio-option">
+                                                <input type="radio" name="shape_type" value="cylinder" checked aria-describedby="cylinder-shape-desc">
+                                                <span class="radio-text">Cylinder</span>
+                                            </label>
+                                            <span id="cylinder-shape-desc" class="sr-only">Creates a cylindrical braille surface</span>
+                                            <label class="radio-option">
+                                                <input type="radio" name="shape_type" value="card" aria-describedby="card-shape-desc">
+                                                <span class="radio-text">Flat Card</span>
+                                            </label>
+                                            <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card</span>
+                                        </div>
+                                    </fieldset>
+                                </div>
+
+                                <!-- Combined Shape Selection (for both Embossing Plate and Counter Plate) -->
+                                <div class="grade-selection" id="combined-shape-selection" style="display: block;">
+                                    <fieldset>
+                                        <legend class="grade-label">Braille Dot Shape (Emboss and Counter)</legend>
+                                        <div class="radio-group" role="radiogroup" aria-required="true">
+                                            <label class="radio-option">
+                                                <input type="radio" name="combined_shape" value="rounded" checked aria-describedby="rounded-combined-desc">
+                                                <span class="radio-text">Rounded</span>
+                                            </label>
+                                            <span id="rounded-combined-desc" class="sr-only">Creates rounded dome dots for emboss plate and spherical-cap bowl recess for counter plate</span>
+                                            <label class="radio-option">
+                                                <input type="radio" name="combined_shape" value="cone" aria-describedby="cone-combined-desc">
+                                                <span class="radio-text">Cone</span>
+                                            </label>
+                                            <span id="cone-combined-desc" class="sr-only">Creates cone frustum dots for emboss plate and conical frustum recess for counter plate</span>
+                                        </div>
+                                    </fieldset>
+                                </div>
+
+                                <!-- Hidden radio buttons for backend compatibility -->
+                                <div style="display: none;">
+                                    <input type="radio" name="dot_shape" value="rounded" checked>
+                                    <input type="radio" name="dot_shape" value="cone">
+                                    <input type="radio" name="recess_shape" value="1" checked>
+                                    <input type="radio" name="recess_shape" value="2">
+                                </div>
+
+                                <!-- Indicator Shape toggle -->
+                                <div class="grade-selection">
+                                    <fieldset>
+                                        <legend class="grade-label" style="font-size: 1.2em; font-weight: 700;">Indicator Shapes (Emboss and Counter)</legend>
+                                        <div class="radio-group" role="radiogroup" aria-label="Indicator Shape toggle">
+                                            <label class="radio-option">
+                                                <input type="radio" name="indicator_shapes" id="indicator_on" value="1" checked>
+                                                <span class="radio-text">On</span>
+                                            </label>
+                                            <label class="radio-option">
+                                                <input type="radio" name="indicator_shapes" id="indicator_off" value="0">
+                                                <span class="radio-text">Off</span>
+                                            </label>
+                                        </div>
+                                        <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                            When On: 2 cells are reserved per row for start/end markers. When Off: all cells are available for text.
+                                        </div>
+                                    </fieldset>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submenu: Braille Spacing -->
+                        <div class="expert-submenu">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                                <span class="expert-submenu-title">Braille Spacing</span>
+                                <span class="expert-submenu-icon">▼</span>
+                            </button>
+                            <div class="expert-submenu-content" style="display: none;">
+                                <div class="grade-selection">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
+                                    <div>
+                                        <label for="grid_columns" id="grid_columns_label">Number of Braille Cells (Characters):</label>
+                                        <input type="number" id="grid_columns" name="grid_columns" value="13" style="width: 110px;">
+                                        <div id="grid_columns_note" class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                            For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 13 cells available for text.
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="grid_rows">Number of Braille Lines:</label>
+                                        <input type="number" id="grid_rows" name="grid_rows" value="4" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="cell_spacing">Braille Cell Spacing:</label>
+                                        <input type="number" id="cell_spacing" name="cell_spacing" value="6.5" step="0.1" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="line_spacing">Braille Line Spacing:</label>
+                                        <input type="number" id="line_spacing" name="line_spacing" value="10.0" step="0.1" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="dot_spacing">Braille Dot Spacing:</label>
+                                        <input type="number" id="dot_spacing" name="dot_spacing" value="2.5" step="0.1" style="width: 110px;">
+                                    </div>
+                                </div>
+
+                                <div class="grade-selection" style="margin-top: 8px;">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille / Card Positioning</label>
+                                    <div>
+                                        <label for="braille_y_adjust">Y Adjust:</label>
+                                        <input type="number" id="braille_y_adjust" name="braille_y_adjust" value="0.0" step="0.1" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="braille_x_adjust">X Adjust:</label>
+                                        <input type="number" id="braille_x_adjust" name="braille_x_adjust" value="0.0" step="0.1" style="width: 110px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submenu: Braille Dot Adjustments -->
+                        <div class="expert-submenu">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                                <span class="expert-submenu-title">Braille Dot Adjustments</span>
+                                <span class="expert-submenu-icon">▼</span>
+                            </button>
+                            <div class="expert-submenu-content" style="display: none;">
+                                <div class="grade-selection" id="rounded_dot_group" style="margin-top: 8px;">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Embossing Braille Dot Dimensions (Rounded Shape)</label>
+                                    <div>
+                                        <label for="rounded_dot_base_diameter">Rounded braille dot base diameter (cone base) (mm):</label>
+                                        <input type="number" id="rounded_dot_base_diameter" name="rounded_dot_base_diameter" value="2.0" step="0.1" min="0.5" max="3" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="rounded_dot_base_height">Rounded braille dot base height (cone height) (mm):</label>
+                                        <input type="number" id="rounded_dot_base_height" name="rounded_dot_base_height" value="0.2" step="0.1" min="0" max="2.0" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="rounded_dot_dome_diameter">Rounded braille dome diameter (linked to cone flat top) (mm):</label>
+                                        <input type="number" id="rounded_dot_dome_diameter" name="rounded_dot_dome_diameter" value="1.5" step="0.1" min="0.5" max="3.0" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="rounded_dot_dome_height">Rounded braille dot dome height (mm):</label>
+                                        <input type="number" id="rounded_dot_dome_height" name="rounded_dot_dome_height" value="0.6" step="0.1" min="0.1" max="2.0" style="width: 110px;">
+                                    </div>
+                                    <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                        The cone base sits on the surface; the dome grows from the cone's flat top. Dome diameter is always equal to the cone flat-top diameter.
+                                    </div>
+                                </div>
+
+                                <div class="grade-selection" style="margin-top: 8px;">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Embossing Braille Dot Dimensions (Cone Shape)</label>
+                                    <div>
+                                        <label for="emboss_dot_base_diameter">Dot diameter:</label>
+                                        <input type="number" id="emboss_dot_base_diameter" name="emboss_dot_base_diameter" value="1.8" step="0.1" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="emboss_dot_height">Dot height:</label>
+                                        <input type="number" id="emboss_dot_height" name="emboss_dot_height" value="1.0" step="0.1" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="emboss_dot_flat_hat">Flat hat diameter:</label>
+                                        <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1" style="width: 110px;">
+                                    </div>
+                                </div>
+
+                                <!-- Counter Braille Recessed Dot Dimensions (Rounded Shape) -->
+                                <div class="grade-selection" style="margin-top: 8px;">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Counter Braille Recessed Dot Dimensions (Rounded Shape)</label>
+                                    <!-- Hidden hemisphere dial for future use -->
+                                    <div style="display: none;">
+                                        <label for="hemi_counter_dot_base_diameter">Hemisphere Recess Dot Base Diameter (mm):</label>
+                                        <input type="number" id="hemi_counter_dot_base_diameter" name="hemi_counter_dot_base_diameter" value="1.6" step="0.1" min="0.5" max="5">
+                                    </div>
+                                    <div id="hemisphere_dimensions_group" style="margin-top: 6px; display: none;">
+                                        <div class="grade-note" style="font-size: 0.85em;">
+                                            Hemisphere depth equals radius at the opening.
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="bowl_counter_dot_base_diameter">Bowl Recess Dot Base Diameter (mm):</label>
+                                        <input type="number" id="bowl_counter_dot_base_diameter" name="bowl_counter_dot_base_diameter" value="1.8" step="0.1" min="0.5" max="5" style="width: 110px;">
+                                    </div>
+                                    <div id="bowl_dimensions_group" style="margin-top: 6px;">
+                                        <div>
+                                            <label for="counter_dot_depth">Bowl Recess Dot Depth (mm):</label>
+                                            <input type="number" id="counter_dot_depth" name="counter_dot_depth" value="0.8" step="0.1" min="0" max="5" style="width: 110px;">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Counter Braille Recessed Dot Dimensions (Cone Shape) -->
+                                <div class="grade-selection" id="cone_dimensions_group" style="margin-top: 8px;">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Counter Braille Recessed Dot Dimensions (Cone Shape)</label>
+                                    <div>
+                                        <label for="cone_counter_dot_base_diameter">Dot Base Diameter (mm):</label>
+                                        <input type="number" id="cone_counter_dot_base_diameter" name="cone_counter_dot_base_diameter" value="1.6" step="0.1" min="0.1" max="5" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="cone_counter_dot_height">Dot Height (mm):</label>
+                                        <input type="number" id="cone_counter_dot_height" name="cone_counter_dot_height" value="0.8" step="0.1" min="0" max="5" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="cone_counter_dot_flat_hat">Dot Flat Hat Diameter (mm):</label>
+                                        <input type="number" id="cone_counter_dot_flat_hat" name="cone_counter_dot_flat_hat" value="0.4" step="0.1" min="0" max="5" style="width: 110px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submenu: Surface Dimensions -->
+                        <div class="expert-submenu">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                                <span class="expert-submenu-title">Surface Dimensions</span>
+                                <span class="expert-submenu-icon">▼</span>
+                            </button>
+                            <div class="expert-submenu-content" style="display: none;">
+                                <div class="grade-selection">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Cylinder Dimensions</label>
+                                    <div>
+                                        <label for="cylinder_diameter_mm">Cylinder Diameter (mm):</label>
+                                        <input type="number" id="cylinder_diameter_mm" name="cylinder_diameter_mm" value="30.75" step="0.1" min="10" max="200" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="cylinder_height_mm">Cylinder Height (mm):</label>
+                                        <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="cylinder_polygonal_cutout_radius_mm">Polygonal Cutout Circumscribed Radius (mm):</label>
+                                        <input type="number" id="cylinder_polygonal_cutout_radius_mm" name="cylinder_polygonal_cutout_radius_mm" value="13" step="0.1" min="0" max="50" style="width: 110px;">
+                                        <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                            Creates a polygonal cutout along the cylinder's length. Set to 0 for no cutout.
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="cylinder_polygonal_cutout_sides">Polygonal Cutout Points:</label>
+                                        <input type="number" id="cylinder_polygonal_cutout_sides" name="cylinder_polygonal_cutout_sides" value="12" step="1" min="3" max="60" style="width: 110px;">
+                                        <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                            Lower values create simpler shapes (e.g., 6); higher values approximate a circle.
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="seam_offset_deg">Seam Offset (degrees):</label>
+                                        <input type="number" id="seam_offset_deg" name="seam_offset_deg" value="355" step="1" min="0" max="360" style="width: 110px;">
+                                        <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                            Rotates the starting position of braille text around the cylinder
+                                        </div>
+                                    </div>
+                                    <div id="cylinder-overflow-warning" class="grade-note" style="margin-top: 10px; color: #d73502; display: none;">
+                                        <strong>Warning:</strong> <span id="cylinder-overflow-message"></span>
+                                    </div>
+                                </div>
+
+                                <div class="grade-selection" style="margin-top: 8px;">
+                                    <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Plate Dimensions</label>
+                                    <div>
+                                        <label for="card_width">Plate Width:</label>
+                                        <input type="number" id="card_width" name="card_width" value="90" step="0.1" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="card_height">Plate Height:</label>
+                                        <input type="number" id="card_height" name="card_height" value="52" step="0.1" style="width: 110px;">
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <label for="card_thickness">Plate Thickness:</label>
+                                        <input type="number" id="card_thickness" name="card_thickness" value="2.0" step="0.1" style="width: 110px;">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1774,11 +2205,6 @@
                         <!-- Test buttons removed as they are no longer needed -->
                     </div>
                 </form>
-                
-                <div id="braille-preview" class="braille-preview" style="display: none;" role="region" aria-label="Braille translation preview">
-                    <h3 class="preview-heading">Braille Translation Preview:</h3>
-                    <div id="preview-content"></div>
-                </div>
             </div>
         </div>
     </div>
@@ -1786,26 +2212,19 @@
 
     
     <!-- Load the real liblouis JavaScript implementation from static files -->
-    <script src="static/liblouis/build-no-tables-utf16.js"></script>
-    <script src="static/liblouis/easy-api.js"></script>
-    <!-- Runtime config for GitHub Pages / external backend -->
-    <script src="static/app-config.js"></script>
+    <script src="/static/liblouis/build-no-tables-utf16.js"></script>
+    <script src="/static/liblouis/easy-api.js"></script>
     
     <script type="module">
-        import * as THREE from 'three';
-        import { STLLoader } from './static/STLLoader.js';
-        import { OrbitControls } from './static/OrbitControls.js';
-        import { buildCardEmbossingPlate, buildCylinderEmbossingPlate, buildCardCounterPlate, buildCylinderCounterPlate } from './static/geometry.js';
-        import { exportObjectToAsciiSTL } from './static/export-stl.js';
-        // Static GH Pages deployment: disable backend completely
-        const API_BASE = '';
-        const backendAvailable = false;
+        import * as THREE from '/static/three.module.js';
+        import { STLLoader } from '/static/STLLoader.js';
+        import { OrbitControls } from '/static/OrbitControls.js';
         async function loadLanguageOptions() {
             const select = document.getElementById('language-table');
             if (!select) return;
 
-            // Preserve the first two default English UEB options
-            const defaultValues = new Set(['en-ueb-g2.ctb', 'en-ueb-g1.ctb']);
+            // Preserve the four top U.S. English defaults (UEB and EBAE)
+            const defaultValues = new Set(['en-ueb-g2.ctb', 'en-ueb-g1.ctb', 'en-us-g2.ctb', 'en-us-g1.ctb']);
             const defaultOptions = Array.from(select.querySelectorAll('option')).filter(o => defaultValues.has(o.value));
 
             // Clear existing and re-add defaults in an optgroup
@@ -1815,35 +2234,23 @@
             defaultOptions.forEach(o => defaultGroup.appendChild(o));
             select.appendChild(defaultGroup);
 
-            // Load static manifest only
-            let staticData = null;
+            // Fetch available tables from backend
+            let resp;
             try {
-                const tablesManifestUrl = new URL('../static/tables-manifest.json', import.meta.url);
-                const resp = await fetch(tablesManifestUrl.href, { cache: 'no-store' });
-                if (resp.ok) {
-                    staticData = await resp.json();
-                }
-            } catch (e) { /* ignore */ }
-            // Use static entries only
-            const merged = { tables: [] };
-            const seenFiles = new Set(defaultValues);
-            const pushUnique = (t) => {
-                if (!t || !t.file || seenFiles.has(t.file)) return;
-                merged.tables.push(t);
-                seenFiles.add(t.file);
-            };
-            if (staticData && Array.isArray(staticData.tables)) {
-                staticData.tables.forEach(pushUnique);
+                resp = await fetch('/liblouis/tables', { credentials: 'same-origin' });
+            } catch (e) {
+                return; // Fail silently; defaults remain
             }
-
-            if (!merged.tables || merged.tables.length === 0) return;
+            if (!resp || !resp.ok) return;
+            const data = await resp.json().catch(() => null);
+            if (!data || !Array.isArray(data.tables)) return;
 
             // Build label for each entry (native-language autonyms)
             const otherGroup = document.createElement('optgroup');
             otherGroup.label = 'Other';
 
             const seen = new Set(defaultValues);
-            const entries = merged.tables.slice();
+            const entries = data.tables.slice();
 
             // Sort: English first, then by locale and file name
             entries.sort((a, b) => {
@@ -1858,148 +2265,56 @@
                 return af < bf ? -1 : af > bf ? 1 : 0;
             });
 
-            // Language name mappings with native scripts (autonyms)
-            const languageNames = {
-                'af': 'Afrikaans',
-                'ar': 'العربية', // Arabic
-                'as': 'অসমীয়া', // Assamese  
-                'aw': 'अवधी', // Awadhi
-                'be': 'বাংলা', // Bengali
-                'bg': 'Български', // Bulgarian
-                'bh': 'भोजपुरी', // Bhojpuri
-                'bn': 'বাংলা', // Bengali
-                'bo': 'བོད་སྐད་', // Tibetan
-                'br': 'ब्राज', // Braj
-                'ca': 'Català', // Catalan
-                'chr': 'ᏣᎳᎩ', // Cherokee
-                'ckb': 'کوردی', // Central Kurdish
-                'cs': 'Čeština', // Czech
-                'cy': 'Cymraeg', // Welsh
-                'da': 'Dansk', // Danish
-                'de': 'Deutsch', // German
-                'dra': 'द्राविड़', // Dravidian
-                'el': 'Ελληνικά', // Greek
-                'en': 'English',
-                'eo': 'Esperanto',
-                'es': 'Español', // Spanish
-                'et': 'Eesti', // Estonian
-                'fa': 'فارسی', // Persian/Farsi
-                'fi': 'Suomi', // Finnish
-                'fr': 'Français', // French
-                'ga': 'Gaeilge', // Irish
-                'gd': 'Gàidhlig', // Scottish Gaelic
-                'gez': 'ግዕዝ', // Ge'ez
-                'gon': 'गोंडी', // Gondi
-                'gu': 'ગુજરાતી', // Gujarati
-                'haw': 'ʻŌlelo Hawaiʻi', // Hawaiian
-                'he': 'עברית', // Hebrew
-                'hi': 'हिन्दी', // Hindi
-                'hr': 'Hrvatski', // Croatian
-                'hu': 'Magyar', // Hungarian
-                'hy': 'Հայերեն', // Armenian
-                'is': 'Íslenska', // Icelandic
-                'it': 'Italiano', // Italian
-                'iu': 'ᐃᓄᒃᑎᑐᑦ', // Inuktitut
-                'ka': 'ಕನ್ನಡ', // Kannada
-                'kh': 'ខ្មែរ', // Khmer
-                'kn': 'ಕನ್ನಡ', // Kannada
-                'ko': '한국어', // Korean
-                'kok': 'कोंकणी', // Konkani
-                'kru': 'कुरुख', // Kurukh
-                'ks': 'कॉशुर', // Kashmiri
-                'lt': 'Lietuvių', // Lithuanian
-                'lv': 'Latviešu', // Latvian
-                'mao': 'Te Reo Māori', // Maori
-                'ml': 'മലയാളം', // Malayalam
-                'mn': 'Монгол', // Mongolian
-                'mni': 'মৈতৈলোন্', // Manipuri
-                'mr': 'मराठी', // Marathi
-                'mt': 'Malti', // Maltese
-                'mun': 'मुंडारी', // Mundari
-                'mwr': 'मारवाड़ी', // Marwari
-                'ne': 'नेपाली', // Nepali
-                'nl': 'Nederlands', // Dutch
-                'no': 'Norsk', // Norwegian
-                'np': 'नेपाली', // Nepali
-                'or': 'ଓଡ଼ିଆ', // Odia
-                'pa': 'ਪੰਜਾਬੀ', // Punjabi
-                'pi': 'पालि', // Pali
-                'pl': 'Polski', // Polish
-                'pt': 'Português', // Portuguese
-                'pu': 'ਪੰਜਾਬੀ', // Punjabi
-                'ro': 'Română', // Romanian
-                'ru': 'Русский', // Russian
-                'sa': 'संस्कृतम्', // Sanskrit
-                'sd': 'سنڌي', // Sindhi
-                'se': 'Sámegiella', // Northern Sami
-                'si': 'සිංහල', // Sinhala
-                'sk': 'Slovenčina', // Slovak
-                'sl': 'Slovenščina', // Slovenian
-                'sot': 'Sesotho', // Southern Sotho
-                'sr': 'Српски', // Serbian
-                'sv': 'Svenska', // Swedish
-                'ta': 'தமிழ்', // Tamil
-                'te': 'తెలుగు', // Telugu
-                'tr': 'Türkçe', // Turkish
-                'tsn': 'Setswana', // Tswana
-                'ur': 'اردو', // Urdu
-                'vi': 'Tiếng Việt', // Vietnamese
-                'zh': '中文', // Chinese
+            // Name helpers using Intl.DisplayNames for correctness
+            const getLanguageAutonym = (lang) => {
+                try {
+                    // Use the language's own locale to get its autonym
+                    const dn = new Intl.DisplayNames([lang], { type: 'language' });
+                    return dn.of(lang) || lang;
+                } catch (e) {
+                    // Fallback capitalization
+                    return lang.charAt(0).toUpperCase() + lang.slice(1);
+                }
             };
 
-            // Region/country names where needed
-            const regionNames = {
-                'ZA': 'South Africa',
-                'IN': 'India', 
-                'US': 'United States',
-                'GB': 'United Kingdom',
-                'CA': 'Canada',
-                'NZ': 'New Zealand',
-                'CHN': 'China (Simplified)',
-                'TW': 'Taiwan (Traditional)',
-                'HK': 'Hong Kong',
-                'CH': 'Switzerland',
-                'DE': 'Germany',
-                'ES': 'Spain',
-                'FR': 'France',
-                'BE': 'Belgium',
-                'NL': 'Netherlands',
-                'PT': 'Portugal',
-                'AT': 'Austria',
-                'MN': 'Mongolia',
-                'PK': 'Pakistan',
-                'IR': 'Iran',
+            const getLanguageEnglish = (lang) => {
+                try {
+                    const dn = new Intl.DisplayNames(['en'], { type: 'language' });
+                    return dn.of(lang) || lang;
+                } catch (e) {
+                    return lang.charAt(0).toUpperCase() + lang.slice(1);
+                }
             };
 
-            // Helper to get language name
-            const getLanguageName = (locale) => {
-                if (!locale) return '';
-                const parts = locale.split('-');
-                const lang = parts[0].toLowerCase();
-                return languageNames[lang] || lang.charAt(0).toUpperCase() + lang.slice(1);
+            const getRegionEnglish = (region) => {
+                if (!region) return '';
+                try {
+                    const dn = new Intl.DisplayNames(['en'], { type: 'region' });
+                    return dn.of(region) || region;
+                } catch (e) {
+                    return region;
+                }
             };
 
-            // Helper to get full display name
+            // Helper to get full display name: autonym first, then English
             const getDisplayName = (t) => {
                 const locale = (t.locale || '').replace('_', '-');
                 const parts = locale.split('-');
-                const langCode = parts[0].toLowerCase();
+                const langCode = (parts[0] || 'und').toLowerCase();
                 const region = parts[1] ? parts[1].toUpperCase() : '';
-                
-                let displayName = getLanguageName(locale);
-                
-                // Add region if present and meaningful
-                if (region && regionNames[region]) {
-                    displayName += `, ${regionNames[region]}`;
-                } else if (region && region.length === 2) {
-                    displayName += ` (${region})`;
-                }
-                
+
+                const auto = getLanguageAutonym(langCode);
+                const eng = getLanguageEnglish(langCode);
+                const regionEng = getRegionEnglish(region);
+
+                let displayName = auto === eng ? auto : `${auto} — ${eng}`;
+                if (regionEng) displayName += `, ${regionEng}`;
+
                 return displayName;
             };
 
             // Process entries
-            const usedLabels = new Map(); // Track label -> count
+            const usedSemantic = new Set(); // Deduplicate by semantic identity (locale+variant+grade+type+dots)
 
             for (const t of entries) {
                 const file = t.file;
@@ -2041,13 +2356,21 @@
                 
                 // Special naming for specific files
                 if (file === 'en-ueb-g2.ctb') {
-                    baseName = 'English, U.S.';
+                    baseName = 'English (UEB), United States';
                     parts.length = 0;
-                    parts.push('contracted', 'UEB grade 2');
+                    parts.push('contracted', 'grade 2');
                 } else if (file === 'en-ueb-g1.ctb') {
-                    baseName = 'English, U.S.';
+                    baseName = 'English (UEB), United States';
                     parts.length = 0;
-                    parts.push('uncontracted', 'UEB grade 1');
+                    parts.push('uncontracted', 'grade 1');
+                } else if (file === 'en-us-g2.ctb') {
+                    baseName = 'English (EBAE), United States';
+                    parts.length = 0;
+                    parts.push('contracted', 'grade 2');
+                } else if (file === 'en-us-g1.ctb') {
+                    baseName = 'English (EBAE), United States';
+                    parts.length = 0;
+                    parts.push('uncontracted', 'grade 1');
                 } else if (file.includes('-comp')) {
                     if (!parts.includes('computer') && !parts.includes('8-dot computer')) {
                         parts.push('computer braille');
@@ -2059,13 +2382,19 @@
                 if (parts.length > 0) {
                     label += ` (${parts.join(', ')})`;
                 }
-                
-                // Handle duplicates
-                const labelCount = usedLabels.get(label) || 0;
-                if (labelCount > 0) {
-                    label += ` [${file}]`;
+
+                // Deduplicate by semantic identity to avoid near-duplicate entries
+                const semanticKey = [
+                    (t.locale || '').toLowerCase(),
+                    (t.variant || '').toLowerCase(),
+                    (t.grade || '').toString().toLowerCase(),
+                    (t.type || '').toLowerCase(),
+                    (t.dots == null ? '' : String(t.dots))
+                ].join('|');
+                if (usedSemantic.has(semanticKey)) {
+                    continue; // Skip duplicates
                 }
-                usedLabels.set(label, labelCount + 1);
+                usedSemantic.add(semanticKey);
 
                 const opt = document.createElement('option');
                 opt.value = file;
@@ -2074,10 +2403,37 @@
             }
 
             select.appendChild(otherGroup);
+            
+            // Default to UEB grade 1 unless user has a saved preference (business card-friendly)
+            try {
+                const saved = localStorage.getItem('braille_prefs_language_table');
+                const hasSaved = saved && Array.from(select.options).some(o => o.value === saved);
+                select.value = hasSaved ? saved : 'en-ueb-g1.ctb';
+            } catch (e) {
+                select.value = 'en-ueb-g1.ctb';
+            }
         }
 
         // Kick off language options load ASAP
-        loadLanguageOptions();
+        loadLanguageOptions().then(() => {
+            try {
+                const select = document.getElementById('language-table');
+                // Force default to English (UEB) uncontracted grade 1 if available
+                try {
+                    const desiredDefault = 'en-ueb-g1.ctb';
+                    const hasDesired = Array.from(select.options).some(o => o.value === desiredDefault);
+                    if (hasDesired) select.value = desiredDefault;
+                } catch (e) {}
+                select.addEventListener('change', () => {
+                    try { localStorage.setItem('braille_prefs_language_table', select.value); } catch (e) {}
+                    // Keep per-line language dropdowns in sync with available options
+                    try { syncLineLanguageSelects(); } catch (e) {}
+                });
+                // Populate per-line selects once options are loaded
+                try { syncLineLanguageSelects(); } catch (e) {}
+            } catch (e) {}
+        });
+        
 
         // Declare 3D scene variables at module scope
         let renderer, scene, camera, mesh, controls;
@@ -2088,7 +2444,6 @@
         const log = {
             debug: isProduction ? () => {} : console.log,
             info: isProduction ? () => {} : console.log,
-            warn: isProduction ? () => {} : console.warn,
             error: console.error // Always log errors
         };
 
@@ -2106,14 +2461,8 @@
         };
         
         let currentThemeIndex = 0;
-        const savedTheme = localStorage.getItem('preferred-theme');
-        if (savedTheme && themes.includes(savedTheme)) {
-            currentThemeIndex = themes.indexOf(savedTheme);
-            applyTheme(savedTheme);
-        } else {
-            // Default to dark mode if no saved preference
-            applyTheme('dark');
-        }
+        // Always start in dark mode; do not persist theme
+        applyTheme('dark');
 
         function applyTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
@@ -2133,9 +2482,6 @@
             
             // Update aria-label to show current theme and what will happen next
             themeToggle.setAttribute('aria-label', `Current theme: ${themeNames[theme]}. Click to switch to ${themeNames[nextTheme]} theme`);
-            
-            // Save preference
-            localStorage.setItem('preferred-theme', theme);
             
             // Announce theme change to screen readers
             const announcement = document.createElement('div');
@@ -2157,7 +2503,7 @@
 
         // Function to update 3D scene colors when theme changes
         function update3DSceneColors() {
-            if (scene && renderer && camera) {
+            if (typeof scene !== 'undefined' && scene && typeof renderer !== 'undefined' && renderer) {
                 const styles = getComputedStyle(document.documentElement);
                 const stlBackground = styles.getPropertyValue('--stl-background').trim() || '#f1f5f9';
                 const stlAmbientLight = styles.getPropertyValue('--stl-ambient-light').trim() || '#888888';
@@ -2248,35 +2594,14 @@
         // Check if mobile device
         const isMobile = window.innerWidth <= 768;
         
-        // Load saved font size preference
-        const savedFontSize = localStorage.getItem('preferred-font-size');
-        if (savedFontSize && !isMobile) {
-            // Only use saved preference on desktop
-            currentFontSizeIndex = fontSizes.indexOf(parseInt(savedFontSize));
-            if (currentFontSizeIndex === -1) currentFontSizeIndex = 2;
-        } else if (isMobile) {
-            // Mobile defaults to 100% unless user has specifically set mobile preference
-            const savedMobileFontSize = localStorage.getItem('preferred-mobile-font-size');
-            if (savedMobileFontSize) {
-                currentFontSizeIndex = fontSizes.indexOf(parseInt(savedMobileFontSize));
-                if (currentFontSizeIndex === -1) currentFontSizeIndex = 2; // Default to 100% on mobile
-            } else {
-                currentFontSizeIndex = 2; // Default to 100% on mobile
-            }
-        }
+        // Always start at default 100%; do not persist font size
+        currentFontSizeIndex = 2;
         
         function applyFontSize(sizeIndex) {
             const size = fontSizes[sizeIndex];
             document.documentElement.style.fontSize = size + '%';
             document.getElementById('current-font-size').textContent = size;
             currentFontSizeIndex = sizeIndex;
-            
-            // Save preference with device-specific key
-            if (window.innerWidth <= 768) {
-                localStorage.setItem('preferred-mobile-font-size', size);
-            } else {
-                localStorage.setItem('preferred-font-size', size);
-            }
             
             // Announce font size change to screen readers
             const announcement = document.createElement('div');
@@ -2389,93 +2714,172 @@
             // Language selection
             const languageSelect = document.getElementById('language-table');
             if (languageSelect) {
-                languageSelect.addEventListener('change', resetToGenerateState);
+                languageSelect.addEventListener('change', function() {
+                    resetToGenerateState();
+                });
             }
             
-            // Function to update grid columns based on plate type
+            // Function to update grid columns based on plate type (promoted to top-level scope below)
             function updateGridColumnsForPlateType(preserveValue = false) {
                 const plateType = document.querySelector('input[name="plate_type"]:checked').value;
                 const gridColumnsInput = document.getElementById('grid_columns');
                 const gridColumnsLabel = document.getElementById('grid_columns_label');
                 const gridColumnsNote = document.getElementById('grid_columns_note');
+                const indicatorOn = document.querySelector('input[name="indicator_shapes"]:checked')?.value === '1';
                 
                 // Store current value before update
                 const currentValue = parseInt(gridColumnsInput.value);
                 
                 if (plateType === 'positive') {
-                    // Embossing plate - show available cells (total - 2)
+                    // Embossing plate - available cells depend on indicator toggle
                     gridColumnsLabel.textContent = 'Number of Available Braille Cells:';
                     gridColumnsNote.style.display = 'block';
-                    gridColumnsNote.textContent = 'For embossing plates: 2 cells are reserved for row indicators (start/end markers).';
-                    
-                    if (!preserveValue) {
-                        // Only set default value if not preserving user's custom value
-                        // Show user the available cells (12), backend will add 2 for indicators
-                        gridColumnsInput.value = '12';
-                    } else {
-                        // Convert from backend value (total) to displayed value (available)
-                        if (currentValue > 2) {
-                            gridColumnsInput.value = String(currentValue - 2);
-                        }
-                    }
+                    gridColumnsNote.textContent = indicatorOn
+                        ? 'For embossing plates: 2 cells are reserved for row indicators (start/end markers).'
+                        : 'Indicators off: all columns are available for text.';
+                    // Always normalize the dial to the recommended default to avoid drift
+                    gridColumnsInput.value = indicatorOn ? '13' : '15';
                 } else {
-                    // Counter plate - show available cells (total - 2)
+                    // Counter plate - available cells depend on indicator toggle
                     gridColumnsLabel.textContent = 'Available Braille Cells for Text:';
-                    gridColumnsNote.textContent = 'For counter plates: 2 cells are reserved for row indicators (start/end markers), leaving 12 cells available for text.';
+                    gridColumnsNote.textContent = indicatorOn
+                        ? 'For counter plates: 2 cells are reserved for row indicators (start/end markers), leaving 13 cells available for text.'
+                        : 'Indicators off: all columns are available for text.';
                     gridColumnsNote.style.display = 'block';
-                    
-                    if (!preserveValue) {
-                        // Only set default value if not preserving user's custom value
-                        // Show user the available cells (12), backend will add 2 for indicators
-                        gridColumnsInput.value = '12';
-                    } else {
-                        // Convert from backend value (total) to displayed value (available)
-                        if (currentValue > 2) {
-                            gridColumnsInput.value = String(currentValue - 2);
-                        }
-                    }
+                    // Always normalize the dial to the recommended default to avoid drift
+                    gridColumnsInput.value = indicatorOn ? '13' : '15';
                 }
             }
+            // Expose for other handlers safely
+            try { window.updateGridColumnsForPlateType = updateGridColumnsForPlateType; } catch (e) {}
             
             // Plate type radio buttons
             document.querySelectorAll('input[name="plate_type"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     resetToGenerateState();
                     updateGridColumnsForPlateType();
+                    const combinedShapeSel = document.getElementById('combined-shape-selection');
+                    if (combinedShapeSel) { combinedShapeSel.style.display = 'block'; }
+                    const roundedGroup = document.getElementById('rounded_dot_group');
+                    if (roundedGroup) roundedGroup.style.display = '';
+                    if (document.querySelector('input[name="placement_mode"]:checked')?.value === 'auto') {
+                        computeAutoOverflow();
+                    }
                 });
             });
             
             // Initialize grid columns on page load
             updateGridColumnsForPlateType();
+            // Wire indicator toggle listeners
+            document.querySelectorAll('input[name="indicator_shapes"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    resetToGenerateState();
+                    updateGridColumnsForPlateType(true);
+                    if (document.querySelector('input[name=\"placement_mode\"]:checked')?.value === 'auto') {
+                        computeAutoOverflow();
+                    }
+                });
+            });
             
             // Shape type radio buttons
             document.querySelectorAll('input[name="shape_type"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     resetToGenerateState();
                     updateShapeSettings();
-                    // Save shape selection to localStorage
-                    try {
-                        localStorage.setItem('brailleGeneratorShapeType', this.value);
-                        log.debug('Saved shape type to localStorage:', this.value);
-                    } catch (e) {
-                        // Silently fail if localStorage is not available
-                        log.warn('Could not save shape type to localStorage:', e);
+                    if (document.querySelector('input[name=\"placement_mode\"]:checked')?.value === 'auto') {
+                        computeAutoOverflow();
                     }
+                    // Do not persist shape selection; always reset on reload
+                });
+            });
+            // Plate type radio buttons (update dependent UI; recess controls always visible)
+            document.querySelectorAll('input[name="plate_type"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    resetToGenerateState();
+                    updateShapeSettings();
                 });
             });
             
-            // Counter plate offset
-            const counterPlateOffset = document.getElementById('counter_plate_dot_size_offset');
-            if (counterPlateOffset) {
-                counterPlateOffset.addEventListener('input', resetToGenerateState);
-            }
+            // Counter plate controls
+            const hemiCounterBase = document.getElementById('hemi_counter_dot_base_diameter');
+            const bowlCounterBase = document.getElementById('bowl_counter_dot_base_diameter');
+            const counterDotDepth = document.getElementById('counter_dot_depth');
+            const coneCounterBase = document.getElementById('cone_counter_dot_base_diameter');
+            const coneCounterHeight = document.getElementById('cone_counter_dot_height');
+            const coneCounterHat = document.getElementById('cone_counter_dot_flat_hat');
+            if (hemiCounterBase) hemiCounterBase.addEventListener('input', resetToGenerateState);
+            if (bowlCounterBase) bowlCounterBase.addEventListener('input', resetToGenerateState);
+            if (counterDotDepth) counterDotDepth.addEventListener('input', resetToGenerateState);
+            if (coneCounterBase) coneCounterBase.addEventListener('input', resetToGenerateState);
+            if (coneCounterHeight) coneCounterHeight.addEventListener('input', resetToGenerateState);
+            if (coneCounterHat) coneCounterHat.addEventListener('input', resetToGenerateState);
+
+            // Combined shape selection - sets both emboss and counter shapes
+            document.querySelectorAll('input[name="combined_shape"]').forEach(r => {
+                r.addEventListener('change', () => {
+                    resetToGenerateState();
+                    const combinedVal = document.querySelector('input[name="combined_shape"]:checked')?.value || 'rounded';
+                    const isRounded = combinedVal === 'rounded';
+                    const isCone = combinedVal === 'cone';
+                    
+                    console.log('Combined shape changed to:', combinedVal, 'isRounded:', isRounded, 'isCone:', isCone);
+                    
+                    // Set emboss plate shape (dot_shape)
+                    const dotShapeRadios = document.querySelectorAll('input[name="dot_shape"]');
+                    dotShapeRadios.forEach(radio => {
+                        if (isRounded && radio.value === 'rounded') {
+                            radio.checked = true;
+                            console.log('Set dot_shape to rounded');
+                        }
+                        if (isCone && radio.value === 'cone') {
+                            radio.checked = true;
+                            console.log('Set dot_shape to cone');
+                        }
+                    });
+                    
+                    // Set counter plate shape (recess_shape)
+                    const recessShapeRadios = document.querySelectorAll('input[name="recess_shape"]');
+                    recessShapeRadios.forEach(radio => {
+                        if (isRounded && radio.value === '1') {
+                            radio.checked = true; // Bowl (rounded)
+                            console.log('Set recess_shape to 1 (bowl)');
+                        }
+                        if (isCone && radio.value === '2') {
+                            radio.checked = true; // Cone
+                            console.log('Set recess_shape to 2 (cone)');
+                        }
+                    });
+                    
+                    // Update dimension groups visibility
+                    const bowlGroup = document.getElementById('bowl_dimensions_group');
+                    const coneGroup = document.getElementById('cone_dimensions_group');
+                    if (bowlGroup) bowlGroup.style.display = '';
+                    if (coneGroup) coneGroup.style.display = '';
+                    
+                    // Debug: Log current values
+                    const currentDotShape = document.querySelector('input[name="dot_shape"]:checked')?.value;
+                    const currentRecessShape = document.querySelector('input[name="recess_shape"]:checked')?.value;
+                    console.log('After sync - dot_shape:', currentDotShape, 'recess_shape:', currentRecessShape);
+                });
+            });
             
             // Expert mode parametric dials
             const expertInputs = [
                 'emboss_dot_base_diameter',
                 'emboss_dot_height', 
                 'emboss_dot_flat_hat',
-                'counter_plate_dot_size_offset',
+                'hemi_counter_dot_base_diameter',
+                'bowl_counter_dot_base_diameter',
+                'counter_dot_depth',
+                'cone_counter_dot_base_diameter',
+                'cone_counter_dot_height',
+                'cone_counter_dot_flat_hat',
+                // use_bowl_recess handled via radios
+                'rounded_dot_base_diameter',
+                'rounded_dot_cylinder_height',
+                'rounded_dot_base_height',
+                'rounded_dot_dome_diameter',
+                'rounded_dot_dome_height',
                 'grid_columns',
                 'grid_rows',
                 'cell_spacing',
@@ -2485,13 +2889,20 @@
                 'card_height',
                 'card_thickness',
                 'braille_x_adjust',
-                'braille_y_adjust'
+                'braille_y_adjust',
+                // Custom: indicator shapes toggle changes available cells view
+                'indicator_shapes'
             ];
             
             expertInputs.forEach(inputId => {
                 const input = document.getElementById(inputId);
                 if (input) {
-                    input.addEventListener('input', resetToGenerateState);
+                    input.addEventListener('input', function() {
+                        resetToGenerateState();
+                        if (inputId === 'indicator_shapes') {
+                            updateGridColumnsForPlateType(true);
+                        }
+                    });
                 }
             });
             
@@ -2500,6 +2911,7 @@
                 'cylinder_diameter_mm',
                 'cylinder_height_mm',
                 'cylinder_polygonal_cutout_radius_mm',
+                'cylinder_polygonal_cutout_sides',
                 'seam_offset_deg'
             ];
             
@@ -2522,19 +2934,24 @@
                 return;
             }
             const shapeType = shapeTypeElement.value;
-            // Avoid :has() selector for broader browser support
-            const cylinderSettings = (function() {
-                const sections = document.querySelectorAll('.grade-selection');
-                for (const section of sections) {
-                    if (section.querySelector('#cylinder_diameter_mm')) return section;
-                }
-                return null;
-            })();
+            const cylinderSettings = document.querySelector('.grade-selection:has(#cylinder_diameter_mm)');
             
             // Always show cylinder dimensions in expert mode
             if (cylinderSettings) {
                 cylinderSettings.style.display = 'block';
             }
+            // Recess controls always visible; toggle sub-groups by chosen recess
+            const recessSel = document.getElementById('recess-shape-selection');
+            const recessValInit = document.querySelector('input[name="recess_shape"]:checked')?.value || '1';
+            const isBowl = recessValInit === '1';
+            const isCone = recessValInit === '2';
+            if (recessSel) recessSel.style.display = '';
+            const bowlGroup = document.getElementById('bowl_dimensions_group');
+            const hemiGroup = document.getElementById('hemisphere_dimensions_group');
+            const coneGroup = document.getElementById('cone_dimensions_group');
+            if (bowlGroup) bowlGroup.style.display = '';
+            if (hemiGroup) hemiGroup.style.display = 'none';
+            if (coneGroup) coneGroup.style.display = '';
             
             // Initialize cylinder height with current card height when cylinder is selected
             if (shapeType === 'cylinder') {
@@ -2553,7 +2970,7 @@
             if (!shapeTypeElement || shapeTypeElement.value !== 'cylinder') return;
             const shapeType = shapeTypeElement.value;
             
-            const diameter = parseFloat(document.getElementById('cylinder_diameter_mm').value) || 31.35;
+            const diameter = parseFloat(document.getElementById('cylinder_diameter_mm').value) || 30.75;
             const height = parseFloat(document.getElementById('cylinder_height_mm').value) || 52;
             const cellSpacing = parseFloat(document.getElementById('cell_spacing').value) || 6.5;
             const dotSpacing = parseFloat(document.getElementById('dot_spacing').value) || 2.5;
@@ -2598,15 +3015,42 @@
                 const lineDiv = document.createElement('div');
                 lineDiv.className = 'line-input';
                 lineDiv.innerHTML = `
-                    <label for="line${i}" class="line-label">Line ${i}</label>
-                    <input type="text" id="line${i}" name="line${i}" placeholder="Enter English text here..." maxlength="50" aria-describedby="line${i}-help">
-                    <span id="line${i}-help" class="sr-only">Maximum 50 characters for line ${i}</span>
+                    <div class="line-translation-row">
+                        <label for="line_lang_${i}" class="line-label">Line ${i} Translation</label>
+                        <select id="line_lang_${i}" name="line_lang_${i}" class="language-select line-language-select" aria-describedby="line${i}-lang-help"></select>
+                        <span id="line${i}-lang-help" class="sr-only">Select translation language for line ${i}</span>
+                    </div>
+                    <div class="line-text-row">
+                        <label for="line${i}" class="line-label">Line ${i}</label>
+                        <input type="text" id="line${i}" name="line${i}" placeholder="Enter English text here..." maxlength="50" aria-describedby="line${i}-help">
+                        <span id="line${i}-help" class="sr-only">Maximum 50 characters for line ${i}</span>
+                    </div>
                 `;
                 container.appendChild(lineDiv);
             }
             
+            // Populate per-line language selects with available options
+            syncLineLanguageSelects();
+            
             // Re-add event listeners for the new inputs
             addInputChangeListeners();
+        }
+
+        // Populate all per-line language selects from the master language-table options
+        function syncLineLanguageSelects() {
+            const master = document.getElementById('language-table');
+            if (!master) return;
+            const optionsHTML = master.innerHTML;
+            const masterValue = master.value;
+            document.querySelectorAll('.line-language-select').forEach(sel => {
+                const previous = sel.value;
+                sel.innerHTML = optionsHTML;
+                // Prefer keeping prior choice; otherwise prefer English UEB Grade 1; otherwise fallback to master
+                const hasPrev = previous && Array.from(sel.options).some(o => o.value === previous);
+                const desiredDefault = 'en-ueb-g1.ctb';
+                const hasDesired = Array.from(sel.options).some(o => o.value === desiredDefault);
+                sel.value = hasPrev ? previous : (hasDesired ? desiredDefault : masterValue);
+            });
         }
 
         // Function to collect all dynamic line values
@@ -2617,12 +3061,47 @@
                 const input = document.getElementById(`line${i}`);
                 lines.push(input ? input.value : '');
             }
-            // Ensure we always return at least 4 lines for backend compatibility
-            while (lines.length < 4) {
-                lines.push('');
-            }
             return lines;
         }
+
+        // When in auto mode, show overall overflow for cylinders too
+        const cylinderOverflowDiv = document.getElementById('cylinder-overflow-warning');
+        const cylinderOverflowMsg = document.getElementById('cylinder-overflow-message');
+        const originalCheckCylinderOverflow = checkCylinderOverflow;
+        checkCylinderOverflow = function() {
+            const placementMode = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
+            if (placementMode === 'manual') {
+                return originalCheckCylinderOverflow();
+            }
+            // Auto mode: compute based on auto text
+            const diameter = parseFloat(document.getElementById('cylinder_diameter_mm').value) || 30.75;
+            const height = parseFloat(document.getElementById('cylinder_height_mm').value) || 52;
+            const cellSpacing = parseFloat(document.getElementById('cell_spacing').value) || 6.5;
+            const lineSpacing = parseFloat(document.getElementById('line_spacing').value) || 10;
+            const circumference = Math.PI * diameter;
+            const cellsPerRow = Math.floor(circumference / cellSpacing);
+            const rowsOnCylinder = Math.floor(height / lineSpacing);
+            const totalCellsAvailable = cellsPerRow * rowsOnCylinder;
+            const src = (document.getElementById('auto-text')?.value || '').trim();
+            if (!src) {
+                cylinderOverflowDiv.style.display = 'none';
+                return;
+            }
+            // Translate then compare
+            translateWithLiblouis(src, 'g2', document.getElementById('language-table')?.value || 'en-ueb-g1.ctb')
+                .then(braille => {
+                    const totalCellsNeeded = braille.length;
+                    if (totalCellsNeeded > totalCellsAvailable) {
+                        cylinderOverflowMsg.textContent = `Text requires ${totalCellsNeeded} cells but cylinder can fit ${totalCellsAvailable} cells. Some text may be cut off.`;
+                        cylinderOverflowDiv.style.display = 'block';
+                    } else {
+                        cylinderOverflowDiv.style.display = 'none';
+                    }
+                })
+                .catch(() => {
+                    // Ignore
+                });
+        };
 
         // Function to add listener for grid_rows changes
         function addGridRowsListener() {
@@ -2630,21 +3109,399 @@
             if (gridRowsInput) {
                 gridRowsInput.addEventListener('input', () => {
                     const numLines = parseInt(gridRowsInput.value) || 4;
-                    // Clamp to reasonable limits
-                    const clampedLines = Math.max(1, Math.min(10, numLines));
-                    if (clampedLines !== numLines) {
-                        gridRowsInput.value = clampedLines;
+                    // Enforce only a minimum of 1 line; no artificial upper bound
+                    const safeLines = Math.max(1, numLines);
+                    if (safeLines !== numLines) {
+                        gridRowsInput.value = safeLines;
                     }
-                    createDynamicLineInputs(clampedLines);
+                    createDynamicLineInputs(safeLines);
                     resetToGenerateState();
                 });
             }
         }
         
-        // Initialize dynamic line inputs and listeners
-        createDynamicLineInputs(4); // Start with default 4 lines
+        // Initialize dynamic line inputs and listeners (force default 4 on first load)
+        const gridRowsEl = document.getElementById('grid_rows');
+        if (gridRowsEl) gridRowsEl.value = '4';
+        createDynamicLineInputs(4);
         addInputChangeListeners();
         addGridRowsListener();
+
+        // Placement mode logic
+        const placementRadios = document.querySelectorAll('input[name="placement_mode"]');
+        const autoContainer = document.getElementById('auto-input-container');
+        const dynamicContainer = document.getElementById('dynamic-line-inputs');
+        const autoText = document.getElementById('auto-text');
+        const autoWarning = document.getElementById('auto-overflow-warning');
+        const autoWarningMsg = document.getElementById('auto-overflow-message');
+
+        function isIndicatorsOn() {
+            return document.querySelector('input[name="indicator_shapes"]:checked')?.value === '1';
+        }
+
+        function getAvailableColumns() {
+            const gridColumnsValue = parseInt(document.getElementById('grid_columns').value) || 15;
+            // The UI dial shows usable text cells; use it directly for wrapping
+            return gridColumnsValue;
+        }
+
+        function getTotalCellsAvailable() {
+            const rows = parseInt(document.getElementById('grid_rows').value) || 4;
+            const cols = getAvailableColumns();
+            return rows * cols;
+        }
+
+        function updatePlacementUI() {
+            const mode = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
+            if (mode === 'auto') {
+                autoContainer.style.display = '';
+                dynamicContainer.style.display = 'none';
+            } else {
+                autoContainer.style.display = 'none';
+                dynamicContainer.style.display = '';
+                // Ensure per-line language selects are populated when switching to manual
+                syncLineLanguageSelects();
+            }
+            resetToGenerateState();
+        }
+
+        placementRadios.forEach(r => r.addEventListener('change', () => {
+            updatePlacementUI();
+        }));
+
+        // Update UI on relevant changes to show/compute warnings
+        ['grid_rows','grid_columns','cell_spacing','line_spacing','cylinder_diameter_mm','cylinder_height_mm','indicator_shapes']
+            .forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', () => {
+                        if (document.querySelector('input[name="placement_mode"]:checked')?.value === 'auto') {
+                            computeAutoOverflow();
+                        }
+                    });
+                }
+            });
+
+        async function computeAutoOverflow() {
+            autoWarning.style.display = 'none';
+            autoWarningMsg.textContent = '';
+            const languageSelect = document.getElementById('language-table');
+            const tableName = languageSelect?.value || 'en-ueb-g1.ctb';
+            const src = (autoText?.value || '').trim();
+            if (!src) return;
+            try {
+                const braille = await translateWithLiblouis(src, 'g2', tableName);
+                const totalCellsNeeded = braille.length;
+                const totalCellsAvailable = getTotalCellsAvailable();
+                if (totalCellsNeeded > totalCellsAvailable) {
+                    const over = totalCellsNeeded - totalCellsAvailable;
+                    autoWarningMsg.textContent = `Your text exceeds the number of available braille cells by ${over} cells.`;
+                    autoWarning.style.display = 'block';
+                }
+            } catch (e) {
+                // Ignore preview warning if translation not available
+            }
+        }
+
+        if (autoText) {
+            autoText.addEventListener('input', () => {
+                resetToGenerateState();
+                computeAutoOverflow();
+            });
+        }
+
+        // Initialize placement UI
+        updatePlacementUI();
+        
+        // Persistence: save and restore user settings
+        function persistValue(key, value) {
+            try { localStorage.setItem(key, value); } catch (e) {}
+        }
+        function readPersisted(key) {
+            try { return localStorage.getItem(key); } catch (e) { return null; }
+        }
+        function clearAllPersistence() {
+            const keys = [
+                'braille_prefs_language_table',
+                'braille_prefs_plate_type',
+                'braille_prefs_shape_type',
+                'braille_prefs_dot_shape',
+                'braille_prefs_expert_visible',
+                'braille_prefs_grid_columns',
+                'braille_prefs_grid_rows',
+                'braille_prefs_cell_spacing',
+                'braille_prefs_line_spacing',
+                'braille_prefs_dot_spacing',
+                'braille_prefs_card_width',
+                'braille_prefs_card_height',
+                'braille_prefs_card_thickness',
+                'braille_prefs_braille_x_adjust',
+                'braille_prefs_braille_y_adjust',
+                'braille_prefs_emboss_dot_base_diameter',
+                'braille_prefs_emboss_dot_height',
+                'braille_prefs_emboss_dot_flat_hat',
+                'braille_prefs_hemi_counter_dot_base_diameter',
+                'braille_prefs_bowl_counter_dot_base_diameter',
+                'braille_prefs_counter_dot_depth',
+                'braille_prefs_use_bowl_recess', // legacy
+                'braille_prefs_recess_shape',
+                'braille_prefs_cone_counter_dot_base_diameter',
+                'braille_prefs_cone_counter_dot_height',
+                'braille_prefs_cone_counter_dot_flat_hat',
+                'braille_prefs_rounded_dot_base_diameter',
+                'braille_prefs_rounded_dot_base_height',
+                'braille_prefs_rounded_dot_dome_diameter',
+                'braille_prefs_rounded_dot_dome_height',
+                'braille_prefs_cylinder_diameter_mm',
+                'braille_prefs_cylinder_height_mm',
+                'braille_prefs_cylinder_polygonal_cutout_radius_mm',
+                'braille_prefs_cylinder_polygonal_cutout_sides',
+                'braille_prefs_seam_offset_deg'
+            ];
+            keys.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+        }
+        
+        function applyPersistedSettings() {
+            // Plate type
+            const savedPlate = readPersisted('braille_prefs_plate_type');
+            if (savedPlate === 'positive' || savedPlate === 'negative') {
+                const radio = document.querySelector(`input[name="plate_type"][value="${savedPlate}"]`);
+                if (radio) radio.checked = true;
+            }
+            // Shape type
+            const savedShape = readPersisted('braille_prefs_shape_type');
+            if (savedShape === 'card' || savedShape === 'cylinder') {
+                const radio = document.querySelector(`input[name="shape_type"][value="${savedShape}"]`);
+                if (radio) radio.checked = true;
+            }
+            // Dot shape
+            const savedDot = readPersisted('braille_prefs_dot_shape');
+            if (savedDot === 'cone' || savedDot === 'rounded') {
+                const radio = document.querySelector(`input[name="dot_shape"][value="${savedDot}"]`);
+                if (radio) radio.checked = true;
+            }
+            // Combined shape - initialize based on saved dot shape or default to rounded
+            const savedCombined = readPersisted('braille_prefs_combined_shape') || savedDot || 'rounded';
+            if (savedCombined === 'cone' || savedCombined === 'rounded') {
+                const radio = document.querySelector(`input[name="combined_shape"][value="${savedCombined}"]`);
+                if (radio) radio.checked = true;
+                
+                console.log('Initializing combined shape to:', savedCombined);
+                
+                // Sync individual values for backend compatibility
+                const dotShapeRadios = document.querySelectorAll('input[name="dot_shape"]');
+                const recessShapeRadios = document.querySelectorAll('input[name="recess_shape"]');
+                
+                if (savedCombined === 'rounded') {
+                    dotShapeRadios.forEach(r => { if (r.value === 'rounded') r.checked = true; });
+                    recessShapeRadios.forEach(r => { if (r.value === '1') r.checked = true; }); // Bowl
+                    console.log('Initialized to rounded - dot_shape: rounded, recess_shape: 1');
+                } else if (savedCombined === 'cone') {
+                    dotShapeRadios.forEach(r => { if (r.value === 'cone') r.checked = true; });
+                    recessShapeRadios.forEach(r => { if (r.value === '2') r.checked = true; }); // Cone
+                    console.log('Initialized to cone - dot_shape: cone, recess_shape: 2');
+                }
+            }
+            // Expert visibility
+            const savedExpert = readPersisted('braille_prefs_expert_visible');
+            if (savedExpert === 'true' || savedExpert === 'false') {
+                const visible = savedExpert === 'true';
+                expertSettings.style.display = visible ? 'block' : 'none';
+                expertToggleText.textContent = visible ? 'Hide Expert Mode' : 'Show Expert Mode';
+                expertToggleIcon.textContent = visible ? '▲' : '▼';
+                expertToggleBtn.classList.toggle('active', visible);
+            }
+            // Numeric/text inputs
+            const map = [
+                ['cell_spacing','braille_prefs_cell_spacing'],
+                ['line_spacing','braille_prefs_line_spacing'],
+                ['dot_spacing','braille_prefs_dot_spacing'],
+                ['card_width','braille_prefs_card_width'],
+                ['card_height','braille_prefs_card_height'],
+                ['card_thickness','braille_prefs_card_thickness'],
+                ['braille_x_adjust','braille_prefs_braille_x_adjust'],
+                ['braille_y_adjust','braille_prefs_braille_y_adjust'],
+                ['emboss_dot_base_diameter','braille_prefs_emboss_dot_base_diameter'],
+                ['emboss_dot_height','braille_prefs_emboss_dot_height'],
+                ['emboss_dot_flat_hat','braille_prefs_emboss_dot_flat_hat'],
+                ['hemi_counter_dot_base_diameter','braille_prefs_hemi_counter_dot_base_diameter'],
+                ['bowl_counter_dot_base_diameter','braille_prefs_bowl_counter_dot_base_diameter'],
+                ['counter_dot_depth','braille_prefs_counter_dot_depth'],
+                ['cone_counter_dot_base_diameter','braille_prefs_cone_counter_dot_base_diameter'],
+                ['cone_counter_dot_height','braille_prefs_cone_counter_dot_height'],
+                ['cone_counter_dot_flat_hat','braille_prefs_cone_counter_dot_flat_hat'],
+                ['recess_shape','braille_prefs_recess_shape'],
+                ['rounded_dot_base_diameter','braille_prefs_rounded_dot_base_diameter'],
+                ['rounded_dot_base_height','braille_prefs_rounded_dot_base_height'],
+                ['rounded_dot_dome_diameter','braille_prefs_rounded_dot_dome_diameter'],
+                ['rounded_dot_dome_height','braille_prefs_rounded_dot_dome_height'],
+                ['cylinder_diameter_mm','braille_prefs_cylinder_diameter_mm'],
+                ['cylinder_height_mm','braille_prefs_cylinder_height_mm'],
+                ['cylinder_polygonal_cutout_radius_mm','braille_prefs_cylinder_polygonal_cutout_radius_mm'],
+                ['cylinder_polygonal_cutout_sides','braille_prefs_cylinder_polygonal_cutout_sides'],
+                ['seam_offset_deg','braille_prefs_seam_offset_deg']
+            ];
+            map.forEach(([id,key]) => {
+                const v = readPersisted(key);
+                if (v !== null && v !== undefined) {
+                    const el = document.getElementById(id);
+                    if (el) el.value = v;
+                }
+            });
+            // Restore recess shape selection (default to Bowl when no saved value)
+            const savedRecessShape = readPersisted('braille_prefs_recess_shape');
+            if (savedRecessShape === '0' || savedRecessShape === '1' || savedRecessShape === '2') {
+                const r = document.querySelector(`input[name="recess_shape"][value="${savedRecessShape}"]`);
+                if (r) r.checked = true;
+            } else {
+                const r = document.querySelector('input[name="recess_shape"][value="1"]');
+                if (r) r.checked = true;
+            }
+            // grid_columns handled last to avoid preserve conversion
+            const savedCols = readPersisted('braille_prefs_grid_columns');
+            updateShapeSettings();
+            updateGridColumnsForPlateType(true);
+            if (savedCols !== null && savedCols !== undefined) {
+                const gridColsEl = document.getElementById('grid_columns');
+                if (gridColsEl) gridColsEl.value = savedCols;
+            }
+            // Recreate dynamic line inputs in case grid_rows changed
+            const numLines = parseInt(document.getElementById('grid_rows').value) || 4;
+            createDynamicLineInputs(numLines);
+        }
+        
+        function wirePersistenceListeners() {
+            // Plate type
+            document.querySelectorAll('input[name="plate_type"]').forEach(r => {
+                r.addEventListener('change', () => persistValue('braille_prefs_plate_type', document.querySelector('input[name="plate_type"]:checked').value));
+            });
+            // Shape type
+            document.querySelectorAll('input[name="shape_type"]').forEach(r => {
+                r.addEventListener('change', () => persistValue('braille_prefs_shape_type', document.querySelector('input[name="shape_type"]:checked').value));
+            });
+            // Dot shape (now handled by combined shape)
+            document.querySelectorAll('input[name="dot_shape"]').forEach(r => {
+                r.addEventListener('change', () => persistValue('braille_prefs_dot_shape', document.querySelector('input[name="dot_shape"]:checked').value));
+            });
+            // Combined shape (new primary control)
+            document.querySelectorAll('input[name="combined_shape"]').forEach(r => {
+                r.addEventListener('change', () => {
+                    const val = document.querySelector('input[name="combined_shape"]:checked')?.value || 'rounded';
+                    persistValue('braille_prefs_combined_shape', val);
+                    // Also persist the individual values for backend compatibility
+                    persistValue('braille_prefs_dot_shape', val);
+                    persistValue('braille_prefs_recess_shape', val === 'rounded' ? '1' : '2');
+                });
+            });
+            // Expert visibility
+            expertToggleBtn.addEventListener('click', () => {
+                const isVisible = expertSettings.style.display !== 'none';
+                // After toggle above, visibility will invert; persist the next state
+                const nextVisible = !isVisible;
+                persistValue('braille_prefs_expert_visible', String(nextVisible));
+            });
+            // Numeric/text inputs
+            const map = [
+                ['grid_columns','braille_prefs_grid_columns'],
+                ['cell_spacing','braille_prefs_cell_spacing'],
+                ['line_spacing','braille_prefs_line_spacing'],
+                ['dot_spacing','braille_prefs_dot_spacing'],
+                ['card_width','braille_prefs_card_width'],
+                ['card_height','braille_prefs_card_height'],
+                ['card_thickness','braille_prefs_card_thickness'],
+                ['braille_x_adjust','braille_prefs_braille_x_adjust'],
+                ['braille_y_adjust','braille_prefs_braille_y_adjust'],
+                ['emboss_dot_base_diameter','braille_prefs_emboss_dot_base_diameter'],
+                ['emboss_dot_height','braille_prefs_emboss_dot_height'],
+                ['emboss_dot_flat_hat','braille_prefs_emboss_dot_flat_hat'],
+                ['hemi_counter_dot_base_diameter','braille_prefs_hemi_counter_dot_base_diameter'],
+                ['bowl_counter_dot_base_diameter','braille_prefs_bowl_counter_dot_base_diameter'],
+                ['counter_dot_depth','braille_prefs_counter_dot_depth'],
+                ['cone_counter_dot_base_diameter','braille_prefs_cone_counter_dot_base_diameter'],
+                ['cone_counter_dot_height','braille_prefs_cone_counter_dot_height'],
+                ['cone_counter_dot_flat_hat','braille_prefs_cone_counter_dot_flat_hat'],
+                ['recess_shape','braille_prefs_recess_shape'],
+                ['rounded_dot_base_diameter','braille_prefs_rounded_dot_base_diameter'],
+                ['rounded_dot_base_height','braille_prefs_rounded_dot_base_height'],
+                ['rounded_dot_dome_diameter','braille_prefs_rounded_dot_dome_diameter'],
+                ['rounded_dot_dome_height','braille_prefs_rounded_dot_dome_height'],
+                ['cylinder_diameter_mm','braille_prefs_cylinder_diameter_mm'],
+                ['cylinder_height_mm','braille_prefs_cylinder_height_mm'],
+                ['cylinder_polygonal_cutout_radius_mm','braille_prefs_cylinder_polygonal_cutout_radius_mm'],
+                ['cylinder_polygonal_cutout_sides','braille_prefs_cylinder_polygonal_cutout_sides'],
+                ['seam_offset_deg','braille_prefs_seam_offset_deg']
+            ];
+            map.forEach(([id,key]) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', () => persistValue(key, el.value));
+                }
+            });
+            // Recess shape radio persistence (now handled by combined shape)
+            document.querySelectorAll('input[name="recess_shape"]').forEach(r => {
+                r.addEventListener('change', () => {
+                    const val = document.querySelector('input[name="recess_shape"]:checked')?.value || '1';
+                    persistValue('braille_prefs_recess_shape', val);
+                });
+            });
+        }
+        
+        // On load, restore persisted settings, then wire listeners
+        try { applyPersistedSettings(); } catch (e) {}
+        try { wirePersistenceListeners(); } catch (e) {}
+
+        // Reset to defaults button
+        const resetBtn = document.getElementById('reset-defaults-btn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                clearAllPersistence();
+                // Reset selects to their default option values
+                const selectEls = Array.from(document.querySelectorAll('select'));
+                selectEls.forEach(sel => { sel.value = sel.options[0]?.value || sel.defaultValue; });
+                // Ensure language resets to UEB Grade 1
+                try {
+                    const langSelect = document.getElementById('language-table');
+                    if (langSelect) {
+                        langSelect.value = 'en-ueb-g1.ctb';
+                        try { localStorage.setItem('braille_prefs_language_table', 'en-ueb-g1.ctb'); } catch (e) {}
+                    }
+                } catch (e) {}
+                // Reset radio groups to defaultChecked
+                const radioGroups = new Map();
+                document.querySelectorAll('input[type="radio"]').forEach(r => {
+                    if (!radioGroups.has(r.name)) radioGroups.set(r.name, []);
+                    radioGroups.get(r.name).push(r);
+                });
+                radioGroups.forEach(group => {
+                    const def = group.find(r => r.defaultChecked);
+                    if (def) def.checked = true;
+                });
+                // Reset all inputs to their defaultValue
+                document.querySelectorAll('input[type="number"], input[type="text"]').forEach(inp => {
+                    if (inp.defaultValue !== undefined) inp.value = inp.defaultValue;
+                });
+                // Expert visibility default (hidden)
+                expertSettings.style.display = 'none';
+                expertToggleText.textContent = 'Show Expert Mode';
+                expertToggleIcon.textContent = '▼';
+                expertToggleBtn.classList.remove('active');
+                updateShapeSettings();
+                updateGridColumnsForPlateType();
+                checkCylinderOverflow();
+                resetToGenerateState();
+
+                // Inform the user to refresh the page to fully reset preview and state
+                try {
+                    errorText.textContent = 'Settings reset to defaults. Please refresh the page to fully reset and clear the preview.';
+                    errorDiv.style.display = 'flex';
+                    errorDiv.className = 'error-message info';
+                    setTimeout(() => {
+                        errorDiv.style.display = 'none';
+                        errorDiv.className = 'error-message';
+                    }, 5000);
+                } catch (e) { /* ignore */ }
+            });
+        }
         
         // Initialize shape settings to show/hide cylinder parameters correctly
         updateShapeSettings();
@@ -2657,6 +3514,15 @@
             expertToggleBtn.classList.toggle('active', !isVisible);
         });
 
+        // Dot shape radio buttons
+        document.querySelectorAll('input[name="dot_shape"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                resetToGenerateState();
+            });
+        });
+
+        // Removed redundant toggle-dot-shape button
+
         infoToggleBtn.addEventListener('click', () => {
             const isVisible = infoContent.style.display !== 'none';
             infoContent.style.display = isVisible ? 'none' : 'block';
@@ -2665,11 +3531,31 @@
             infoToggleBtn.classList.toggle('active', !isVisible);
         });
 
+        // Wire Expert submenus (expand/collapse)
+        (function initExpertSubmenus() {
+            const submenuToggles = Array.from(document.querySelectorAll('.expert-submenu-toggle'));
+            submenuToggles.forEach(toggle => {
+                toggle.addEventListener('click', () => {
+                    const content = toggle.parentElement?.querySelector('.expert-submenu-content');
+                    if (!content) return;
+                    const isOpen = content.style.display !== 'none';
+                    content.style.display = isOpen ? 'none' : 'block';
+                    toggle.classList.toggle('active', !isOpen);
+                    toggle.setAttribute('aria-expanded', String(!isOpen));
+                    const icon = toggle.querySelector('.expert-submenu-icon');
+                    if (icon) icon.textContent = isOpen ? '▼' : '▲';
+                });
+            });
+        })();
+
         // Add real-time debugging for Expert Mode parametric dials
         const expertInputs = [
             'emboss_dot_base_diameter',
             'emboss_dot_height', 
             'emboss_dot_flat_hat',
+            'hemi_counter_dot_base_diameter',
+            'bowl_counter_dot_base_diameter',
+            'counter_dot_depth',
             'grid_columns',
             'grid_rows',
             'cell_spacing',
@@ -2683,6 +3569,7 @@
             'cylinder_diameter_mm',
             'cylinder_height_mm',
             'cylinder_polygonal_cutout_radius_mm',
+            'cylinder_polygonal_cutout_sides',
             'seam_offset_deg'
         ];
         
@@ -2702,6 +3589,13 @@
                 log.debug(`Initial value for ${inputId}: ${input.value}`);
             }
         });
+        // Log initial recess shape radio value too
+        (function logInitialRecessShape() {
+            const v = document.querySelector('input[name="use_bowl_recess"]:checked')?.value;
+            if (v !== undefined) {
+                log.debug('Initial value for use_bowl_recess:', v);
+            }
+        })();
         
         // Function to get current Expert Mode values
         window.getCurrentExpertModeValues = function() {
@@ -2715,41 +3609,222 @@
             return values;
         };
 
-        // Preview braille translation using real liblouis
+        // Convert a unicode braille string to computer shorthand tokens with brief indicators
+        function brailleToComputerShorthand(brailleStr) {
+            // Common UEB contractions and indicators
+            const contractionMap = {
+                '⠡': 'ch',
+                '⠩': 'sh',
+                '⠹': 'th',
+                '⠱': 'wh',
+                '⠫': 'ed',
+                '⠻': 'er',
+                '⠳': 'ou',
+                '⠪': 'ow',
+                '⠜': 'ar',
+                '⠬': 'ing',
+                '⠢': 'en',
+                '⠔': 'in',
+                '⠌': 'st',
+                '⠮': 'the',
+                '⠯': 'and',
+                '⠷': 'of',
+                '⠿': 'for',
+                '⠾': 'with'
+            };
+
+            const indicatorMap = {
+                '⠠': '[Capital Symbol]',
+                '⠼': '[Number Symbol]'
+            };
+
+            const punctuationMap = {
+                '⠂': ',',
+                '⠆': ';',
+                '⠒': ':',
+                '⠲': '.',
+                '⠖': '!',
+                '⠦': '?',
+                '⠤': '-',
+                '⠄': '\''
+            };
+
+            const letterMap = {
+                '⠁':'a','⠃':'b','⠉':'c','⠙':'d','⠑':'e','⠋':'f','⠛':'g','⠓':'h','⠊':'i','⠚':'j',
+                '⠅':'k','⠇':'l','⠍':'m','⠝':'n','⠕':'o','⠏':'p','⠟':'q','⠗':'r','⠎':'s','⠞':'t',
+                '⠥':'u','⠧':'v','⠺':'w','⠭':'x','⠽':'y','⠵':'z'
+            };
+
+            const digitMap = {
+                '⠁':'1','⠃':'2','⠉':'3','⠙':'4','⠑':'5','⠋':'6','⠛':'7','⠓':'8','⠊':'9','⠚':'0'
+            };
+
+            let result = '';
+            let numericMode = false;
+            let pendingWordGap = false;
+
+            for (const ch of brailleStr) {
+                if (ch === ' ') {
+                    // Word boundary
+                    numericMode = false;
+                    pendingWordGap = true;
+                    continue;
+                }
+
+                if (indicatorMap[ch]) {
+                    if (result.length > 0) {
+                        result += pendingWordGap ? '  ' : ' ';
+                    }
+                    result += indicatorMap[ch];
+                    pendingWordGap = false;
+                    if (ch === '⠼') numericMode = true;
+                    continue;
+                }
+
+                if (contractionMap[ch]) {
+                    if (result.length > 0) {
+                        result += pendingWordGap ? '  ' : ' ';
+                    }
+                    result += `[${contractionMap[ch]}]`;
+                    pendingWordGap = false;
+                    // contractions end numeric mode
+                    numericMode = false;
+                    continue;
+                }
+
+                if (numericMode && digitMap[ch]) {
+                    if (result.length > 0) {
+                        result += pendingWordGap ? '  ' : ' ';
+                    }
+                    result += digitMap[ch];
+                    pendingWordGap = false;
+                    continue;
+                }
+
+                if (letterMap[ch]) {
+                    if (result.length > 0) {
+                        result += pendingWordGap ? '  ' : ' ';
+                    }
+                    result += letterMap[ch];
+                    pendingWordGap = false;
+                    // letters in numeric mode that are not digits will end numeric mode
+                    numericMode = false;
+                    continue;
+                }
+
+                if (punctuationMap[ch]) {
+                    if (result.length > 0) {
+                        result += pendingWordGap ? '  ' : ' ';
+                    }
+                    result += punctuationMap[ch];
+                    pendingWordGap = false;
+                    numericMode = false;
+                    continue;
+                }
+
+                // Fallback: show the braille cell itself
+                if (result.length > 0) {
+                    result += pendingWordGap ? '  ' : ' ';
+                }
+                result += ch;
+                pendingWordGap = false;
+                numericMode = false;
+            }
+
+            return result;
+        }
+
+        // Preview braille translation using real liblouis (supports manual and auto placement)
         previewBrailleBtn.addEventListener('click', async () => {
             // Reset button state when previewing (user is making changes)
             resetToGenerateState();
-            const lines = getDynamicLineValues();
-            
+
             const languageSelect = document.getElementById('language-table');
             const tableName = languageSelect.value;
-            
-            if (lines.every(line => !line.trim())) {
-                errorText.textContent = 'Please enter text in at least one line.';
-                errorDiv.style.display = 'flex';
-                return;
-            }
 
+            const placementMode = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
             errorDiv.style.display = 'none';
             let previewHTML = '';
-            
-            for (let i = 0; i < lines.length; i++) {
-                if (lines[i].trim()) {
-                    try {
-                        // Use real liblouis translation with selected table
-                        const braille = await translateWithLiblouis(lines[i].trim(), 'g2', tableName);
-                        previewHTML += `<div class="preview-line-success">
-                            <strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → "${braille}"
-                        </div>`;
-                    } catch (error) {
-                        log.error('Translation failed for line', i + 1, ':', error);
-                        previewHTML += `<div class="preview-line-error">
-                            <strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → Error: ${error.message}
-                        </div>`;
+
+            if (placementMode === 'manual') {
+                const lines = getDynamicLineValues();
+                if (lines.every(line => !line.trim())) {
+                    errorText.textContent = 'Please enter text in at least one line.';
+                    errorDiv.style.display = 'flex';
+                    return;
+                }
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].trim()) {
+                        try {
+                            const perLineTable = (document.getElementById(`line_lang_${i+1}`)?.value) || tableName;
+                            const braille = await translateWithLiblouis(lines[i].trim(), 'g2', perLineTable);
+                            const shorthand = brailleToComputerShorthand(braille);
+                            previewHTML += `<div class="preview-line-success">
+                                <div><strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → "${braille}"</div>
+                                <div class="preview-subline">Computer shorthand: "${shorthand}"</div>
+                            </div>`;
+                        } catch (error) {
+                            log.error('Translation failed for line', i + 1, ':', error);
+                            previewHTML += `<div class="preview-line-error">
+                                <strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → Error: ${error.message}
+                            </div>`;
+                        }
                     }
                 }
+            } else {
+                // Auto mode: translate full text then wrap into rows for preview
+                const src = (document.getElementById('auto-text')?.value || '').trim();
+                if (!src) {
+                    errorText.textContent = 'Please enter text in the Auto Placement field.';
+                    errorDiv.style.display = 'flex';
+                    return;
+                }
+                try {
+                    const brailleText = await translateWithLiblouis(src, 'g2', tableName);
+                    const shapeTypeEl = document.querySelector('input[name="shape_type"]:checked');
+                    const shapeTypeVal = shapeTypeEl ? shapeTypeEl.value : 'card';
+                    let cols;
+                    if (shapeTypeVal === 'cylinder') {
+                        const diameter = parseFloat(document.getElementById('cylinder_diameter_mm').value) || 30.75;
+                        const cellSpacing = parseFloat(document.getElementById('cell_spacing').value) || 6.5;
+                        const circumference = Math.PI * diameter;
+                        cols = Math.floor(circumference / cellSpacing);
+                    } else {
+                        const gridColumnsValue = parseInt(document.getElementById('grid_columns').value) || 15;
+                        cols = gridColumnsValue;
+                    }
+                    const rows = parseInt(document.getElementById('grid_rows').value) || 4;
+                    const totalCellsAvailable = cols * rows;
+                    if (brailleText.length > totalCellsAvailable) {
+                        const over = brailleText.length - totalCellsAvailable;
+                        errorText.textContent = `Text requires ${brailleText.length} cells but only ${totalCellsAvailable} are available. Over by ${over} cells.`;
+                        errorDiv.style.display = 'flex';
+                        errorDiv.className = 'error-message';
+                    }
+                    let idx = 0;
+                    for (let r = 0; r < rows; r++) {
+                        const slice = brailleText.slice(idx, idx + cols);
+                        if (slice) {
+                            const shorthand = brailleToComputerShorthand(slice);
+                            previewHTML += `<div class="preview-line-success">
+                                <div><strong>Row ${r + 1}:</strong> "${slice}"</div>
+                                <div class="preview-subline">Computer shorthand: "${shorthand}"</div>
+                            </div>`;
+                        } else {
+                            previewHTML += `<div class="preview-line-success">
+                                <strong>Row ${r + 1}:</strong> ""
+                            </div>`;
+                        }
+                        idx += cols;
+                    }
+                } catch (error) {
+                    log.error('Translation failed for auto text:', error);
+                    previewHTML += `<div class="preview-line-error">
+                        <strong>Auto Placement:</strong> Error: ${error.message}
+                    </div>`;
+                }
             }
-            
+
             previewContent.innerHTML = previewHTML;
             braillePreview.style.display = 'block';
         });
@@ -2761,9 +3836,13 @@
                 antialias: !isMobile, // Disable antialiasing on mobile for performance
                 powerPreference: isMobile ? "low-power" : "high-performance"
             });
-            renderer.setSize(viewer.clientWidth, viewer.clientHeight);
+            const initW = viewer.clientWidth;
+            const initH = viewer.clientHeight || 420;
+            renderer.setSize(initW, initH, false);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 2 : 3));
-            viewer.innerHTML = '';
+            // Preserve overlay children inside #viewer; only remove previous canvas if present
+            const existingCanvas = viewer.querySelector('canvas');
+            if (existingCanvas) viewer.removeChild(existingCanvas);
             viewer.appendChild(renderer.domElement);
             
             // Get theme-appropriate colors with proper fallbacks
@@ -2777,7 +3856,7 @@
             scene = new THREE.Scene();
             scene.background = new THREE.Color(stlBackground);
             
-            camera = new THREE.PerspectiveCamera(45, viewer.clientWidth/viewer.clientHeight, 0.1, 1000);
+            camera = new THREE.PerspectiveCamera(45, initW / initH, 0.1, 1000);
             camera.position.set(0, 0, 120);
             camera.up.set(0, 1, 0); // Default Y-up
             camera.lookAt(0, 0, 0);
@@ -2842,9 +3921,11 @@
         }
         
         function onWindowResize() {
-            camera.aspect = viewer.clientWidth / viewer.clientHeight;
+            const targetW = viewer.clientWidth;
+            const targetH = viewer.clientHeight || 420;
+            camera.aspect = targetW / targetH;
             camera.updateProjectionMatrix();
-            renderer.setSize(viewer.clientWidth, viewer.clientHeight);
+            renderer.setSize(targetW, targetH, false);
             render();
         }
 
@@ -2857,39 +3938,95 @@
             errorDiv.style.display = 'none';
             errorText.textContent = '';
             
-            // Collect all dynamic line inputs
-            const lines = getDynamicLineValues();
+            // Collect input depending on placement mode
+            const placementMode = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
+            let lines = [];
+            let originalLines = [];
+            if (placementMode === 'manual') {
+                lines = getDynamicLineValues();
+                originalLines = [...lines];
+            } else {
+                const src = (document.getElementById('auto-text')?.value || '').trim();
+                originalLines = [src];
+                // We'll translate the whole text, then wrap to rows based on available cells
+            }
             
-            const plateType = document.querySelector('input[name="plate_type"]:checked').value;
+            const plateTypeEl = document.querySelector('input[name="plate_type"]:checked');
+            const plateType = plateTypeEl ? plateTypeEl.value : 'positive';
             const languageSelect = document.getElementById('language-table');
-            const tableName = languageSelect.value;
+            const tableName = languageSelect?.value || 'en-ueb-g1.ctb';
             
             // Translate text to braille only for positive plates
             let translatedLines = [];
+            let perLineLanguageTables = [];
             let translationErrors = [];
             if (plateType === 'positive') {
-                // Translate text to braille before sending to backend
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i].trim();
-                    if (line) {
-                        try {
-                            log.debug(`Translating line ${i + 1}: '${line}' to braille using table: ${tableName}...`);
-                            const brailleText = await translateWithLiblouis(line, 'g2', tableName);
-                            log.debug(`Line ${i + 1} translated: '${line}' → '${brailleText}'`);
-                            translatedLines.push(brailleText);
-                        } catch (error) {
-                            log.error(`Failed to translate line ${i + 1}:`, error);
-                            // Track translation failure
-                            translationErrors.push({
-                                line: i + 1,
-                                text: line,
-                                error: error.toString()
-                            });
-                            // Push empty string to maintain line alignment
+                if (placementMode === 'manual') {
+                    // Per-line translation
+                    perLineLanguageTables = new Array(lines.length).fill(tableName);
+                    for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if (line) {
+                            try {
+                                const perLineTable = (document.getElementById(`line_lang_${i+1}`)?.value) || tableName;
+                                perLineLanguageTables[i] = perLineTable;
+                                log.debug(`Translating line ${i + 1}: '${line}' to braille using table: ${perLineTable}...`);
+                                const brailleText = await translateWithLiblouis(line, 'g2', perLineTable);
+                                log.debug(`Line ${i + 1} translated: '${line}' → '${brailleText}'`);
+                                translatedLines.push(brailleText);
+                            } catch (error) {
+                                log.error(`Failed to translate line ${i + 1}:`, error);
+                                translationErrors.push({ line: i + 1, text: line, error: error.toString() });
+                                translatedLines.push('');
+                            }
+                        } else {
                             translatedLines.push('');
                         }
+                    }
+                } else {
+                    // Auto mode: translate entire text, then wrap to rows
+                    const src = (document.getElementById('auto-text')?.value || '').trim();
+                    if (!src) {
+                        translatedLines = Array(parseInt(document.getElementById('grid_rows').value) || 4).fill('');
                     } else {
-                        translatedLines.push('');
+                        try {
+                            const brailleText = await translateWithLiblouis(src, 'g2', tableName);
+                            const shapeTypeEl = document.querySelector('input[name="shape_type"]:checked');
+                            const shapeTypeVal = shapeTypeEl ? shapeTypeEl.value : 'card';
+                            let totalCellsAvailable;
+                            let cols;
+                            if (shapeTypeVal === 'cylinder') {
+                                // Derive cells per row from cylinder geometry
+                                const diameter = parseFloat(document.getElementById('cylinder_diameter_mm').value) || 30.75;
+                                const cellSpacing = parseFloat(document.getElementById('cell_spacing').value) || 6.5;
+                                const circumference = Math.PI * diameter;
+                                cols = Math.floor(circumference / cellSpacing);
+                            } else {
+                                const gridColumnsValue = parseInt(document.getElementById('grid_columns').value) || 15;
+                                cols = gridColumnsValue; // indicators reserved are handled in mesh/layout
+                            }
+                            const rows = parseInt(document.getElementById('grid_rows').value) || 4;
+                            totalCellsAvailable = cols * rows;
+                            // Warn if overflow (global)
+                            if (brailleText.length > totalCellsAvailable) {
+                                const over = brailleText.length - totalCellsAvailable;
+                                errorText.textContent = `Text requires ${brailleText.length} cells but only ${totalCellsAvailable} are available. Over by ${over} cells.`;
+                                errorDiv.style.display = 'flex';
+                                errorDiv.className = 'error-message';
+                            }
+                            // Wrap into row strings left-to-right
+                            translatedLines = [];
+                            let idx = 0;
+                            for (let r = 0; r < rows; r++) {
+                                const slice = brailleText.slice(idx, idx + cols);
+                                translatedLines.push(slice);
+                                idx += cols;
+                            }
+                        } catch (error) {
+                            log.error('Failed to translate auto text:', error);
+                            translationErrors.push({ line: 1, text: src, error: error.toString() });
+                            translatedLines = Array(parseInt(document.getElementById('grid_rows').value) || 4).fill('');
+                        }
                     }
                 }
                 log.debug('Original lines:', lines);
@@ -2922,9 +4059,10 @@
                 log.debug('Counter plate selected - no text translation needed');
             }
             const settings = {
-                // For both plate types, add 2 to account for reserved cells (indicators)
-                // The frontend displays the available cells, but backend needs total cells
-                grid_columns: String(parseInt(document.getElementById('grid_columns').value) + 2),
+                // Add 2 only if indicator shapes are ON; otherwise send exact cells
+                grid_columns: (document.querySelector('input[name="indicator_shapes"]:checked')?.value === '1')
+                    ? String(parseInt(document.getElementById('grid_columns').value) + 2)
+                    : String(parseInt(document.getElementById('grid_columns').value)),
                 grid_rows: document.getElementById('grid_rows').value,
                 cell_spacing: document.getElementById('cell_spacing').value,
                 line_spacing: document.getElementById('line_spacing').value,
@@ -2932,12 +4070,44 @@
                 emboss_dot_base_diameter: document.getElementById('emboss_dot_base_diameter').value,
                 emboss_dot_height: document.getElementById('emboss_dot_height').value,
                 emboss_dot_flat_hat: document.getElementById('emboss_dot_flat_hat').value,
-                counter_plate_dot_size_offset: document.getElementById('counter_plate_dot_size_offset').value,
+                // Back-compat: if backend expects offset, compute from difference
+                // but we also send independent counter base diameter explicitly
+                // Separate diameters per recess shape
+                hemi_counter_dot_base_diameter: document.getElementById('hemi_counter_dot_base_diameter')?.value || '1.6',
+                bowl_counter_dot_base_diameter: document.getElementById('bowl_counter_dot_base_diameter')?.value || '1.6',
+                // Back-compat: provide unified base diameter reflecting current recess selection
+                counter_dot_base_diameter: (() => {
+                    const recessVal = document.querySelector('input[name="recess_shape"]:checked')?.value || '1';
+                    if (recessVal === '1') return (document.getElementById('bowl_counter_dot_base_diameter')?.value || '1.6');
+                    if (recessVal === '0') return (document.getElementById('hemi_counter_dot_base_diameter')?.value || '1.6');
+                    return (document.getElementById('cone_counter_dot_base_diameter')?.value || '1.6');
+                })(),
+                counter_dot_depth: document.getElementById('counter_dot_depth')?.value || '0.6',
+                use_bowl_recess: (document.querySelector('input[name="recess_shape"]:checked')?.value === '1') ? 1 : 0,
+                recess_shape: parseInt(document.querySelector('input[name="recess_shape"]:checked')?.value || '1'),
+                // Cone parameters
+                cone_counter_dot_base_diameter: document.getElementById('cone_counter_dot_base_diameter')?.value || '1.6',
+                cone_counter_dot_height: document.getElementById('cone_counter_dot_height')?.value || '0.8',
+                cone_counter_dot_flat_hat: document.getElementById('cone_counter_dot_flat_hat')?.value || '0.4',
                 card_width: document.getElementById('card_width').value,
                 card_height: document.getElementById('card_height').value,
                 card_thickness: document.getElementById('card_thickness').value,
                 braille_x_adjust: document.getElementById('braille_x_adjust').value,
-                braille_y_adjust: document.getElementById('braille_y_adjust').value
+                braille_y_adjust: document.getElementById('braille_y_adjust').value,
+                // Rounded dome settings (optional)
+                use_rounded_dots: (document.querySelector('input[name="dot_shape"]:checked')?.value === 'rounded') ? 1 : 0,
+                dot_shape: document.querySelector('input[name="dot_shape"]:checked')?.value || 'rounded',
+                // Legacy fallbacks retained for backend compatibility
+                rounded_dot_diameter: document.getElementById('rounded_dot_dome_diameter')?.value || '1.5',
+                rounded_dot_height: document.getElementById('rounded_dot_dome_height')?.value || '0.6',
+                // New explicit params
+                rounded_dot_base_diameter: document.getElementById('rounded_dot_base_diameter')?.value || '2.0',
+                rounded_dot_base_height: document.getElementById('rounded_dot_base_height')?.value || document.getElementById('rounded_dot_cylinder_height')?.value || '0.2',
+                rounded_dot_cylinder_height: document.getElementById('rounded_dot_base_height')?.value || document.getElementById('rounded_dot_cylinder_height')?.value || '0.2',
+                rounded_dot_dome_diameter: document.getElementById('rounded_dot_dome_diameter')?.value || '1.5',
+                rounded_dot_dome_height: document.getElementById('rounded_dot_dome_height')?.value || '0.6',
+                // New: indicator shapes toggle
+                indicator_shapes: (document.querySelector('input[name="indicator_shapes"]:checked')?.value === '1') ? 1 : 0
             };
             
             // Debug: Log the settings being sent
@@ -2945,8 +4115,16 @@
             log.debug('Settings object keys:', Object.keys(settings));
             log.debug('Settings object values:', Object.values(settings));
             
+            // Debug shape values specifically
+            const currentDotShape = document.querySelector('input[name="dot_shape"]:checked')?.value;
+            const currentRecessShape = document.querySelector('input[name="recess_shape"]:checked')?.value;
+            const currentCombinedShape = document.querySelector('input[name="combined_shape"]:checked')?.value;
+            log.debug('Shape values - combined:', currentCombinedShape, 'dot_shape:', currentDotShape, 'recess_shape:', currentRecessShape, 'use_rounded_dots:', settings.use_rounded_dots);
+            // Rounded-dome inputs are always visible for embossing plate; no dynamic toggle
+            
             // Check if at least one line has content (only for positive plates)
-            if (plateType === 'positive' && lines.every(line => !line.trim())) {
+            const hasContent = placementMode === 'manual' ? lines.some(l => l && l.trim()) : ((originalLines[0] || '').trim().length > 0);
+            if (plateType === 'positive' && !hasContent) {
                 errorText.textContent = 'Please enter text in at least one line.';
                 errorDiv.style.display = 'flex';
                 return;
@@ -2954,20 +4132,20 @@
             
             // Validate braille character limits AFTER translation
             const gridColumnsValue = parseInt(document.getElementById('grid_columns').value);
+            const indicatorsOn = document.querySelector('input[name="indicator_shapes"]:checked')?.value === '1';
             if (plateType === 'positive') {
-                // For embossing plates, we need to account for 2 reserved cells
-                // Use the actual grid columns value from the input (not hardcoded)
-                const actualGridColumns = gridColumnsValue + 2; // Add back the 2 reserved cells
-                const availableColumns = gridColumnsValue; // What the user sees is available cells
-                
-                for (let i = 0; i < translatedLines.length; i++) {
-                    const brailleLine = translatedLines[i];
-                    if (brailleLine && brailleLine.length > availableColumns) {
-                        const over = brailleLine.length - availableColumns;
-                        errorText.textContent = `Line ${i + 1} exceeds ${availableColumns} available braille cells by ${over} cells after translation. Please shorten your text.`;
-                        errorDiv.style.display = 'flex';
-                        errorDiv.className = 'error-message';
-                        return;
+                const availableColumns = gridColumnsValue;
+                // In auto mode, we already wrapped by row capacity; skip line-specific error.
+                if (placementMode === 'manual') {
+                    for (let i = 0; i < translatedLines.length; i++) {
+                        const brailleLine = translatedLines[i];
+                        if (brailleLine && brailleLine.length > availableColumns) {
+                            const over = brailleLine.length - availableColumns;
+                            errorText.textContent = `Line ${i + 1} exceeds ${availableColumns} available braille cells by ${over} cells after translation. Please shorten your text.`;
+                            errorDiv.style.display = 'flex';
+                            errorDiv.className = 'error-message';
+                            return;
+                        }
                     }
                 }
             } else {
@@ -2995,15 +4173,17 @@
             actionBtn.style.opacity = '0.7';
             
             // Get shape type and cylinder params
-            const shapeType = document.querySelector('input[name="shape_type"]:checked').value;
+            const shapeTypeElGen = document.querySelector('input[name="shape_type"]:checked');
+            const shapeType = shapeTypeElGen ? shapeTypeElGen.value : 'card';
             let cylinderParams = {};
             
             if (shapeType === 'cylinder') {
                 cylinderParams = {
-                    diameter_mm: document.getElementById('cylinder_diameter_mm').value,
-                    height_mm: document.getElementById('cylinder_height_mm').value,
-                    polygonal_cutout_radius_mm: document.getElementById('cylinder_polygonal_cutout_radius_mm').value,
-                    seam_offset_deg: document.getElementById('seam_offset_deg').value
+                    diameter_mm: document.getElementById('cylinder_diameter_mm')?.value || '30.75',
+                    height_mm: document.getElementById('cylinder_height_mm')?.value || '52',
+                    polygonal_cutout_radius_mm: document.getElementById('cylinder_polygonal_cutout_radius_mm')?.value || '13',
+                    polygonal_cutout_sides: document.getElementById('cylinder_polygonal_cutout_sides')?.value || '12',
+                    seam_offset_deg: document.getElementById('seam_offset_deg')?.value || '355'
                 };
             }
             
@@ -3012,59 +4192,85 @@
             log.debug('Shape Type:', shapeType);
             log.debug('Cylinder Params:', cylinderParams);
             
-            try {
-                // Client-side STL generation using OpenJSCAD in a module worker; fallback to Three.js on error
-                let stlBlob;
-                try {
-                    const workerUrl = new URL('static/jscad-worker.js', document.baseURI);
-                    const jscadWorker = new Worker(workerUrl.href, { type: 'module' });
-                    const reqId = Math.random().toString(36).slice(2);
-                    const msg = { id: reqId, type: 'generate', data: { plateType, shapeType, settings, cylinderParams, translatedLines } };
-                    const stlText = await new Promise((resolve, reject) => {
-                        const timer = setTimeout(() => reject(new Error('JSCAD worker timeout')), 20000);
-                        jscadWorker.onmessage = (e) => {
-                            const { id, type, result } = e.data || {};
-                            if (id !== reqId || type !== 'generate') return;
-                            clearTimeout(timer);
-                            jscadWorker.terminate();
-                            if (result && result.success) resolve(result.stlText);
-                            else reject(new Error(result && result.error ? result.error : 'Unknown worker error'));
-                        };
-                        jscadWorker.onerror = (err) => { clearTimeout(timer); jscadWorker.terminate(); reject(err.message || String(err)); };
-                        jscadWorker.postMessage(msg);
-                    });
-                    stlBlob = new Blob([stlText], { type: 'model/stl' });
-                } catch (workerErr) {
-                    log.error('JSCAD worker failed, falling back to Three.js STL generation:', workerErr);
-                    let object3D;
-                    if (plateType === 'positive') {
-                        if (shapeType === 'cylinder') {
-                            object3D = buildCylinderEmbossingPlate(translatedLines, settings, cylinderParams);
-                        } else {
-                            object3D = buildCardEmbossingPlate(translatedLines, settings);
-                        }
-                    } else {
-                        if (shapeType === 'cylinder') {
-                            object3D = buildCylinderCounterPlate(settings, cylinderParams);
-                        } else {
-                            object3D = buildCardCounterPlate(settings);
-                        }
-                    }
-                    stlBlob = exportObjectToAsciiSTL(object3D, `braille_${plateType}_${shapeType}`);
+            // Build original_lines for indicators
+            let originalForIndicators = null;
+            if (placementMode === 'manual') {
+                originalForIndicators = lines;
+            } else {
+                const srcAuto = (document.getElementById('auto-text')?.value || '').trim();
+                const tokens = srcAuto.split(/\s+/).filter(Boolean);
+                const rowsCount = parseInt(document.getElementById('grid_rows').value) || 4;
+                // Derive per-row indicator from first alphanumeric of each token
+                const indicators = tokens.map(tok => {
+                    const m = tok.match(/[A-Za-z0-9]/);
+                    return m ? m[0] : '';
+                });
+                // Map indicators to rows cyclically or truncated
+                originalForIndicators = new Array(rowsCount).fill('');
+                for (let r = 0; r < rowsCount; r++) {
+                    originalForIndicators[r] = indicators[r] || '';
                 }
+            }
+
+            const res = await fetch('/generate_braille_stl', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    lines: translatedLines,
+                    original_lines: originalForIndicators,
+                    placement_mode: placementMode,
+                    grade: 'g2', 
+                    plate_type: plateType, 
+                    shape_type: shapeType,
+                    cylinder_params: cylinderParams,
+                    per_line_language_tables: perLineLanguageTables,
+                    settings: settings 
+                })
+            });
+            
+            // Hide loading message
+            errorDiv.style.display = 'none';
+            
+            if (!res.ok) {
+                let msg = 'Error generating STL';
+                try {
+                    const data = await res.json();
+                    if (data.error) msg = data.error;
+                } catch (e) {
+                    msg = `Server error: ${res.status} ${res.statusText}`;
+                }
+                errorText.textContent = msg;
+                errorDiv.style.display = 'flex';
+                errorDiv.className = 'error-message'; // Reset to error style
+                // Re-enable button on error and reset to generate state
+                resetToGenerateState();
+                return;
+            }
+            
+            
+            try {
+                // Create blob and URL for 3D preview
+                const blob = await res.blob();
                 if (lastSTLUrl) URL.revokeObjectURL(lastSTLUrl);
-                lastSTLUrl = URL.createObjectURL(stlBlob);
+                lastSTLUrl = URL.createObjectURL(blob);
                 
                 // Generate filename on frontend to match backend logic
+                const plateType = document.querySelector('input[name="plate_type"]:checked').value;
+                const shapeType = document.querySelector('input[name="shape_type"]:checked').value;
                 let filename = plateType === 'positive' ? 'braille_embossing_plate' : 'braille_counter_plate';
                 
                 if (plateType === 'positive') {
                     // Get the current lines from the form
-                    const gridRows = parseInt(document.getElementById('grid_rows').value) || 4;
-                    const lines = [];
-                    for (let i = 1; i <= gridRows; i++) {
-                        const input = document.getElementById(`line${i}`);
-                        lines.push(input ? input.value : '');
+                    const placementModeNow = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
+                    let lines = [];
+                    if (placementModeNow === 'manual') {
+                        const gridRows = parseInt(document.getElementById('grid_rows').value) || 4;
+                        for (let i = 1; i <= gridRows; i++) {
+                            const input = document.getElementById(`line${i}`);
+                            lines.push(input ? input.value : '');
+                        }
+                    } else {
+                        lines = [document.getElementById('auto-text')?.value || ''];
                     }
                     
                     // Find first non-empty line (prioritizing Line 1)
@@ -3086,10 +4292,19 @@
                         filename = `braille_embossing_plate-${shapeType}`;
                     }
                 } else {
-                    // For counter plates, include total diameter (base + offset) in filename
-                    const dotDiameter = parseFloat(document.getElementById('emboss_dot_base_diameter').value) || 0;
-                    const counterOffset = parseFloat(document.getElementById('counter_plate_dot_size_offset').value) || 0;
-                    const totalDiameter = dotDiameter + counterOffset;
+                    // For counter plates, include actual counter base diameter in filename
+                    const isBowlSel = document.querySelector('input[name="use_bowl_recess"]:checked')?.value === '1';
+                    let baseStr = '0';
+                    if (isBowlSel) {
+                        baseStr = document.getElementById('bowl_counter_dot_base_diameter')?.value
+                            || document.getElementById('counter_dot_base_diameter')?.value
+                            || '0';
+                    } else {
+                        baseStr = document.getElementById('hemi_counter_dot_base_diameter')?.value
+                            || document.getElementById('counter_dot_base_diameter')?.value
+                            || '0';
+                    }
+                    const totalDiameter = parseFloat(baseStr) || 0;
                     filename = `braille_counter_plate_${totalDiameter}mm-${shapeType}`;
                 }
                 
@@ -3285,7 +4500,15 @@
                 input.addEventListener('focus', () => {
                     // Scroll input into view when keyboard appears
                     setTimeout(() => {
-                        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        const scrollParent = input.closest('.preview-section, .form-section') || document.scrollingElement;
+                        if (scrollParent && scrollParent !== document.scrollingElement) {
+                            const parentRect = scrollParent.getBoundingClientRect();
+                            const inputRect = input.getBoundingClientRect();
+                            const offset = (inputRect.top + inputRect.height / 2) - (parentRect.top + parentRect.height / 2);
+                            scrollParent.scrollBy({ top: offset, behavior: 'smooth' });
+                        } else {
+                            input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
                     }, 300);
                 });
             });
@@ -3305,46 +4528,19 @@
                 // Initialize liblouis web worker
                 log.debug('Initializing liblouis web worker...');
                 
-                // Construct a worker from a Blob to avoid base-path and CORS issues
-                const staticBase = new URL('../static/', import.meta.url).href;
-                const workerSource = `
-                    let liblouisInstance = null; let liblouisReady = false;
-                    try {
-                        importScripts('${staticBase}liblouis/build-no-tables-utf16.js');
-                        importScripts('${staticBase}liblouis/easy-api.js');
-                    } catch (e) { self.postMessage({ id: -1, type: 'init', result: { success: false, error: 'Worker imports failed: ' + e.message } }); }
-                    async function initializeLiblouis(){
-                        try {
-                            await new Promise(r=>setTimeout(r,50));
-                            if (typeof liblouisBuild !== 'undefined' && typeof LiblouisEasyApi !== 'undefined') {
-                                liblouisInstance = new LiblouisEasyApi(liblouisBuild);
-                                try { liblouisInstance.enableOnDemandTableLoading('${staticBase}liblouis/tables/'); } catch (_ignored) {}
-                                liblouisReady = true; return { success: true };
-                            } else { throw new Error('Liblouis scripts not loaded'); }
-                        } catch (err) { return { success: false, error: err.message }; }
+                // Test if worker file is accessible first
+                try {
+                    const workerResponse = await fetch('/static/liblouis-worker.js');
+                    if (!workerResponse.ok) {
+                        throw new Error(`Worker file not accessible: ${workerResponse.status}`);
                     }
-                    self.onmessage = async (e)=>{
-                        const { id, type, data } = e.data;
-                        try {
-                            if (type === 'init') { const r = await initializeLiblouis(); self.postMessage({ id, type: 'init', result: r }); return; }
-                            if (type === 'translate') {
-                                if (!liblouisReady || !liblouisInstance) throw new Error('Liblouis not initialized');
-                                const { text, grade, tableName } = data || {};
-                                const selected = tableName ? tableName : (grade === 'g2' ? 'en-ueb-g2.ctb' : 'en-ueb-g1.ctb');
-                                const tableFormat = 'unicode.dis,' + selected;
-                                const out = liblouisInstance.translateString(tableFormat, text);
-                                const ok = out.split('').some(c=>{ const code=c.charCodeAt(0); return code>=0x2800 && code<=0x28FF; });
-                                if (!ok) throw new Error('Translation not Unicode braille');
-                                self.postMessage({ id, type: 'translate', result: { success: true, translation: out } });
-                                return;
-                            }
-                            throw new Error('Unknown message type');
-                        } catch (err) { self.postMessage({ id, type, result: { success: false, error: err.message } }); }
-                    };
-                `;
-                const blob = new Blob([workerSource], { type: 'application/javascript' });
-                const blobUrl = URL.createObjectURL(blob);
-                liblouisWorker = new Worker(blobUrl);
+                    log.debug('Worker file is accessible');
+                } catch (fetchError) {
+                    log.error('Worker file test failed:', fetchError);
+                    throw new Error('Cannot access worker file: ' + fetchError.message);
+                }
+                
+                liblouisWorker = new Worker('/static/liblouis-worker.js');
                 
                 // Handle worker messages
                 liblouisWorker.onmessage = function(e) {
@@ -3392,30 +4588,10 @@
                 }
             }
             
-            // Restore saved shape selection from localStorage
-            try {
-                const savedShapeType = localStorage.getItem('brailleGeneratorShapeType');
-                if (savedShapeType) {
-                    const shapeRadio = document.querySelector(`input[name="shape_type"][value="${savedShapeType}"]`);
-                    if (shapeRadio) {
-                        shapeRadio.checked = true;
-                        updateShapeSettings();
-                        log.debug('Restored shape type from localStorage:', savedShapeType);
-                    } else {
-                        // Fallback default: Cylinder
-                        document.querySelector('input[name="shape_type"][value="cylinder"]').checked = true;
-                    }
-                } else {
-                    // No saved shape, default to Cylinder
-                    document.querySelector('input[name="shape_type"][value="cylinder"]').checked = true;
-                }
-            } catch (e) {
-                // If localStorage fails, default to Cylinder
-                document.querySelector('input[name="shape_type"][value="cylinder"]').checked = true;
-                log.warn('Could not restore shape type from localStorage:', e);
-            }
+            // Always default to cylinder on load; do not restore from storage
+            const cyl = document.querySelector('input[name="shape_type"][value="cylinder"]');
+            if (cyl) cyl.checked = true;
             
-            // Static mode, no backend detection
             init3D();
             animate();
         });
@@ -3447,4 +4623,5 @@
 
     </script>
 </body>
+</html> 
 </html> 

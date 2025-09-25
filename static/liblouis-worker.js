@@ -7,9 +7,9 @@ let liblouisReady = false;
 // Import liblouis scripts with error handling
 try {
     console.log('Worker: Attempting to load liblouis scripts from static directory...');
-    importScripts('./liblouis/build-no-tables-utf16.js');
+    importScripts('/static/liblouis/build-no-tables-utf16.js');
     console.log('Worker: Loaded build-no-tables-utf16.js');
-    importScripts('./liblouis/easy-api.js');
+    importScripts('/static/liblouis/easy-api.js');
     console.log('Worker: Loaded easy-api.js');
 } catch (error) {
     console.error('Worker: Failed to load liblouis scripts from static:', error);
@@ -41,13 +41,27 @@ async function initializeLiblouis() {
             if (liblouisInstance.enableOnDemandTableLoading) {
                 console.log('Worker: Enabling on-demand table loading...');
                 try {
-                    liblouisInstance.enableOnDemandTableLoading('./liblouis/tables/');
+                    // Try the static directory first
+                    liblouisInstance.enableOnDemandTableLoading('/static/liblouis/tables/');
                     console.log('Worker: Table loading enabled from static directory');
                 } catch (e) {
                     console.log('Worker: Static path failed, trying node_modules path...');
-                    liblouisInstance.enableOnDemandTableLoading('/node_modules/liblouis-build/tables/');
-                    console.log('Worker: Table loading enabled from node_modules');
+                    try {
+                        liblouisInstance.enableOnDemandTableLoading('/node_modules/liblouis-build/tables/');
+                        console.log('Worker: Table loading enabled from node_modules');
+                    } catch (e2) {
+                        console.log('Worker: Both paths failed, trying relative path...');
+                        try {
+                            liblouisInstance.enableOnDemandTableLoading('static/liblouis/tables/');
+                            console.log('Worker: Table loading enabled with relative path');
+                        } catch (e3) {
+                            console.log('Worker: All table loading attempts failed:', e3.message);
+                            // Continue without on-demand loading - tables might be pre-loaded
+                        }
+                    }
                 }
+            } else {
+                console.log('Worker: enableOnDemandTableLoading not available, tables may be pre-loaded');
             }
             
             liblouisReady = true;
@@ -100,14 +114,12 @@ self.onmessage = async function(e) {
                 
                 console.log('Worker: Translating text:', text, 'with table:', selectedTable);
                 
-                // Use the correct table format to get Unicode braille output
-                // The 'unicode.dis' table must come first to ensure Unicode output
-                const tableFormat = 'unicode.dis,' + selectedTable;
-                
-                console.log('Worker: Using table format:', tableFormat);
+                // Try using just the table name first, without unicode.dis prefix
+                // This should work if the table is properly configured for Unicode output
+                console.log('Worker: Using table:', selectedTable);
                 
                 try {
-                    result = liblouisInstance.translateString(tableFormat, text);
+                    const result = liblouisInstance.translateString(selectedTable, text);
                     console.log('Worker: Translation successful:', result);
                     
                     // Verify the result contains proper braille Unicode characters
@@ -120,14 +132,27 @@ self.onmessage = async function(e) {
                         console.log('Worker: Result contains proper braille Unicode characters');
                         self.postMessage({ id, type: 'translate', result: { success: true, translation: result } });
                     } else {
-                        console.log('Worker: Result does not contain braille Unicode, trying alternative approach');
-                        // If we still get liblouis format, try to convert it using the library's internal methods
-                        // This is a fallback - ideally the unicode.dis table should give us Unicode directly
-                        throw new Error('Translation result is not in Unicode braille format');
+                        console.log('Worker: Result does not contain braille Unicode, trying unicode.dis approach');
+                        // Try with unicode.dis prefix as fallback
+                        const tableFormat = 'unicode.dis,' + selectedTable;
+                        console.log('Worker: Trying table format:', tableFormat);
+                        const fallbackResult = liblouisInstance.translateString(tableFormat, text);
+                        console.log('Worker: Fallback translation successful:', fallbackResult);
+                        self.postMessage({ id, type: 'translate', result: { success: true, translation: fallbackResult } });
                     }
                 } catch (e) {
-                    console.log('Worker: Translation failed:', e.message);
-                    throw e;
+                    console.log('Worker: Direct translation failed:', e.message);
+                    // Try with unicode.dis prefix as fallback
+                    try {
+                        const tableFormat = 'unicode.dis,' + selectedTable;
+                        console.log('Worker: Trying fallback table format:', tableFormat);
+                        const fallbackResult = liblouisInstance.translateString(tableFormat, text);
+                        console.log('Worker: Fallback translation successful:', fallbackResult);
+                        self.postMessage({ id, type: 'translate', result: { success: true, translation: fallbackResult } });
+                    } catch (fallbackError) {
+                        console.log('Worker: Fallback translation also failed:', fallbackError.message);
+                        throw fallbackError;
+                    }
                 }
                 break;
                 

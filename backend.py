@@ -3593,20 +3593,12 @@ def build_stl_cache_key(route_name: str, payload: dict) -> str:
         cached_blob = blob_client.get(cache_key) if blob_client.is_enabled() else None
         if cached_blob:
             cached_url = cached_blob.get('downloadUrl') or cached_blob.get('url')
-            cached_etag = cached_blob.get('etag') or etag_value
             if cached_url:
-                if client_etags and cached_etag:
-                    normalized_etag = cached_etag.strip('"')
-                    if normalized_etag in etag_tokens or cached_etag in etag_tokens:
-                        response = app.response_class(status=304)
-                        response.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-                        response.headers['ETag'] = cached_etag
-                        response.headers['Last-Modified'] = cached_blob.get('uploadedAt') or http_date(datetime.utcnow())
-                        return response
-                response = redirect(cached_url, code=302)
-                response.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-                response.headers['ETag'] = cached_etag
-                return response
+                print(f"CACHE HIT: key={cache_key} -> {cached_url}")
+                return redirect(cached_url, code=302)
+        else:
+            if blob_client.is_enabled():
+                print(f"CACHE MISS: key={cache_key}")
 
         if shape_type == 'card':
 // ... existing code ...

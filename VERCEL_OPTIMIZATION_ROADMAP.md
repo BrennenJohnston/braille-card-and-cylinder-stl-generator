@@ -100,8 +100,10 @@ Setup:
 - Prepares for optional Edge middleware enhancements
 
 ### 5.2 Parameter Validation at Edge
-- Implement basic request validation in Edge Middleware
-- Reject invalid requests before hitting Python functions
+**Status: COMPLETE**
+- Implement basic request validation in Edge Middleware (`middleware.js`)
+- Reject invalid methods, content types, oversize payloads, and malformed JSON before hitting Python functions
+- Validate core request fields (`lines`, `plate_type`, `grade`, `settings`, `shape_type`)
 
 ## Phase 6: Advanced Caching (Optional)
 
@@ -127,15 +129,15 @@ Setup:
 
 ## Implementation Checklist
 
-- [ ] Phase 1.1: Configure static file serving in vercel.json
-- [ ] Phase 1.2: Update CSP headers for web workers
+- [x] Phase 1.1: Configure static file serving in vercel.json
+- [x] Phase 1.2: Update CSP headers for web workers
 - [x] Phase 2.1: Set function memory and timeout limits
 - [x] Phase 2.2: Add cache headers to STL responses
 - [x] Phase 3.1: Implement Vercel Blob caching
 - [x] Phase 4.1: Remove in-memory rate limiting
 - [x] Phase 4.2: Integrate Upstash Redis
 - [x] Phase 5.1: Move HTML to Edge (optional)
-- [ ] Phase 5.2: Edge validation (optional)
+- [x] Phase 5.2: Edge validation (optional)
 - [ ] Phase 6.1: CDN integration (optional)
 - [ ] Phase 6.2: Pregeneration (optional)
 - [ ] Phase 7.1: Enable monitoring

@@ -3424,6 +3424,18 @@ def generate_braille_stl():
         # Additional filename sanitization for security
         filename = re.sub(r'[^\w\-_]', '', filename)[:60]  # Allow longer names to accommodate shape type
         
+        # Upload to blob storage for caching (fire-and-forget on success)
+        cached_url = None
+        if blob_client.is_enabled():
+            upload_result = blob_client.upload(cache_key, stl_bytes, content_type='model/stl', access='public')
+            if upload_result:
+                cached_url = upload_result.get('downloadUrl') or upload_result.get('url')
+                if cached_url:
+                    response = redirect(cached_url, code=302)
+                    response.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+                    response.headers['ETag'] = etag_value
+                    return response
+
         response = send_file(io.BytesIO(stl_bytes), mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl')
         response.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
         response.headers['ETag'] = etag_value
@@ -3534,13 +3546,14 @@ class BlobStorageClient:
             app.logger.error(f"Blob get failed for key={key}: {exc}")
             return None
 
-    def upload(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> dict | None:
+    def upload(self, key: str, data: bytes, content_type: str = "application/octet-stream", access: str = "public") -> dict | None:
         if not self.is_enabled():
             return None
         payload = {
             "blob": base64.b64encode(data).decode('utf-8'),
             "key": key,
-            "contentType": content_type
+            "contentType": content_type,
+            "access": access
         }
         try:
             resp = self.session.put(self.API_BASE, headers=self._headers(), json=payload, timeout=20)
@@ -3577,31 +3590,13 @@ def build_stl_cache_key(route_name: str, payload: dict) -> str:
             cached_url = cached_blob.get('downloadUrl') or cached_blob.get('url')
             cached_etag = cached_blob.get('etag')
             if cached_url:
-                if client_etags and cached_etag and cached_etag in client_etags:
+                if client_etags and cached_etag and cached_etag in etag_tokens:
                     response = app.response_class(status=304)
                     response.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
                     response.headers['ETag'] = cached_etag
                     response.headers['Last-Modified'] = cached_blob.get('uploadedAt') or http_date(datetime.utcnow())
                     return response
-                try:
-                    blob_response = requests.get(cached_url, timeout=30)
-                    blob_response.raise_for_status()
-                    cached_bytes = blob_response.content
-                except requests.RequestException as err:
-                    app.logger.error(f"Failed to download cached blob {cache_key}: {err}")
-                else:
-                    response = send_file(
-                        io.BytesIO(cached_bytes),
-                        mimetype='model/stl',
-                        as_attachment=True,
-                        download_name=f'{cache_key.split('/')[-1]}'
-                    )
-                    response.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-                    if cached_etag:
-                        response.headers['ETag'] = cached_etag
-                    response.headers['Content-Length'] = str(len(cached_bytes))
-                    response.headers['Last-Modified'] = cached_blob.get('uploadedAt') or http_date(datetime.utcnow())
-                    return response
+                return redirect(cached_url, code=302)
 
         if shape_type == 'card':
 // ... existing code ...

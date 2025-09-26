@@ -19,4 +19,4 @@ tmp_*
 node_modules/
 
 # IDE files
-.vscode/
+.vscode/\n# Bytecode\n__pycache__/\n*.py[cod]\n\n# Local tests\n*.stl\n\n# IDE\n.vscode/

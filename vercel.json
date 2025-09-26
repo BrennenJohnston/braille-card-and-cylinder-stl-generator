@@ -1,15 +1,26 @@
 {
-  "version": 2,
   "builds": [
-    { "src": "wsgi.py", "use": "@vercel/python" },
-    { "src": "static/**", "use": "@vercel/static" },
-    { "src": "templates/index.html", "use": "@vercel/static" }
+    {
+      "src": "wsgi.py",
+      "use": "@vercel/python"
+    }
   ],
-  "routes": [
-    { "src": "/$", "dest": "/templates/index.html" },
-    { "src": "/index.html", "dest": "/templates/index.html" },
-    { "src": "/static/(.*)", "dest": "/static/$1" },
-    { "src": "/favicon.ico", "dest": "/static/favicon.ico" },
-    { "src": "/(.*)", "dest": "/wsgi.py" }
+  "rewrites": [
+    {
+      "source": "/node_modules/liblouis-build/(.*)",
+      "destination": "/static/liblouis/$1"
+    },
+    {
+      "source": "/node_modules/liblouis/(.*)",
+      "destination": "/static/liblouis/$1"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/static/liblouis/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    }
   ]
 }

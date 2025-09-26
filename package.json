@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@vercel/blob": "^2.0.0",
     "liblouis": "^0.4.0"
   }
 }

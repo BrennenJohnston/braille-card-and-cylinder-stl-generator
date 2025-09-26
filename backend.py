@@ -3338,16 +3338,29 @@ def generate_braille_stl():
         stl_hash = hashlib.sha256(stl_bytes).hexdigest()
         etag_value = f'"{stl_hash}"'
 
-        client_etags = request.headers.get('If-None-Match')
-        if client_etags:
-            etag_tokens = [token.strip() for token in client_etags.split(',')]
-            if '*' in etag_tokens or etag_value in etag_tokens:
-                response = app.response_class(status=304)
-                response.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-                response.headers['ETag'] = etag_value
-                response.headers['Last-Modified'] = http_date(datetime.utcnow())
-                return response
-        
+        config_payload = {
+            "lines": lines,
+            "original_lines": original_lines,
+            "placement_mode": placement_mode,
+            "plate_type": plate_type,
+            "grade": grade,
+            "settings": settings_data,
+            "shape_type": shape_type,
+            "cylinder_params": cylinder_params,
+            "per_line_language_tables": per_line_language_tables,
+        }
+        cache_key = build_stl_cache_key('generate_braille_stl', config_payload)
+
+        cached_blob = blob_client.get(cache_key) if blob_client.is_enabled() else None
+        if cached_blob:
+            cached_url = cached_blob.get('downloadUrl') or cached_blob.get('url')
+            if cached_url:
+                print(f"CACHE HIT: key={cache_key} -> {cached_url}")
+                return redirect(cached_url, code=302)
+        else:
+            if blob_client.is_enabled():
+                print(f"CACHE MISS: key={cache_key}")
+
         # Create JSON config dump for reproducibility
         config_dump = {
             "timestamp": datetime.now().isoformat(),

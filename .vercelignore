@@ -16,7 +16,6 @@ Procfile
 
 # Heavy/duplicate assets not needed on Vercel
 third_party/
-node_modules/
 
 # Test artifacts
 *.stl

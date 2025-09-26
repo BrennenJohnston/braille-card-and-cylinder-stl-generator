@@ -3563,7 +3563,12 @@ class BlobStorageClient:
             app.logger.error(f"Blob upload failed for key={key}: {exc}")
             return None
 
-BLOB_STORE_WRITE_TOKEN = os.environ.get('BLOB_STORE_WRITE_TOKEN')
+BLOB_STORE_WRITE_TOKEN = os.environ.get('BLOB_STORE_WRITE_TOKEN') or os.environ.get('BLOB_READ_WRITE_TOKEN')
+if BLOB_STORE_WRITE_TOKEN:
+    app.logger.info("Blob storage token detected; caching enabled")
+else:
+    app.logger.warning("Blob storage token missing (set BLOB_STORE_WRITE_TOKEN or BLOB_READ_WRITE_TOKEN) – caching disabled")
+
 blob_client = BlobStorageClient(BLOB_STORE_WRITE_TOKEN)
 
 def build_stl_cache_key(route_name: str, payload: dict) -> str:
@@ -3588,15 +3593,20 @@ def build_stl_cache_key(route_name: str, payload: dict) -> str:
         cached_blob = blob_client.get(cache_key) if blob_client.is_enabled() else None
         if cached_blob:
             cached_url = cached_blob.get('downloadUrl') or cached_blob.get('url')
-            cached_etag = cached_blob.get('etag')
+            cached_etag = cached_blob.get('etag') or etag_value
             if cached_url:
-                if client_etags and cached_etag and cached_etag in etag_tokens:
-                    response = app.response_class(status=304)
-                    response.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-                    response.headers['ETag'] = cached_etag
-                    response.headers['Last-Modified'] = cached_blob.get('uploadedAt') or http_date(datetime.utcnow())
-                    return response
-                return redirect(cached_url, code=302)
+                if client_etags and cached_etag:
+                    normalized_etag = cached_etag.strip('"')
+                    if normalized_etag in etag_tokens or cached_etag in etag_tokens:
+                        response = app.response_class(status=304)
+                        response.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+                        response.headers['ETag'] = cached_etag
+                        response.headers['Last-Modified'] = cached_blob.get('uploadedAt') or http_date(datetime.utcnow())
+                        return response
+                response = redirect(cached_url, code=302)
+                response.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+                response.headers['ETag'] = cached_etag
+                return response
 
         if shape_type == 'card':
 // ... existing code ...

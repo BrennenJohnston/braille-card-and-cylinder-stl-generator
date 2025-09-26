@@ -1,0 +1,21 @@
+name: Vercel Deploy Hook
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  trigger-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel deploy hook
+        env:
+          HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK_URL" ]; then
+            echo "VERCEL_DEPLOY_HOOK_URL is not set" >&2
+            exit 1
+          fi
+          curl -sS -X POST "$HOOK_URL" -H 'Content-Type: application/json' -d '{"force": true}'

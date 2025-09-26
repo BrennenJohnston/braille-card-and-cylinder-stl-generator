@@ -5,6 +5,7 @@ import io
 import os
 import re
 import json
+import base64
 from datetime import datetime
 from pathlib import Path
 from flask_cors import CORS
@@ -15,6 +16,11 @@ from functools import wraps
 import time
 from collections import defaultdict
 import hashlib
+from werkzeug.http import http_date
+import requests
+from urllib.parse import quote
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 # Matplotlib imports are intentionally deferred to inside functions that need them
 # to keep the serverless deployment lightweight and optional
 
@@ -35,34 +41,19 @@ CORS(app, origins=allowed_origins, supports_credentials=True)
 app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024  # 1MB max request size
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 
-# Rate limiting storage
-request_counts = defaultdict(list)
-REQUEST_LIMIT = 10  # requests per minute
-TIME_WINDOW = 60  # seconds
+REDIS_URL = os.environ.get('REDIS_URL')
 
-# Security headers
-@app.after_request
-def add_security_headers(response):
-    """Add security headers to all responses"""
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['X-XSS-Protection'] = '1; mode=block'
-    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-    # More permissive CSP to allow STL loading and other necessary resources
-    csp_policy = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://vercel.live; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: blob:; "
-        "connect-src 'self' blob: data:; "
-        "object-src 'none'; "
-        "base-uri 'self'"
-    )
-    response.headers['Content-Security-Policy'] = csp_policy
-    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
-    return response
+def _limiter_storage():
+    if REDIS_URL:
+        return REDIS_URL
+    return "memory://"
+
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["10 per minute"],
+    storage_uri=_limiter_storage()
+)
 
 # Rate limiting decorator
 def rate_limit(f):
@@ -2989,18 +2980,17 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
 
 @app.route('/health')
 def health_check():
-    return jsonify({'status': 'ok', 'message': 'Vercel backend is running'})
+    return jsonify({
+        'status': 'ok',
+        'limiter_storage': limiter.storage_uri
+    })
 
 
 
 
 @app.route('/')
 def index():
-    try:
-        return render_template('index.html')
-    except Exception as e:
-        print(f"Error rendering template: {e}")
-        return jsonify({'error': 'Failed to load template'}), 500
+    return redirect('/templates/index.html', code=302)
 
 @app.route('/node_modules/<path:filename>')
 def node_modules(filename):
@@ -3230,7 +3220,7 @@ def list_liblouis_tables():
     return jsonify({'tables': tables})
 
 @app.route('/generate_braille_stl', methods=['POST'])
-@rate_limit
+@limiter.limit("10 per minute")
 def generate_braille_stl():
     try:
         # Validate request content type
@@ -3341,10 +3331,22 @@ def generate_braille_stl():
                 mesh.unify_normals()
                 print("INFO: Unified mesh normals (scipy not available)")
         
-        # Export to STL
-        stl_io = io.BytesIO()
-        mesh.export(stl_io, file_type='stl')
-        stl_io.seek(0)
+        # Export to STL and compute caching metadata
+        stl_buffer = io.BytesIO()
+        mesh.export(stl_buffer, file_type='stl')
+        stl_bytes = stl_buffer.getvalue()
+        stl_hash = hashlib.sha256(stl_bytes).hexdigest()
+        etag_value = f'"{stl_hash}"'
+
+        client_etags = request.headers.get('If-None-Match')
+        if client_etags:
+            etag_tokens = [token.strip() for token in client_etags.split(',')]
+            if '*' in etag_tokens or etag_value in etag_tokens:
+                response = app.response_class(status=304)
+                response.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+                response.headers['ETag'] = etag_value
+                response.headers['Last-Modified'] = http_date(datetime.utcnow())
+                return response
         
         # Create JSON config dump for reproducibility
         config_dump = {
@@ -3422,13 +3424,18 @@ def generate_braille_stl():
         # Additional filename sanitization for security
         filename = re.sub(r'[^\w\-_]', '', filename)[:60]  # Allow longer names to accommodate shape type
         
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl')
+        response = send_file(io.BytesIO(stl_bytes), mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl')
+        response.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+        response.headers['ETag'] = etag_value
+        response.headers['Content-Length'] = str(len(stl_bytes))
+        response.headers['Last-Modified'] = http_date(datetime.utcnow())
+        return response
         
     except Exception as e:
         return jsonify({'error': f'Failed to generate STL: {str(e)}'}), 500
 
 @app.route('/generate_counter_plate_stl', methods=['POST'])
-@rate_limit
+@limiter.limit("10 per minute")
 def generate_counter_plate_stl():
     """
     Generate counter plate with hemispherical recesses as per project brief.
@@ -3497,3 +3504,104 @@ if __name__ == '__main__':
 
 # For Vercel deployment
 app.debug = False
+
+class BlobStorageClient:
+    API_BASE = "https://api.vercel.com/v8/blob"
+
+    def __init__(self, write_token: str | None):
+        self.write_token = write_token
+        self.session = requests.Session()
+
+    def is_enabled(self) -> bool:
+        return bool(self.write_token)
+
+    def _headers(self) -> dict[str, str]:
+        return {
+            "Authorization": f"Bearer {self.write_token}",
+            "Content-Type": "application/json"
+        }
+
+    def get(self, key: str) -> dict | None:
+        if not self.is_enabled():
+            return None
+        try:
+            resp = self.session.get(f"{self.API_BASE}/{quote(key, safe='')}", headers=self._headers(), timeout=10)
+            if resp.status_code == 404:
+                return None
+            resp.raise_for_status()
+            return resp.json()
+        except requests.RequestException as exc:
+            app.logger.error(f"Blob get failed for key={key}: {exc}")
+            return None
+
+    def upload(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> dict | None:
+        if not self.is_enabled():
+            return None
+        payload = {
+            "blob": base64.b64encode(data).decode('utf-8'),
+            "key": key,
+            "contentType": content_type
+        }
+        try:
+            resp = self.session.put(self.API_BASE, headers=self._headers(), json=payload, timeout=20)
+            resp.raise_for_status()
+            return resp.json()
+        except requests.RequestException as exc:
+            app.logger.error(f"Blob upload failed for key={key}: {exc}")
+            return None
+
+BLOB_STORE_WRITE_TOKEN = os.environ.get('BLOB_STORE_WRITE_TOKEN')
+blob_client = BlobStorageClient(BLOB_STORE_WRITE_TOKEN)
+
+def build_stl_cache_key(route_name: str, payload: dict) -> str:
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    checksum = hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+    return f"stl-cache/{route_name}/{checksum}.stl"
+
+# ... existing code ...
+        config_payload = {
+            "lines": lines,
+            "original_lines": original_lines,
+            "placement_mode": placement_mode,
+            "plate_type": plate_type,
+            "grade": grade,
+            "settings": settings_data,
+            "shape_type": shape_type,
+            "cylinder_params": cylinder_params,
+            "per_line_language_tables": per_line_language_tables,
+        }
+        cache_key = build_stl_cache_key('generate_braille_stl', config_payload)
+
+        cached_blob = blob_client.get(cache_key) if blob_client.is_enabled() else None
+        if cached_blob:
+            cached_url = cached_blob.get('downloadUrl') or cached_blob.get('url')
+            cached_etag = cached_blob.get('etag')
+            if cached_url:
+                if client_etags and cached_etag and cached_etag in client_etags:
+                    response = app.response_class(status=304)
+                    response.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+                    response.headers['ETag'] = cached_etag
+                    response.headers['Last-Modified'] = cached_blob.get('uploadedAt') or http_date(datetime.utcnow())
+                    return response
+                try:
+                    blob_response = requests.get(cached_url, timeout=30)
+                    blob_response.raise_for_status()
+                    cached_bytes = blob_response.content
+                except requests.RequestException as err:
+                    app.logger.error(f"Failed to download cached blob {cache_key}: {err}")
+                else:
+                    response = send_file(
+                        io.BytesIO(cached_bytes),
+                        mimetype='model/stl',
+                        as_attachment=True,
+                        download_name=f'{cache_key.split('/')[-1]}'
+                    )
+                    response.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+                    if cached_etag:
+                        response.headers['ETag'] = cached_etag
+                    response.headers['Content-Length'] = str(len(cached_bytes))
+                    response.headers['Last-Modified'] = cached_blob.get('uploadedAt') or http_date(datetime.utcnow())
+                    return response
+
+        if shape_type == 'card':
+// ... existing code ...

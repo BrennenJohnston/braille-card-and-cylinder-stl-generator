@@ -6,3 +6,4 @@ flask-cors
 shapely 
 manifold3d
 matplotlib 
+requests

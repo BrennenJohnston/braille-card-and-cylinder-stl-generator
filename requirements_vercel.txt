@@ -4,3 +4,4 @@ numpy==1.24.3
 flask-cors==4.0.0
 shapely==2.0.1
 manifold3d==0.0.1
+requests==2.31.0

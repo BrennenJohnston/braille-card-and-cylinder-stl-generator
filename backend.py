@@ -3452,13 +3452,12 @@ def generate_braille_stl():
         }
         cache_key = compute_cache_key(cache_payload)
 
-        # If a public base is configured and the blob already exists, redirect - DISABLED for baseline
-        # cached_public = _build_blob_public_url(cache_key)
-        # if _blob_check_exists(cached_public):
-        #     resp = redirect(cached_public, code=302)
-        #     resp.headers['X-Cache'] = 'HIT-blob'
-        #     resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-        #     return resp
+        # If a public base is configured and the blob already exists, redirect
+        cached_public = _build_blob_public_url(cache_key)
+        if _blob_check_exists(cached_public):
+            resp = redirect(cached_public, code=302)
+            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            return resp
 
         # Compute time around STL export for observability
         t0 = time.time()
@@ -3554,15 +3553,13 @@ def generate_braille_stl():
         # Additional filename sanitization for security
         filename = re.sub(r'[^\w\-_]', '', filename)[:60]  # Allow longer names to accommodate shape type
         
-        # Attempt to persist to Blob store and redirect if successful - DISABLED for baseline
-        # public_url = _blob_upload(cache_key, stl_bytes)
-        # if public_url:
-        #     resp = redirect(public_url, code=302)
-        #     resp.headers['ETag'] = etag
-        #     resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-        #     resp.headers['X-Cache'] = 'MISS-uploaded'
-        #     resp.headers['X-Compute-Time'] = str(compute_ms)
-        #     return resp
+        # Attempt to persist to Blob store and redirect if successful
+        public_url = _blob_upload(cache_key, stl_bytes)
+        if public_url:
+            resp = redirect(public_url, code=302)
+            resp.headers['ETag'] = etag
+            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            return resp
 
         # Build response with headers
         resp = make_response(send_file(io.BytesIO(stl_bytes), mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl'))
@@ -3623,13 +3620,12 @@ def generate_counter_plate_stl():
         }
         cache_key = compute_cache_key(cache_payload)
 
-        # If a public base is configured and the blob already exists, redirect - DISABLED for baseline
-        # cached_public = _build_blob_public_url(cache_key)
-        # if _blob_check_exists(cached_public):
-        #     resp = redirect(cached_public, code=302)
-        #     resp.headers['X-Cache'] = 'HIT-blob'
-        #     resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-        #     return resp
+        # If a public base is configured and the blob already exists, redirect
+        cached_public = _build_blob_public_url(cache_key)
+        if _blob_check_exists(cached_public):
+            resp = redirect(cached_public, code=302)
+            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            return resp
 
         # Compute time around STL export for observability
         t0 = time.time()
@@ -3660,15 +3656,13 @@ def generate_counter_plate_stl():
         except Exception:
             total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
         filename = f"braille_counter_plate_{total_diameter}mm"
-        # Attempt to persist to Blob store and redirect if successful - DISABLED for baseline
-        # public_url = _blob_upload(cache_key, stl_bytes)
-        # if public_url:
-        #     resp = redirect(public_url, code=302)
-        #     resp.headers['ETag'] = etag
-        #     resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-        #     resp.headers['X-Cache'] = 'MISS-uploaded'
-        #     resp.headers['X-Compute-Time'] = str(compute_ms)
-        #     return resp
+        # Attempt to persist to Blob store and redirect if successful
+        public_url = _blob_upload(cache_key, stl_bytes)
+        if public_url:
+            resp = redirect(public_url, code=302)
+            resp.headers['ETag'] = etag
+            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            return resp
 
         # Build response with headers
         resp = make_response(send_file(io.BytesIO(stl_bytes), mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl'))

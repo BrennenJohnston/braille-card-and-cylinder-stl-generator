@@ -53,8 +53,11 @@ async function initializeLiblouis() {
             if (liblouisInstance.enableOnDemandTableLoading) {
                 console.log('Worker: Enabling on-demand table loading...');
                 try {
-                    // Try the static directory first
-                    liblouisInstance.enableOnDemandTableLoading('/static/liblouis/tables/');
+                    // Prefer absolute origin-based URL for robustness on Vercel/CDN
+                    var origin = (self && self.location && self.location.origin) ? self.location.origin : '';
+                    var tableBase = origin + '/static/liblouis/tables/';
+                    // Try the absolute static directory first
+                    liblouisInstance.enableOnDemandTableLoading(tableBase);
                     console.log('Worker: Table loading enabled from static directory');
                 } catch (e) {
                     console.log('Worker: Static path failed, trying node_modules path...');
@@ -76,19 +79,26 @@ async function initializeLiblouis() {
                 console.log('Worker: enableOnDemandTableLoading not available, tables may be pre-loaded');
             }
 
-            // Also set the liblouis data path so includes resolve correctly
+            // Do NOT set an absolute URL as data path: liblouis expects a virtual FS path.
+            // Rely on enableOnDemandTableLoading to fetch tables over HTTP.
             try {
                 if (liblouisInstance.setDataPath) {
-                    liblouisInstance.setDataPath('/static/liblouis/tables/');
-                    console.log('Worker: Data path set to /static/liblouis/tables/');
+                    liblouisInstance.setDataPath('');
+                    console.log('Worker: Data path cleared (using dynamic loader)');
                 }
             } catch (e) {
-                console.log('Worker: setDataPath failed:', e && e.message ? e.message : e);
+                console.log('Worker: setDataPath adjustment failed:', e && e.message ? e.message : e);
             }
             
             liblouisReady = true;
             console.log('Worker: Liblouis initialized successfully');
             
+            // Preload core tables to help include resolution in some environments
+            try { liblouisInstance.loadTable('unicode.dis'); } catch (_) {}
+            try { liblouisInstance.loadTable('en-ueb-g1.ctb'); } catch (_) {}
+            try { liblouisInstance.loadTable('en-ueb-g2.ctb'); } catch (_) {}
+            try { liblouisInstance.loadTable('en-ueb-math.ctb'); } catch (_) {}
+
             // Test translation to verify it works (check UEB tables specifically)
             try {
                 const ok = liblouisInstance.checkTable('unicode.dis,en-ueb-g1.ctb');

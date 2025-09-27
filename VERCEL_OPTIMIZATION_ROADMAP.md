@@ -5,25 +5,14 @@ This roadmap outlines performance and cost optimization steps for deploying the 
 ## Phase 1: Static Asset Optimization (Immediate Impact)
 
 ### 1.1 Configure Static File Serving
-**Status: COMPLETE**
+**Status: RETRYING**
 - Update `vercel.json` to serve static assets directly from Vercel's CDN
 - Add static routes for `/static/**` and `/favicon.ico`
 - Benefits: Reduces function invocations, faster asset delivery
 
-```json
-{
-  "version": 2,
-  "builds": [
-    { "src": "wsgi.py", "use": "@vercel/python" },
-    { "src": "static/**", "use": "@vercel/static" }
-  ],
-  "routes": [
-    { "src": "/static/(.*)", "dest": "/static/$1" },
-    { "src": "/favicon.ico", "dest": "/static/favicon.ico" },
-    { "src": "/(.*)", "dest": "/wsgi.py" }
-  ]
-}
-```
+Notes:
+- Do not set absolute URL in liblouis `setDataPath`; use dynamic loader only.
+- Worker uses `enableOnDemandTableLoading('/static/liblouis/tables/')`.
 
 ### 1.2 Update CSP Headers
 **Status: COMPLETE**

@@ -7,3 +7,4 @@ shapely
 manifold3d
 matplotlib 
 requests
+flask-limiter

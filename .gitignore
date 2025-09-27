@@ -20,3 +20,12 @@ node_modules/
 
 # IDE files
 .vscode/
+
+# Environment files (secrets)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Vercel project dir (contains tokens/config)
+.vercel/

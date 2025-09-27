@@ -47,23 +47,24 @@ CORS(app, origins=allowed_origins, supports_credentials=True)
 app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024  # 1MB max request size
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 
-# Flask-Limiter setup (Phase 4.1/4.2)
-redis_url = os.environ.get('REDIS_URL')
-storage_uri = redis_url if redis_url else 'memory://'
-if Limiter is not None:
-    limiter = Limiter(
-        key_func=get_remote_address,
-        storage_uri=storage_uri,
-        default_limits=["10 per minute"],
-    )
-    limiter.init_app(app)
-else:
-    class _NoopLimiter:
-        def limit(self, *_args, **_kwargs):
-            def decorator(f):
-                return f
-            return decorator
-    limiter = _NoopLimiter()
+# Flask-Limiter setup (Phase 4.1/4.2) - DISABLED for baseline debugging
+# redis_url = os.environ.get('REDIS_URL')
+# storage_uri = redis_url if redis_url else 'memory://'
+# if Limiter is not None:
+#     limiter = Limiter(
+#         key_func=get_remote_address,
+#         storage_uri=storage_uri,
+#         default_limits=["10 per minute"],
+#     )
+#     limiter.init_app(app)
+# else:
+#     class _NoopLimiter:
+#         def limit(self, *_args, **_kwargs):
+#             def decorator(f):
+#                 return f
+#             return decorator
+#     limiter = _NoopLimiter()
+limiter = None
 
 # Helper functions for caching and security
 
@@ -148,18 +149,18 @@ def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-    # More permissive CSP to allow STL loading and other necessary resources
-    csp_policy = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://vercel.live; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: blob:; "
-        "connect-src 'self' blob: data:; "
-        "object-src 'none'; "
-        "base-uri 'self'; worker-src 'self' blob:"
-    )
-    response.headers['Content-Security-Policy'] = csp_policy
+    # Content-Security-Policy adjustments (worker-src, vercel.live) - DISABLED for baseline
+    # csp_policy = (
+    #     "default-src 'self'; "
+    #     "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://vercel.live; "
+    #     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    #     "font-src 'self' https://fonts.gstatic.com; "
+    #     "img-src 'self' data: blob:; "
+    #     "connect-src 'self' blob: data:; "
+    #     "object-src 'none'; "
+    #     "base-uri 'self'; worker-src 'self' blob:"
+    # )
+    # response.headers['Content-Security-Policy'] = csp_policy
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
     return response
@@ -3065,9 +3066,9 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
             return create_simple_negative_plate(params)
 
 
-@app.route('/health')
-def health_check():
-    return jsonify({'status': 'ok', 'message': 'Vercel backend is running'})
+# @app.route('/health')
+# def health_check():
+#     return jsonify({'status': 'ok', 'message': 'Vercel backend is running'})
 
 
 
@@ -3080,17 +3081,17 @@ def index():
         print(f"Error rendering template: {e}")
         return jsonify({'error': 'Failed to load template'}), 500
 
-@app.route('/node_modules/<path:filename>')
-def node_modules(filename):
-    """Redirect node_modules requests to static files for Vercel deployment"""
-    # Map common node_modules paths to static equivalents
-    if filename.startswith('liblouis-build/') or filename.startswith('liblouis/'):
-        # Remove the 'liblouis-build/' or 'liblouis/' prefix and redirect to static
-        static_path = filename.replace('liblouis-build/', 'liblouis/').replace('liblouis/', 'liblouis/')
-        return redirect(f'/static/{static_path}')
-    
-    # For other node_modules requests, return 404
-    return jsonify({'error': 'node_modules not available on deployment'}), 404
+# @app.route('/node_modules/<path:filename>')
+# def node_modules(filename):
+#     """Redirect node_modules requests to static files for Vercel deployment"""
+#     # Map common node_modules paths to static equivalents
+#     if filename.startswith('liblouis-build/') or filename.startswith('liblouis/'):
+#         # Remove the 'liblouis-build/' or 'liblouis/' prefix and redirect to static
+#         static_path = filename.replace('liblouis-build/', 'liblouis/').replace('liblouis/', 'liblouis/')
+#         return redirect(f'/static/{static_path}')
+#     
+#     # For other node_modules requests, return 404
+#     return jsonify({'error': 'node_modules not available on deployment'}), 404
 
 @app.route('/favicon.ico')
 def favicon():
@@ -3327,7 +3328,7 @@ def list_liblouis_tables():
     return jsonify({'tables': tables})
 
 @app.route('/generate_braille_stl', methods=['POST'])
-@limiter.limit("10 per minute")
+# @limiter.limit("10 per minute")  # disabled for baseline
 def generate_braille_stl():
     try:
         # Validate request content type
@@ -3451,13 +3452,13 @@ def generate_braille_stl():
         }
         cache_key = compute_cache_key(cache_payload)
 
-        # If a public base is configured and the blob already exists, redirect
-        cached_public = _build_blob_public_url(cache_key)
-        if _blob_check_exists(cached_public):
-            resp = redirect(cached_public, code=302)
-            resp.headers['X-Cache'] = 'HIT-blob'
-            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-            return resp
+        # If a public base is configured and the blob already exists, redirect - DISABLED for baseline
+        # cached_public = _build_blob_public_url(cache_key)
+        # if _blob_check_exists(cached_public):
+        #     resp = redirect(cached_public, code=302)
+        #     resp.headers['X-Cache'] = 'HIT-blob'
+        #     resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+        #     return resp
 
         # Compute time around STL export for observability
         t0 = time.time()
@@ -3467,19 +3468,17 @@ def generate_braille_stl():
         stl_io.seek(0)
         compute_ms = int((time.time() - t0) * 1000)
 
-        # Compute ETag for caching based on STL bytes
+        # Compute ETag and conditional 304 handling - DISABLED for baseline
         stl_bytes = stl_io.getvalue()
-        etag = hashlib.sha256(stl_bytes).hexdigest()
-
-        # If client has matching ETag, return 304
-        client_etag = request.headers.get('If-None-Match')
-        if client_etag and client_etag == etag:
-            resp = make_response('', 304)
-            resp.headers['ETag'] = etag
-            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-            resp.headers['X-Cache'] = 'HIT-browser'
-            resp.headers['X-Compute-Time'] = str(compute_ms)
-            return resp
+        # etag = hashlib.sha256(stl_bytes).hexdigest()
+        # client_etag = request.headers.get('If-None-Match')
+        # if client_etag and client_etag == etag:
+        #     resp = make_response('', 304)
+        #     resp.headers['ETag'] = etag
+        #     resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+        #     resp.headers['X-Cache'] = 'HIT-browser'
+        #     resp.headers['X-Compute-Time'] = str(compute_ms)
+        #     return resp
         
         # Create JSON config dump for reproducibility
         config_dump = {
@@ -3557,30 +3556,29 @@ def generate_braille_stl():
         # Additional filename sanitization for security
         filename = re.sub(r'[^\w\-_]', '', filename)[:60]  # Allow longer names to accommodate shape type
         
-        # Attempt to persist to Blob store and redirect if successful
-        public_url = _blob_upload(cache_key, stl_bytes)
-        if public_url:
-            # Cache persisted; redirect client to CDN URL
-            resp = redirect(public_url, code=302)
-            resp.headers['ETag'] = etag
-            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-            resp.headers['X-Cache'] = 'MISS-uploaded'
-            resp.headers['X-Compute-Time'] = str(compute_ms)
-            return resp
+        # Attempt to persist to Blob store and redirect if successful - DISABLED for baseline
+        # public_url = _blob_upload(cache_key, stl_bytes)
+        # if public_url:
+        #     resp = redirect(public_url, code=302)
+        #     resp.headers['ETag'] = etag
+        #     resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+        #     resp.headers['X-Cache'] = 'MISS-uploaded'
+        #     resp.headers['X-Compute-Time'] = str(compute_ms)
+        #     return resp
 
         # Build response with headers
         resp = make_response(send_file(io.BytesIO(stl_bytes), mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl'))
-        resp.headers['ETag'] = etag
-        resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-        resp.headers['X-Cache'] = 'MISS-direct'
-        resp.headers['X-Compute-Time'] = str(compute_ms)
+        # resp.headers['ETag'] = etag
+        # resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+        # resp.headers['X-Cache'] = 'MISS-direct'
+        # resp.headers['X-Compute-Time'] = str(compute_ms)
         return resp
         
     except Exception as e:
         return jsonify({'error': f'Failed to generate STL: {str(e)}'}), 500
 
 @app.route('/generate_counter_plate_stl', methods=['POST'])
-@limiter.limit("10 per minute")
+# @limiter.limit("10 per minute")  # disabled for baseline
 def generate_counter_plate_stl():
     """
     Generate counter plate with hemispherical recesses as per project brief.
@@ -3629,13 +3627,13 @@ def generate_counter_plate_stl():
         }
         cache_key = compute_cache_key(cache_payload)
 
-        # If a public base is configured and the blob already exists, redirect
-        cached_public = _build_blob_public_url(cache_key)
-        if _blob_check_exists(cached_public):
-            resp = redirect(cached_public, code=302)
-            resp.headers['X-Cache'] = 'HIT-blob'
-            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-            return resp
+        # If a public base is configured and the blob already exists, redirect - DISABLED for baseline
+        # cached_public = _build_blob_public_url(cache_key)
+        # if _blob_check_exists(cached_public):
+        #     resp = redirect(cached_public, code=302)
+        #     resp.headers['X-Cache'] = 'HIT-blob'
+        #     resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+        #     return resp
 
         # Compute time around STL export for observability
         t0 = time.time()
@@ -3645,19 +3643,17 @@ def generate_counter_plate_stl():
         stl_io.seek(0)
         compute_ms = int((time.time() - t0) * 1000)
 
-        # Compute ETag for caching based on STL bytes
+        # Compute ETag and conditional 304 handling - DISABLED for baseline
         stl_bytes = stl_io.getvalue()
-        etag = hashlib.sha256(stl_bytes).hexdigest()
-
-        # If client has matching ETag, return 304
-        client_etag = request.headers.get('If-None-Match')
-        if client_etag and client_etag == etag:
-            resp = make_response('', 304)
-            resp.headers['ETag'] = etag
-            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-            resp.headers['X-Cache'] = 'HIT-browser'
-            resp.headers['X-Compute-Time'] = str(compute_ms)
-            return resp
+        # etag = hashlib.sha256(stl_bytes).hexdigest()
+        # client_etag = request.headers.get('If-None-Match')
+        # if client_etag and client_etag == etag:
+        #     resp = make_response('', 304)
+        #     resp.headers['ETag'] = etag
+        #     resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+        #     resp.headers['X-Cache'] = 'HIT-browser'
+        #     resp.headers['X-Compute-Time'] = str(compute_ms)
+        #     return resp
         
         # Include actual counter base diameter in filename
         try:
@@ -3670,22 +3666,22 @@ def generate_counter_plate_stl():
         except Exception:
             total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
         filename = f"braille_counter_plate_{total_diameter}mm"
-        # Attempt to persist to Blob store and redirect if successful
-        public_url = _blob_upload(cache_key, stl_bytes)
-        if public_url:
-            resp = redirect(public_url, code=302)
-            resp.headers['ETag'] = etag
-            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-            resp.headers['X-Cache'] = 'MISS-uploaded'
-            resp.headers['X-Compute-Time'] = str(compute_ms)
-            return resp
+        # Attempt to persist to Blob store and redirect if successful - DISABLED for baseline
+        # public_url = _blob_upload(cache_key, stl_bytes)
+        # if public_url:
+        #     resp = redirect(public_url, code=302)
+        #     resp.headers['ETag'] = etag
+        #     resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+        #     resp.headers['X-Cache'] = 'MISS-uploaded'
+        #     resp.headers['X-Compute-Time'] = str(compute_ms)
+        #     return resp
 
         # Build response with headers
         resp = make_response(send_file(io.BytesIO(stl_bytes), mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl'))
-        resp.headers['ETag'] = etag
-        resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-        resp.headers['X-Cache'] = 'MISS-direct'
-        resp.headers['X-Compute-Time'] = str(compute_ms)
+        # resp.headers['ETag'] = etag
+        # resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+        # resp.headers['X-Cache'] = 'MISS-direct'
+        # resp.headers['X-Compute-Time'] = str(compute_ms)
         return resp
         
     except Exception as e:
@@ -3696,5 +3692,5 @@ if __name__ == '__main__':
     
     app.run(debug=True, port=5001)
 
-# For Vercel deployment
-app.debug = False
+# For Vercel deployment - DISABLED for baseline
+# app.debug = False

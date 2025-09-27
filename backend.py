@@ -48,8 +48,17 @@ request_counts = defaultdict(list)
 
 REDIS_URL = os.environ.get('REDIS_URL')
 
+# Prefer Redis only when explicitly configured AND the redis client is available.
+# Otherwise, transparently fall back to memory storage to avoid import-time crashes
+# in serverless environments where REDIS_URL might be set but the dependency is missing.
+try:
+    import redis as _redis  # type: ignore
+    _REDIS_AVAILABLE = True
+except Exception:
+    _REDIS_AVAILABLE = False
+
 def _limiter_storage():
-    if REDIS_URL:
+    if REDIS_URL and _REDIS_AVAILABLE:
         return REDIS_URL
     return "memory://"
 

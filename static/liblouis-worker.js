@@ -118,42 +118,42 @@ self.onmessage = async function(e) {
                 // This should work if the table is properly configured for Unicode output
                 console.log('Worker: Using table:', selectedTable);
                 
-                try {
-                    const result = liblouisInstance.translateString(selectedTable, text);
-                    console.log('Worker: Translation successful:', result);
-                    
-                    // Verify the result contains proper braille Unicode characters
-                    const hasBrailleChars = result.split('').some(char => {
-                        const code = char.charCodeAt(0);
-                        return code >= 0x2800 && code <= 0x28FF;
-                    });
-                    
-                    if (hasBrailleChars) {
-                        console.log('Worker: Result contains proper braille Unicode characters');
-                        self.postMessage({ id, type: 'translate', result: { success: true, translation: result } });
-                    } else {
-                        console.log('Worker: Result does not contain braille Unicode, trying unicode.dis approach');
-                        // Try with unicode.dis prefix as fallback
-                        const tableFormat = 'unicode.dis,' + selectedTable;
-                        console.log('Worker: Trying table format:', tableFormat);
-                        const fallbackResult = liblouisInstance.translateString(tableFormat, text);
-                        console.log('Worker: Fallback translation successful:', fallbackResult);
-                        self.postMessage({ id, type: 'translate', result: { success: true, translation: fallbackResult } });
-                    }
-                } catch (e) {
-                    console.log('Worker: Direct translation failed:', e.message);
-                    // Try with unicode.dis prefix as fallback
+                const tryTables = [];
+                // Primary: requested or default
+                tryTables.push(selectedTable);
+                tryTables.push('unicode.dis,' + selectedTable);
+                // Additional safe fallbacks: common English variants available in our static bundle
+                if (selectedTable === 'en-ueb-g1.ctb') {
+                    tryTables.push('en-us-g1.ctb');
+                    tryTables.push('unicode.dis,en-us-g1.ctb');
+                } else if (selectedTable === 'en-ueb-g2.ctb') {
+                    tryTables.push('en-us-g2.ctb');
+                    tryTables.push('unicode.dis,en-us-g2.ctb');
+                }
+
+                let lastError = null;
+                for (let i = 0; i < tryTables.length; i++) {
+                    const table = tryTables[i];
                     try {
-                        const tableFormat = 'unicode.dis,' + selectedTable;
-                        console.log('Worker: Trying fallback table format:', tableFormat);
-                        const fallbackResult = liblouisInstance.translateString(tableFormat, text);
-                        console.log('Worker: Fallback translation successful:', fallbackResult);
-                        self.postMessage({ id, type: 'translate', result: { success: true, translation: fallbackResult } });
-                    } catch (fallbackError) {
-                        console.log('Worker: Fallback translation also failed:', fallbackError.message);
-                        throw fallbackError;
+                        const result = liblouisInstance.translateString(table, text);
+                        if (result && typeof result === 'string') {
+                            const hasBrailleChars = result.split('').some(char => {
+                                const code = char.charCodeAt(0);
+                                return code >= 0x2800 && code <= 0x28FF;
+                            });
+                            if (hasBrailleChars) {
+                                console.log('Worker: Translation successful with table:', table);
+                                self.postMessage({ id, type: 'translate', result: { success: true, translation: result } });
+                                return;
+                            }
+                        }
+                        lastError = new Error('No braille chars in output');
+                    } catch (err) {
+                        lastError = err;
+                        console.log('Worker: Translation attempt failed with table', table, '-', err && err.message ? err.message : err);
                     }
                 }
+                throw lastError || new Error('Translation failed: Unknown error');
                 break;
                 
             default:

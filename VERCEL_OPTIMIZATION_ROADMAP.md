@@ -23,7 +23,11 @@ Action:
 ## Phase 2: Function Optimization
 
 ### 2.1 Memory and Timeout Configuration
-**Status: COMPLETE**
+**Status: SKIPPED**
+Reason:
+- The `functions` property is not supported with `builds` in vercel.json for this project preset.
+Action:
+- Rely on default limits or set memory/timeouts via Vercel dashboard if needed.
 - Set function memory to 1024MB (sweet spot for Python + trimesh)
 - Set maxDuration to 30s for complex STL generation
 - Add to `vercel.json`:

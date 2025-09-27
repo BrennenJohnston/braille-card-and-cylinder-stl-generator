@@ -81,7 +81,7 @@ async function initializeLiblouis() {
             
             // Test translation to verify it works
             try {
-                const testResult = liblouisInstance.translateString('en-us-g1.ctb', 'test');
+                const testResult = liblouisInstance.translateString('unicode.dis,en-us-g1.ctb', 'test');
                 console.log('Worker: Test translation successful:', testResult);
             } catch (e) {
                 console.log('Worker: Test translation failed:', e.message);
@@ -126,7 +126,12 @@ self.onmessage = async function(e) {
                 console.log('Worker: Translating text:', text, 'with table:', selectedTable);
 
                 try {
-                    const result = liblouisInstance.translateString(selectedTable, text);
+                    // Ensure unicode braille output by adding unicode-braille.utb to the table chain
+                    // Use unicode.dis as first table to force Unicode Braille output
+                    const tableChain = selectedTable.indexOf('unicode.dis') !== -1
+                        ? selectedTable
+                        : ('unicode.dis,' + selectedTable);
+                    const result = liblouisInstance.translateString(tableChain, text);
                     if (typeof result !== 'string' || result.length === 0) {
                         throw new Error('Liblouis returned empty result');
                     }

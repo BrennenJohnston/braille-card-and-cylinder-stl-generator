@@ -3468,17 +3468,15 @@ def generate_braille_stl():
         stl_io.seek(0)
         compute_ms = int((time.time() - t0) * 1000)
 
-        # Compute ETag and conditional 304 handling - DISABLED for baseline
+        # Compute ETag and conditional 304 handling
         stl_bytes = stl_io.getvalue()
-        # etag = hashlib.sha256(stl_bytes).hexdigest()
-        # client_etag = request.headers.get('If-None-Match')
-        # if client_etag and client_etag == etag:
-        #     resp = make_response('', 304)
-        #     resp.headers['ETag'] = etag
-        #     resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-        #     resp.headers['X-Cache'] = 'HIT-browser'
-        #     resp.headers['X-Compute-Time'] = str(compute_ms)
-        #     return resp
+        etag = hashlib.sha256(stl_bytes).hexdigest()
+        client_etag = request.headers.get('If-None-Match')
+        if client_etag and client_etag == etag:
+            resp = make_response('', 304)
+            resp.headers['ETag'] = etag
+            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            return resp
         
         # Create JSON config dump for reproducibility
         config_dump = {
@@ -3568,10 +3566,8 @@ def generate_braille_stl():
 
         # Build response with headers
         resp = make_response(send_file(io.BytesIO(stl_bytes), mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl'))
-        # resp.headers['ETag'] = etag
-        # resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-        # resp.headers['X-Cache'] = 'MISS-direct'
-        # resp.headers['X-Compute-Time'] = str(compute_ms)
+        resp.headers['ETag'] = etag
+        resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
         return resp
         
     except Exception as e:
@@ -3643,17 +3639,15 @@ def generate_counter_plate_stl():
         stl_io.seek(0)
         compute_ms = int((time.time() - t0) * 1000)
 
-        # Compute ETag and conditional 304 handling - DISABLED for baseline
+        # Compute ETag and conditional 304 handling
         stl_bytes = stl_io.getvalue()
-        # etag = hashlib.sha256(stl_bytes).hexdigest()
-        # client_etag = request.headers.get('If-None-Match')
-        # if client_etag and client_etag == etag:
-        #     resp = make_response('', 304)
-        #     resp.headers['ETag'] = etag
-        #     resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-        #     resp.headers['X-Cache'] = 'HIT-browser'
-        #     resp.headers['X-Compute-Time'] = str(compute_ms)
-        #     return resp
+        etag = hashlib.sha256(stl_bytes).hexdigest()
+        client_etag = request.headers.get('If-None-Match')
+        if client_etag and client_etag == etag:
+            resp = make_response('', 304)
+            resp.headers['ETag'] = etag
+            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            return resp
         
         # Include actual counter base diameter in filename
         try:
@@ -3678,10 +3672,8 @@ def generate_counter_plate_stl():
 
         # Build response with headers
         resp = make_response(send_file(io.BytesIO(stl_bytes), mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl'))
-        # resp.headers['ETag'] = etag
-        # resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-        # resp.headers['X-Cache'] = 'MISS-direct'
-        # resp.headers['X-Compute-Time'] = str(compute_ms)
+        resp.headers['ETag'] = etag
+        resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
         return resp
         
     except Exception as e:

@@ -75,16 +75,30 @@ async function initializeLiblouis() {
             } else {
                 console.log('Worker: enableOnDemandTableLoading not available, tables may be pre-loaded');
             }
+
+            // Also set the liblouis data path so includes resolve correctly
+            try {
+                if (liblouisInstance.setDataPath) {
+                    liblouisInstance.setDataPath('/static/liblouis/tables/');
+                    console.log('Worker: Data path set to /static/liblouis/tables/');
+                }
+            } catch (e) {
+                console.log('Worker: setDataPath failed:', e && e.message ? e.message : e);
+            }
             
             liblouisReady = true;
             console.log('Worker: Liblouis initialized successfully');
             
-            // Test translation to verify it works
+            // Test translation to verify it works (check UEB tables specifically)
             try {
-                const testResult = liblouisInstance.translateString('unicode.dis,en-us-g1.ctb', 'test');
-                console.log('Worker: Test translation successful:', testResult);
+                const ok = liblouisInstance.checkTable('unicode.dis,en-ueb-g1.ctb');
+                console.log('Worker: checkTable unicode.dis,en-ueb-g1.ctb =>', ok);
+            } catch (_) {}
+            try {
+                const testResult = liblouisInstance.translateString('unicode.dis,en-ueb-g1.ctb', 'test');
+                console.log('Worker: Test translation attempt (UEB g1):', testResult);
             } catch (e) {
-                console.log('Worker: Test translation failed:', e.message);
+                console.log('Worker: Test translation failed (UEB g1):', e.message);
             }
             
             return { success: true, message: 'Liblouis initialized successfully' };

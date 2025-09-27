@@ -9,6 +9,7 @@
     { "src": "^/$", "dest": "/templates/index.html" },
     { "src": "/index.html", "dest": "/templates/index.html" },
     { "src": "/static/(.*)", "dest": "/static/$1" },
+    { "src": "/favicon.png", "dest": "/static/favicon.png" },
     { "src": "/favicon.ico", "dest": "/static/favicon.ico" },
     { "src": "/(.*)", "dest": "/wsgi.py" }
   ]

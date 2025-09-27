@@ -1,4 +1,5 @@
 from flask import Flask, request, send_file, jsonify, render_template, send_from_directory, redirect, make_response
+from werkzeug.exceptions import HTTPException
 import trimesh
 import numpy as np
 import io
@@ -310,7 +311,10 @@ def validate_settings(settings_data):
 @app.errorhandler(Exception)
 def handle_error(e):
     import traceback
-    # Log error for debugging in production
+    # Pass through HTTPExceptions (e.g., 404) so they keep their original status codes
+    if isinstance(e, HTTPException):
+        return e
+    # Log unexpected errors for debugging in production
     app.logger.error(f"Error: {str(e)}")
     app.logger.error(f"Traceback: {traceback.format_exc()}")
     # Don't expose internal details in production
@@ -3092,6 +3096,25 @@ def node_modules(filename):
 def favicon():
     """Handle favicon requests to prevent 404 errors"""
     return '', 204  # Return empty response with "No Content" status
+
+@app.route('/favicon.png')
+def favicon_png():
+    """Serve or gracefully handle /favicon.png requests"""
+    try:
+        static_dir = 'static'
+        png_path = os.path.join(static_dir, 'favicon.png')
+        ico_path = os.path.join(static_dir, 'favicon.ico')
+        # Prefer a real png if present
+        if os.path.exists(png_path) and os.path.isfile(png_path):
+            return send_from_directory(static_dir, 'favicon.png')
+        # Fall back to ico if present
+        if os.path.exists(ico_path) and os.path.isfile(ico_path):
+            return send_from_directory(static_dir, 'favicon.ico')
+        # Nothing available; avoid noisy 404 -> return 204
+        return '', 204
+    except Exception as e:
+        app.logger.error(f"Failed to serve favicon: {e}")
+        return '', 204
 
 @app.route('/static/<path:filename>', methods=['GET', 'OPTIONS'])
 def static_files(filename):

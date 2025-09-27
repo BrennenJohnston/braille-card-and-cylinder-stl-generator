@@ -80,6 +80,7 @@ def compute_cache_key(payload: dict) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 def _blob_public_base_url() -> str:
+    # Public base like: https://<store>.public.blob.vercel-storage.com
     return os.environ.get('BLOB_PUBLIC_BASE_URL') or ''
 
 def _build_blob_public_url(cache_key: str) -> str:
@@ -103,7 +104,8 @@ def _blob_upload(cache_key: str, stl_bytes: bytes) -> str:
     """Upload STL to Vercel Blob via REST if configured. Returns public URL or empty string."""
     if requests is None:
         return ''
-    token = os.environ.get('BLOB_STORE_WRITE_TOKEN')
+    # Support both token names
+    token = os.environ.get('BLOB_STORE_WRITE_TOKEN') or os.environ.get('BLOB_READ_WRITE_TOKEN')
     if not token:
         return ''
     # API base can be overridden; default to Vercel public API
@@ -3385,6 +3387,27 @@ def generate_braille_stl():
     # Backend expects lines to already be within limits
     
     try:
+        # EARLY BLOB CACHE CHECK (before heavy mesh generation)
+        try:
+            cache_payload_early = {
+                'lines': lines,
+                'original_lines': original_lines,
+                'placement_mode': placement_mode,
+                'plate_type': plate_type,
+                'grade': grade,
+                'settings': settings_data,
+                'shape_type': shape_type,
+                'cylinder_params': cylinder_params,
+            }
+            early_cache_key = compute_cache_key(cache_payload_early)
+            early_public = _build_blob_public_url(early_cache_key)
+            if _blob_check_exists(early_public):
+                resp = redirect(early_public, code=302)
+                resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+                return resp
+        except Exception:
+            pass
+
         if shape_type == 'card':
             # Original card generation logic
             if plate_type == 'positive':
@@ -3596,6 +3619,22 @@ def generate_counter_plate_stl():
         return jsonify({'error': 'Invalid request data'}), 400
     
     try:
+        # EARLY BLOB CACHE CHECK (before heavy mesh generation)
+        try:
+            cache_payload_early = {
+                'plate_type': 'negative',
+                'settings': settings_data,
+                'shape_type': 'card',
+            }
+            early_cache_key = compute_cache_key(cache_payload_early)
+            early_public = _build_blob_public_url(early_cache_key)
+            if _blob_check_exists(early_public):
+                resp = redirect(early_public, code=302)
+                resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+                return resp
+        except Exception:
+            pass
+
         # Counter plate: choose recess shape
         # It does NOT depend on text input - always creates ALL 6 dots per cell
         recess_shape = int(getattr(settings, 'recess_shape', 1))

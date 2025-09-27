@@ -3,6 +3,8 @@
 
 let liblouisInstance = null;
 let liblouisReady = false;
+// Remember working fallbacks to avoid repeated failing attempts and console noise
+const tableResolutionCache = Object.create(null);
 
 // Import liblouis scripts with error handling
 try {
@@ -118,6 +120,29 @@ self.onmessage = async function(e) {
                 // This should work if the table is properly configured for Unicode output
                 console.log('Worker: Using table:', selectedTable);
                 
+                // If we've already resolved a better working table for this selection, use it immediately
+                if (tableResolutionCache[selectedTable]) {
+                    try {
+                        const cachedTable = tableResolutionCache[selectedTable];
+                        const cachedResult = liblouisInstance.translateString(cachedTable, text);
+                        if (cachedResult && typeof cachedResult === 'string') {
+                            const hasBrailleChars = cachedResult.split('').some(ch => {
+                                const c = ch.charCodeAt(0);
+                                return c >= 0x2800 && c <= 0x28FF;
+                            });
+                            if (hasBrailleChars) {
+                                self.postMessage({ id, type: 'translate', result: { success: true, translation: cachedResult } });
+                                return;
+                            }
+                        }
+                        // If cached table unexpectedly stops working, drop cache and continue with full strategy
+                        delete tableResolutionCache[selectedTable];
+                    } catch (e) {
+                        // Drop cache on error and proceed to resolution attempts
+                        delete tableResolutionCache[selectedTable];
+                    }
+                }
+
                 const tryTables = [];
                 // Primary: requested or default
                 tryTables.push(selectedTable);
@@ -126,9 +151,14 @@ self.onmessage = async function(e) {
                 if (selectedTable === 'en-ueb-g1.ctb') {
                     tryTables.push('en-us-g1.ctb');
                     tryTables.push('unicode.dis,en-us-g1.ctb');
+                    // Older UEB table names in some liblouis builds
+                    tryTables.push('UEBC-g1.utb');
+                    tryTables.push('unicode.dis,UEBC-g1.utb');
                 } else if (selectedTable === 'en-ueb-g2.ctb') {
                     tryTables.push('en-us-g2.ctb');
                     tryTables.push('unicode.dis,en-us-g2.ctb');
+                    tryTables.push('UEBC-g2.ctb');
+                    tryTables.push('unicode.dis,UEBC-g2.ctb');
                 }
 
                 let lastError = null;
@@ -143,6 +173,10 @@ self.onmessage = async function(e) {
                             });
                             if (hasBrailleChars) {
                                 console.log('Worker: Translation successful with table:', table);
+                                // Remember resolution for this selectedTable to skip failing attempts next time
+                                if (table !== selectedTable) {
+                                    tableResolutionCache[selectedTable] = table;
+                                }
                                 self.postMessage({ id, type: 'translate', result: { success: true, translation: result } });
                                 return;
                             }

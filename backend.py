@@ -41,6 +41,11 @@ CORS(app, origins=allowed_origins, supports_credentials=True)
 app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024  # 1MB max request size
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 
+# Simple in-memory rate limiting support for environments without Flask-Limiter storage
+REQUEST_LIMIT = int(os.environ.get('REQUEST_LIMIT', '10'))
+TIME_WINDOW = int(os.environ.get('TIME_WINDOW', '60'))
+request_counts = defaultdict(list)
+
 REDIS_URL = os.environ.get('REDIS_URL')
 
 def _limiter_storage():
@@ -2982,7 +2987,9 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
 def health_check():
     return jsonify({
         'status': 'ok',
-        'limiter_storage': limiter.storage_uri
+        'limiter_enabled': bool(limiter),
+        'rate_limit_window_seconds': TIME_WINDOW,
+        'rate_limit_requests': REQUEST_LIMIT
     })
 
 
@@ -3589,29 +3596,4 @@ def build_stl_cache_key(route_name: str, payload: dict) -> str:
     checksum = hashlib.sha256(canonical.encode('utf-8')).hexdigest()
     return f"stl-cache/{route_name}/{checksum}.stl"
 
-# ... existing code ...
-        config_payload = {
-            "lines": lines,
-            "original_lines": original_lines,
-            "placement_mode": placement_mode,
-            "plate_type": plate_type,
-            "grade": grade,
-            "settings": settings_data,
-            "shape_type": shape_type,
-            "cylinder_params": cylinder_params,
-            "per_line_language_tables": per_line_language_tables,
-        }
-        cache_key = build_stl_cache_key('generate_braille_stl', config_payload)
-
-        cached_blob = blob_client.get(cache_key) if blob_client.is_enabled() else None
-        if cached_blob:
-            cached_url = cached_blob.get('downloadUrl') or cached_blob.get('url')
-            if cached_url:
-                print(f"CACHE HIT: key={cache_key} -> {cached_url}")
-                return redirect(cached_url, code=302)
-        else:
-            if blob_client.is_enabled():
-                print(f"CACHE MISS: key={cache_key}")
-
-        if shape_type == 'card':
-// ... existing code ...
+ 

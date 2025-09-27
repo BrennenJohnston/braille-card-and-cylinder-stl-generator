@@ -3006,7 +3006,8 @@ def health_check():
 
 @app.route('/')
 def index():
-    return redirect('/templates/index.html', code=302)
+    """Serve the main application HTML"""
+    return render_template('index.html')
 
 @app.route('/node_modules/<path:filename>')
 def node_modules(filename):
@@ -3022,8 +3023,13 @@ def node_modules(filename):
 
 @app.route('/favicon.ico')
 def favicon():
-    """Handle favicon requests to prevent 404 errors"""
-    return '', 204  # Return empty response with "No Content" status
+    """Handle favicon requests by serving the SVG favicon"""
+    return send_from_directory('static', 'favicon.svg', mimetype='image/svg+xml')
+
+@app.route('/favicon.png')
+def favicon_png():
+    """Handle favicon.png requests by serving the SVG favicon"""
+    return send_from_directory('static', 'favicon.svg', mimetype='image/svg+xml')
 
 @app.route('/static/<path:filename>', methods=['GET', 'OPTIONS'])
 def static_files(filename):

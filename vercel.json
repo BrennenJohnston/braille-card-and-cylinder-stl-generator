@@ -5,12 +5,6 @@
     { "src": "static/**", "use": "@vercel/static" },
     { "src": "templates/**", "use": "@vercel/static" }
   ],
-  "functions": {
-    "wsgi.py": {
-      "memory": 1024,
-      "maxDuration": 30
-    }
-  },
   "routes": [
     { "src": "^/$", "dest": "/templates/index.html" },
     { "src": "/index.html", "dest": "/templates/index.html" },

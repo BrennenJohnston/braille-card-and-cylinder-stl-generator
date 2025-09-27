@@ -149,18 +149,18 @@ def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-    # Content-Security-Policy adjustments (worker-src, vercel.live) - DISABLED for baseline
-    # csp_policy = (
-    #     "default-src 'self'; "
-    #     "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://vercel.live; "
-    #     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-    #     "font-src 'self' https://fonts.gstatic.com; "
-    #     "img-src 'self' data: blob:; "
-    #     "connect-src 'self' blob: data:; "
-    #     "object-src 'none'; "
-    #     "base-uri 'self'; worker-src 'self' blob:"
-    # )
-    # response.headers['Content-Security-Policy'] = csp_policy
+    # Content-Security-Policy allowing web workers and table loading
+    csp_policy = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://vercel.live; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data: blob:; "
+        "connect-src 'self' blob: data:; "
+        "object-src 'none'; "
+        "base-uri 'self'; worker-src 'self' blob:"
+    )
+    response.headers['Content-Security-Policy'] = csp_policy
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
     return response

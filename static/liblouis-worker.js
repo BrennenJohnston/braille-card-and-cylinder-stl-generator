@@ -5,6 +5,10 @@ let liblouisInstance = null;
 let liblouisReady = false;
 // Remember working fallbacks to avoid repeated failing attempts and console noise
 const tableResolutionCache = Object.create(null);
+// Track support for UEB tables in the current liblouis build
+const uebSupport = { g1: false, g2: false };
+// Default tables decided at init based on support detection
+const defaultTables = { g1: 'en-us-g1.ctb', g2: 'en-us-g2.ctb' };
 
 // Import liblouis scripts with error handling
 try {
@@ -39,6 +43,21 @@ async function initializeLiblouis() {
             console.log('Worker: Creating LiblouisEasyApi instance');
             liblouisInstance = new LiblouisEasyApi(liblouisBuild);
             
+            // Reduce log verbosity in production; only surface warnings/errors
+            try {
+                if (liblouisInstance.setLogLevel && liblouisInstance.LOG) {
+                    liblouisInstance.setLogLevel(liblouisInstance.LOG.WARN);
+                }
+                if (liblouisInstance.registerLogCallback && liblouisInstance.LOG) {
+                    liblouisInstance.registerLogCallback((lvl, msg) => {
+                        // Only log ERROR/FATAL from liblouis to avoid console spam
+                        if (lvl >= liblouisInstance.LOG.ERROR) {
+                            console.error('[liblouis]', msg);
+                        }
+                    });
+                }
+            } catch (_) {}
+
             // Enable on-demand table loading - this should work in web worker
             if (liblouisInstance.enableOnDemandTableLoading) {
                 console.log('Worker: Enabling on-demand table loading...');
@@ -69,6 +88,18 @@ async function initializeLiblouis() {
             liblouisReady = true;
             console.log('Worker: Liblouis initialized successfully');
             
+            // Detect UEB table support of the embedded liblouis build
+            try {
+                uebSupport.g1 = !!liblouisInstance.checkTable('en-ueb-g1.ctb');
+            } catch (_) { uebSupport.g1 = false; }
+            try {
+                uebSupport.g2 = !!liblouisInstance.checkTable('en-ueb-g2.ctb');
+            } catch (_) { uebSupport.g2 = false; }
+
+            if (uebSupport.g1) { defaultTables.g1 = 'en-ueb-g1.ctb'; }
+            if (uebSupport.g2) { defaultTables.g2 = 'en-ueb-g2.ctb'; }
+            console.log('Worker: Table defaults ->', JSON.stringify(defaultTables));
+
             // Test translation to verify it works
             try {
                 const testResult = liblouisInstance.translateString('en-us-g1.ctb', 'test');
@@ -110,8 +141,8 @@ self.onmessage = async function(e) {
                 if (tableName) {
                     selectedTable = tableName;
                 } else {
-                    // Default to English UEB if no table specified
-                    selectedTable = grade === 'g2' ? 'en-ueb-g2.ctb' : 'en-ueb-g1.ctb';
+                    // Pick the best available default determined at init
+                    selectedTable = (grade === 'g2' ? defaultTables.g2 : defaultTables.g1);
                 }
                 
                 console.log('Worker: Translating text:', text, 'with table:', selectedTable);
@@ -147,14 +178,14 @@ self.onmessage = async function(e) {
                 // Primary: requested or default
                 tryTables.push(selectedTable);
                 tryTables.push('unicode.dis,' + selectedTable);
-                // Additional safe fallbacks: common English variants available in our static bundle
-                if (selectedTable === 'en-ueb-g1.ctb') {
+
+                // Additional safe fallbacks: prefer en-us variants first on builds lacking UEB support
+                if (/en-ueb-g1\.ctb$/i.test(selectedTable) || (!uebSupport.g1 && /g1/.test(selectedTable))) {
                     tryTables.push('en-us-g1.ctb');
                     tryTables.push('unicode.dis,en-us-g1.ctb');
-                    // Older UEB table names in some liblouis builds
                     tryTables.push('UEBC-g1.utb');
                     tryTables.push('unicode.dis,UEBC-g1.utb');
-                } else if (selectedTable === 'en-ueb-g2.ctb') {
+                } else if (/en-ueb-g2\.ctb$/i.test(selectedTable) || (!uebSupport.g2 && /g2/.test(selectedTable))) {
                     tryTables.push('en-us-g2.ctb');
                     tryTables.push('unicode.dis,en-us-g2.ctb');
                     tryTables.push('UEBC-g2.ctb');

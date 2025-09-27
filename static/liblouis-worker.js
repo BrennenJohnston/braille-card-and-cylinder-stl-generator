@@ -3,6 +3,7 @@
 
 let liblouisInstance = null;
 let liblouisReady = false;
+let recentLogs = [];
 
 // Import liblouis scripts with error handling
 try {
@@ -36,6 +37,17 @@ async function initializeLiblouis() {
         if (typeof liblouisBuild !== 'undefined' && typeof LiblouisEasyApi !== 'undefined') {
             console.log('Worker: Creating LiblouisEasyApi instance');
             liblouisInstance = new LiblouisEasyApi(liblouisBuild);
+
+            try {
+                liblouisInstance.registerLogCallback(function(level, msg){
+                    try {
+                        recentLogs.push(`[${level}] ${msg}`);
+                        if (recentLogs.length > 50) {
+                            recentLogs.shift();
+                        }
+                    } catch (_) {}
+                });
+            } catch (_) {}
             
             // Enable on-demand table loading - this should work in web worker
             if (liblouisInstance.enableOnDemandTableLoading) {
@@ -103,56 +115,39 @@ self.onmessage = async function(e) {
                 
                 const { text, grade, tableName } = data;
                 
-                // Use the provided table name or fall back to default English UEB tables
+                // Use the provided table name or default UEB based on grade when not specified
                 let selectedTable;
                 if (tableName) {
                     selectedTable = tableName;
                 } else {
-                    // Default to English UEB if no table specified
                     selectedTable = grade === 'g2' ? 'en-ueb-g2.ctb' : 'en-ueb-g1.ctb';
                 }
-                
+
                 console.log('Worker: Translating text:', text, 'with table:', selectedTable);
-                
-                // Try using just the table name first, without unicode.dis prefix
-                // This should work if the table is properly configured for Unicode output
-                console.log('Worker: Using table:', selectedTable);
-                
+
                 try {
                     const result = liblouisInstance.translateString(selectedTable, text);
-                    console.log('Worker: Translation successful:', result);
-                    
-                    // Verify the result contains proper braille Unicode characters
-                    const hasBrailleChars = result.split('').some(char => {
+                    if (typeof result !== 'string' || result.length === 0) {
+                        throw new Error('Liblouis returned empty result');
+                    }
+                    const hasBrailleChars = result.split('').some(function(char){
                         const code = char.charCodeAt(0);
                         return code >= 0x2800 && code <= 0x28FF;
                     });
-                    
-                    if (hasBrailleChars) {
-                        console.log('Worker: Result contains proper braille Unicode characters');
-                        self.postMessage({ id, type: 'translate', result: { success: true, translation: result } });
-                    } else {
-                        console.log('Worker: Result does not contain braille Unicode, trying unicode.dis approach');
-                        // Try with unicode.dis prefix as fallback
-                        const tableFormat = 'unicode.dis,' + selectedTable;
-                        console.log('Worker: Trying table format:', tableFormat);
-                        const fallbackResult = liblouisInstance.translateString(tableFormat, text);
-                        console.log('Worker: Fallback translation successful:', fallbackResult);
-                        self.postMessage({ id, type: 'translate', result: { success: true, translation: fallbackResult } });
+                    if (!hasBrailleChars) {
+                        throw new Error('Translation produced no braille Unicode output');
                     }
+                    self.postMessage({ id, type: 'translate', result: { success: true, translation: result } });
                 } catch (e) {
-                    console.log('Worker: Direct translation failed:', e.message);
-                    // Try with unicode.dis prefix as fallback
+                    var logTail = '';
                     try {
-                        const tableFormat = 'unicode.dis,' + selectedTable;
-                        console.log('Worker: Trying fallback table format:', tableFormat);
-                        const fallbackResult = liblouisInstance.translateString(tableFormat, text);
-                        console.log('Worker: Fallback translation successful:', fallbackResult);
-                        self.postMessage({ id, type: 'translate', result: { success: true, translation: fallbackResult } });
-                    } catch (fallbackError) {
-                        console.log('Worker: Fallback translation also failed:', fallbackError.message);
-                        throw fallbackError;
-                    }
+                        var tail = recentLogs.slice(-8).join('\n');
+                        if (tail) {
+                            logTail = '\nRecent liblouis logs:\n' + tail;
+                        }
+                    } catch (_) {}
+                    const message = 'Translation failed for table ' + selectedTable + ': ' + (e && e.message ? e.message : 'Unknown error') + logTail;
+                    throw new Error(message);
                 }
                 break;
                 

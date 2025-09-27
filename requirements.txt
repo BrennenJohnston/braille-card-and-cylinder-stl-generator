@@ -6,3 +6,6 @@ flask-cors
 shapely 
 manifold3d
 matplotlib 
+Flask-Limiter
+redis
+requests

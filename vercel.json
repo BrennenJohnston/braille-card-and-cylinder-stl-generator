@@ -1,9 +1,21 @@
 {
   "version": 2,
   "builds": [
-    { "src": "wsgi.py", "use": "@vercel/python" }
+    { "src": "wsgi.py", "use": "@vercel/python" },
+    { "src": "static/**", "use": "@vercel/static" },
+    { "src": "templates/**", "use": "@vercel/static" }
   ],
+  "functions": {
+    "wsgi.py": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  },
   "routes": [
+    { "src": "^/$", "dest": "/templates/index.html" },
+    { "src": "/index.html", "dest": "/templates/index.html" },
+    { "src": "/static/(.*)", "dest": "/static/$1" },
+    { "src": "/favicon.ico", "dest": "/static/favicon.ico" },
     { "src": "/(.*)", "dest": "/wsgi.py" }
   ]
 }

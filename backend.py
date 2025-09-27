@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file, jsonify, render_template, send_from_directory, redirect
+from flask import Flask, request, send_file, jsonify, render_template, send_from_directory, redirect, make_response
 import trimesh
 import numpy as np
 import io
@@ -13,10 +13,21 @@ from shapely.ops import unary_union
 from shapely import affinity
 from functools import wraps
 import time
-from collections import defaultdict
 import hashlib
+try:
+    import requests  # Optional, used for Vercel Blob REST API
+except Exception:
+    requests = None
 # Matplotlib imports are intentionally deferred to inside functions that need them
 # to keep the serverless deployment lightweight and optional
+
+try:
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+except Exception:  # pragma: no cover - allow local dev without limiter installed
+    Limiter = None
+    def get_remote_address():
+        return request.remote_addr
 
 app = Flask(__name__)
 # CORS configuration - update with your actual domain before deployment
@@ -35,10 +46,98 @@ CORS(app, origins=allowed_origins, supports_credentials=True)
 app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024  # 1MB max request size
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 
-# Rate limiting storage
-request_counts = defaultdict(list)
-REQUEST_LIMIT = 10  # requests per minute
-TIME_WINDOW = 60  # seconds
+# Flask-Limiter setup (Phase 4.1/4.2)
+redis_url = os.environ.get('REDIS_URL')
+storage_uri = redis_url if redis_url else 'memory://'
+if Limiter is not None:
+    limiter = Limiter(
+        key_func=get_remote_address,
+        storage_uri=storage_uri,
+        default_limits=["10 per minute"],
+    )
+    limiter.init_app(app)
+else:
+    class _NoopLimiter:
+        def limit(self, *_args, **_kwargs):
+            def decorator(f):
+                return f
+            return decorator
+    limiter = _NoopLimiter()
+
+# Helper functions for caching and security
+
+def _canonical_json(obj):
+    try:
+        return json.dumps(obj, sort_keys=True, separators=(",", ":"))
+    except Exception:
+        return str(obj)
+
+def compute_cache_key(payload: dict) -> str:
+    """Compute a stable SHA-256 key from request payload for content-addressable caching."""
+    canonical = _canonical_json(payload)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+def _blob_public_base_url() -> str:
+    return os.environ.get('BLOB_PUBLIC_BASE_URL') or ''
+
+def _build_blob_public_url(cache_key: str) -> str:
+    base = _blob_public_base_url().rstrip('/')
+    if not base:
+        return ''
+    # namespace STLs under /stl/
+    return f"{base}/stl/{cache_key}.stl"
+
+def _blob_check_exists(public_url: str) -> bool:
+    if not public_url or requests is None:
+        return False
+    try:
+        # HEAD is enough and cheaper
+        resp = requests.head(public_url, timeout=3)
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+def _blob_upload(cache_key: str, stl_bytes: bytes) -> str:
+    """Upload STL to Vercel Blob via REST if configured. Returns public URL or empty string."""
+    if requests is None:
+        return ''
+    token = os.environ.get('BLOB_STORE_WRITE_TOKEN')
+    if not token:
+        return ''
+    # API base can be overridden; default to Vercel public API
+    api_base = os.environ.get('BLOB_API_BASE_URL', 'https://api.vercel.com')
+    # Use filename path to group under /stl/
+    pathname = f"stl/{cache_key}.stl"
+    try:
+        # Newer Blob API accepts multipart/form-data to /v2/blobs for direct upload
+        url = f"{api_base.rstrip('/')}/v2/blobs"
+        files = {
+            'file': (pathname, stl_bytes, 'model/stl')
+        }
+        # Try to set metadata headers at upload time if supported by API
+        # Prefer long-lived caching on CDN for immutable, content-addressed files
+        data = {
+            'pathname': pathname,
+            'contentType': 'model/stl',
+            'cacheControlMaxAge': os.environ.get('BLOB_CACHE_MAX_AGE', '31536000'),
+        }
+        headers = {
+            'Authorization': f"Bearer {token}"
+        }
+        resp = requests.post(url, files=files, data=data, headers=headers, timeout=10)
+        if resp.status_code in (200, 201):
+            # Prefer explicit public base URL if provided, else fall back to 'url' in response
+            public_url = _build_blob_public_url(cache_key)
+            if public_url:
+                return public_url
+            try:
+                j = resp.json()
+                return j.get('url') or ''
+            except Exception:
+                return ''
+        return ''
+    except Exception:
+        return ''
 
 # Security headers
 @app.after_request
@@ -57,39 +156,14 @@ def add_security_headers(response):
         "img-src 'self' data: blob:; "
         "connect-src 'self' blob: data:; "
         "object-src 'none'; "
-        "base-uri 'self'"
+        "base-uri 'self'; worker-src 'self' blob:"
     )
     response.headers['Content-Security-Policy'] = csp_policy
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
     return response
 
-# Rate limiting decorator
-def rate_limit(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # Get client IP (considering proxy headers for production)
-        client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
-        if client_ip:
-            client_ip = client_ip.split(',')[0].strip()
-        else:
-            client_ip = request.remote_addr
-        
-        # Clean old requests
-        current_time = time.time()
-        request_counts[client_ip] = [
-            req_time for req_time in request_counts[client_ip]
-            if current_time - req_time < TIME_WINDOW
-        ]
-        
-        # Check rate limit
-        if len(request_counts[client_ip]) >= REQUEST_LIMIT:
-            return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
-        
-        # Record this request
-        request_counts[client_ip].append(current_time)
-        return f(*args, **kwargs)
-    return decorated_function
+## Removed legacy in-memory rate limiting in favor of Flask-Limiter
 
 # Input validation functions
 def validate_lines(lines):
@@ -3230,7 +3304,7 @@ def list_liblouis_tables():
     return jsonify({'tables': tables})
 
 @app.route('/generate_braille_stl', methods=['POST'])
-@rate_limit
+@limiter.limit("10 per minute")
 def generate_braille_stl():
     try:
         # Validate request content type
@@ -3341,10 +3415,48 @@ def generate_braille_stl():
                 mesh.unify_normals()
                 print("INFO: Unified mesh normals (scipy not available)")
         
+        # Compute content-addressable cache key from request payload
+        cache_payload = {
+            'lines': lines,
+            'original_lines': original_lines,
+            'placement_mode': placement_mode,
+            'plate_type': plate_type,
+            'grade': grade,
+            'settings': settings_data,
+            'shape_type': shape_type,
+            'cylinder_params': cylinder_params,
+        }
+        cache_key = compute_cache_key(cache_payload)
+
+        # If a public base is configured and the blob already exists, redirect
+        cached_public = _build_blob_public_url(cache_key)
+        if _blob_check_exists(cached_public):
+            resp = redirect(cached_public, code=302)
+            resp.headers['X-Cache'] = 'HIT-blob'
+            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            return resp
+
+        # Compute time around STL export for observability
+        t0 = time.time()
         # Export to STL
         stl_io = io.BytesIO()
         mesh.export(stl_io, file_type='stl')
         stl_io.seek(0)
+        compute_ms = int((time.time() - t0) * 1000)
+
+        # Compute ETag for caching based on STL bytes
+        stl_bytes = stl_io.getvalue()
+        etag = hashlib.sha256(stl_bytes).hexdigest()
+
+        # If client has matching ETag, return 304
+        client_etag = request.headers.get('If-None-Match')
+        if client_etag and client_etag == etag:
+            resp = make_response('', 304)
+            resp.headers['ETag'] = etag
+            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            resp.headers['X-Cache'] = 'HIT-browser'
+            resp.headers['X-Compute-Time'] = str(compute_ms)
+            return resp
         
         # Create JSON config dump for reproducibility
         config_dump = {
@@ -3422,13 +3534,30 @@ def generate_braille_stl():
         # Additional filename sanitization for security
         filename = re.sub(r'[^\w\-_]', '', filename)[:60]  # Allow longer names to accommodate shape type
         
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl')
+        # Attempt to persist to Blob store and redirect if successful
+        public_url = _blob_upload(cache_key, stl_bytes)
+        if public_url:
+            # Cache persisted; redirect client to CDN URL
+            resp = redirect(public_url, code=302)
+            resp.headers['ETag'] = etag
+            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            resp.headers['X-Cache'] = 'MISS-uploaded'
+            resp.headers['X-Compute-Time'] = str(compute_ms)
+            return resp
+
+        # Build response with headers
+        resp = make_response(send_file(io.BytesIO(stl_bytes), mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl'))
+        resp.headers['ETag'] = etag
+        resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+        resp.headers['X-Cache'] = 'MISS-direct'
+        resp.headers['X-Compute-Time'] = str(compute_ms)
+        return resp
         
     except Exception as e:
         return jsonify({'error': f'Failed to generate STL: {str(e)}'}), 500
 
 @app.route('/generate_counter_plate_stl', methods=['POST'])
-@rate_limit
+@limiter.limit("10 per minute")
 def generate_counter_plate_stl():
     """
     Generate counter plate with hemispherical recesses as per project brief.
@@ -3469,10 +3598,43 @@ def generate_counter_plate_stl():
             print(f"WARNING: Unknown recess_shape={recess_shape}, defaulting to hemisphere")
             mesh = build_counter_plate_hemispheres(settings)
         
+        # Compute content-addressable cache key from request payload
+        cache_payload = {
+            'plate_type': 'negative',
+            'settings': settings_data,
+            'shape_type': 'card',
+        }
+        cache_key = compute_cache_key(cache_payload)
+
+        # If a public base is configured and the blob already exists, redirect
+        cached_public = _build_blob_public_url(cache_key)
+        if _blob_check_exists(cached_public):
+            resp = redirect(cached_public, code=302)
+            resp.headers['X-Cache'] = 'HIT-blob'
+            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            return resp
+
+        # Compute time around STL export for observability
+        t0 = time.time()
         # Export to STL
         stl_io = io.BytesIO()
         mesh.export(stl_io, file_type='stl')
         stl_io.seek(0)
+        compute_ms = int((time.time() - t0) * 1000)
+
+        # Compute ETag for caching based on STL bytes
+        stl_bytes = stl_io.getvalue()
+        etag = hashlib.sha256(stl_bytes).hexdigest()
+
+        # If client has matching ETag, return 304
+        client_etag = request.headers.get('If-None-Match')
+        if client_etag and client_etag == etag:
+            resp = make_response('', 304)
+            resp.headers['ETag'] = etag
+            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            resp.headers['X-Cache'] = 'HIT-browser'
+            resp.headers['X-Compute-Time'] = str(compute_ms)
+            return resp
         
         # Include actual counter base diameter in filename
         try:
@@ -3485,7 +3647,23 @@ def generate_counter_plate_stl():
         except Exception:
             total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
         filename = f"braille_counter_plate_{total_diameter}mm"
-        return send_file(stl_io, mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl')
+        # Attempt to persist to Blob store and redirect if successful
+        public_url = _blob_upload(cache_key, stl_bytes)
+        if public_url:
+            resp = redirect(public_url, code=302)
+            resp.headers['ETag'] = etag
+            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            resp.headers['X-Cache'] = 'MISS-uploaded'
+            resp.headers['X-Compute-Time'] = str(compute_ms)
+            return resp
+
+        # Build response with headers
+        resp = make_response(send_file(io.BytesIO(stl_bytes), mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl'))
+        resp.headers['ETag'] = etag
+        resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+        resp.headers['X-Cache'] = 'MISS-direct'
+        resp.headers['X-Compute-Time'] = str(compute_ms)
+        return resp
         
     except Exception as e:
         return jsonify({'error': f'Failed to generate counter plate: {str(e)}'}), 500

@@ -29,3 +29,5 @@ node_modules/
 
 # Vercel project dir (contains tokens/config)
 .vercel/
+.vercel
+.env*.local

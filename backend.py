@@ -214,6 +214,10 @@ def _blob_upload(cache_key: str, stl_bytes: bytes) -> str:
             'pathname': pathname,
             'contentType': 'model/stl',
             'cacheControlMaxAge': os.environ.get('BLOB_CACHE_MAX_AGE', '31536000'),
+            # Ensure blobs are publicly retrievable via the public base URL
+            'access': 'public',
+            # Keep the provided pathname stable without random suffixes
+            'addRandomSuffix': 'false',
         }
         headers = {
             'Authorization': f"Bearer {token}"
@@ -248,7 +252,11 @@ def _blob_upload(cache_key: str, stl_bytes: bytes) -> str:
             except Exception:
                 app.logger.warning(f"Blob already exists but no URL available for key={cache_key}")
                 return ''
-        app.logger.warning(f"Blob upload failed with status {resp.status_code} for key={cache_key}")
+        try:
+            err_body = resp.text
+        except Exception:
+            err_body = '<no-body>'
+        app.logger.warning(f"Blob upload failed with status {resp.status_code} for key={cache_key}; body={err_body}")
         return ''
     except Exception as e:
         app.logger.error(f"Blob upload exception for key={cache_key}: {e}")
@@ -3643,6 +3651,8 @@ def generate_braille_stl():
             resp.headers['ETag'] = etag
             resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
             resp.headers['X-Blob-Cache'] = 'miss' if allow_blob_cache else 'bypass'
+            resp.headers['X-Blob-Cache-Key'] = cache_key
+            resp.headers['X-Blob-URL'] = _build_blob_public_url(cache_key)
             return resp
         
         # Create JSON config dump for reproducibility
@@ -3741,6 +3751,8 @@ def generate_braille_stl():
         resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
         resp.headers['X-Blob-Cache'] = 'miss' if allow_blob_cache else 'bypass'
         resp.headers['X-Blob-Cache-Reason'] = 'no-upload-url' if allow_blob_cache else 'embossing-disabled'
+        resp.headers['X-Blob-Cache-Key'] = cache_key
+        resp.headers['X-Blob-URL'] = _build_blob_public_url(cache_key)
         return resp
         
     except Exception as e:

@@ -198,68 +198,76 @@ def _blob_upload(cache_key: str, stl_bytes: bytes) -> str:
     token = os.environ.get('BLOB_STORE_WRITE_TOKEN') or os.environ.get('BLOB_READ_WRITE_TOKEN')
     if not token:
         return ''
-    # API base can be overridden; default to Vercel public API
-    api_base = os.environ.get('BLOB_API_BASE_URL', 'https://api.vercel.com')
     # Use filename path to group under /stl/
     pathname = f"stl/{cache_key}.stl"
+    # First, try direct upload endpoint which works with store-level tokens
     try:
-        # Newer Blob API accepts multipart/form-data to /v2/blobs for direct upload
+        direct_base = os.environ.get('BLOB_DIRECT_UPLOAD_URL', 'https://blob.vercel-storage.com')
+        direct_url = direct_base.rstrip('/')
+        headers = {
+            'Authorization': f"Bearer {token}",
+            'x-vercel-filename': pathname,
+            'x-vercel-blobs-add-random-suffix': '0',
+            'x-vercel-blobs-access': 'public',
+            'content-type': 'model/stl',
+        }
+        # Optional cache control header for CDN
+        max_age = os.environ.get('BLOB_CACHE_MAX_AGE')
+        if max_age:
+            headers['x-vercel-cache-control-max-age'] = str(max_age)
+        resp = requests.post(direct_url, data=stl_bytes, headers=headers, timeout=30)
+        if 200 <= resp.status_code < 300 or resp.status_code == 409:
+            public_url = _build_blob_public_url(cache_key)
+            if public_url:
+                app.logger.info(f"Blob direct upload OK; using public URL for key={cache_key}")
+                return public_url
+        else:
+            try:
+                app.logger.warning(f"Blob direct upload failed status={resp.status_code} body={resp.text}")
+            except Exception:
+                app.logger.warning(f"Blob direct upload failed status={resp.status_code}")
+    except Exception as e:
+        app.logger.warning(f"Blob direct upload exception for key={cache_key}: {e}")
+
+    # Fallback: API v2 multipart upload (may require project-scoped tokens)
+    try:
+        api_base = os.environ.get('BLOB_API_BASE_URL', 'https://api.vercel.com')
         url = f"{api_base.rstrip('/')}/v2/blobs"
         files = {
             'file': (pathname, stl_bytes, 'model/stl')
         }
-        # Try to set metadata headers at upload time if supported by API
-        # Prefer long-lived caching on CDN for immutable, content-addressed files
         data = {
             'pathname': pathname,
             'contentType': 'model/stl',
             'cacheControlMaxAge': os.environ.get('BLOB_CACHE_MAX_AGE', '31536000'),
-            # Ensure blobs are publicly retrievable via the public base URL
             'access': 'public',
-            # Keep the provided pathname stable without random suffixes
             'addRandomSuffix': 'false',
         }
         headers = {
             'Authorization': f"Bearer {token}"
         }
-        resp = requests.post(url, files=files, data=data, headers=headers, timeout=10)
-        if resp.status_code in (200, 201):
+        resp = requests.post(url, files=files, data=data, headers=headers, timeout=30)
+        if resp.status_code in (200, 201, 409):
             public_url = _build_blob_public_url(cache_key)
             if public_url:
-                app.logger.info(f"Blob upload success; returning public URL for key={cache_key}")
+                app.logger.info(f"Blob API upload OK; using public URL for key={cache_key}")
                 return public_url
             try:
                 j = resp.json()
                 url_from_api = j.get('url') or ''
                 if url_from_api:
-                    app.logger.info(f"Blob upload success; returning API URL for key={cache_key}")
+                    app.logger.info(f"Blob API upload OK; using API URL for key={cache_key}")
                 return url_from_api
             except Exception:
-                app.logger.warning(f"Blob upload success but could not parse API JSON for key={cache_key}")
-                return ''
-        # Treat 409 Conflict (already exists) as success
-        if resp.status_code == 409:
-            public_url = _build_blob_public_url(cache_key)
-            if public_url:
-                app.logger.info(f"Blob already exists; using public URL for key={cache_key}")
-                return public_url
-            try:
-                j = resp.json()
-                url_from_api = j.get('url') or ''
-                if url_from_api:
-                    app.logger.info(f"Blob already exists; using API URL for key={cache_key}")
-                return url_from_api
-            except Exception:
-                app.logger.warning(f"Blob already exists but no URL available for key={cache_key}")
+                app.logger.warning(f"Blob API upload OK but could not parse JSON for key={cache_key}")
                 return ''
         try:
-            err_body = resp.text
+            app.logger.warning(f"Blob API upload failed status={resp.status_code} body={resp.text}")
         except Exception:
-            err_body = '<no-body>'
-        app.logger.warning(f"Blob upload failed with status {resp.status_code} for key={cache_key}; body={err_body}")
+            app.logger.warning(f"Blob API upload failed status={resp.status_code}")
         return ''
     except Exception as e:
-        app.logger.error(f"Blob upload exception for key={cache_key}: {e}")
+        app.logger.error(f"Blob API upload exception for key={cache_key}: {e}")
         return ''
 
 # Security headers

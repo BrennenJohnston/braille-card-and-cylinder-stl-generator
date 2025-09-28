@@ -61,10 +61,15 @@ Action:
 - Redirect to cached STLs when available
 - Environment variable: `BLOB_STORE_WRITE_TOKEN`
 
+Policy:
+- Blob caching is ENABLED for Universal Counter Plate generation (plate_type "negative") for BOTH shapes: `card` and `cylinder`.
+- Blob caching is DISABLED for Embossing plate generation (plate_type "positive") for BOTH shapes: `card` and `cylinder`.
+- Counter plate cache keys exclude user text and grade; embossing plate responses are never persisted to blob.
+
 Implementation:
-1. Check cache before generation
-2. Store generated STLs in Blob storage
-3. Return 302 redirect to cached URL
+1. Check cache before generation (only when `plate_type` is `negative`)
+2. Store generated STLs in Blob storage (only when `plate_type` is `negative`)
+3. Return 302 redirect to cached URL (only when `plate_type` is `negative`)
 
 ## Phase 4: Rate Limiting
 

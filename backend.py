@@ -3387,26 +3387,39 @@ def generate_braille_stl():
     # Backend expects lines to already be within limits
     
     try:
+        allow_blob_cache = (plate_type == 'negative')
         # EARLY BLOB CACHE CHECK (before heavy mesh generation)
-        try:
-            cache_payload_early = {
-                'lines': lines,
-                'original_lines': original_lines,
-                'placement_mode': placement_mode,
-                'plate_type': plate_type,
-                'grade': grade,
-                'settings': settings_data,
-                'shape_type': shape_type,
-                'cylinder_params': cylinder_params,
-            }
-            early_cache_key = compute_cache_key(cache_payload_early)
-            early_public = _build_blob_public_url(early_cache_key)
-            if _blob_check_exists(early_public):
-                resp = redirect(early_public, code=302)
-                resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-                return resp
-        except Exception:
-            pass
+        if allow_blob_cache:
+            try:
+                # For counter plates, exclude user-provided text/grade from cache key
+                if plate_type == 'negative':
+                    cache_payload_early = {
+                        'plate_type': 'negative',
+                        'shape_type': shape_type,
+                        'settings': settings_data,
+                    }
+                    if shape_type == 'cylinder':
+                        cache_payload_early['cylinder_params'] = cylinder_params
+                else:
+                    cache_payload_early = {
+                        'lines': lines,
+                        'original_lines': original_lines,
+                        'placement_mode': placement_mode,
+                        'plate_type': plate_type,
+                        'grade': grade,
+                        'settings': settings_data,
+                        'shape_type': shape_type,
+                        'cylinder_params': cylinder_params,
+                    }
+                early_cache_key = compute_cache_key(cache_payload_early)
+                early_public = _build_blob_public_url(early_cache_key)
+                if _blob_check_exists(early_public):
+                    resp = redirect(early_public, code=302)
+                    resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+                    resp.headers['X-Blob-Cache'] = 'hit'
+                    return resp
+            except Exception:
+                pass
 
         if shape_type == 'card':
             # Original card generation logic
@@ -3463,24 +3476,36 @@ def generate_braille_stl():
                 print("INFO: Unified mesh normals (scipy not available)")
         
         # Compute content-addressable cache key from request payload
-        cache_payload = {
-            'lines': lines,
-            'original_lines': original_lines,
-            'placement_mode': placement_mode,
-            'plate_type': plate_type,
-            'grade': grade,
-            'settings': settings_data,
-            'shape_type': shape_type,
-            'cylinder_params': cylinder_params,
-        }
+        # Build cache payload; exclude user text/grade for counter plates for universal caching
+        if plate_type == 'negative':
+            cache_payload = {
+                'plate_type': 'negative',
+                'shape_type': shape_type,
+                'settings': settings_data,
+            }
+            if shape_type == 'cylinder':
+                cache_payload['cylinder_params'] = cylinder_params
+        else:
+            cache_payload = {
+                'lines': lines,
+                'original_lines': original_lines,
+                'placement_mode': placement_mode,
+                'plate_type': plate_type,
+                'grade': grade,
+                'settings': settings_data,
+                'shape_type': shape_type,
+                'cylinder_params': cylinder_params,
+            }
         cache_key = compute_cache_key(cache_payload)
 
-        # If a public base is configured and the blob already exists, redirect
-        cached_public = _build_blob_public_url(cache_key)
-        if _blob_check_exists(cached_public):
-            resp = redirect(cached_public, code=302)
-            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-            return resp
+        # If a public base is configured and the blob already exists, redirect (only for card counter plates)
+        if allow_blob_cache:
+            cached_public = _build_blob_public_url(cache_key)
+            if _blob_check_exists(cached_public):
+                resp = redirect(cached_public, code=302)
+                resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+                resp.headers['X-Blob-Cache'] = 'hit'
+                return resp
 
         # Compute time around STL export for observability
         t0 = time.time()
@@ -3498,6 +3523,7 @@ def generate_braille_stl():
             resp = make_response('', 304)
             resp.headers['ETag'] = etag
             resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            resp.headers['X-Blob-Cache'] = 'miss' if allow_blob_cache else 'bypass'
             return resp
         
         # Create JSON config dump for reproducibility
@@ -3576,18 +3602,21 @@ def generate_braille_stl():
         # Additional filename sanitization for security
         filename = re.sub(r'[^\w\-_]', '', filename)[:60]  # Allow longer names to accommodate shape type
         
-        # Attempt to persist to Blob store and redirect if successful
-        public_url = _blob_upload(cache_key, stl_bytes)
-        if public_url:
-            resp = redirect(public_url, code=302)
-            resp.headers['ETag'] = etag
-            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-            return resp
+        # Attempt to persist to Blob store and redirect if successful (only for card counter plates)
+        if allow_blob_cache:
+            public_url = _blob_upload(cache_key, stl_bytes)
+            if public_url:
+                resp = redirect(public_url, code=302)
+                resp.headers['ETag'] = etag
+                resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+                resp.headers['X-Blob-Cache'] = 'miss'
+                return resp
 
         # Build response with headers
         resp = make_response(send_file(io.BytesIO(stl_bytes), mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl'))
         resp.headers['ETag'] = etag
         resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+        resp.headers['X-Blob-Cache'] = 'miss' if allow_blob_cache else 'bypass'
         return resp
         
     except Exception as e:
@@ -3631,6 +3660,7 @@ def generate_counter_plate_stl():
             if _blob_check_exists(early_public):
                 resp = redirect(early_public, code=302)
                 resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+                resp.headers['X-Blob-Cache'] = 'hit'
                 return resp
         except Exception:
             pass
@@ -3664,6 +3694,7 @@ def generate_counter_plate_stl():
         if _blob_check_exists(cached_public):
             resp = redirect(cached_public, code=302)
             resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            resp.headers['X-Blob-Cache'] = 'hit'
             return resp
 
         # Compute time around STL export for observability
@@ -3682,6 +3713,7 @@ def generate_counter_plate_stl():
             resp = make_response('', 304)
             resp.headers['ETag'] = etag
             resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            resp.headers['X-Blob-Cache'] = 'miss'
             return resp
         
         # Include actual counter base diameter in filename
@@ -3701,12 +3733,14 @@ def generate_counter_plate_stl():
             resp = redirect(public_url, code=302)
             resp.headers['ETag'] = etag
             resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            resp.headers['X-Blob-Cache'] = 'miss'
             return resp
 
         # Build response with headers
         resp = make_response(send_file(io.BytesIO(stl_bytes), mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl'))
         resp.headers['ETag'] = etag
         resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+        resp.headers['X-Blob-Cache'] = 'miss'
         return resp
         
     except Exception as e:

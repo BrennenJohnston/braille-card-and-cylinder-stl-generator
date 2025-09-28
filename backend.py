@@ -79,6 +79,79 @@ def compute_cache_key(payload: dict) -> str:
     canonical = _canonical_json(payload)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
+def _normalize_number(value):
+    """Normalize numbers and numeric strings to a stable JSON-friendly form.
+    - Convert numeric strings to float
+    - Round floats to 5 decimals
+    - Convert near-integers to int to avoid 1 vs 1.0 mismatches
+    """
+    try:
+        if isinstance(value, str):
+            # Empty string shouldn't appear for numeric fields
+            value = float(value)
+        if isinstance(value, bool):
+            return int(value)
+        if isinstance(value, (int,)):
+            return value
+        if isinstance(value, float):
+            rounded = round(value, 5)
+            if abs(rounded - round(rounded)) < 1e-9:
+                return int(round(rounded))
+            return rounded
+    except Exception:
+        pass
+    return value
+
+def _normalize_settings_for_cache(settings) -> dict:
+    """Return a normalized dict of geometry-affecting settings for cache keys."""
+    # Only include fields that change output geometry
+    fields = {
+        # Card geometry
+        'card_width': settings.card_width,
+        'card_height': settings.card_height,
+        'card_thickness': settings.card_thickness,
+        # Grid
+        'grid_columns': settings.grid_columns,
+        'grid_rows': settings.grid_rows,
+        'cell_spacing': settings.cell_spacing,
+        'line_spacing': settings.line_spacing,
+        'dot_spacing': settings.dot_spacing,
+        # Offsets
+        'braille_x_adjust': settings.braille_x_adjust,
+        'braille_y_adjust': settings.braille_y_adjust,
+        # Recess/dot shapes
+        'recess_shape': int(getattr(settings, 'recess_shape', 1)),
+        'hemisphere_subdivisions': int(getattr(settings, 'hemisphere_subdivisions', 2)),
+        'cone_segments': int(getattr(settings, 'cone_segments', 16)),
+        # Emboss dot params (for positive plates)
+        'emboss_dot_base_diameter': getattr(settings, 'emboss_dot_base_diameter', None),
+        'emboss_dot_height': getattr(settings, 'emboss_dot_height', None),
+        'emboss_dot_flat_hat': getattr(settings, 'emboss_dot_flat_hat', None),
+        # Counter plate specific base diameters/depths
+        'hemi_counter_dot_base_diameter': getattr(settings, 'hemi_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter', None)),
+        'bowl_counter_dot_base_diameter': getattr(settings, 'bowl_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter', None)),
+        'counter_dot_depth': getattr(settings, 'counter_dot_depth', None),
+        'cone_counter_dot_base_diameter': getattr(settings, 'cone_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter', None)),
+        'cone_counter_dot_flat_hat': getattr(settings, 'cone_counter_dot_flat_hat', None),
+        'cone_counter_dot_height': getattr(settings, 'cone_counter_dot_height', None),
+        # Indicator shapes flag
+        'indicator_shapes': int(getattr(settings, 'indicator_shapes', 1)),
+    }
+    # Normalize numeric values
+    norm = {}
+    for k, v in fields.items():
+        norm[k] = _normalize_number(v)
+    return norm
+
+def _normalize_cylinder_params_for_cache(cylinder_params: dict) -> dict:
+    if not isinstance(cylinder_params, dict):
+        return {}
+    keys = ['diameter_mm', 'height_mm', 'polygonal_cutout_radius_mm', 'polygonal_cutout_sides', 'seam_offset_deg']
+    out = {}
+    for k in keys:
+        out[k] = _normalize_number(cylinder_params.get(k))
+    return out
+
 def _blob_public_base_url() -> str:
     # Public base like: https://<store>.public.blob.vercel-storage.com
     return os.environ.get('BLOB_PUBLIC_BASE_URL') or ''
@@ -91,12 +164,29 @@ def _build_blob_public_url(cache_key: str) -> str:
     return f"{base}/stl/{cache_key}.stl"
 
 def _blob_check_exists(public_url: str) -> bool:
+    """Return True if the blob appears to exist and is retrievable.
+
+    Some CDNs/storage frontends may not support HEAD consistently or may
+    require following redirects. Fall back to a minimal Range GET.
+    """
     if not public_url or requests is None:
         return False
+    # First try HEAD and follow redirects
     try:
-        # HEAD is enough and cheaper
-        resp = requests.head(public_url, timeout=3)
-        return resp.status_code == 200
+        resp = requests.head(public_url, timeout=4, allow_redirects=True)
+        if 200 <= resp.status_code < 300:
+            return True
+    except Exception:
+        pass
+    # Fallback: minimal GET with a 1-byte range
+    try:
+        headers = {"Range": "bytes=0-0"}
+        resp = requests.get(public_url, headers=headers, timeout=6, stream=True, allow_redirects=True)
+        try:
+            resp.close()
+        except Exception:
+            pass
+        return resp.status_code in (200, 206)
     except Exception:
         return False
 
@@ -3417,10 +3507,10 @@ def generate_braille_stl():
                     cache_payload_early = {
                         'plate_type': 'negative',
                         'shape_type': shape_type,
-                        'settings': settings_data,
+                        'settings': _normalize_settings_for_cache(settings),
                     }
                     if shape_type == 'cylinder':
-                        cache_payload_early['cylinder_params'] = cylinder_params
+                        cache_payload_early['cylinder_params'] = _normalize_cylinder_params_for_cache(cylinder_params)
                 else:
                     cache_payload_early = {
                         'lines': lines,
@@ -3437,6 +3527,8 @@ def generate_braille_stl():
                 if _blob_check_exists(early_public):
                     app.logger.info(f"BLOB CACHE EARLY HIT (counter plate) key={early_cache_key}")
                     resp = redirect(early_public, code=302)
+                    resp.headers['X-Blob-Cache-Key'] = early_cache_key
+                    resp.headers['X-Blob-URL'] = early_public
                     resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
                     resp.headers['X-Blob-Cache'] = 'hit'
                     resp.headers['X-Blob-Cache-Reason'] = 'early-exists'
@@ -3504,10 +3596,10 @@ def generate_braille_stl():
             cache_payload = {
                 'plate_type': 'negative',
                 'shape_type': shape_type,
-                'settings': settings_data,
+                'settings': _normalize_settings_for_cache(settings),
             }
             if shape_type == 'cylinder':
-                cache_payload['cylinder_params'] = cylinder_params
+                cache_payload['cylinder_params'] = _normalize_cylinder_params_for_cache(cylinder_params)
         else:
             cache_payload = {
                 'lines': lines,
@@ -3527,6 +3619,8 @@ def generate_braille_stl():
             if _blob_check_exists(cached_public):
                 app.logger.info(f"BLOB CACHE HIT (pre-export) key={cache_key}")
                 resp = redirect(cached_public, code=302)
+                resp.headers['X-Blob-Cache-Key'] = cache_key
+                resp.headers['X-Blob-URL'] = cached_public
                 resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
                 resp.headers['X-Blob-Cache'] = 'hit'
                 resp.headers['X-Blob-Cache-Reason'] = 'pre-export-exists'
@@ -3630,10 +3724,12 @@ def generate_braille_stl():
         # Attempt to persist to Blob store and redirect if successful (only for card counter plates)
         if allow_blob_cache:
             public_url = _blob_upload(cache_key, stl_bytes)
-            if public_url:
+            if public_url and _blob_check_exists(public_url):
                 app.logger.info(f"BLOB CACHE MISS -> UPLOAD OK key={cache_key}")
                 resp = redirect(public_url, code=302)
                 resp.headers['ETag'] = etag
+                resp.headers['X-Blob-Cache-Key'] = cache_key
+                resp.headers['X-Blob-URL'] = public_url
                 resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
                 resp.headers['X-Blob-Cache'] = 'miss'
                 resp.headers['X-Blob-Cache-Reason'] = 'uploaded-now'
@@ -3680,7 +3776,7 @@ def generate_counter_plate_stl():
         try:
             cache_payload_early = {
                 'plate_type': 'negative',
-                'settings': settings_data,
+                'settings': _normalize_settings_for_cache(settings),
                 'shape_type': 'card',
             }
             early_cache_key = compute_cache_key(cache_payload_early)
@@ -3714,7 +3810,7 @@ def generate_counter_plate_stl():
         # Compute content-addressable cache key from request payload
         cache_payload = {
             'plate_type': 'negative',
-            'settings': settings_data,
+            'settings': _normalize_settings_for_cache(settings),
             'shape_type': 'card',
         }
         cache_key = compute_cache_key(cache_payload)
@@ -3724,6 +3820,8 @@ def generate_counter_plate_stl():
         if _blob_check_exists(cached_public):
             app.logger.info(f"BLOB CACHE HIT (pre-export standalone) key={cache_key}")
             resp = redirect(cached_public, code=302)
+            resp.headers['X-Blob-Cache-Key'] = cache_key
+            resp.headers['X-Blob-URL'] = cached_public
             resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
             resp.headers['X-Blob-Cache'] = 'hit'
             resp.headers['X-Blob-Cache-Reason'] = 'pre-export-exists'
@@ -3761,10 +3859,12 @@ def generate_counter_plate_stl():
         filename = f"braille_counter_plate_{total_diameter}mm"
         # Attempt to persist to Blob store and redirect if successful
         public_url = _blob_upload(cache_key, stl_bytes)
-        if public_url:
+        if public_url and _blob_check_exists(public_url):
             app.logger.info(f"BLOB CACHE MISS -> UPLOAD OK (standalone) key={cache_key}")
             resp = redirect(public_url, code=302)
             resp.headers['ETag'] = etag
+            resp.headers['X-Blob-Cache-Key'] = cache_key
+            resp.headers['X-Blob-URL'] = public_url
             resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
             resp.headers['X-Blob-Cache'] = 'miss'
             resp.headers['X-Blob-Cache-Reason'] = 'uploaded-now'

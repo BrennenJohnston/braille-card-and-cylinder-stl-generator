@@ -130,17 +130,38 @@ def _blob_upload(cache_key: str, stl_bytes: bytes) -> str:
         }
         resp = requests.post(url, files=files, data=data, headers=headers, timeout=10)
         if resp.status_code in (200, 201):
-            # Prefer explicit public base URL if provided, else fall back to 'url' in response
             public_url = _build_blob_public_url(cache_key)
             if public_url:
+                app.logger.info(f"Blob upload success; returning public URL for key={cache_key}")
                 return public_url
             try:
                 j = resp.json()
-                return j.get('url') or ''
+                url_from_api = j.get('url') or ''
+                if url_from_api:
+                    app.logger.info(f"Blob upload success; returning API URL for key={cache_key}")
+                return url_from_api
             except Exception:
+                app.logger.warning(f"Blob upload success but could not parse API JSON for key={cache_key}")
                 return ''
+        # Treat 409 Conflict (already exists) as success
+        if resp.status_code == 409:
+            public_url = _build_blob_public_url(cache_key)
+            if public_url:
+                app.logger.info(f"Blob already exists; using public URL for key={cache_key}")
+                return public_url
+            try:
+                j = resp.json()
+                url_from_api = j.get('url') or ''
+                if url_from_api:
+                    app.logger.info(f"Blob already exists; using API URL for key={cache_key}")
+                return url_from_api
+            except Exception:
+                app.logger.warning(f"Blob already exists but no URL available for key={cache_key}")
+                return ''
+        app.logger.warning(f"Blob upload failed with status {resp.status_code} for key={cache_key}")
         return ''
-    except Exception:
+    except Exception as e:
+        app.logger.error(f"Blob upload exception for key={cache_key}: {e}")
         return ''
 
 # Security headers
@@ -3414,9 +3435,11 @@ def generate_braille_stl():
                 early_cache_key = compute_cache_key(cache_payload_early)
                 early_public = _build_blob_public_url(early_cache_key)
                 if _blob_check_exists(early_public):
+                    app.logger.info(f"BLOB CACHE EARLY HIT (counter plate) key={early_cache_key}")
                     resp = redirect(early_public, code=302)
                     resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
                     resp.headers['X-Blob-Cache'] = 'hit'
+                    resp.headers['X-Blob-Cache-Reason'] = 'early-exists'
                     return resp
             except Exception:
                 pass
@@ -3502,9 +3525,11 @@ def generate_braille_stl():
         if allow_blob_cache:
             cached_public = _build_blob_public_url(cache_key)
             if _blob_check_exists(cached_public):
+                app.logger.info(f"BLOB CACHE HIT (pre-export) key={cache_key}")
                 resp = redirect(cached_public, code=302)
                 resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
                 resp.headers['X-Blob-Cache'] = 'hit'
+                resp.headers['X-Blob-Cache-Reason'] = 'pre-export-exists'
                 return resp
 
         # Compute time around STL export for observability
@@ -3606,10 +3631,12 @@ def generate_braille_stl():
         if allow_blob_cache:
             public_url = _blob_upload(cache_key, stl_bytes)
             if public_url:
+                app.logger.info(f"BLOB CACHE MISS -> UPLOAD OK key={cache_key}")
                 resp = redirect(public_url, code=302)
                 resp.headers['ETag'] = etag
                 resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
                 resp.headers['X-Blob-Cache'] = 'miss'
+                resp.headers['X-Blob-Cache-Reason'] = 'uploaded-now'
                 return resp
 
         # Build response with headers
@@ -3617,6 +3644,7 @@ def generate_braille_stl():
         resp.headers['ETag'] = etag
         resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
         resp.headers['X-Blob-Cache'] = 'miss' if allow_blob_cache else 'bypass'
+        resp.headers['X-Blob-Cache-Reason'] = 'no-upload-url' if allow_blob_cache else 'embossing-disabled'
         return resp
         
     except Exception as e:
@@ -3658,9 +3686,11 @@ def generate_counter_plate_stl():
             early_cache_key = compute_cache_key(cache_payload_early)
             early_public = _build_blob_public_url(early_cache_key)
             if _blob_check_exists(early_public):
+                app.logger.info(f"BLOB CACHE EARLY HIT (counter plate standalone) key={early_cache_key}")
                 resp = redirect(early_public, code=302)
                 resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
                 resp.headers['X-Blob-Cache'] = 'hit'
+                resp.headers['X-Blob-Cache-Reason'] = 'early-exists'
                 return resp
         except Exception:
             pass
@@ -3692,9 +3722,11 @@ def generate_counter_plate_stl():
         # If a public base is configured and the blob already exists, redirect
         cached_public = _build_blob_public_url(cache_key)
         if _blob_check_exists(cached_public):
+            app.logger.info(f"BLOB CACHE HIT (pre-export standalone) key={cache_key}")
             resp = redirect(cached_public, code=302)
             resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
             resp.headers['X-Blob-Cache'] = 'hit'
+            resp.headers['X-Blob-Cache-Reason'] = 'pre-export-exists'
             return resp
 
         # Compute time around STL export for observability
@@ -3730,10 +3762,12 @@ def generate_counter_plate_stl():
         # Attempt to persist to Blob store and redirect if successful
         public_url = _blob_upload(cache_key, stl_bytes)
         if public_url:
+            app.logger.info(f"BLOB CACHE MISS -> UPLOAD OK (standalone) key={cache_key}")
             resp = redirect(public_url, code=302)
             resp.headers['ETag'] = etag
             resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
             resp.headers['X-Blob-Cache'] = 'miss'
+            resp.headers['X-Blob-Cache-Reason'] = 'uploaded-now'
             return resp
 
         # Build response with headers
@@ -3741,6 +3775,7 @@ def generate_counter_plate_stl():
         resp.headers['ETag'] = etag
         resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
         resp.headers['X-Blob-Cache'] = 'miss'
+        resp.headers['X-Blob-Cache-Reason'] = 'no-upload-url'
         return resp
         
     except Exception as e:

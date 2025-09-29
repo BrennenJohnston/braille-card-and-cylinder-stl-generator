@@ -194,6 +194,66 @@ def _normalize_cylinder_params_for_cache(cylinder_params: dict) -> dict:
         out[k] = _normalize_number(cylinder_params.get(k))
     return out
 
+@app.route('/lookup_stl', methods=['GET'])
+@limiter.limit("60 per minute")
+def lookup_stl_redirect():
+    """Return a 302 redirect to an existing negative plate STL (if cached) via GET.
+
+    Query params:
+    - shape_type: 'card' (default) or 'cylinder'
+    - settings: JSON for CardSettings
+    - cylinder_params: JSON for cylinder (when shape_type='cylinder')
+    """
+    try:
+        shape_type = request.args.get('shape_type', 'card')
+        if shape_type not in ('card', 'cylinder'):
+            return jsonify({'error': 'Invalid shape_type'}), 400
+
+        settings_json = request.args.get('settings', '')
+        cylinder_json = request.args.get('cylinder_params', '')
+
+        try:
+            settings_data = json.loads(settings_json) if settings_json else {}
+            validate_settings(settings_data)
+            settings = CardSettings(**settings_data)
+        except Exception:
+            settings = CardSettings(**{})
+
+        cylinder_params = {}
+        if shape_type == 'cylinder':
+            try:
+                cylinder_params = json.loads(cylinder_json) if cylinder_json else {}
+            except Exception:
+                cylinder_params = {}
+
+        cache_payload = {
+            'plate_type': 'negative',
+            'shape_type': shape_type,
+            'settings': _normalize_settings_for_cache(settings),
+        }
+        if shape_type == 'cylinder':
+            cache_payload['cylinder_params'] = _normalize_cylinder_params_for_cache(cylinder_params)
+        cache_key = compute_cache_key(cache_payload)
+
+        mapped = _blob_url_cache_get(cache_key)
+        public_url = mapped or _build_blob_public_url(cache_key)
+        if public_url and _blob_check_exists(public_url):
+            resp = redirect(public_url, code=302)
+            resp.headers['X-Blob-Cache-Key'] = cache_key
+            resp.headers['X-Blob-URL'] = public_url
+            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
+            resp.headers['X-Blob-Cache'] = 'hit'
+            resp.headers['X-Blob-Cache-Reason'] = 'lookup-exists'
+            return resp
+
+        resp = make_response(jsonify({'error': 'not-found', 'cache_key': cache_key}), 404)
+        resp.headers['Cache-Control'] = 'no-store'
+        resp.headers['CDN-Cache-Control'] = 'no-store'
+        return resp
+    except Exception as e:
+        return jsonify({'error': f'lookup-failed: {str(e)}'}), 500
+
 def _blob_public_base_url() -> str:
     # Public base like: https://<store>.public.blob.vercel-storage.com
     return os.environ.get('BLOB_PUBLIC_BASE_URL') or ''

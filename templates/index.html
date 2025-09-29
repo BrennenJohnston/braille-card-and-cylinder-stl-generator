@@ -4214,6 +4214,49 @@
                 }
             }
 
+            // Try GET lookup first for negative plates to leverage CDN-cached 302
+            if (plateType === 'negative') {
+                try {
+                    const lookupParams = new URLSearchParams();
+                    lookupParams.set('shape_type', shapeType);
+                    lookupParams.set('settings', JSON.stringify(settings));
+                    if (shapeType === 'cylinder') {
+                        lookupParams.set('cylinder_params', JSON.stringify(cylinderParams));
+                    }
+                    const lookupRes = await fetch(`/lookup_stl?${lookupParams.toString()}`, { method: 'GET', redirect: 'manual' });
+                    if (lookupRes.status === 302) {
+                        const blobUrl = lookupRes.headers.get('Location');
+                        if (blobUrl) {
+                            errorDiv.style.display = 'none';
+                            // Directly proceed to preview/download using the blob URL
+                            if (lastSTLUrl) URL.revokeObjectURL(lastSTLUrl);
+                            lastSTLUrl = blobUrl; // external URL; no need to createObjectURL
+                            // Update filename consistent with backend (counter plate)
+                            const isBowlSel = document.querySelector('input[name="use_bowl_recess"]:checked')?.value === '1';
+                            let baseStr = '0';
+                            if (isBowlSel) {
+                                baseStr = document.getElementById('bowl_counter_dot_base_diameter')?.value
+                                    || document.getElementById('counter_dot_base_diameter')?.value
+                                    || '0';
+                            } else {
+                                baseStr = document.getElementById('hemi_counter_dot_base_diameter')?.value
+                                    || document.getElementById('counter_dot_base_diameter')?.value
+                                    || '0';
+                            }
+                            const totalDiameter = parseFloat(baseStr) || 0;
+                            lastGeneratedSTLUrl = lastSTLUrl;
+                            lastGeneratedFilename = `braille_counter_plate_${totalDiameter}mm-${shapeType}.stl`;
+                            loadSTL(lastSTLUrl);
+                            actionBtn.disabled = false;
+                            setToDownloadState();
+                            return; // done via GET lookup
+                        }
+                    }
+                } catch (e) {
+                    // Fallback to POST if lookup fails
+                }
+            }
+
             const res = await fetch('/generate_braille_stl', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

@@ -203,24 +203,23 @@ def _blob_upload(cache_key: str, stl_bytes: bytes) -> str:
     # First, try direct upload endpoint which works with store-level tokens
     try:
         direct_base = os.environ.get('BLOB_DIRECT_UPLOAD_URL', 'https://blob.vercel-storage.com')
-        direct_url = direct_base.rstrip('/')
+        direct_url = f"{direct_base.rstrip('/')}/{pathname}"
         headers = {
             'Authorization': f"Bearer {token}",
-            'x-vercel-filename': pathname,
             # Prefer deterministic filename without random suffix
             'x-vercel-blob-add-random-suffix': '0',
             'x-vercel-blobs-add-random-suffix': '0',
             # Make publicly accessible
             'x-vercel-blob-access': 'public',
             'x-vercel-blobs-access': 'public',
-            # Generic binary content type
+            # Binary content type
             'content-type': 'application/octet-stream',
         }
         # Optional cache control header for CDN
         max_age = os.environ.get('BLOB_CACHE_MAX_AGE')
         if max_age:
             headers['x-vercel-cache-control-max-age'] = str(max_age)
-        resp = requests.post(direct_url, data=stl_bytes, headers=headers, timeout=30)
+        resp = requests.put(direct_url, data=stl_bytes, headers=headers, timeout=30)
         if 200 <= resp.status_code < 300 or resp.status_code == 409:
             # Prefer URL returned by API if present
             try:
@@ -246,44 +245,10 @@ def _blob_upload(cache_key: str, stl_bytes: bytes) -> str:
 
     # Fallback: API v2 multipart upload (may require project-scoped tokens)
     try:
-        api_base = os.environ.get('BLOB_API_BASE_URL', 'https://api.vercel.com')
-        url = f"{api_base.rstrip('/')}/v2/blobs"
-        files = {
-            'file': (pathname, stl_bytes, 'model/stl')
-        }
-        data = {
-            'pathname': pathname,
-            'contentType': 'model/stl',
-            'cacheControlMaxAge': os.environ.get('BLOB_CACHE_MAX_AGE', '31536000'),
-            'access': 'public',
-            'addRandomSuffix': 'false',
-        }
-        headers = {
-            'Authorization': f"Bearer {token}"
-        }
-        resp = requests.post(url, files=files, data=data, headers=headers, timeout=30)
-        if resp.status_code in (200, 201, 409):
-            # Prefer URL returned by API if present
-            try:
-                j = resp.json()
-                url_from_api = j.get('url') or ''
-                if url_from_api:
-                    app.logger.info(f"Blob API upload OK; using API URL for key={cache_key}")
-                    return url_from_api
-            except Exception:
-                pass
-            # Fallback to constructed public URL
-            public_url = _build_blob_public_url(cache_key)
-            if public_url:
-                app.logger.info(f"Blob API upload OK; using constructed public URL for key={cache_key}")
-                return public_url
-        try:
-            app.logger.warning(f"Blob API upload failed status={resp.status_code} body={resp.text}")
-        except Exception:
-            app.logger.warning(f"Blob API upload failed status={resp.status_code}")
+        # As of latest docs, the API route for server uploads is project-bound (Next.js),
+        # and store tokens are intended for direct PUTs. Keep this as last-resort noop.
         return ''
-    except Exception as e:
-        app.logger.error(f"Blob API upload exception for key={cache_key}: {e}")
+    except Exception:
         return ''
 
 @app.route('/debug/blob_upload', methods=['GET'])
@@ -323,7 +288,7 @@ def debug_blob_upload():
             'content-type': 'application/octet-stream',
         }
         try:
-            d_resp = requests.post(direct_base.rstrip('/'), data=payload, headers=direct_headers, timeout=20)
+            d_resp = requests.put(f"{direct_base.rstrip('/')}/{pathname}", data=payload, headers=direct_headers, timeout=20)
             info['direct'] = {
                 'status': d_resp.status_code,
                 'text': d_resp.text[:800] if hasattr(d_resp, 'text') else '<no text>'

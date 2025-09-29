@@ -3676,6 +3676,7 @@ def generate_braille_stl():
                     resp.headers['X-Blob-Cache-Key'] = early_cache_key
                     resp.headers['X-Blob-URL'] = early_public
                     resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+                    resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
                     resp.headers['X-Blob-Cache'] = 'hit'
                     resp.headers['X-Blob-Cache-Reason'] = 'early-exists'
                     return resp
@@ -3769,6 +3770,7 @@ def generate_braille_stl():
                 resp.headers['X-Blob-Cache-Key'] = cache_key
                 resp.headers['X-Blob-URL'] = cached_public
                 resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+                resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
                 resp.headers['X-Blob-Cache'] = 'hit'
                 resp.headers['X-Blob-Cache-Reason'] = 'pre-export-exists'
                 return resp
@@ -3882,6 +3884,7 @@ def generate_braille_stl():
                 resp.headers['X-Blob-Cache-Key'] = cache_key
                 resp.headers['X-Blob-URL'] = public_url
                 resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+                resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
                 resp.headers['X-Blob-Cache'] = 'miss'
                 resp.headers['X-Blob-Cache-Reason'] = 'uploaded-now'
                 return resp
@@ -3938,6 +3941,7 @@ def generate_counter_plate_stl():
                 app.logger.info(f"BLOB CACHE EARLY HIT (counter plate standalone) key={early_cache_key}")
                 resp = redirect(early_public, code=302)
                 resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+                resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
                 resp.headers['X-Blob-Cache'] = 'hit'
                 resp.headers['X-Blob-Cache-Reason'] = 'early-exists'
                 return resp
@@ -3977,6 +3981,7 @@ def generate_counter_plate_stl():
             resp.headers['X-Blob-Cache-Key'] = cache_key
             resp.headers['X-Blob-URL'] = cached_public
             resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
             resp.headers['X-Blob-Cache'] = 'hit'
             resp.headers['X-Blob-Cache-Reason'] = 'pre-export-exists'
             return resp
@@ -4020,6 +4025,7 @@ def generate_counter_plate_stl():
             resp.headers['X-Blob-Cache-Key'] = cache_key
             resp.headers['X-Blob-URL'] = public_url
             resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+            resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
             resp.headers['X-Blob-Cache'] = 'miss'
             resp.headers['X-Blob-Cache-Reason'] = 'uploaded-now'
             return resp

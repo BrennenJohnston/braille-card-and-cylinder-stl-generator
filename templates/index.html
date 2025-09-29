@@ -3264,6 +3264,7 @@
 
                 // Single word longer than a line. Try preferred break opportunities first.
                 const pref = findPreferredBreakPositions(word);
+                let didSplitPreferred = false;
                 for (let k = pref.length - 1; k >= 0; k--) {
                     const pos = pref[k];
                     const head = word.slice(0, pos + 1); // include break char at end of line
@@ -3275,11 +3276,12 @@
                         const tail = word.slice(pos + 1);
                         words[i] = tail || '';
                         if (!words[i]) { i++; }
-                        // Continue with next word (or tail)
-                        // Use continue outer while loop
-                        // eslint-disable-next-line no-continue
-                        continue;
+                        didSplitPreferred = true;
+                        break;
                     }
+                }
+                if (didSplitPreferred) {
+                    continue; // continue outer while loop on possibly updated words[i]
                 }
 
                 // Try heuristic syllable-like breaks (do NOT insert a hyphen)

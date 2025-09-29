@@ -3966,6 +3966,19 @@ def generate_braille_stl():
                 resp.headers['X-Compute-Time'] = str(compute_ms)
                 resp.headers['X-Blob-Cache'] = 'miss'
                 resp.headers['X-Blob-Cache-Reason'] = 'uploaded-now'
+                # Structured cost log
+                try:
+                    app.logger.info(json.dumps({
+                        'event': 'stl_upload',
+                        'cache_key': cache_key,
+                        'size_bytes': len(stl_bytes),
+                        'compute_ms': compute_ms,
+                        'shape_type': shape_type,
+                        'plate_type': plate_type,
+                        'action': 'upload-and-redirect'
+                    }))
+                except Exception:
+                    pass
                 return resp
 
         # Build response with headers
@@ -3978,6 +3991,19 @@ def generate_braille_stl():
         resp.headers['X-Blob-URL'] = _build_blob_public_url(cache_key)
         resp.headers['X-Cache'] = 'origin'
         resp.headers['X-Compute-Time'] = str(compute_ms)
+        # Structured cost log for origin send
+        try:
+            app.logger.info(json.dumps({
+                'event': 'stl_origin',
+                'cache_key': cache_key,
+                'size_bytes': len(stl_bytes),
+                'compute_ms': compute_ms,
+                'shape_type': shape_type,
+                'plate_type': plate_type,
+                'action': 'origin-send'
+            }))
+        except Exception:
+            pass
         return resp
         
     except Exception as e:
@@ -4115,6 +4141,19 @@ def generate_counter_plate_stl():
             resp.headers['X-Compute-Time'] = str(compute_ms)
             resp.headers['X-Blob-Cache'] = 'miss'
             resp.headers['X-Blob-Cache-Reason'] = 'uploaded-now'
+            # Structured cost log
+            try:
+                app.logger.info(json.dumps({
+                    'event': 'stl_upload',
+                    'cache_key': cache_key,
+                    'size_bytes': len(stl_bytes),
+                    'compute_ms': compute_ms,
+                    'shape_type': 'card',
+                    'plate_type': 'negative',
+                    'action': 'upload-and-redirect'
+                }))
+            except Exception:
+                pass
             return resp
 
         # Build response with headers
@@ -4125,6 +4164,19 @@ def generate_counter_plate_stl():
         resp.headers['X-Blob-Cache-Reason'] = 'no-upload-url'
         resp.headers['X-Cache'] = 'origin'
         resp.headers['X-Compute-Time'] = str(compute_ms)
+        # Structured cost log for origin send
+        try:
+            app.logger.info(json.dumps({
+                'event': 'stl_origin',
+                'cache_key': cache_key,
+                'size_bytes': len(stl_bytes),
+                'compute_ms': compute_ms,
+                'shape_type': 'card',
+                'plate_type': 'negative',
+                'action': 'origin-send'
+            }))
+        except Exception:
+            pass
         return resp
         
     except Exception as e:

@@ -4,6 +4,8 @@
     { "src": "wsgi.py", "use": "@vercel/python" }
   ],
   "routes": [
+    { "src": "^/$", "dest": "/templates/index.html" },
+    { "src": "^/index.html$", "dest": "/templates/index.html" },
     { "src": "/(.*)", "dest": "/wsgi.py" }
   ]
 }

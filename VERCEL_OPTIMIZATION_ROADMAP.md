@@ -106,9 +106,10 @@ Setup:
 ## Phase 6: Advanced Caching (Optional)
 
 ### 6.1 CDN Integration
-**Status: PARTIAL**
-- Blob uploads now set long-lived Cache-Control metadata (immutable, content-addressed)
-- Next (optional): add Edge cache rules for redirect responses
+**Status: COMPLETE**
+- Blob uploads set long-lived Cache-Control metadata (immutable, content-addressed)
+- Redirect responses include CDN-Cache-Control for edge caching
+- Added GET lookup endpoint and frontend GET-first flow for negative plates
 
 ### 6.2 Pregeneration Strategy
 **Status: COMPLETE**
@@ -139,7 +140,7 @@ Setup:
 - [x] Phase 4.2: Integrate Upstash Redis
 - [x] Phase 5.1: Move HTML to Edge (optional)
 - [ ] Phase 5.2: Edge validation (optional) (skipped)
-- [ ] Phase 6.1: CDN integration (metadata) (partial)
+- [x] Phase 6.1: CDN integration (metadata)
 - [x] Phase 6.2: Pregeneration (optional)
 - [ ] Phase 7.1: Enable monitoring (headers/logs) (partial)
 - [ ] Phase 7.2: Track costs

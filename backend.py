@@ -203,23 +203,25 @@ def _blob_upload(cache_key: str, stl_bytes: bytes) -> str:
     # First, try direct upload endpoint which works with store-level tokens
     try:
         direct_base = os.environ.get('BLOB_DIRECT_UPLOAD_URL', 'https://blob.vercel-storage.com')
-        direct_url = f"{direct_base.rstrip('/')}/{pathname}"
+        direct_url = direct_base.rstrip('/')
         headers = {
             'Authorization': f"Bearer {token}",
-            # Prefer deterministic filename without random suffix
-            'x-vercel-blob-add-random-suffix': '0',
-            'x-vercel-blobs-add-random-suffix': '0',
-            # Make publicly accessible
+            # Provide desired filename/path and make public; disable random suffix
+            'x-vercel-filename': pathname,
             'x-vercel-blob-access': 'public',
             'x-vercel-blobs-access': 'public',
-            # Binary content type
+            'x-vercel-blob-add-random-suffix': '0',
+            'x-vercel-blobs-add-random-suffix': '0',
             'content-type': 'application/octet-stream',
         }
+        store_id = os.environ.get('BLOB_STORE_ID')
+        if store_id:
+            headers['x-vercel-store-id'] = store_id
         # Optional cache control header for CDN
         max_age = os.environ.get('BLOB_CACHE_MAX_AGE')
         if max_age:
             headers['x-vercel-cache-control-max-age'] = str(max_age)
-        resp = requests.put(direct_url, data=stl_bytes, headers=headers, timeout=30)
+        resp = requests.post(direct_url, data=stl_bytes, headers=headers, timeout=30)
         if 200 <= resp.status_code < 300 or resp.status_code == 409:
             # Prefer URL returned by API if present
             try:
@@ -245,8 +247,30 @@ def _blob_upload(cache_key: str, stl_bytes: bytes) -> str:
 
     # Fallback: API v2 multipart upload (may require project-scoped tokens)
     try:
-        # As of latest docs, the API route for server uploads is project-bound (Next.js),
-        # and store tokens are intended for direct PUTs. Keep this as last-resort noop.
+        # As of latest docs, prefer direct upload. Keep PUT-to-path as last resort.
+        direct_put = f"{os.environ.get('BLOB_DIRECT_UPLOAD_URL', 'https://blob.vercel-storage.com').rstrip('/')}/{pathname}"
+        headers = {
+            'Authorization': f"Bearer {token}",
+            'x-vercel-blob-access': 'public',
+            'x-vercel-blobs-access': 'public',
+            'x-vercel-blob-add-random-suffix': '0',
+            'x-vercel-blobs-add-random-suffix': '0',
+            'content-type': 'application/octet-stream',
+        }
+        store_id = os.environ.get('BLOB_STORE_ID')
+        if store_id:
+            headers['x-vercel-store-id'] = store_id
+        resp = requests.put(direct_put, data=stl_bytes, headers=headers, timeout=30)
+        if 200 <= resp.status_code < 300 or resp.status_code == 409:
+            try:
+                j = resp.json()
+                url_from_api = j.get('url') or ''
+                if url_from_api:
+                    return url_from_api
+            except Exception:
+                pass
+            public_url = _build_blob_public_url(cache_key)
+            return public_url
         return ''
     except Exception:
         return ''

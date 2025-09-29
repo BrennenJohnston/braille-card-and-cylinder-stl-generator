@@ -3172,6 +3172,22 @@
 
             const normalizeSpaces = (s) => s.replace(/\s+/g, ' ').trim();
             const isHyphenChar = (ch) => /[-\u2010\u2011\u2012\u2013\u2014\u2212]/.test(ch);
+            const isEmailBreakChar = (ch) => ch === '@' || ch === '.';
+
+            // Preferred in-word break positions (rightmost-first) for overlong tokens
+            // - After hyphen-like chars
+            // - After '@' or '.' (email/URLs)
+            function findPreferredBreakPositions(word) {
+                const positions = [];
+                for (let i = 0; i < word.length; i++) {
+                    const ch = word[i];
+                    if (isHyphenChar(ch) || isEmailBreakChar(ch)) {
+                        // break AFTER this char
+                        if (i + 1 < word.length) positions.push(i);
+                    }
+                }
+                return positions;
+            }
 
             // Find potential syllable break indices using a simple vowel-based heuristic.
             // This is a fallback when no hyphen is present; not perfect, but avoids arbitrary splits.
@@ -3246,31 +3262,25 @@
                     continue; // Retry same word on new line
                 }
 
-                // Single word longer than a line. Try hyphen break opportunities first.
-                const hyphenPositions = [];
-                for (let j = 0; j < word.length; j++) if (isHyphenChar(word[j])) hyphenPositions.push(j);
-                let splitApplied = false;
-                if (hyphenPositions.length > 0) {
-                    // Prefer the rightmost hyphen that fits
-                    for (let k = hyphenPositions.length - 1; k >= 0; k--) {
-                        const pos = hyphenPositions[k];
-                        const head = word.slice(0, pos + 1); // include hyphen at end of line
-                        const headLen = await translateLen(head);
-                        if (headLen <= cols) {
-                            currentText = head;
-                            await pushCurrent();
-                            // Remainder becomes next token (without leading space)
-                            const tail = word.slice(pos + 1);
-                            if (tail) {
-                                words.splice(i + 1, 0, tail);
-                            }
-                            splitApplied = true;
-                            break;
-                        }
+                // Single word longer than a line. Try preferred break opportunities first.
+                const pref = findPreferredBreakPositions(word);
+                for (let k = pref.length - 1; k >= 0; k--) {
+                    const pos = pref[k];
+                    const head = word.slice(0, pos + 1); // include break char at end of line
+                    const headLen = await translateLen(head);
+                    if (headLen <= cols) {
+                        currentText = head;
+                        await pushCurrent();
+                        // Remainder becomes current word for next iteration
+                        const tail = word.slice(pos + 1);
+                        words[i] = tail || '';
+                        if (!words[i]) { i++; }
+                        // Continue with next word (or tail)
+                        // Use continue outer while loop
+                        // eslint-disable-next-line no-continue
+                        continue;
                     }
                 }
-
-                if (splitApplied) continue;
 
                 // Try heuristic syllable-like breaks (do NOT insert a hyphen)
                 const syllableBreaks = findHeuristicSyllableBreaks(word);
@@ -3287,9 +3297,8 @@
                         currentText = head;
                         await pushCurrent();
                         const tail = word.slice(chosen);
-                        if (tail) {
-                            words.splice(i + 1, 0, tail);
-                        }
+                        words[i] = tail || '';
+                        if (!words[i]) { i++; }
                         continue;
                     }
                 }
@@ -3950,16 +3959,8 @@
                 try {
                     const shapeTypeEl = document.querySelector('input[name="shape_type"]:checked');
                     const shapeTypeVal = shapeTypeEl ? shapeTypeEl.value : 'card';
-                    let cols;
-                    if (shapeTypeVal === 'cylinder') {
-                        const diameter = parseFloat(document.getElementById('cylinder_diameter_mm').value) || 30.75;
-                        const cellSpacing = parseFloat(document.getElementById('cell_spacing').value) || 6.5;
-                        const circumference = Math.PI * diameter;
-                        cols = Math.floor(circumference / cellSpacing);
-                    } else {
-                        const gridColumnsValue = parseInt(document.getElementById('grid_columns').value) || 15;
-                        cols = gridColumnsValue;
-                    }
+                    // Use unified available columns helper
+                    const cols = getAvailableColumns();
                     const rows = parseInt(document.getElementById('grid_rows').value) || 4;
                     const wrap = await banaAutoWrap(src, cols, rows, tableName);
                     if (wrap.error) {
@@ -4157,16 +4158,7 @@
                         try {
                             const shapeTypeEl = document.querySelector('input[name="shape_type"]:checked');
                             const shapeTypeVal = shapeTypeEl ? shapeTypeEl.value : 'card';
-                            let cols;
-                            if (shapeTypeVal === 'cylinder') {
-                                const diameter = parseFloat(document.getElementById('cylinder_diameter_mm').value) || 30.75;
-                                const cellSpacing = parseFloat(document.getElementById('cell_spacing').value) || 6.5;
-                                const circumference = Math.PI * diameter;
-                                cols = Math.floor(circumference / cellSpacing);
-                            } else {
-                                const gridColumnsValue = parseInt(document.getElementById('grid_columns').value) || 15;
-                                cols = gridColumnsValue; // indicators reserved are handled in mesh/layout
-                            }
+                            const cols = getAvailableColumns();
                             const rows = parseInt(document.getElementById('grid_rows').value) || 4;
                             const wrap = await banaAutoWrap(src, cols, rows, tableName);
                             if (wrap.error) {

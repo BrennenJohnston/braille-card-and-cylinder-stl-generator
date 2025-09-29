@@ -336,14 +336,21 @@ def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-    # Content-Security-Policy allowing web workers and table loading
+    # Content-Security-Policy allowing web workers, table loading, and Blob CDN redirects
+    blob_base = _blob_public_base_url().rstrip('/')
+    connect_sources = ["'self'", 'blob:', 'data:']
+    if blob_base:
+        connect_sources.append(blob_base)
+    # Also allow generic Vercel Blob CDN wildcard as a fallback if no env set
+    if not blob_base:
+        connect_sources.append('https://*.vercel-storage.com')
     csp_policy = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://vercel.live; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data: blob:; "
-        "connect-src 'self' blob: data:; "
+        f"connect-src {' '.join(connect_sources)}; "
         "object-src 'none'; "
         "base-uri 'self'; worker-src 'self' blob:"
     )

@@ -197,12 +197,13 @@ def _normalize_cylinder_params_for_cache(cylinder_params: dict) -> dict:
 @app.route('/lookup_stl', methods=['GET'])
 @limiter.limit("60 per minute")
 def lookup_stl_redirect():
-    """Return a 302 redirect to an existing negative plate STL (if cached) via GET.
+    """Return cached negative plate location (302 redirect or JSON) if available.
 
     Query params:
     - shape_type: 'card' (default) or 'cylinder'
     - settings: JSON for CardSettings
     - cylinder_params: JSON for cylinder (when shape_type='cylinder')
+    - format: 'json' to return { url, cache_key } with cacheable headers instead of 302
     """
     try:
         shape_type = request.args.get('shape_type', 'card')
@@ -238,6 +239,14 @@ def lookup_stl_redirect():
         mapped = _blob_url_cache_get(cache_key)
         public_url = mapped or _build_blob_public_url(cache_key)
         if public_url and _blob_check_exists(public_url):
+            if request.args.get('format') == 'json' or 'application/json' in (request.headers.get('Accept') or ''):
+                payload = { 'url': public_url, 'cache_key': cache_key }
+                resp = make_response(jsonify(payload), 200)
+                resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
+                resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
+                resp.headers['X-Blob-Cache'] = 'hit'
+                resp.headers['X-Blob-Cache-Reason'] = 'lookup-exists'
+                return resp
             resp = redirect(public_url, code=302)
             resp.headers['X-Blob-Cache-Key'] = cache_key
             resp.headers['X-Blob-URL'] = public_url

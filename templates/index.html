@@ -4220,12 +4220,14 @@
                     const lookupParams = new URLSearchParams();
                     lookupParams.set('shape_type', shapeType);
                     lookupParams.set('settings', JSON.stringify(settings));
+                    lookupParams.set('format', 'json');
                     if (shapeType === 'cylinder') {
                         lookupParams.set('cylinder_params', JSON.stringify(cylinderParams));
                     }
-                    const lookupRes = await fetch(`/lookup_stl?${lookupParams.toString()}`, { method: 'GET', redirect: 'manual' });
-                    if (lookupRes.status === 302) {
-                        const blobUrl = lookupRes.headers.get('Location');
+                    const lookupRes = await fetch(`/lookup_stl?${lookupParams.toString()}`, { method: 'GET', headers: { 'Accept': 'application/json' } });
+                    if (lookupRes.ok) {
+                        const j = await lookupRes.json();
+                        const blobUrl = j && j.url;
                         if (blobUrl) {
                             errorDiv.style.display = 'none';
                             // Directly proceed to preview/download using the blob URL

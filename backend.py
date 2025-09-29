@@ -90,24 +90,23 @@ CORS(app, origins=allowed_origins, supports_credentials=True)
 app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024  # 1MB max request size
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 
-# Flask-Limiter setup (Phase 4.1/4.2) - DISABLED for baseline debugging
-# redis_url = os.environ.get('REDIS_URL')
-# storage_uri = redis_url if redis_url else 'memory://'
-# if Limiter is not None:
-#     limiter = Limiter(
-#         key_func=get_remote_address,
-#         storage_uri=storage_uri,
-#         default_limits=["10 per minute"],
-#     )
-#     limiter.init_app(app)
-# else:
-#     class _NoopLimiter:
-#         def limit(self, *_args, **_kwargs):
-#             def decorator(f):
-#                 return f
-#             return decorator
-#     limiter = _NoopLimiter()
-limiter = None
+# Flask-Limiter setup (Phase 4.1/4.2) - ENABLED with Redis when available, memory fallback otherwise
+redis_url = os.environ.get('REDIS_URL')
+storage_uri = redis_url if redis_url else 'memory://'
+if Limiter is not None:
+    limiter = Limiter(
+        key_func=get_remote_address,
+        storage_uri=storage_uri,
+        default_limits=["10 per minute"],
+    )
+    limiter.init_app(app)
+else:
+    class _NoopLimiter:
+        def limit(self, *_args, **_kwargs):
+            def decorator(f):
+                return f
+            return decorator
+    limiter = _NoopLimiter()
 
 # Helper functions for caching and security
 
@@ -3324,9 +3323,9 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
             return create_simple_negative_plate(params)
 
 
-# @app.route('/health')
-# def health_check():
-#     return jsonify({'status': 'ok', 'message': 'Vercel backend is running'})
+@app.route('/health')
+def health_check():
+    return jsonify({'status': 'ok', 'message': 'Vercel backend is running'})
 
 
 
@@ -3586,7 +3585,7 @@ def list_liblouis_tables():
     return jsonify({'tables': tables})
 
 @app.route('/generate_braille_stl', methods=['POST'])
-# @limiter.limit("10 per minute")  # disabled for baseline
+@limiter.limit("10 per minute")
 def generate_braille_stl():
     try:
         # Validate request content type
@@ -3901,7 +3900,7 @@ def generate_braille_stl():
         return jsonify({'error': f'Failed to generate STL: {str(e)}'}), 500
 
 @app.route('/generate_counter_plate_stl', methods=['POST'])
-# @limiter.limit("10 per minute")  # disabled for baseline
+@limiter.limit("10 per minute")
 def generate_counter_plate_stl():
     """
     Generate counter plate with hemispherical recesses as per project brief.

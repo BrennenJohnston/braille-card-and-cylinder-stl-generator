@@ -30,6 +30,49 @@ except Exception:  # pragma: no cover - allow local dev without limiter installe
     def get_remote_address():
         return request.remote_addr
 
+# Optional Redis client for key→URL mapping to handle blob random suffixes
+try:
+    import redis as _redis_mod
+except Exception:
+    _redis_mod = None
+
+_redis_client_singleton = None
+
+def _get_redis_client():
+    global _redis_client_singleton
+    if _redis_client_singleton is not None:
+        return _redis_client_singleton
+    if _redis_mod is None:
+        return None
+    try:
+        redis_url = os.environ.get('REDIS_URL')
+        if not redis_url:
+            return None
+        # from_url handles rediss:// and ssl automatically
+        _redis_client_singleton = _redis_mod.from_url(redis_url, decode_responses=True)
+        return _redis_client_singleton
+    except Exception:
+        return None
+
+def _blob_url_cache_get(cache_key: str) -> str:
+    try:
+        r = _get_redis_client()
+        if not r:
+            return ''
+        return r.get(f"blob-url:{cache_key}") or ''
+    except Exception:
+        return ''
+
+def _blob_url_cache_set(cache_key: str, url: str) -> None:
+    try:
+        r = _get_redis_client()
+        if not r:
+            return
+        ttl = int(os.environ.get('BLOB_URL_TTL_SEC', '31536000'))
+        r.setex(f"blob-url:{cache_key}", ttl, url)
+    except Exception:
+        return
+
 app = Flask(__name__)
 # CORS configuration - update with your actual domain before deployment
 allowed_origins = [
@@ -3625,8 +3668,10 @@ def generate_braille_stl():
                         'cylinder_params': cylinder_params,
                     }
                 early_cache_key = compute_cache_key(cache_payload_early)
-                early_public = _build_blob_public_url(early_cache_key)
-                if _blob_check_exists(early_public):
+                # Check Redis mapping (URL may include random suffix set by provider)
+                mapped_url = _blob_url_cache_get(early_cache_key)
+                early_public = mapped_url or _build_blob_public_url(early_cache_key)
+                if early_public and _blob_check_exists(early_public):
                     app.logger.info(f"BLOB CACHE EARLY HIT (counter plate) key={early_cache_key}")
                     resp = redirect(early_public, code=302)
                     resp.headers['X-Blob-Cache-Key'] = early_cache_key
@@ -3717,8 +3762,9 @@ def generate_braille_stl():
 
         # If a public base is configured and the blob already exists, redirect (only for card counter plates)
         if allow_blob_cache:
-            cached_public = _build_blob_public_url(cache_key)
-            if _blob_check_exists(cached_public):
+            mapped = _blob_url_cache_get(cache_key)
+            cached_public = mapped or _build_blob_public_url(cache_key)
+            if cached_public and _blob_check_exists(cached_public):
                 app.logger.info(f"BLOB CACHE HIT (pre-export) key={cache_key}")
                 resp = redirect(cached_public, code=302)
                 resp.headers['X-Blob-Cache-Key'] = cache_key
@@ -3830,6 +3876,8 @@ def generate_braille_stl():
             public_url = _blob_upload(cache_key, stl_bytes)
             if public_url:
                 app.logger.info(f"BLOB CACHE MISS -> UPLOAD OK key={cache_key}")
+                # Persist mapping so future early checks can redirect immediately
+                _blob_url_cache_set(cache_key, public_url)
                 resp = redirect(public_url, code=302)
                 resp.headers['ETag'] = etag
                 resp.headers['X-Blob-Cache-Key'] = cache_key
@@ -3922,8 +3970,9 @@ def generate_counter_plate_stl():
         cache_key = compute_cache_key(cache_payload)
 
         # If a public base is configured and the blob already exists, redirect
-        cached_public = _build_blob_public_url(cache_key)
-        if _blob_check_exists(cached_public):
+        mapped = _blob_url_cache_get(cache_key)
+        cached_public = mapped or _build_blob_public_url(cache_key)
+        if cached_public and _blob_check_exists(cached_public):
             app.logger.info(f"BLOB CACHE HIT (pre-export standalone) key={cache_key}")
             resp = redirect(cached_public, code=302)
             resp.headers['X-Blob-Cache-Key'] = cache_key

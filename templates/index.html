@@ -3159,6 +3159,166 @@
             return rows * cols;
         }
 
+        // BANA-compliant-ish auto wrapping for braille rows
+        // Policy:
+        // - Prefer not to divide words across lines
+        // - Hyphenated words may break after a hyphen (hyphen remains at end of line)
+        // - If a single non-hyphenated word exceeds the row width in braille cells,
+        //   we attempt a simple syllable-like split; if none found, we warn and abort
+        async function banaAutoWrap(src, cols, rows, tableName) {
+            const warnings = [];
+            const textLines = [];
+            const brailleLines = [];
+
+            const normalizeSpaces = (s) => s.replace(/\s+/g, ' ').trim();
+            const isHyphenChar = (ch) => /[-\u2010\u2011\u2012\u2013\u2014\u2212]/.test(ch);
+
+            // Find potential syllable break indices using a simple vowel-based heuristic.
+            // This is a fallback when no hyphen is present; not perfect, but avoids arbitrary splits.
+            function findHeuristicSyllableBreaks(word) {
+                const breaks = [];
+                const vowels = /[aeiouyAEIOUY]/;
+                for (let i = 1; i < word.length - 1; i++) {
+                    const prev = word[i - 1];
+                    const cur = word[i];
+                    const next = word[i + 1];
+                    if (vowels.test(prev) && !vowels.test(cur)) {
+                        // Vowel → consonant boundary; prefer breaking here if needed
+                        breaks.push(i);
+                    } else if (vowels.test(cur) && !vowels.test(next)) {
+                        // After a vowel when next is consonant
+                        breaks.push(i + 1);
+                    }
+                }
+                // Deduplicate and sort ascending
+                return Array.from(new Set(breaks)).filter(b => b > 0 && b < word.length).sort((a,b)=>a-b);
+            }
+
+            async function translateLen(text) {
+                const b = await translateWithLiblouis(text, 'g2', tableName);
+                return b.length;
+            }
+
+            async function translateText(text) {
+                return await translateWithLiblouis(text, 'g2', tableName);
+            }
+
+            let remaining = normalizeSpaces(src);
+            if (!remaining) {
+                // Return empty lines matching requested rows
+                for (let r = 0; r < rows; r++) { textLines.push(''); brailleLines.push(''); }
+                return { textLines, brailleLines, warnings };
+            }
+
+            const words = remaining.split(' ');
+            let currentText = '';
+            let currentBraille = '';
+
+            // Helper to finalize current line
+            async function pushCurrent() {
+                const text = currentText.trim();
+                const braille = text ? await translateText(text) : '';
+                textLines.push(text);
+                brailleLines.push(braille);
+                currentText = '';
+                currentBraille = '';
+            }
+
+            // Process each word greedily with lookahead via translation
+            let i = 0;
+            while (i < words.length && textLines.length < rows) {
+                let word = words[i];
+                if (!word) { i++; continue; }
+
+                // Try to append word to current line (with a space if needed)
+                const candidate = currentText ? `${currentText} ${word}` : word;
+                const candidateBrailleLen = await translateLen(candidate);
+                if (candidateBrailleLen <= cols) {
+                    currentText = candidate;
+                    currentBraille = null; // invalidate cache
+                    i++;
+                    continue;
+                }
+
+                // Would overflow. If current line has content, finalize it and retry word on next line
+                if (currentText) {
+                    await pushCurrent();
+                    continue; // Retry same word on new line
+                }
+
+                // Single word longer than a line. Try hyphen break opportunities first.
+                const hyphenPositions = [];
+                for (let j = 0; j < word.length; j++) if (isHyphenChar(word[j])) hyphenPositions.push(j);
+                let splitApplied = false;
+                if (hyphenPositions.length > 0) {
+                    // Prefer the rightmost hyphen that fits
+                    for (let k = hyphenPositions.length - 1; k >= 0; k--) {
+                        const pos = hyphenPositions[k];
+                        const head = word.slice(0, pos + 1); // include hyphen at end of line
+                        const headLen = await translateLen(head);
+                        if (headLen <= cols) {
+                            currentText = head;
+                            await pushCurrent();
+                            // Remainder becomes next token (without leading space)
+                            const tail = word.slice(pos + 1);
+                            if (tail) {
+                                words.splice(i + 1, 0, tail);
+                            }
+                            splitApplied = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (splitApplied) continue;
+
+                // Try heuristic syllable-like breaks (do NOT insert a hyphen)
+                const syllableBreaks = findHeuristicSyllableBreaks(word);
+                if (syllableBreaks.length > 0) {
+                    // Choose the largest prefix that fits
+                    let chosen = -1;
+                    for (const b of syllableBreaks) {
+                        const head = word.slice(0, b);
+                        const headLen = await translateLen(head);
+                        if (headLen <= cols) chosen = b; else break;
+                    }
+                    if (chosen > 0) {
+                        const head = word.slice(0, chosen);
+                        currentText = head;
+                        await pushCurrent();
+                        const tail = word.slice(chosen);
+                        if (tail) {
+                            words.splice(i + 1, 0, tail);
+                        }
+                        continue;
+                    }
+                }
+
+                // Monosyllabic or no safe split found: cannot divide per BANA
+                const wordBrailleLen = await translateLen(word);
+                warnings.push(`Word "${word}" requires ${wordBrailleLen} cells but only ${cols} fit per row. It cannot be divided per BANA; increase columns/rows or use Manual Placement.`);
+                return { error: true, warnings };
+            }
+
+            // Push the last line if any and if we still have space for lines
+            if (currentText && textLines.length < rows) {
+                await pushCurrent();
+            }
+
+            // If content remains beyond rows, warn
+            if (i < words.length) {
+                warnings.push('Text exceeds available rows after word-aware wrapping; extra content was not placed.');
+            }
+
+            // Ensure we return exactly "rows" lines for downstream consumers
+            while (textLines.length < rows) { textLines.push(''); brailleLines.push(''); }
+            if (textLines.length > rows) {
+                textLines.length = rows; brailleLines.length = rows;
+            }
+
+            return { textLines, brailleLines, warnings };
+        }
+
         function updatePlacementUI() {
             const mode = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
             if (mode === 'auto') {
@@ -3780,7 +3940,7 @@
                     }
                 }
             } else {
-                // Auto mode: translate full text then wrap into rows for preview
+                // Auto mode: BANA-aware word wrapping for preview
                 const src = (document.getElementById('auto-text')?.value || '').trim();
                 if (!src) {
                     errorText.textContent = 'Please enter text in the Auto Placement field.';
@@ -3788,7 +3948,6 @@
                     return;
                 }
                 try {
-                    const brailleText = await translateWithLiblouis(src, 'g2', tableName);
                     const shapeTypeEl = document.querySelector('input[name="shape_type"]:checked');
                     const shapeTypeVal = shapeTypeEl ? shapeTypeEl.value : 'card';
                     let cols;
@@ -3802,31 +3961,29 @@
                         cols = gridColumnsValue;
                     }
                     const rows = parseInt(document.getElementById('grid_rows').value) || 4;
-                    const totalCellsAvailable = cols * rows;
-                    if (brailleText.length > totalCellsAvailable) {
-                        const over = brailleText.length - totalCellsAvailable;
-                        errorText.textContent = `Text requires ${brailleText.length} cells but only ${totalCellsAvailable} are available. Over by ${over} cells.`;
+                    const wrap = await banaAutoWrap(src, cols, rows, tableName);
+                    if (wrap.error) {
+                        errorText.textContent = wrap.warnings && wrap.warnings.length ? wrap.warnings.join(' ') : 'Unable to wrap text per BANA rules.';
                         errorDiv.style.display = 'flex';
                         errorDiv.className = 'error-message';
+                        // Still show whatever lines we have (empty)
                     }
-                    let idx = 0;
+                    const linesForPreview = wrap.brailleLines || [];
                     for (let r = 0; r < rows; r++) {
-                        const slice = brailleText.slice(idx, idx + cols);
-                        if (slice) {
-                            const shorthand = brailleToComputerShorthand(slice);
-                            previewHTML += `<div class="preview-line-success">
-                                <div><strong>Row ${r + 1}:</strong> "${slice}"</div>
-                                <div class="preview-subline">Computer shorthand: "${shorthand}"</div>
-                            </div>`;
-                        } else {
-                            previewHTML += `<div class="preview-line-success">
-                                <strong>Row ${r + 1}:</strong> ""
-                            </div>`;
-                        }
-                        idx += cols;
+                        const slice = linesForPreview[r] || '';
+                        const shorthand = slice ? brailleToComputerShorthand(slice) : '';
+                        previewHTML += `<div class="preview-line-success">
+                            <div><strong>Row ${r + 1}:</strong> "${slice}"</div>
+                            <div class="preview-subline">${shorthand ? `Computer shorthand: "${shorthand}"` : ''}</div>
+                        </div>`;
+                    }
+                    if (wrap.warnings && wrap.warnings.length) {
+                        errorText.textContent = wrap.warnings.join(' ');
+                        errorDiv.style.display = 'flex';
+                        errorDiv.className = 'grade-note';
                     }
                 } catch (error) {
-                    log.error('Translation failed for auto text:', error);
+                    log.error('BANA wrap failed for auto text:', error);
                     previewHTML += `<div class="preview-line-error">
                         <strong>Auto Placement:</strong> Error: ${error.message}
                     </div>`;
@@ -3992,19 +4149,16 @@
                         }
                     }
                 } else {
-                    // Auto mode: translate entire text, then wrap to rows
+                    // Auto mode: BANA-aware wrapping
                     const src = (document.getElementById('auto-text')?.value || '').trim();
                     if (!src) {
                         translatedLines = Array(parseInt(document.getElementById('grid_rows').value) || 4).fill('');
                     } else {
                         try {
-                            const brailleText = await translateWithLiblouis(src, 'g2', tableName);
                             const shapeTypeEl = document.querySelector('input[name="shape_type"]:checked');
                             const shapeTypeVal = shapeTypeEl ? shapeTypeEl.value : 'card';
-                            let totalCellsAvailable;
                             let cols;
                             if (shapeTypeVal === 'cylinder') {
-                                // Derive cells per row from cylinder geometry
                                 const diameter = parseFloat(document.getElementById('cylinder_diameter_mm').value) || 30.75;
                                 const cellSpacing = parseFloat(document.getElementById('cell_spacing').value) || 6.5;
                                 const circumference = Math.PI * diameter;
@@ -4014,24 +4168,28 @@
                                 cols = gridColumnsValue; // indicators reserved are handled in mesh/layout
                             }
                             const rows = parseInt(document.getElementById('grid_rows').value) || 4;
-                            totalCellsAvailable = cols * rows;
-                            // Warn if overflow (global)
-                            if (brailleText.length > totalCellsAvailable) {
-                                const over = brailleText.length - totalCellsAvailable;
-                                errorText.textContent = `Text requires ${brailleText.length} cells but only ${totalCellsAvailable} are available. Over by ${over} cells.`;
+                            const wrap = await banaAutoWrap(src, cols, rows, tableName);
+                            if (wrap.error) {
+                                const msg = wrap.warnings && wrap.warnings.length ? wrap.warnings.join(' ') : 'Unable to wrap text per BANA rules.';
+                                errorText.textContent = msg;
                                 errorDiv.style.display = 'flex';
                                 errorDiv.className = 'error-message';
+                                // Stop submission
+                                resetToGenerateState();
+                                return;
                             }
-                            // Wrap into row strings left-to-right
-                            translatedLines = [];
-                            let idx = 0;
-                            for (let r = 0; r < rows; r++) {
-                                const slice = brailleText.slice(idx, idx + cols);
-                                translatedLines.push(slice);
-                                idx += cols;
+                            translatedLines = wrap.brailleLines;
+                            // Provide per-line language tables (single table for all lines in auto mode)
+                            perLineLanguageTables = new Array(rows).fill(tableName);
+                            // Update originalLines to reflect the per-line source segments
+                            originalLines = wrap.textLines;
+                            if (wrap.warnings && wrap.warnings.length) {
+                                errorText.textContent = wrap.warnings.join(' ');
+                                errorDiv.style.display = 'flex';
+                                errorDiv.className = 'grade-note';
                             }
                         } catch (error) {
-                            log.error('Failed to translate auto text:', error);
+                            log.error('Failed to wrap auto text (BANA):', error);
                             translationErrors.push({ line: 1, text: src, error: error.toString() });
                             translatedLines = Array(parseInt(document.getElementById('grid_rows').value) || 4).fill('');
                         }

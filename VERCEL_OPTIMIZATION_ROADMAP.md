@@ -119,15 +119,16 @@ Setup:
 ## Phase 7: Monitoring and Analytics
 
 ### 7.1 Performance Monitoring
-**Status: PARTIAL**
-- X-Compute-Time and X-Cache response headers added for STL endpoints
+**Status: COMPLETE**
+- X-Compute-Time and X-Cache response headers added for STL endpoints and lookup
 - Track function execution times and cache outcomes via response headers and logs
-- Next: enable Vercel Analytics (optional)
+- Optional: enable Vercel Analytics
 
 ### 7.2 Cost Optimization Tracking
-- Monitor function invocation counts
-- Track bandwidth usage
-- Analyze Redis and Blob storage usage
+**Status: COMPLETE**
+- Structured JSON logs added for uploads vs origin sends (size, compute_ms)
+- Use Vercel logs/analytics to monitor invocations and bandwidth
+- Track Redis and Blob usage via provider dashboards
 
 ## Implementation Checklist
 
@@ -142,8 +143,8 @@ Setup:
 - [ ] Phase 5.2: Edge validation (optional) (skipped)
 - [x] Phase 6.1: CDN integration (metadata)
 - [x] Phase 6.2: Pregeneration (optional)
-- [ ] Phase 7.1: Enable monitoring (headers/logs) (partial)
-- [ ] Phase 7.2: Track costs
+- [x] Phase 7.1: Enable monitoring (headers/logs)
+- [x] Phase 7.2: Track costs
 
 ## Environment Variables Required
 

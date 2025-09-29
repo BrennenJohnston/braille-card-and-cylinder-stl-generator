@@ -353,9 +353,10 @@
                 bottom: 0;
                 background: var(--bg-primary);
                 padding: 1em 0;
-                margin: 0 -1em;
+                margin: 0; /* Avoid horizontal overflow from negative margins */
                 padding-left: 1em;
                 padding-right: 1em;
+                width: 100%;
                 box-shadow: 0 -2px 8px var(--shadow-light);
                 z-index: 10;
             }
@@ -720,7 +721,7 @@
 
         #viewer {
             width: 100%;
-            min-width: 320px;
+            min-width: 0; /* Avoid forcing horizontal scroll on very small devices */
             max-width: 100%;
             height: calc(100vh - 16em); /* Adjust for new layout spacing */
             border-radius: 18px;
@@ -1083,6 +1084,7 @@
                 font-size: 1.1em;
                 min-height: 48px;
                 min-width: 48px;
+                white-space: normal; /* Allow wrapping on small screens */
             }
         }
         button[type="submit"] {
@@ -1569,6 +1571,8 @@
             
             .title-section h1 {
                 text-align: center;
+                white-space: normal; /* Allow multi-line title on small screens */
+                word-break: break-word;
             }
             
             .title-line-1 {
@@ -1582,6 +1586,8 @@
             .accessibility-controls-top {
                 margin-left: 0;
                 align-items: center;
+                flex-wrap: wrap; /* Prevent controls from overflowing horizontally */
+                justify-content: center;
             }
             
             .theme-toggle-section {

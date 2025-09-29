@@ -286,6 +286,83 @@ def _blob_upload(cache_key: str, stl_bytes: bytes) -> str:
         app.logger.error(f"Blob API upload exception for key={cache_key}: {e}")
         return ''
 
+@app.route('/debug/blob_upload', methods=['GET'])
+def debug_blob_upload():
+    """Try both direct and API blob uploads with a 1-byte payload and report results."""
+    try:
+        token = os.environ.get('BLOB_STORE_WRITE_TOKEN') or os.environ.get('BLOB_READ_WRITE_TOKEN')
+        public_base = os.environ.get('BLOB_PUBLIC_BASE_URL')
+        direct_base = os.environ.get('BLOB_DIRECT_UPLOAD_URL', 'https://blob.vercel-storage.com')
+        api_base = os.environ.get('BLOB_API_BASE_URL', 'https://api.vercel.com')
+        info = {
+            'env': {
+                'has_BLOB_STORE_WRITE_TOKEN': bool(os.environ.get('BLOB_STORE_WRITE_TOKEN')),
+                'has_BLOB_READ_WRITE_TOKEN': bool(os.environ.get('BLOB_READ_WRITE_TOKEN')),
+                'BLOB_PUBLIC_BASE_URL': public_base,
+                'BLOB_DIRECT_UPLOAD_URL': direct_base,
+                'BLOB_API_BASE_URL': api_base,
+            }
+        }
+        if not token:
+            info['error'] = 'missing-token'
+            return jsonify(info), 200
+
+        test_key = f"debug_{int(time.time())}"
+        pathname = f"stl/{test_key}.bin"
+        payload = b"x"
+
+        # Direct upload
+        direct_headers = {
+            'Authorization': f"Bearer {token}",
+            'x-vercel-filename': pathname,
+            # support both header spellings seen in docs
+            'x-vercel-blob-add-random-suffix': '0',
+            'x-vercel-blobs-add-random-suffix': '0',
+            'x-vercel-blob-access': 'public',
+            'x-vercel-blobs-access': 'public',
+            'content-type': 'application/octet-stream',
+        }
+        try:
+            d_resp = requests.post(direct_base.rstrip('/'), data=payload, headers=direct_headers, timeout=20)
+            info['direct'] = {
+                'status': d_resp.status_code,
+                'text': d_resp.text[:800] if hasattr(d_resp, 'text') else '<no text>'
+            }
+            try:
+                info['direct']['json'] = d_resp.json()
+            except Exception:
+                pass
+        except Exception as e:
+            info['direct'] = {'exception': str(e)}
+
+        # API upload
+        api_url = f"{api_base.rstrip('/')}/v2/blobs"
+        files = {'file': (pathname, payload, 'application/octet-stream')}
+        data = {
+            'pathname': pathname,
+            'contentType': 'application/octet-stream',
+            'cacheControlMaxAge': os.environ.get('BLOB_CACHE_MAX_AGE', '31536000'),
+            'access': 'public',
+            'addRandomSuffix': 'false',
+        }
+        api_headers = {'Authorization': f"Bearer {token}"}
+        try:
+            a_resp = requests.post(api_url, files=files, data=data, headers=api_headers, timeout=20)
+            info['api'] = {
+                'status': a_resp.status_code,
+                'text': a_resp.text[:800] if hasattr(a_resp, 'text') else '<no text>'
+            }
+            try:
+                info['api']['json'] = a_resp.json()
+            except Exception:
+                pass
+        except Exception as e:
+            info['api'] = {'exception': str(e)}
+
+        return jsonify(info), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 200
+
 # Security headers
 @app.after_request
 def add_security_headers(response):

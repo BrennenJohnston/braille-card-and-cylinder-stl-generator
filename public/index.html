@@ -3167,6 +3167,7 @@
             const warnings = [];
             const textLines = [];
             const brailleLines = [];
+            let truncated = false;
 
             const normalizeSpaces = (s) => s.replace(/\s+/g, ' ').trim();
             const isHyphenChar = (ch) => /[-\u2010\u2011\u2012\u2013\u2014\u2212]/.test(ch);
@@ -3213,7 +3214,7 @@
             let remaining = normalizeSpaces(src);
             if (!remaining) {
                 for (let r = 0; r < rows; r++) { textLines.push(''); brailleLines.push(''); }
-                return { textLines, brailleLines, warnings };
+                return { textLines, brailleLines, warnings, truncated: false };
             }
 
             const words = remaining.split(' ');
@@ -3290,7 +3291,7 @@
                 // Cannot split per BANA
                 const wordBrailleLen = await translateLen(word);
                 warnings.push(`Word "${word}" requires ${wordBrailleLen} cells but only ${cols} fit per row. It cannot be divided per BANA; increase columns/rows or use Manual Placement.`);
-                return { error: true, warnings };
+                return { error: true, warnings, truncated: false };
             }
 
             if (currentText && textLines.length < rows) {
@@ -3299,12 +3300,13 @@
 
             if (i < words.length) {
                 warnings.push('Text exceeds available rows after word-aware wrapping; extra content was not placed.');
+                truncated = true;
             }
 
             while (textLines.length < rows) { textLines.push(''); brailleLines.push(''); }
             if (textLines.length > rows) { textLines.length = rows; brailleLines.length = rows; }
 
-            return { textLines, brailleLines, warnings };
+            return { textLines, brailleLines, warnings, truncated };
         }
 
         function updatePlacementUI() {
@@ -4134,9 +4136,9 @@
                             const cols = getAvailableColumns();
                             const rows = parseInt(document.getElementById('grid_rows').value) || 4;
                             const wrap = await banaAutoWrap(src, cols, rows, tableName);
-                            if (wrap.error) {
+                            if (wrap.error || wrap.truncated) {
                                 const msg = wrap.warnings && wrap.warnings.length ? wrap.warnings.join(' ') : 'Unable to wrap text per BANA rules.';
-                                errorText.textContent = msg;
+                                errorText.textContent = wrap.truncated ? (msg + ' No STL was generated. Reduce text or increase grid size.') : msg;
                                 errorDiv.style.display = 'flex';
                                 errorDiv.className = 'error-message';
                                 resetToGenerateState();

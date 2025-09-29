@@ -246,6 +246,8 @@ def lookup_stl_redirect():
                 resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
                 resp.headers['X-Blob-Cache'] = 'hit'
                 resp.headers['X-Blob-Cache-Reason'] = 'lookup-exists'
+                resp.headers['X-Cache'] = 'hit-json'
+                resp.headers['X-Compute-Time'] = '0'
                 return resp
             resp = redirect(public_url, code=302)
             resp.headers['X-Blob-Cache-Key'] = cache_key
@@ -254,6 +256,8 @@ def lookup_stl_redirect():
             resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
             resp.headers['X-Blob-Cache'] = 'hit'
             resp.headers['X-Blob-Cache-Reason'] = 'lookup-exists'
+            resp.headers['X-Cache'] = 'hit-redirect'
+            resp.headers['X-Compute-Time'] = '0'
             return resp
 
         resp = make_response(jsonify({'error': 'not-found', 'cache_key': cache_key}), 404)
@@ -3746,6 +3750,8 @@ def generate_braille_stl():
                     resp.headers['X-Blob-URL'] = early_public
                     resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
                     resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
+                    resp.headers['X-Cache'] = 'hit-redirect'
+                    resp.headers['X-Compute-Time'] = '0'
                     resp.headers['X-Blob-Cache'] = 'hit'
                     resp.headers['X-Blob-Cache-Reason'] = 'early-exists'
                     return resp
@@ -3840,6 +3846,8 @@ def generate_braille_stl():
                 resp.headers['X-Blob-URL'] = cached_public
                 resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
                 resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
+                resp.headers['X-Cache'] = 'hit-redirect'
+                resp.headers['X-Compute-Time'] = '0'
                 resp.headers['X-Blob-Cache'] = 'hit'
                 resp.headers['X-Blob-Cache-Reason'] = 'pre-export-exists'
                 return resp
@@ -3954,6 +3962,8 @@ def generate_braille_stl():
                 resp.headers['X-Blob-URL'] = public_url
                 resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
                 resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
+                resp.headers['X-Cache'] = 'miss-redirect'
+                resp.headers['X-Compute-Time'] = str(compute_ms)
                 resp.headers['X-Blob-Cache'] = 'miss'
                 resp.headers['X-Blob-Cache-Reason'] = 'uploaded-now'
                 return resp
@@ -3966,6 +3976,8 @@ def generate_braille_stl():
         resp.headers['X-Blob-Cache-Reason'] = 'no-upload-url' if allow_blob_cache else 'embossing-disabled'
         resp.headers['X-Blob-Cache-Key'] = cache_key
         resp.headers['X-Blob-URL'] = _build_blob_public_url(cache_key)
+        resp.headers['X-Cache'] = 'origin'
+        resp.headers['X-Compute-Time'] = str(compute_ms)
         return resp
         
     except Exception as e:
@@ -4011,6 +4023,8 @@ def generate_counter_plate_stl():
                 resp = redirect(early_public, code=302)
                 resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
                 resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
+                resp.headers['X-Cache'] = 'hit-redirect'
+                resp.headers['X-Compute-Time'] = '0'
                 resp.headers['X-Blob-Cache'] = 'hit'
                 resp.headers['X-Blob-Cache-Reason'] = 'early-exists'
                 return resp
@@ -4051,6 +4065,8 @@ def generate_counter_plate_stl():
             resp.headers['X-Blob-URL'] = cached_public
             resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
             resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
+            resp.headers['X-Cache'] = 'hit-redirect'
+            resp.headers['X-Compute-Time'] = '0'
             resp.headers['X-Blob-Cache'] = 'hit'
             resp.headers['X-Blob-Cache-Reason'] = 'pre-export-exists'
             return resp
@@ -4095,6 +4111,8 @@ def generate_counter_plate_stl():
             resp.headers['X-Blob-URL'] = public_url
             resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
             resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
+            resp.headers['X-Cache'] = 'miss-redirect'
+            resp.headers['X-Compute-Time'] = str(compute_ms)
             resp.headers['X-Blob-Cache'] = 'miss'
             resp.headers['X-Blob-Cache-Reason'] = 'uploaded-now'
             return resp
@@ -4105,6 +4123,8 @@ def generate_counter_plate_stl():
         resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
         resp.headers['X-Blob-Cache'] = 'miss'
         resp.headers['X-Blob-Cache-Reason'] = 'no-upload-url'
+        resp.headers['X-Cache'] = 'origin'
+        resp.headers['X-Compute-Time'] = str(compute_ms)
         return resp
         
     except Exception as e:

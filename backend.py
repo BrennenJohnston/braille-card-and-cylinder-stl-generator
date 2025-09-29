@@ -207,9 +207,14 @@ def _blob_upload(cache_key: str, stl_bytes: bytes) -> str:
         headers = {
             'Authorization': f"Bearer {token}",
             'x-vercel-filename': pathname,
+            # Prefer deterministic filename without random suffix
+            'x-vercel-blob-add-random-suffix': '0',
             'x-vercel-blobs-add-random-suffix': '0',
+            # Make publicly accessible
+            'x-vercel-blob-access': 'public',
             'x-vercel-blobs-access': 'public',
-            'content-type': 'model/stl',
+            # Generic binary content type
+            'content-type': 'application/octet-stream',
         }
         # Optional cache control header for CDN
         max_age = os.environ.get('BLOB_CACHE_MAX_AGE')
@@ -217,9 +222,19 @@ def _blob_upload(cache_key: str, stl_bytes: bytes) -> str:
             headers['x-vercel-cache-control-max-age'] = str(max_age)
         resp = requests.post(direct_url, data=stl_bytes, headers=headers, timeout=30)
         if 200 <= resp.status_code < 300 or resp.status_code == 409:
+            # Prefer URL returned by API if present
+            try:
+                j = resp.json()
+                url_from_api = j.get('url') or ''
+                if url_from_api:
+                    app.logger.info(f"Blob direct upload OK; using API URL for key={cache_key}")
+                    return url_from_api
+            except Exception:
+                pass
+            # Fallback to constructed public URL
             public_url = _build_blob_public_url(cache_key)
             if public_url:
-                app.logger.info(f"Blob direct upload OK; using public URL for key={cache_key}")
+                app.logger.info(f"Blob direct upload OK; using constructed public URL for key={cache_key}")
                 return public_url
         else:
             try:
@@ -248,19 +263,20 @@ def _blob_upload(cache_key: str, stl_bytes: bytes) -> str:
         }
         resp = requests.post(url, files=files, data=data, headers=headers, timeout=30)
         if resp.status_code in (200, 201, 409):
-            public_url = _build_blob_public_url(cache_key)
-            if public_url:
-                app.logger.info(f"Blob API upload OK; using public URL for key={cache_key}")
-                return public_url
+            # Prefer URL returned by API if present
             try:
                 j = resp.json()
                 url_from_api = j.get('url') or ''
                 if url_from_api:
                     app.logger.info(f"Blob API upload OK; using API URL for key={cache_key}")
-                return url_from_api
+                    return url_from_api
             except Exception:
-                app.logger.warning(f"Blob API upload OK but could not parse JSON for key={cache_key}")
-                return ''
+                pass
+            # Fallback to constructed public URL
+            public_url = _build_blob_public_url(cache_key)
+            if public_url:
+                app.logger.info(f"Blob API upload OK; using constructed public URL for key={cache_key}")
+                return public_url
         try:
             app.logger.warning(f"Blob API upload failed status={resp.status_code} body={resp.text}")
         except Exception:
@@ -3742,7 +3758,7 @@ def generate_braille_stl():
         # Attempt to persist to Blob store and redirect if successful (only for card counter plates)
         if allow_blob_cache:
             public_url = _blob_upload(cache_key, stl_bytes)
-            if public_url and _blob_check_exists(public_url):
+            if public_url:
                 app.logger.info(f"BLOB CACHE MISS -> UPLOAD OK key={cache_key}")
                 resp = redirect(public_url, code=302)
                 resp.headers['ETag'] = etag

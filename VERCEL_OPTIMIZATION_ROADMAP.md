@@ -130,18 +130,18 @@ Setup:
 
 ## Implementation Checklist
 
-- [x] Phase 1.1: Configure static file serving in vercel.json
-- [ ] Phase 1.2: Update CSP headers for web workers
-- [ ] Phase 2.1: Set function memory and timeout limits
-- [ ] Phase 2.2: Add cache headers to STL responses
-- [ ] Phase 3.1: Implement Vercel Blob caching
-- [ ] Phase 4.1: Remove in-memory rate limiting
-- [ ] Phase 4.2: Integrate Upstash Redis
-- [ ] Phase 5.1: Move HTML to Edge (optional)
-- [ ] Phase 5.2: Edge validation (optional)
-- [ ] Phase 6.1: CDN integration (metadata)
-- [ ] Phase 6.2: Pregeneration (optional)
-- [ ] Phase 7.1: Enable monitoring (headers/logs)
+- [ ] Phase 1.1: Configure static file serving in vercel.json (skipped)
+- [x] Phase 1.2: Update CSP headers for web workers
+- [ ] Phase 2.1: Set function memory and timeout limits (skipped)
+- [x] Phase 2.2: Add cache headers to STL responses
+- [x] Phase 3.1: Implement Vercel Blob caching
+- [x] Phase 4.1: Remove in-memory rate limiting
+- [x] Phase 4.2: Integrate Upstash Redis
+- [x] Phase 5.1: Move HTML to Edge (optional)
+- [ ] Phase 5.2: Edge validation (optional) (skipped)
+- [ ] Phase 6.1: CDN integration (metadata) (partial)
+- [x] Phase 6.2: Pregeneration (optional)
+- [ ] Phase 7.1: Enable monitoring (headers/logs) (partial)
 - [ ] Phase 7.2: Track costs
 
 ## Environment Variables Required

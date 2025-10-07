@@ -639,7 +639,7 @@
 
         /* Custom scrollbar styling for webkit browsers - larger and more visible */
         .form-section::-webkit-scrollbar {
-            width: 14px; /* Increased from 8px for better visibility */
+            width: 18px; /* +~28% width for clearer grab area */
         }
 
         .form-section::-webkit-scrollbar-track {
@@ -649,9 +649,9 @@
         }
 
         .form-section::-webkit-scrollbar-thumb {
-            background: var(--border-primary);
-            border-radius: 7px;
-            border: 2px solid var(--bg-tertiary); /* Creates space around thumb */
+            background: linear-gradient(180deg, var(--border-secondary), var(--border-primary));
+            border-radius: 9px;
+            border: 3px solid var(--bg-tertiary); /* More space around thumb to read as scrollbar */
         }
 
         .form-section::-webkit-scrollbar-thumb:hover {
@@ -910,6 +910,27 @@
                 font-size: 0.95em;
                 font-weight: 600;
                 margin-bottom: 0.2em;
+            }
+        }
+        /* Placement mode toggle: allow wrapping to avoid right cutoff on small screens */
+        .line-input-mode-toggle {
+            flex-wrap: wrap; /* New: allow items to wrap onto next line */
+        }
+        /* Put the "Placement Mode:" label on its own line when needed */
+        .line-input-mode-toggle > .line-label {
+            flex-basis: 100%;
+            margin-bottom: 0.2em !important; /* override inline margin */
+        }
+        @media (max-width: 768px) {
+            .line-input-mode-toggle {
+                gap: 0.6em; /* slightly tighter gap on mobile */
+            }
+            .line-input-mode-toggle > * {
+                min-width: 0; /* allow flex children to shrink properly */
+            }
+            .line-input-mode-toggle label {
+                max-width: 100%;
+                white-space: normal; /* allow label text to wrap */
             }
         }
         .line-label {
@@ -1792,33 +1813,94 @@
             <!-- Right Column - Form Controls Section (55% width) -->
             <div class="form-section" role="region" aria-label="Braille Card Configuration">
                 <div class="info-panel">
-                    <p><strong>Program Description:</strong></p>
-                    <p>Creates two matching STLs for a standard 3.5″ × 2″ card.</p>
-                    <ol style="margin: 0.3em 0; padding-left: 1.5em;">
-                        <li><strong>Embossing Plate</strong> (cone dots)</li>
-                        <li><strong>Universal Counter Plate</strong> (hemispherical recessed dots)</li>
-                    </ol>
+                    <p><strong>What Does This Program Do?:</strong></p>
+                    <p>Generates custom braille "plates" to use in a 3D printable Business Card Braille Embosser {Link to Project Here}. Default plate sizes are for standard 3.5″ × 2″ business cards.</p>
+                    <p><strong>Where Do I Start?:</strong></p>
+                    <p>Read the directions in the "More Info" dropdown menu below:</p>
                 </div>
                 
                 <div class="info-dropdown">
                     <button type="button" id="info-toggle" class="info-toggle-btn">
-                        <span id="info-toggle-text">More Info</span>
+                        <span id="info-toggle-text">Directions:</span>
                         <span id="info-toggle-icon">▼</span>
                     </button>
                     <div id="info-content" class="info-content" style="display: none;">
-                        <p><strong>Instructions:</strong></p>
+                        <p><strong>Directions: Making a braille business card (beginner‑friendly)</strong></p>
+                        <p><strong>Quick start</strong></p>
                         <ol style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li>Enter any number of lines (set in <strong>Expert Mode → Number of Braille Lines</strong>), then click <strong>"Generate STL."</strong> The app auto-translates to <strong>Unified English Braille (UEB)</strong>.</li>
-                            <li>Review the 3D preview. If it looks correct, click <strong>"Download STL."</strong></li>
-                            <li>Click <strong>"Universal Counter Plate"</strong> and repeat the steps to generate and download the matching counter plate (if you haven't printed one yet).</li>
-                            <li>Need specific dimensions? Open <strong>Expert Mode</strong> to adjust card size, spacing, and dot parameters.</li>
+                            <li>Type your info under <strong>Enter Text for Braille Translation</strong>.</li>
+                            <li>Set <strong>Placement Mode</strong> to <strong>Auto Placement</strong> (recommended).</li>
+                            <li>Click <strong>Preview Braille Translation</strong>. Fix any warnings.</li>
+                            <li>Click <strong>Generate STL</strong>, review the 3D preview, then <strong>Download STL</strong>.</li>
+                            <li>Switch <strong>Select Plate to Generate</strong> to <strong>Universal Counter Plate</strong> and <strong>Download STL</strong> again.</li>
                         </ol>
-                        <p><strong>Business card guidance:</strong></p>
+                        
+                        <p><strong>What to include (tiny space = tough choices)</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li><strong>Default:</strong> English (UEB), United States — uncontracted (grade 1). See BANA’s <a href="https://www.brailleauthority.org/bana-position-statements-and-fact-sheets" target="_blank" style="color: #3182ce; text-decoration: none;">Business Cards Fact Sheet (March 2024)</a>.</li>
-                            <li><strong>What to include:</strong> pick two key items (e.g., your name and either email or phone). It’s fine to break long emails across lines at logical places.</li>
-                            <li><em>“Braille business cards … work best with letter-for-letter substitution – known as Grade 1 Braille. It helps to cut down on potential confusion or misinterpretation… Grade 2 … is an option if you’re unable to fit the information you need.”</em> — <a href="https://brailleworks.com/braille-business-cards-411/" target="_blank" style="color: #3182ce; text-decoration: none;">Braille Works, The 411 on Braille Business Cards</a></li>
+                            <li>Aim for <strong>4 short lines</strong>, about <strong>13 braille cells per line</strong>.</li>
+                            <li>Suggested layout:
+                                <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                                    <li>Line 1: Your name</li>
+                                    <li>Line 2: Organization/company (optional if clear in email/web)</li>
+                                    <li>Line 3: Phone number</li>
+                                    <li>Line 4: Email address</li>
+                                </ul>
+                            </li>
+                            <li>If space runs out: shorten organization words (e.g., “Amer” for “American”), drop job title, or use lowercase to remove braille capitalization markers.</li>
                         </ul>
+                        
+                        <p><strong>Smart formatting for tight space (BANA‑aligned)</strong></p>
+                        <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                            <li><strong>Phone:</strong> Enter like <em>123.456.7890</em> (use periods; no parentheses) to minimize numeric markers.</li>
+                            <li><strong>Email:</strong> If it must wrap, split after punctuation (at, dot, hyphen). Avoid splitting inside a syllable. Start the next line at the left.</li>
+                            <li><strong>Web:</strong> If it must wrap, split after punctuation (colon, period, slash). Avoid splitting inside a syllable. Start the next line at the left.</li>
+                            <li><strong>Names:</strong> If a long name won’t fit, remove capitals (type lowercase), remove middle initial, or use a first initial plus surname.</li>
+                            <li><strong>Grade choice:</strong> Keep <em>English (UEB) — uncontracted (grade 1)</em> for clarity. Use contracted (grade 2) only if you absolutely need to save space.</li>
+                        </ul>
+                        
+                        <p><strong>Using the controls (match these labels in the app)</strong></p>
+                        <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                            <li><strong>Placement Mode:</strong> 
+                                <em>Auto Placement</em> wraps text to fit cells with BANA‑aware warnings; <em>Manual Placement</em> lets you set each line yourself.
+                            </li>
+                            <li><strong>Select Language:</strong> Use <em>English (UEB) — uncontracted (grade 1)</em> unless you know you need something else.</li>
+                            <li><strong>Select Plate to Generate:</strong> Make the <em>Embossing Plate</em> first, then the <em>Universal Counter Plate</em>.</li>
+                            <li><strong>Preview Braille Translation:</strong> Shows your braille lines and a helpful shorthand of contractions; address any warnings before generating STLs.</li>
+                            <li><strong>Expert Mode (only if needed):</strong>
+                                <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                                    <li><em>Number of Braille Cells (Characters):</em> Keep <strong>13</strong> with indicators On.</li>
+                                    <li><em>Number of Braille Lines:</em> <strong>4</strong> is typical.</li>
+                                    <li><em>Indicator Shapes:</em> Keep <strong>On</strong> so users can feel row start/end; it reserves 2 cells per row.</li>
+                                    <li><em>Card size and spacing:</em> Defaults target standard 3.5″ × 2″ cards; adjust only if your cards differ.</li>
+                                    <li><em>Dot dimensions:</em> Leave defaults unless embossing is too shallow or too sharp.</li>
+                                </ul>
+                            </li>
+                            <li><strong>Reset Settings:</strong> Restores sensible defaults.</li>
+                        </ul>
+                        
+                        <p><strong>Fitting within limits</strong></p>
+                        <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                            <li>A “cell” is one braille character space. Your per‑row limit is shown in <em>Number of Braille Cells (Characters)</em>.</li>
+                            <li>With indicators On, standard cards typically fit <strong>13 cells × 4 lines</strong>.</li>
+                            <li>If you see an unsplittable word warning, shorten the word, switch to Manual Placement, or trim other content.</li>
+                        </ul>
+                        
+                        <p><strong>Generating and printing</strong></p>
+                        <ol style="margin: 0.3em 0; padding-left: 1.5em;">
+                            <li><strong>Generate STL</strong> for the selected plate and review the 3D preview.</li>
+                            <li><strong>Download STL</strong> for the <em>Embossing Plate</em>, then repeat for the <em>Universal Counter Plate</em>.</li>
+                            <li>Print both plates. Reuse the counter plate; you only need to print it once.</li>
+                            <li>Embossing tip: Press firmly and evenly with the card centered. Test on a spare card first.</li>
+                        </ol>
+                        
+                        <p><strong>Common fixes if text won’t fit</strong></p>
+                        <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                            <li>Use lowercase to remove capitalization indicators.</li>
+                            <li>Abbreviate organization words.</li>
+                            <li>Stick with Grade 1 (uncontracted) unless you must switch to Grade 2 (contracted) to save space.</li>
+                            <li>Prioritize the essentials: name + one contact (phone or email).</li>
+                        </ul>
+                        
                         <p><strong>Acknowledgements:</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">
                             <li>Powered by <a href="https://liblouis.io/" target="_blank" style="color: #3182ce; text-decoration: none;"><strong>Liblouis</strong></a>, an open-source professional braille translator.</li>

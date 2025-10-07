@@ -639,7 +639,7 @@
 
         /* Custom scrollbar styling for webkit browsers - larger and more visible */
         .form-section::-webkit-scrollbar {
-            width: 14px; /* Increased from 8px for better visibility */
+            width: 18px; /* +~28% width for clearer grab area */
         }
 
         .form-section::-webkit-scrollbar-track {
@@ -649,9 +649,9 @@
         }
 
         .form-section::-webkit-scrollbar-thumb {
-            background: var(--border-primary);
-            border-radius: 7px;
-            border: 2px solid var(--bg-tertiary); /* Creates space around thumb */
+            background: linear-gradient(180deg, var(--border-secondary), var(--border-primary));
+            border-radius: 9px;
+            border: 3px solid var(--bg-tertiary); /* More space around thumb to read as scrollbar */
         }
 
         .form-section::-webkit-scrollbar-thumb:hover {
@@ -910,6 +910,27 @@
                 font-size: 0.95em;
                 font-weight: 600;
                 margin-bottom: 0.2em;
+            }
+        }
+        /* Placement mode toggle: allow wrapping to avoid right cutoff on small screens */
+        .line-input-mode-toggle {
+            flex-wrap: wrap; /* Allow items to wrap onto next line */
+        }
+        /* Put the "Placement Mode:" label on its own line when needed */
+        .line-input-mode-toggle > .line-label {
+            flex-basis: 100%;
+            margin-bottom: 0.2em !important; /* override inline margin */
+        }
+        @media (max-width: 768px) {
+            .line-input-mode-toggle {
+                gap: 0.6em; /* slightly tighter gap on mobile */
+            }
+            .line-input-mode-toggle > * {
+                min-width: 0; /* allow flex children to shrink properly */
+            }
+            .line-input-mode-toggle label {
+                max-width: 100%;
+                white-space: normal; /* allow label text to wrap */
             }
         }
         .line-label {

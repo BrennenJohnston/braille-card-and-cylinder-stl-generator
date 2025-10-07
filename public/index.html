@@ -47,6 +47,9 @@
             --stl-directional-light: #ffffff;
             --stl-ambient-intensity: 0.5;
             --stl-directional-intensity: 1.0;
+            --scrollbar-width: 18px; /* Form section scrollbar */
+            --global-scrollbar-width: 13.5px; /* Global page scrollbar - 25% smaller */
+            --scrollbar-arrow-color: #3182ce; /* Light/default arrow color matches scrollbar */
         }
 
         /* Dark mode colors */
@@ -83,6 +86,7 @@
             --stl-directional-light: #ffffff;
             --stl-ambient-intensity: 0.6;
             --stl-directional-intensity: 0.9;
+            --scrollbar-arrow-color: #63b3ed; /* Bright blue arrows in dark theme */
         }
 
         /* High contrast mode */
@@ -119,6 +123,7 @@
             --stl-directional-light: #e6e6e6; /* Slightly dimmed directional light for better contrast */
             --stl-ambient-intensity: 0.4; /* Lower ambient light intensity */
             --stl-directional-intensity: 0.8; /* Controlled directional light intensity */
+            --scrollbar-arrow-color: #02fe05; /* High-contrast arrows */
         }
 
         /* High contrast mode specific button styling */
@@ -624,11 +629,12 @@
             /* Make right column independently scrollable - separate from left column */
             max-height: calc(100vh - 10em); /* Account for main-layout padding (5em) and title section (~5em) */
             min-height: 0;
-            overflow-y: auto; /* Enable scrolling for right column menu boxes */
+            overflow-y: scroll; /* Enable scrolling for right column menu boxes */
             -webkit-overflow-scrolling: touch;
             overflow-x: hidden; /* Prevent horizontal overflow */
+            scrollbar-gutter: stable; /* Reserve space so the scrollbar is always visible */
             scrollbar-width: auto; /* Firefox standard scrollbar */
-            scrollbar-color: var(--border-primary) var(--bg-tertiary); /* Firefox scrollbar colors */
+            scrollbar-color: #3182ce #e2e8f0; /* Firefox: blue thumb on light grey track */
             /* Distinct background for scrollable area */
             background: var(--bg-secondary);
             border-radius: 12px;
@@ -639,24 +645,116 @@
 
         /* Custom scrollbar styling for webkit browsers - larger and more visible */
         .form-section::-webkit-scrollbar {
-            width: 18px; /* +~28% width for clearer grab area */
+            width: var(--scrollbar-width); /* +~28% width for clearer grab area */
         }
 
         .form-section::-webkit-scrollbar-track {
-            background: var(--bg-tertiary);
-            border-radius: 7px;
+            background: #e2e8f0; /* Light grey background */
+            border-radius: 8px;
             margin: 4px 0; /* Add some margin at top and bottom */
+            border: 2px solid #3182ce; /* Blue border for high visibility */
         }
 
         .form-section::-webkit-scrollbar-thumb {
-            background: linear-gradient(180deg, var(--border-secondary), var(--border-primary));
-            border-radius: 9px;
-            border: 3px solid var(--bg-tertiary); /* More space around thumb to read as scrollbar */
+            background: linear-gradient(180deg, #4299e1, #3182ce); /* Bright blue gradient */
+            border-radius: 10px;
+            border: 2px solid #ffffff; /* White border for strong contrast */
+            box-shadow: 0 3px 6px rgba(49, 130, 206, 0.4); /* Blue shadow for depth */
         }
 
         .form-section::-webkit-scrollbar-thumb:hover {
+            background: #2563eb; /* Darker blue on hover */
+            border-color: #3182ce; /* Blue border on hover */
+            box-shadow: 0 4px 8px rgba(49, 130, 206, 0.6); /* Enhanced shadow on hover */
+        }
+
+        /* Global scrollbar styling for main page scrollbar */
+        body::-webkit-scrollbar {
+            width: var(--global-scrollbar-width);
+        }
+
+        /* Use default browser scrollbar arrow buttons (no custom styling) */
+
+        body::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            border: 1px solid var(--border-secondary);
+        }
+
+        body::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, var(--text-secondary), var(--text-primary));
+            border-radius: 10px;
+            border: 2px solid var(--bg-primary);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        body::-webkit-scrollbar-thumb:hover {
             background: var(--text-primary);
-            border-color: var(--bg-tertiary);
+            border-color: var(--border-focus);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+        }
+
+        /* Dark theme specific scrollbar improvements - Firefox */
+        [data-theme="dark"] .form-section {
+            scrollbar-color: #63b3ed #2d3748 !important; /* thumb color, track color */
+        }
+
+        /* Dark theme specific scrollbar improvements - WebKit (Chrome, Edge, Safari) */
+        [data-theme="dark"] .form-section::-webkit-scrollbar-track {
+            background: #2d3748 !important; /* Darker background for better contrast */
+            border: 1px solid #63b3ed !important; /* Bright blue border for visibility */
+            border-radius: 8px !important;
+        }
+
+        [data-theme="dark"] .form-section::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #90cdf4, #63b3ed) !important; /* Bright blue gradient */
+            border: 2px solid #1a202c !important; /* Very dark border for definition */
+            border-radius: 10px !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5) !important; /* Stronger shadow for dark theme */
+        }
+
+        [data-theme="dark"] .form-section::-webkit-scrollbar-thumb:hover {
+            background: #4299e1 !important; /* Solid bright blue on hover */
+            border-color: #63b3ed !important; /* Bright blue border on hover */
+            box-shadow: 0 3px 6px rgba(0,0,0,0.6) !important; /* Enhanced shadow on hover */
+        }
+
+        /* Use default browser scrollbar arrow buttons in dark theme */
+
+        [data-theme="dark"] body::-webkit-scrollbar-track {
+            background: #2d3748; /* Darker background for better contrast */
+            border: 1px solid #63b3ed; /* Bright blue border for visibility */
+        }
+
+        [data-theme="dark"] body::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #90cdf4, #63b3ed); /* Bright blue gradient */
+            border: 2px solid #1a202c; /* Very dark border for definition */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5); /* Stronger shadow for dark theme */
+        }
+
+        [data-theme="dark"] body::-webkit-scrollbar-thumb:hover {
+            background: #4299e1; /* Solid bright blue on hover */
+            border-color: #63b3ed; /* Bright blue border on hover */
+            box-shadow: 0 3px 6px rgba(0,0,0,0.6); /* Enhanced shadow on hover */
+        }
+
+        /* High contrast: match form-section scrollbar to global scrollbar scheme */
+        [data-theme="high-contrast"] .form-section {
+            /* Firefox */
+            scrollbar-color: var(--text-secondary) var(--bg-tertiary) !important;
+        }
+
+        [data-theme="high-contrast"] .form-section::-webkit-scrollbar-track {
+            background: var(--bg-tertiary) !important;
+            border: 2px solid var(--border-secondary) !important;
+            border-radius: 8px !important;
+        }
+
+        [data-theme="high-contrast"] .form-section::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, var(--text-secondary), var(--text-primary)) !important;
+            border: 2px solid var(--bg-primary) !important;
+            border-radius: 10px !important;
+            box-shadow: none !important;
         }
         
         /* Mobile layout - stack columns */
@@ -701,7 +799,7 @@
             /* Ensure right column scrolling is properly configured for desktop */
             .form-section {
                 max-height: calc(100vh - 10em); /* Account for main-layout padding and title section */
-                overflow-y: auto;
+                overflow-y: scroll;
                 position: relative; /* For scroll indicator positioning */
             }
             
@@ -711,7 +809,7 @@
                 position: sticky;
                 bottom: 0;
                 left: 0;
-                right: 0;
+                right: var(--scrollbar-width);
                 height: 20px;
                 background: linear-gradient(to top, var(--bg-secondary), transparent);
                 pointer-events: none;

@@ -47,6 +47,9 @@ from app.cache import (
 # Import models from app.models
 from app.models import CardSettings
 
+# Import utilities from app.utils
+from app.utils import braille_to_dots
+
 app = Flask(__name__)
 # CORS configuration - update with your actual domain before deployment
 allowed_origins = [
@@ -448,38 +451,8 @@ def request_entity_too_large(error):
 def bad_request(error):
     return jsonify({'error': 'Invalid request format'}), 400
 
+# braille_to_dots now imported from app.utils
 
-# CardSettings class now imported from app.models
-
-def braille_to_dots(braille_char: str) -> list:
-    """
-    Convert a braille character to dot pattern.
-    Braille dots are arranged as:
-    1 4
-    2 5
-    3 6
-    """
-    # Braille Unicode block starts at U+2800
-    # Each braille character is represented by 8 bits (dots 1-8)
-    if not braille_char or braille_char == ' ':
-        return [0, 0, 0, 0, 0, 0]  # Empty cell
-
-    # Get the Unicode code point
-    code_point = ord(braille_char)
-
-    # Check if it's in the braille Unicode block (U+2800 to U+28FF)
-    if code_point < 0x2800 or code_point > 0x28FF:
-        return [0, 0, 0, 0, 0, 0]  # Not a braille character
-
-    # Extract the dot pattern (bits 0-7 for dots 1-8)
-    # The bit order is dot 1, 2, 3, 4, 5, 6, 7, 8
-    dot_pattern = code_point - 0x2800
-
-    # Convert to 6-dot pattern (dots 1-6)
-    dots = [0, 0, 0, 0, 0, 0]
-    for i in range(6):
-        if dot_pattern & (1 << i):
-            dots[i] = 1
 
     return dots
 

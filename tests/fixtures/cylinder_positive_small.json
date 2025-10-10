@@ -1,0 +1,41 @@
+{
+  "description": "Small cylinder with 3 braille characters (ABC)",
+  "fixture_name": "cylinder_positive_small",
+  "request_payload": {
+    "lines": [
+      "\u2801\u2803\u2809",
+      "",
+      "",
+      ""
+    ],
+    "plate_type": "positive",
+    "shape_type": "cylinder",
+    "grade": "g1",
+    "settings": {
+      "dot_height": 0.5,
+      "dot_base_diameter": 1.5
+    },
+    "cylinder_params": {
+      "diameter": 40.0,
+      "wall_thickness": 2.0,
+      "seam_offset_degrees": 0.0
+    }
+  },
+  "expected_properties": {
+    "face_count": 4822,
+    "vertex_count": 2433,
+    "is_watertight": true,
+    "bbox_min": [
+      -15.675000190734863,
+      -16.456361770629883,
+      0.0
+    ],
+    "bbox_max": [
+      15.675000190734863,
+      15.675000190734863,
+      52.0
+    ],
+    "volume": 40045.37490122224,
+    "surface_area": 6765.415261951899
+  }
+}

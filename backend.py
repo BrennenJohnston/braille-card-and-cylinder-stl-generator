@@ -50,6 +50,9 @@ from app.models import CardSettings
 # Import utilities from app.utils
 from app.utils import braille_to_dots
 
+# Import geometry functions from app.geometry
+from app.geometry.cylinder import _compute_cylinder_frame
+
 app = Flask(__name__)
 # CORS configuration - update with your actual domain before deployment
 allowed_origins = [
@@ -757,22 +760,8 @@ def _build_character_polygon(char_upper: str, target_width: float, target_height
         return None
 
 
-def _compute_cylinder_frame(x_arc: float, cylinder_diameter_mm: float, seam_offset_deg: float = 0.0):
-    """
-    Compute local orthonormal frame and geometry parameters for a point on a
-    cylinder given arc-length position and seam offset.
-    Returns (r_hat, t_hat, z_hat, radius, circumference, theta).
-    """
-    radius = cylinder_diameter_mm / 2.0
-    circumference = np.pi * cylinder_diameter_mm
-    theta = (x_arc / circumference) * 2.0 * np.pi + np.radians(seam_offset_deg)
-    r_hat = np.array([np.cos(theta), np.sin(theta), 0.0])
-    t_hat = np.array([-np.sin(theta), np.cos(theta), 0.0])
-    z_hat = np.array([0.0, 0.0, 1.0])
-    return r_hat, t_hat, z_hat, radius, circumference, theta
+# _compute_cylinder_frame now imported from app.geometry.cylinder
 
-
-def create_character_shape_3d(character, x, y, settings: CardSettings, height=1.0, for_subtraction=True):
     """
     Create a 3D character shape (capital letter A-Z or number 0-9) for end of row marking.
     Uses matplotlib's TextPath for proper font rendering.

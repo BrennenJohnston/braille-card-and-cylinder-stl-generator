@@ -8,8 +8,6 @@ cache key mapping.
 import hashlib
 import json
 import os
-import time
-from typing import Optional
 
 # Conditional imports for deployment environments
 try:

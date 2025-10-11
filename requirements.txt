@@ -8,3 +8,4 @@ redis==5.0.7
 requests==2.32.3
 scipy==1.11.4
 mapbox_earcut==1.0.1
+manifold3d==3.0.0

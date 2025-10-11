@@ -14,6 +14,8 @@ from shapely.geometry import Point, Polygon
 from shapely.ops import unary_union
 from werkzeug.exceptions import HTTPException
 
+from app.geometry.booleans import mesh_difference, mesh_union
+
 try:
     import requests  # Optional, used for Vercel Blob REST API
 except Exception:
@@ -1235,7 +1237,7 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
                 union_spheres = sphere_meshes[0]
             else:
                 logger.debug('Unioning spheres...')
-                union_spheres = trimesh.boolean.union(sphere_meshes, engine=engine)
+                union_spheres = mesh_union(sphere_meshes)
 
             # Union all triangles (these will be used for subtraction into the plate)
             union_triangles = None
@@ -1244,7 +1246,7 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
                 if len(triangle_meshes) == 1:
                     union_triangles = triangle_meshes[0]
                 else:
-                    union_triangles = trimesh.boolean.union(triangle_meshes, engine=engine)
+                    union_triangles = mesh_union(triangle_meshes)
 
             # Union all line end markers
             if line_end_meshes:
@@ -1252,7 +1254,7 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
                 if len(line_end_meshes) == 1:
                     union_line_ends = line_end_meshes[0]
                 else:
-                    union_line_ends = trimesh.boolean.union(line_end_meshes, engine=engine)
+                    union_line_ends = mesh_union(line_end_meshes)
 
             # Combine cutouts (spheres and line ends) for subtraction
             logger.debug('Combining cutouts for subtraction...')
@@ -1263,13 +1265,13 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
                 cutouts_list.append(union_triangles)
 
             if len(cutouts_list) > 1:
-                all_cutouts = trimesh.boolean.union(cutouts_list, engine=engine)
+                all_cutouts = mesh_union(cutouts_list)
             else:
                 all_cutouts = cutouts_list[0]
 
             logger.debug('Subtracting cutouts from plate...')
             # Subtract the cutouts (spheres, line ends, and triangles) from the plate
-            counter_plate_mesh = trimesh.boolean.difference([plate_mesh, all_cutouts], engine=engine)
+            counter_plate_mesh = mesh_difference([plate_mesh, all_cutouts])
 
             # Verify the mesh is watertight
             if not counter_plate_mesh.is_watertight:
@@ -1302,7 +1304,7 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
         for i, sphere in enumerate(sphere_meshes):
             try:
                 logger.debug(f'Subtracting sphere {i + 1}/{len(sphere_meshes)}...')
-                counter_plate_mesh = trimesh.boolean.difference([counter_plate_mesh, sphere])
+                counter_plate_mesh = mesh_difference([counter_plate_mesh, sphere])
             except Exception as sphere_error:
                 logger.warning(f'Failed to subtract sphere {i + 1}: {sphere_error}')
                 continue
@@ -1311,7 +1313,7 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
         for i, triangle in enumerate(triangle_meshes):
             try:
                 logger.debug(f'Subtracting triangle {i + 1}/{len(triangle_meshes)}...')
-                counter_plate_mesh = trimesh.boolean.difference([counter_plate_mesh, triangle])
+                counter_plate_mesh = mesh_difference([counter_plate_mesh, triangle])
             except Exception as triangle_error:
                 logger.warning(f'Failed to subtract triangle {i + 1}: {triangle_error}')
                 continue
@@ -1320,7 +1322,7 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
         for i, line_end in enumerate(line_end_meshes):
             try:
                 logger.debug(f'Subtracting line end marker {i + 1}/{len(line_end_meshes)}...')
-                counter_plate_mesh = trimesh.boolean.difference([counter_plate_mesh, line_end])
+                counter_plate_mesh = mesh_difference([counter_plate_mesh, line_end])
             except Exception as line_error:
                 logger.warning(f'Failed to subtract line end marker {i + 1}: {line_error}')
                 continue
@@ -1426,20 +1428,20 @@ def build_counter_plate_bowl(params: CardSettings) -> trimesh.Trimesh:
             if len(sphere_meshes) == 1:
                 union_spheres = sphere_meshes[0]
             else:
-                union_spheres = trimesh.boolean.union(sphere_meshes, engine=engine)
+                union_spheres = mesh_union(sphere_meshes)
 
             union_triangles = None
             if triangle_meshes:
                 if len(triangle_meshes) == 1:
                     union_triangles = triangle_meshes[0]
                 else:
-                    union_triangles = trimesh.boolean.union(triangle_meshes, engine=engine)
+                    union_triangles = mesh_union(triangle_meshes)
 
             if line_end_meshes:
                 if len(line_end_meshes) == 1:
                     union_line_ends = line_end_meshes[0]
                 else:
-                    union_line_ends = trimesh.boolean.union(line_end_meshes, engine=engine)
+                    union_line_ends = mesh_union(line_end_meshes)
 
             cutouts_list = [union_spheres]
             if line_end_meshes:
@@ -1448,11 +1450,11 @@ def build_counter_plate_bowl(params: CardSettings) -> trimesh.Trimesh:
                 cutouts_list.append(union_triangles)
 
             if len(cutouts_list) > 1:
-                all_cutouts = trimesh.boolean.union(cutouts_list, engine=engine)
+                all_cutouts = mesh_union(cutouts_list)
             else:
                 all_cutouts = cutouts_list[0]
 
-            counter_plate_mesh = trimesh.boolean.difference([plate_mesh, all_cutouts], engine=engine)
+            counter_plate_mesh = mesh_difference([plate_mesh, all_cutouts])
             if not counter_plate_mesh.is_watertight:
                 counter_plate_mesh.fill_holes()
             logger.debug(f'Counter plate with bowl recess completed: {len(counter_plate_mesh.vertices)} verts')
@@ -1595,7 +1597,7 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
                 try:
                     engine_name = engine if engine else 'trimesh-default'
                     logger.debug(f'Cone union with {engine_name}...')
-                    union_recesses = trimesh.boolean.union(recess_meshes, engine=engine)
+                    union_recesses = mesh_union(recess_meshes)
                     break
                 except Exception as e:
                     logger.warning(f'Failed to union with {engine_name}: {e}')
@@ -1610,14 +1612,14 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
             if len(triangle_meshes) == 1:
                 union_triangles = triangle_meshes[0]
             else:
-                union_triangles = trimesh.boolean.union(triangle_meshes)
+                union_triangles = mesh_union(triangle_meshes)
 
         union_line_ends = None
         if line_end_meshes:
             if len(line_end_meshes) == 1:
                 union_line_ends = line_end_meshes[0]
             else:
-                union_line_ends = trimesh.boolean.union(line_end_meshes)
+                union_line_ends = mesh_union(line_end_meshes)
 
         # Combine all cutouts
         cutouts_list = [union_recesses]
@@ -1628,11 +1630,11 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
 
         # Single difference operation (much faster than individual subtractions)
         if len(cutouts_list) > 1:
-            union_cutouts = trimesh.boolean.union(cutouts_list)
+            union_cutouts = mesh_union(cutouts_list)
         else:
             union_cutouts = cutouts_list[0]
 
-        result_mesh = trimesh.boolean.difference([plate_mesh, union_cutouts])
+        result_mesh = mesh_difference([plate_mesh, union_cutouts])
 
         if not result_mesh.is_watertight:
             result_mesh.fill_holes()
@@ -1650,19 +1652,19 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
                 try:
                     if (i % 50) == 0:
                         logger.debug(f'Subtracting cone frustum {i + 1}/{len(recess_meshes)}...')
-                    result_mesh = trimesh.boolean.difference([result_mesh, recess])
+                    result_mesh = mesh_difference([result_mesh, recess])
                 except Exception as e_sub:
                     logger.warning(f'Failed to subtract frustum {i + 1}: {e_sub}')
                     continue
             for i, triangle in enumerate(triangle_meshes):
                 try:
-                    result_mesh = trimesh.boolean.difference([result_mesh, triangle])
+                    result_mesh = mesh_difference([result_mesh, triangle])
                 except Exception as e_tri:
                     logger.warning(f'Failed to subtract triangle {i + 1}: {e_tri}')
                     continue
             for i, line_end in enumerate(line_end_meshes):
                 try:
-                    result_mesh = trimesh.boolean.difference([result_mesh, line_end])
+                    result_mesh = mesh_difference([result_mesh, line_end])
                 except Exception as e_line:
                     logger.warning(f'Failed to subtract line end {i + 1}: {e_line}')
                     continue

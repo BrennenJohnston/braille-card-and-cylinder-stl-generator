@@ -16,6 +16,8 @@ from shapely.geometry import Point as ShapelyPoint
 from shapely.geometry import Polygon as ShapelyPolygon
 from trimesh.creation import extrude_polygon
 
+from app.geometry.booleans import batch_union, mesh_difference, mesh_union
+
 # Import dependencies from other modules
 from app.geometry.dot_shapes import create_braille_dot
 from app.utils import braille_to_dots, get_logger
@@ -37,6 +39,15 @@ def _is_serverless_env() -> bool:
         )
     except Exception:
         return False
+
+
+def _booleans_enabled() -> bool:
+    """Feature flag to enable/disable 3D boolean operations at runtime."""
+    try:
+        val = _os.environ.get('ENABLE_3D_BOOLEANS', '1')
+        return str(val).lower() not in ('0', 'false', 'no')
+    except Exception:
+        return True
 
 
 def _compute_cylinder_frame(x_arc: float, cylinder_diameter_mm: float, seam_offset_deg: float = 0.0):
@@ -709,17 +720,14 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
     # Combine all markers (text/number indicators and triangles) for efficient boolean operations
     all_markers = (text_number_meshes + triangle_meshes) if getattr(settings, 'indicator_shapes', 1) else []
 
-    if all_markers:
+    if all_markers and _booleans_enabled():
         try:
             # Union all markers first
-            if len(all_markers) == 1:
-                union_markers = all_markers[0]
-            else:
-                union_markers = trimesh.boolean.union(all_markers)
+            union_markers = mesh_union(all_markers)
 
             logger.debug('Marker union successful, subtracting from cylinder shell...')
             # Subtract from shell to recess (serverless-compatible)
-            cylinder_shell = trimesh.boolean.difference([cylinder_shell, union_markers])
+            cylinder_shell = mesh_difference([cylinder_shell, union_markers])
             logger.debug('Marker subtraction successful')
         except Exception as e:
             logger.error(f'Could not create marker cutouts: {e}')
@@ -841,10 +849,9 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         diameter, height, polygonal_cutout_radius, polygonal_cutout_sides, align_vertex_theta_rad=cutout_align_theta
     )
 
-    # In serverless, skip boolean recess generation entirely to avoid backend errors
-    if _is_serverless_env():
-        logger.warning('Serverless detected: returning cylinder shell without recesses (counter plate)')
-        # Ensure base is at Z=0
+    # Respect feature flag; allow booleans even in serverless if explicitly enabled
+    if not _booleans_enabled():
+        logger.warning('ENABLE_3D_BOOLEANS disabled: returning cylinder shell without recesses (counter plate)')
         min_z = cylinder_shell.bounds[0][2]
         cylinder_shell.apply_translation([0, 0, -min_z])
         return cylinder_shell
@@ -1077,19 +1084,19 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             for i, tool in enumerate(sphere_meshes):
                 try:
                     logger.debug(f'Cylinder subtract recess tool {i + 1}/{len(sphere_meshes)}')
-                    result_shell = trimesh.boolean.difference([result_shell, tool])
+                    result_shell = mesh_difference([result_shell, tool])
                 except Exception as e_tool:
                     logger.warning(f'Cylinder cone subtraction failed for tool {i + 1}: {e_tool}')
                     continue
             for i, triangle in enumerate(triangle_meshes):
                 try:
-                    result_shell = trimesh.boolean.difference([result_shell, triangle])
+                    result_shell = mesh_difference([result_shell, triangle])
                 except Exception as e_tri:
                     logger.warning(f'Cylinder triangle subtraction failed {i + 1}: {e_tri}')
                     continue
             for i, line_end in enumerate(line_end_meshes):
                 try:
-                    result_shell = trimesh.boolean.difference([result_shell, line_end])
+                    result_shell = mesh_difference([result_shell, line_end])
                 except Exception as e_line:
                     logger.warning(f'Cylinder line-end subtraction failed {i + 1}: {e_line}')
                     continue
@@ -1107,72 +1114,45 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     # 1) Start with the cylinder shell (which already has the polygonal cutout)
     # 2) Subtract the union of all spheres and triangles to create outer recesses
 
-    engines_to_try = [None]  # Use trimesh built-in engine (serverless-compatible)
+    try:
+        # Batch union to reduce complexity, then single subtract
+        logger.debug('Cylinder boolean - batch union spheres...')
+        union_spheres = batch_union(sphere_meshes, batch_size=64)
 
-    for engine in engines_to_try:
-        try:
-            engine_name = engine if engine else 'trimesh-default'
+        union_triangles = None
+        if triangle_meshes:
+            logger.debug('Cylinder boolean - batch union triangles...')
+            union_triangles = batch_union(triangle_meshes, batch_size=32)
 
-            # Union all spheres
-            logger.debug(f'Cylinder boolean - union spheres with {engine_name}...')
-            if len(sphere_meshes) == 1:
-                union_spheres = sphere_meshes[0]
-            else:
-                union_spheres = trimesh.boolean.union(sphere_meshes, engine=engine)
+        union_line_ends = None
+        if line_end_meshes:
+            logger.debug('Cylinder boolean - batch union line ends...')
+            union_line_ends = batch_union(line_end_meshes, batch_size=32)
 
-            # Union all triangles (for subtraction into the cylinder shell)
-            union_triangles = None
-            if triangle_meshes:
-                logger.debug(f'Cylinder boolean - union triangles for subtraction with {engine_name}...')
-                if len(triangle_meshes) == 1:
-                    union_triangles = triangle_meshes[0]
-                else:
-                    union_triangles = trimesh.boolean.union(triangle_meshes, engine=engine)
+        cutouts_list = [union_spheres]
+        if union_line_ends is not None:
+            cutouts_list.append(union_line_ends)
+        if union_triangles is not None:
+            cutouts_list.append(union_triangles)
 
-            # Union all line end markers
-            if line_end_meshes:
-                logger.debug(f'Cylinder boolean - union line end markers with {engine_name}...')
-                if len(line_end_meshes) == 1:
-                    union_line_ends = line_end_meshes[0]
-                else:
-                    union_line_ends = trimesh.boolean.union(line_end_meshes, engine=engine)
+        all_cutouts = mesh_union(cutouts_list)
 
-            # Combine cutouts (spheres and line ends) for subtraction
-            logger.debug(f'Cylinder boolean - combining cutouts for subtraction with {engine_name}...')
-            cutouts_list = [union_spheres]
-            if line_end_meshes:
-                cutouts_list.append(union_line_ends)
-            if union_triangles is not None:
-                cutouts_list.append(union_triangles)
+        logger.debug('Cylinder boolean - subtracting all cutouts from shell...')
+        final_shell = mesh_difference([cylinder_shell, all_cutouts])
 
-            if len(cutouts_list) > 1:
-                all_cutouts = trimesh.boolean.union(cutouts_list, engine=engine)
-            else:
-                all_cutouts = cutouts_list[0]
+        if not final_shell.is_watertight:
+            logger.debug('Cylinder final shell not watertight, attempting to fill holes...')
+            final_shell.fill_holes()
 
-            logger.debug(f'Cylinder boolean - subtract cutouts from cylinder shell with {engine_name}...')
-            final_shell = trimesh.boolean.difference([cylinder_shell, all_cutouts], engine=engine)
+        print(
+            f'DEBUG: Cylinder counter plate completed: {len(final_shell.vertices)} vertices, {len(final_shell.faces)} faces'
+        )
 
-            # Triangles are recessed via subtraction; no union back
-
-            if not final_shell.is_watertight:
-                logger.debug('Cylinder final shell not watertight, attempting to fill holes...')
-                final_shell.fill_holes()
-
-            print(
-                f'DEBUG: Cylinder counter plate completed with {engine_name}: {len(final_shell.vertices)} vertices, {len(final_shell.faces)} faces'
-            )
-
-            # The cylinder is already created with vertical axis (along Z)
-            # No rotation needed - it should stand upright
-            # Just ensure the base is at Z=0
-            min_z = final_shell.bounds[0][2]
-            final_shell.apply_translation([0, 0, -min_z])
-
-            return final_shell
-        except Exception as e:
-            logger.error(f'Cylinder robust boolean with {engine_name} failed: {e}')
-            continue
+        min_z = final_shell.bounds[0][2]
+        final_shell.apply_translation([0, 0, -min_z])
+        return final_shell
+    except Exception as e:
+        logger.error(f'Cylinder robust boolean failed: {e}')
 
     # Fallback: subtract spheres individually from cylinder shell
     try:
@@ -1181,7 +1161,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         for i, sphere in enumerate(sphere_meshes):
             try:
                 logger.debug(f'Subtracting sphere {i + 1}/{len(sphere_meshes)} from cylinder shell...')
-                result_shell = trimesh.boolean.difference([result_shell, sphere])
+                result_shell = mesh_difference([result_shell, sphere])
             except Exception as sphere_error:
                 logger.warning(f'Failed to subtract sphere {i + 1}: {sphere_error}')
                 continue
@@ -1190,7 +1170,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         for i, triangle in enumerate(triangle_meshes):
             try:
                 logger.debug(f'Subtracting triangle {i + 1}/{len(triangle_meshes)} from cylinder shell...')
-                result_shell = trimesh.boolean.difference([result_shell, triangle])
+                result_shell = mesh_difference([result_shell, triangle])
             except Exception as triangle_error:
                 logger.warning(f'Failed to subtract triangle {i + 1}: {triangle_error}')
                 continue
@@ -1199,7 +1179,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         for i, line_end in enumerate(line_end_meshes):
             try:
                 logger.debug(f'Subtracting line end marker {i + 1}/{len(line_end_meshes)} from cylinder shell...')
-                result_shell = trimesh.boolean.difference([result_shell, line_end])
+                result_shell = mesh_difference([result_shell, line_end])
             except Exception as line_error:
                 logger.warning(f'Failed to subtract line end marker {i + 1}: {line_error}')
                 continue

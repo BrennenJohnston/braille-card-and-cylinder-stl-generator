@@ -10,7 +10,8 @@
       }
     }
   ],
-  "buildCommand": "python -m pip install --upgrade pip && python -m pip install -r requirements.txt -t python",
+  "installCommand": "pip3 install --upgrade pip && pip3 install -r requirements.txt -t python",
+  "buildCommand": "true",
   "routes": [
     {
       "src": "/(.*)",

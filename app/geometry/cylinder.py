@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import trimesh
+from shapely.geometry import Point as ShapelyPoint
 from shapely.geometry import Polygon as ShapelyPolygon
 from trimesh.creation import extrude_polygon
 
@@ -146,77 +147,42 @@ def create_cylinder_shell(
     """
     outer_radius = diameter_mm / 2
 
-    # Create the main solid cylinder
-    main_cylinder = trimesh.creation.cylinder(radius=outer_radius, height=height_mm, sections=64)
-
-    # If no cutout is specified, return the solid cylinder
+    # If no cutout is specified, return a solid cylinder mesh
     if polygonal_cutout_radius_mm <= 0:
-        return main_cylinder
+        return trimesh.creation.cylinder(radius=outer_radius, height=height_mm, sections=96)
 
-    # Create an N-point polygonal prism for the cutout
-    # The prism extends the full height of the cylinder
-    # Calculate the circumscribed radius from the inscribed radius
-    # For a regular N-gon: circumscribed_radius = inscribed_radius / cos(pi/N)
-    # Clamp the number of sides for safety
-    polygonal_cutout_sides = max(3, int(polygonal_cutout_sides))
-    circumscribed_radius = polygonal_cutout_radius_mm / np.cos(np.pi / polygonal_cutout_sides)
-
-    # Create the polygon vertices
-    angles = np.linspace(0, 2 * np.pi, polygonal_cutout_sides, endpoint=False)
-    vertices_2d = []
-    for angle in angles:
-        x = circumscribed_radius * np.cos(angle)
-        y = circumscribed_radius * np.sin(angle)
-        vertices_2d.append([x, y])
-
-    # Create the polygonal prism by extruding the polygon along the Z-axis
-    # The prism should be slightly longer than the cylinder to ensure complete cutting
-    prism_height = height_mm + 2.0  # Add 1mm on each end
-
-    # Create the polygonal prism using trimesh
-    # We'll create it by making a 3D mesh from the 2D polygon
-    # Create the polygon using shapely
-
-    polygon = ShapelyPolygon(vertices_2d)
-
-    # Extrude the polygon to create the prism
-    cutout_prism = extrude_polygon(polygon, height=prism_height)
-
-    # Center the prism vertically at origin (extrude_polygon creates it from Z=0 to Z=height)
-    prism_center_z = cutout_prism.bounds[1][2] / 2.0  # Get center of prism's Z bounds
-    cutout_prism.apply_translation([0, 0, -prism_center_z])
-
-    # Optionally rotate the cutout so a vertex aligns with a target angle around Z
-    # By construction, one vertex initially lies along +X (theta = 0). Rotating by
-    # align_vertex_theta_rad moves that vertex to the desired absolute angle.
-    if align_vertex_theta_rad is not None:
-        Rz = trimesh.transformations.rotation_matrix(align_vertex_theta_rad, [0.0, 0.0, 1.0])
-        cutout_prism.apply_transform(Rz)
-
-    # Debug: Print prism and cylinder dimensions
-    logger.debug(f'Cylinder height: {height_mm}mm, extends from Z={-height_mm / 2:.2f} to Z={height_mm / 2:.2f}')
-    print(
-        f'DEBUG: Prism height: {prism_height}mm, after centering extends from Z={-prism_height / 2:.2f} to Z={prism_height / 2:.2f}'
-    )
-    logger.debug(f'Prism bounds after centering: {cutout_prism.bounds}')
-
-    # Center the prism at the origin - no translation needed
-    # Both the cylinder and prism are already centered at origin
-    # The prism extends from -prism_height/2 to +prism_height/2
-    # The cylinder extends from -height_mm/2 to +height_mm/2
-    # Since prism_height > height_mm, the prism will cut through the entire cylinder
-
-    # Perform boolean subtraction to create the cutout (serverless-compatible)
+    # Build 2D cross-section using Shapely: circle minus N-gon, then extrude once (serverless-friendly)
     try:
-        result = trimesh.boolean.difference([main_cylinder, cutout_prism])
-        if result.is_watertight:
-            return result
-    except Exception as e:
-        logger.warning(f'Warning: Boolean operation failed: {e}')
+        # High-resolution circular boundary for smooth outer wall
+        outer_circle = ShapelyPoint(0.0, 0.0).buffer(outer_radius, resolution=128)
 
-    # Final fallback: return the original cylinder if all boolean operations fail
-    logger.warning('Warning: Could not create polygonal cutout, returning solid cylinder')
-    return main_cylinder
+        # Regular N-gon from inscribed radius
+        polygonal_cutout_sides = max(3, int(polygonal_cutout_sides))
+        circumscribed_radius = polygonal_cutout_radius_mm / np.cos(np.pi / polygonal_cutout_sides)
+        angles = np.linspace(0.0, 2.0 * np.pi, polygonal_cutout_sides, endpoint=False)
+        vertices_2d = [(circumscribed_radius * np.cos(a), circumscribed_radius * np.sin(a)) for a in angles]
+        inner_ngon = ShapelyPolygon(vertices_2d)
+
+        if align_vertex_theta_rad is not None:
+            from shapely import affinity as _affinity
+
+            inner_ngon = _affinity.rotate(inner_ngon, align_vertex_theta_rad * 180.0 / np.pi, origin=(0.0, 0.0))
+
+        # Ring shape: outer minus inner polygon
+        ring_shape = outer_circle.difference(inner_ngon)
+        if ring_shape.is_empty:
+            logger.warning('Cylinder cross-section difference produced empty geometry; falling back to solid')
+            return trimesh.creation.cylinder(radius=outer_radius, height=height_mm, sections=96)
+
+        # Extrude to 3D shell
+        shell = extrude_polygon(ring_shape, height=height_mm)
+        # Center along Z to match other geometry conventions ([-H/2, +H/2])
+        shell.apply_translation([0.0, 0.0, -height_mm / 2.0])
+        return shell
+    except Exception as e:
+        logger.warning(f'2D extrusion for cylinder shell failed: {e}')
+        # Fallback to solid cylinder to avoid 500s
+        return trimesh.creation.cylinder(radius=outer_radius, height=height_mm, sections=96)
 
 
 def create_cylinder_triangle_marker(

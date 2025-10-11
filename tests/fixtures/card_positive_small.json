@@ -1,0 +1,39 @@
+{
+  "description": "Small card with 2 braille characters (AB)",
+  "fixture_name": "card_positive_small",
+  "request_payload": {
+    "lines": [
+      "\u2801\u2803",
+      "",
+      "",
+      ""
+    ],
+    "plate_type": "positive",
+    "shape_type": "card",
+    "grade": "g1",
+    "settings": {
+      "card_width": 60.0,
+      "card_height": 40.0,
+      "card_thickness": 2.0,
+      "dot_height": 0.5,
+      "dot_base_diameter": 1.5
+    }
+  },
+  "expected_properties": {
+    "face_count": 2646,
+    "vertex_count": 1337,
+    "is_watertight": true,
+    "bbox_min": [
+      -8.0,
+      0.0,
+      0.0
+    ],
+    "bbox_max": [
+      60.0,
+      40.0,
+      2.799999952316284
+    ],
+    "volume": 4803.359414443601,
+    "surface_area": 5233.868510804846
+  }
+}

@@ -16,12 +16,5 @@
       "src": "/(.*)",
       "dest": "/wsgi.py"
     }
-  ],
-  "functions": {
-    "wsgi.py": {
-      "maxDuration": 60,
-      "memory": 3008,
-      "includeFiles": "python/**"
-    }
-  }
+  ]
 }

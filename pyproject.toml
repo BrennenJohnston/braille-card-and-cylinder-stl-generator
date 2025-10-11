@@ -2,13 +2,13 @@
 name = "braille-stl-generator"
 version = "1.0.0"
 description = "Braille card and cylinder STL generator"
-requires-python = ">=3.9,<3.12"
+requires-python = ">=3.9,<3.13"
 dependencies = [
     "flask==2.3.3",
     "trimesh==3.23.5",
     "numpy==1.26.4",
     "flask-cors==4.0.0",
-    "shapely==2.0.4",
+    "shapely==2.0.6",
     "Flask-Limiter==3.8.0",
     "redis==5.0.7",
     "requests==2.32.3",

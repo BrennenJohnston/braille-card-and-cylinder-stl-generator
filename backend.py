@@ -51,7 +51,7 @@ from app.models import CardSettings
 from app.utils import braille_to_dots
 
 # Import geometry functions from app.geometry
-from app.geometry.cylinder import _compute_cylinder_frame
+from app.geometry.cylinder import _compute_cylinder_frame, cylindrical_transform
 
 app = Flask(__name__)
 # CORS configuration - update with your actual domain before deployment
@@ -1289,29 +1289,7 @@ def layout_cylindrical_cells(
     return cells, cells_per_row
 
 
-def cylindrical_transform(x, y, z, cylinder_diameter_mm, seam_offset_deg=0):
-    """
-    Transform planar coordinates to cylindrical coordinates.
-    x -> theta (angle around cylinder)
-    y -> z (height on cylinder)
-    z -> radial offset from cylinder surface
-    """
-    radius = cylinder_diameter_mm / 2
-    circumference = np.pi * cylinder_diameter_mm
-
-    # Convert x position to angle
-    theta = (x / circumference) * 2 * np.pi + np.radians(seam_offset_deg)
-
-    # Calculate cylindrical coordinates
-    cyl_x = radius * np.cos(theta)
-    cyl_y = radius * np.sin(theta)
-    cyl_z = y
-
-    # Apply radial offset (for dot height)
-    cyl_x += z * np.cos(theta)
-    cyl_y += z * np.sin(theta)
-
-    return cyl_x, cyl_y, cyl_z
+# cylindrical_transform now imported from app.geometry.cylinder
 
 
 def create_cylinder_shell(

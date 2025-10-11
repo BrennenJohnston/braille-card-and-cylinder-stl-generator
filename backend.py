@@ -79,6 +79,21 @@ if os.environ.get('FLASK_ENV') == 'development':
 
 CORS(app, origins=allowed_origins, supports_credentials=True)
 
+
+# Environment detection helpers
+def _is_serverless_env() -> bool:
+    """
+    Detect if running in a serverless environment (e.g., Vercel/AWS Lambda).
+    Used to avoid backends that require external binaries (3D boolean engines).
+    """
+    try:
+        return bool(
+            os.environ.get('VERCEL') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME') or os.environ.get('NOW_REGION')
+        )
+    except Exception:
+        return False
+
+
 # Security configurations
 app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024  # 1MB max request size
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
@@ -804,8 +819,8 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
     # Combine all positive meshes (base + dots)
     combined_mesh = trimesh.util.concatenate(meshes)
 
-    # Subtract marker recesses from the combined mesh
-    if getattr(settings, 'indicator_shapes', 1) and marker_meshes:
+    # Subtract marker recesses from the combined mesh (avoid heavy 3D booleans on serverless)
+    if getattr(settings, 'indicator_shapes', 1) and marker_meshes and not _is_serverless_env():
         try:
             # Union all markers for efficient boolean operation
             if len(marker_meshes) == 1:
@@ -2074,6 +2089,13 @@ def generate_braille_stl():
             return resp
 
         # Create JSON config dump for reproducibility
+        # Avoid accessing volume when booleans may be disabled or mesh invalid in serverless
+        safe_volume = None
+        try:
+            safe_volume = float(mesh.volume)
+        except Exception:
+            safe_volume = None
+
         config_dump = {
             'timestamp': datetime.now().isoformat(),
             'plate_type': plate_type,
@@ -2121,8 +2143,8 @@ def generate_braille_stl():
             'mesh_info': {
                 'vertices': len(mesh.vertices),
                 'faces': len(mesh.faces),
-                'is_watertight': bool(mesh.is_watertight),
-                'volume': float(mesh.volume),
+                'is_watertight': bool(getattr(mesh, 'is_watertight', False)),
+                'volume': safe_volume,
             },
         }
 

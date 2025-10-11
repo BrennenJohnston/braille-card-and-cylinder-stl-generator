@@ -14,7 +14,10 @@ from trimesh.creation import extrude_polygon
 
 # Import dependencies from other modules
 from app.geometry.dot_shapes import create_braille_dot
-from app.utils import braille_to_dots
+from app.utils import braille_to_dots, get_logger
+
+# Configure logging for this module
+logger = get_logger(__name__)
 
 # Note: CardSettings and _build_character_polygon dependencies:
 # - CardSettings from app.models (passed as parameter, type hints are forward references)
@@ -188,11 +191,11 @@ def create_cylinder_shell(
         cutout_prism.apply_transform(Rz)
 
     # Debug: Print prism and cylinder dimensions
-    print(f'DEBUG: Cylinder height: {height_mm}mm, extends from Z={-height_mm / 2:.2f} to Z={height_mm / 2:.2f}')
+    logger.debug(f'Cylinder height: {height_mm}mm, extends from Z={-height_mm / 2:.2f} to Z={height_mm / 2:.2f}')
     print(
         f'DEBUG: Prism height: {prism_height}mm, after centering extends from Z={-prism_height / 2:.2f} to Z={prism_height / 2:.2f}'
     )
-    print(f'DEBUG: Prism bounds after centering: {cutout_prism.bounds}')
+    logger.debug(f'Prism bounds after centering: {cutout_prism.bounds}')
 
     # Center the prism at the origin - no translation needed
     # Both the cylinder and prism are already centered at origin
@@ -206,7 +209,7 @@ def create_cylinder_shell(
         if result.is_watertight:
             return result
     except Exception as e:
-        print(f'Warning: Boolean operation failed with manifold engine: {e}')
+        logger.warning(f'Warning: Boolean operation failed with manifold engine: {e}')
 
     # Fallback: try with default engine
     try:
@@ -214,10 +217,10 @@ def create_cylinder_shell(
         if result.is_watertight:
             return result
     except Exception as e:
-        print(f'Warning: Boolean operation failed with default engine: {e}')
+        logger.warning(f'Warning: Boolean operation failed with default engine: {e}')
 
     # Final fallback: return the original cylinder if all boolean operations fail
-    print('Warning: Could not create polygonal cutout, returning solid cylinder')
+    logger.warning('Warning: Could not create polygonal cutout, returning solid cylinder')
     return main_cylinder
 
 
@@ -299,9 +302,9 @@ def create_cylinder_triangle_marker(
 
         # Debug output - only print for first triangle to avoid spam
         if abs(y_local) < settings.line_spacing:  # First row
-            print(f'DEBUG: Triangle at theta={np.degrees(theta):.1f}°, y_local={y_local:.1f}mm')
-            print(f'DEBUG: Triangle bounds after transform: {tri_prism_local.bounds}')
-            print(f'DEBUG: Cylinder radius: {radius}mm')
+            logger.debug(f'Triangle at theta={np.degrees(theta):.1f}°, y_local={y_local:.1f}mm')
+            logger.debug(f'Triangle bounds after transform: {tri_prism_local.bounds}')
+            logger.debug(f'Cylinder radius: {radius}mm')
     else:
         # For extruded triangle (outward from cylinder surface)
         tri_prism_local = trimesh.creation.extrude_polygon(tri_2d, height=height_mm)
@@ -476,8 +479,8 @@ def create_cylinder_character_shape(
             )
 
     except Exception as e:
-        print(f'WARNING: Failed to create character shape using matplotlib: {e}')
-        print('Falling back to rectangle marker')
+        logger.warning(f'Failed to create character shape using matplotlib: {e}')
+        logger.info('Falling back to rectangle marker')
         return create_cylinder_line_end_marker(
             x_arc, y_local, settings, cylinder_diameter_mm, seam_offset_deg, height_mm, for_subtraction
         )
@@ -493,7 +496,7 @@ def create_cylinder_character_shape(
             if not char_prism_local.is_volume:
                 char_prism_local.fix_normals()
                 if not char_prism_local.is_volume:
-                    print('WARNING: Character mesh is not a valid volume')
+                    logger.warning('Character mesh is not a valid volume')
                     return create_cylinder_line_end_marker(
                         x_arc, y_local, settings, cylinder_diameter_mm, seam_offset_deg, height_mm, for_subtraction
                     )
@@ -531,7 +534,7 @@ def create_cylinder_character_shape(
 
             char_prism_local.apply_transform(T)
     except Exception as e:
-        print(f'WARNING: Failed to extrude character shape: {e}')
+        logger.warning(f'Failed to extrude character shape: {e}')
         return create_cylinder_line_end_marker(
             x_arc, y_local, settings, cylinder_diameter_mm, seam_offset_deg, height_mm, for_subtraction
         )
@@ -619,12 +622,12 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
     cell_spacing_angle_deg = np.degrees(settings.cell_spacing / radius)
     dot_spacing_angle_deg = np.degrees(settings.dot_spacing / radius)
 
-    print('Grid configuration:')
-    print(f'  - Grid: {settings.grid_columns} columns × {settings.grid_rows} rows')
-    print(f'  - Grid width: {grid_width:.1f}mm → {grid_angle_deg:.1f}° arc on cylinder')
-    print('Angular spacing calculations:')
-    print(f'  - Cell spacing: {settings.cell_spacing}mm → {cell_spacing_angle_deg:.2f}° on cylinder')
-    print(f'  - Dot spacing: {settings.dot_spacing}mm → {dot_spacing_angle_deg:.2f}° on cylinder')
+    logger.info('Grid configuration:')
+    logger.info(f'  - Grid: {settings.grid_columns} columns × {settings.grid_rows} rows')
+    logger.info(f'  - Grid width: {grid_width:.1f}mm → {grid_angle_deg:.1f}° arc on cylinder')
+    logger.info('Angular spacing calculations:')
+    logger.info(f'  - Cell spacing: {settings.cell_spacing}mm → {cell_spacing_angle_deg:.2f}° on cylinder')
+    logger.info(f'  - Dot spacing: {settings.dot_spacing}mm → {dot_spacing_angle_deg:.2f}° on cylinder')
 
     # Compute triangle column absolute angle (including seam) to align polygon cutout vertex
     seam_offset_rad = np.radians(seam_offset)
@@ -742,23 +745,23 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
             else:
                 union_markers = trimesh.boolean.union(all_markers, engine='manifold')
 
-            print('DEBUG: Marker union successful, subtracting from cylinder shell...')
+            logger.debug('Marker union successful, subtracting from cylinder shell...')
             # Subtract from shell to recess
             cylinder_shell = trimesh.boolean.difference([cylinder_shell, union_markers], engine='manifold')
-            print('DEBUG: Marker subtraction successful')
+            logger.debug('Marker subtraction successful')
         except Exception as e:
-            print(f'ERROR: Could not create marker cutouts: {e}')
+            logger.error(f'Could not create marker cutouts: {e}')
             # Try fallback with default engine
             try:
-                print('DEBUG: Trying marker subtraction with default engine...')
+                logger.debug('Trying marker subtraction with default engine...')
                 if len(all_markers) == 1:
                     union_markers = all_markers[0]
                 else:
                     union_markers = trimesh.boolean.union(all_markers)
                 cylinder_shell = trimesh.boolean.difference([cylinder_shell, union_markers])
-                print('DEBUG: Marker subtraction successful with default engine')
+                logger.debug('Marker subtraction successful with default engine')
             except Exception as e2:
-                print(f'ERROR: Marker subtraction failed with all engines: {e2}')
+                logger.error(f'Marker subtraction failed with all engines: {e2}')
 
     meshes = [cylinder_shell]
 
@@ -774,7 +777,7 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
 
     # Check if grid wraps too far around cylinder
     if grid_angle_deg > 360:
-        print(f'Warning: Grid width ({grid_angle_deg:.1f}°) exceeds cylinder circumference (360°)')
+        logger.warning(f'Warning: Grid width ({grid_angle_deg:.1f}°) exceeds cylinder circumference (360°)')
 
     # Convert dot spacing to angular measurements for cylinder
     radius = diameter / 2
@@ -802,7 +805,7 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
                 dot_mesh = create_cylinder_braille_dot(dot_x, dot_z_local, z, settings, diameter, seam_offset)
                 meshes.append(dot_mesh)
 
-    print(f'Created cylinder with {len(meshes) - 1} braille dots')
+    logger.info(f'Created cylinder with {len(meshes) - 1} braille dots')
 
     # Combine all meshes
     final_mesh = trimesh.util.concatenate(meshes)
@@ -1085,10 +1088,10 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
                     sphere.apply_translation([cyl_x, cyl_y, cyl_z])
                     sphere_meshes.append(sphere)
 
-    print(f'DEBUG: Creating {len(sphere_meshes)} recess tools on cylinder counter plate (recess_shape={recess_shape})')
+    logger.debug(f'Creating {len(sphere_meshes)} recess tools on cylinder counter plate (recess_shape={recess_shape})')
 
     if not sphere_meshes:
-        print('WARNING: No spheres were generated for cylinder counter plate. Returning base shell.')
+        logger.warning('No spheres were generated for cylinder counter plate. Returning base shell.')
         # The cylinder is already created with vertical axis (along Z)
         # No rotation needed - it should stand upright
         # Just ensure the base is at Z=0
@@ -1100,35 +1103,35 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     # Special-case: for cone frusta, prefer individual subtraction for robustness
     if recess_shape == 2 and sphere_meshes:
         try:
-            print('DEBUG: Cylinder cone mode - subtracting frusta individually for robustness...')
+            logger.debug('Cylinder cone mode - subtracting frusta individually for robustness...')
             result_shell = cylinder_shell.copy()
             for i, tool in enumerate(sphere_meshes):
                 try:
-                    print(f'DEBUG: Cylinder subtract recess tool {i + 1}/{len(sphere_meshes)}')
+                    logger.debug(f'Cylinder subtract recess tool {i + 1}/{len(sphere_meshes)}')
                     result_shell = trimesh.boolean.difference([result_shell, tool])
                 except Exception as e_tool:
-                    print(f'WARNING: Cylinder cone subtraction failed for tool {i + 1}: {e_tool}')
+                    logger.warning(f'Cylinder cone subtraction failed for tool {i + 1}: {e_tool}')
                     continue
             for i, triangle in enumerate(triangle_meshes):
                 try:
                     result_shell = trimesh.boolean.difference([result_shell, triangle])
                 except Exception as e_tri:
-                    print(f'WARNING: Cylinder triangle subtraction failed {i + 1}: {e_tri}')
+                    logger.warning(f'Cylinder triangle subtraction failed {i + 1}: {e_tri}')
                     continue
             for i, line_end in enumerate(line_end_meshes):
                 try:
                     result_shell = trimesh.boolean.difference([result_shell, line_end])
                 except Exception as e_line:
-                    print(f'WARNING: Cylinder line-end subtraction failed {i + 1}: {e_line}')
+                    logger.warning(f'Cylinder line-end subtraction failed {i + 1}: {e_line}')
                     continue
             if not result_shell.is_watertight:
                 result_shell.fill_holes()
             min_z = result_shell.bounds[0][2]
             result_shell.apply_translation([0, 0, -min_z])
-            print(f'DEBUG: Cylinder cone plate completed: {len(result_shell.vertices)} vertices')
+            logger.debug(f'Cylinder cone plate completed: {len(result_shell.vertices)} vertices')
             return result_shell
         except Exception as e_cyl_cone:
-            print(f'ERROR: Cylinder cone individual subtraction failed: {e_cyl_cone}')
+            logger.error(f'Cylinder cone individual subtraction failed: {e_cyl_cone}')
             # Fall through to robust boolean strategy below as a last attempt
 
     # More robust boolean strategy:
@@ -1142,7 +1145,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             engine_name = engine if engine else 'trimesh-default'
 
             # Union all spheres
-            print(f'DEBUG: Cylinder boolean - union spheres with {engine_name}...')
+            logger.debug(f'Cylinder boolean - union spheres with {engine_name}...')
             if len(sphere_meshes) == 1:
                 union_spheres = sphere_meshes[0]
             else:
@@ -1151,7 +1154,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             # Union all triangles (for subtraction into the cylinder shell)
             union_triangles = None
             if triangle_meshes:
-                print(f'DEBUG: Cylinder boolean - union triangles for subtraction with {engine_name}...')
+                logger.debug(f'Cylinder boolean - union triangles for subtraction with {engine_name}...')
                 if len(triangle_meshes) == 1:
                     union_triangles = triangle_meshes[0]
                 else:
@@ -1159,14 +1162,14 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
 
             # Union all line end markers
             if line_end_meshes:
-                print(f'DEBUG: Cylinder boolean - union line end markers with {engine_name}...')
+                logger.debug(f'Cylinder boolean - union line end markers with {engine_name}...')
                 if len(line_end_meshes) == 1:
                     union_line_ends = line_end_meshes[0]
                 else:
                     union_line_ends = trimesh.boolean.union(line_end_meshes, engine=engine)
 
             # Combine cutouts (spheres and line ends) for subtraction
-            print(f'DEBUG: Cylinder boolean - combining cutouts for subtraction with {engine_name}...')
+            logger.debug(f'Cylinder boolean - combining cutouts for subtraction with {engine_name}...')
             cutouts_list = [union_spheres]
             if line_end_meshes:
                 cutouts_list.append(union_line_ends)
@@ -1178,13 +1181,13 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             else:
                 all_cutouts = cutouts_list[0]
 
-            print(f'DEBUG: Cylinder boolean - subtract cutouts from cylinder shell with {engine_name}...')
+            logger.debug(f'Cylinder boolean - subtract cutouts from cylinder shell with {engine_name}...')
             final_shell = trimesh.boolean.difference([cylinder_shell, all_cutouts], engine=engine)
 
             # Triangles are recessed via subtraction; no union back
 
             if not final_shell.is_watertight:
-                print('DEBUG: Cylinder final shell not watertight, attempting to fill holes...')
+                logger.debug('Cylinder final shell not watertight, attempting to fill holes...')
                 final_shell.fill_holes()
 
             print(
@@ -1199,43 +1202,43 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
 
             return final_shell
         except Exception as e:
-            print(f'ERROR: Cylinder robust boolean with {engine_name} failed: {e}')
+            logger.error(f'Cylinder robust boolean with {engine_name} failed: {e}')
             continue
 
     # Fallback: subtract spheres individually from cylinder shell
     try:
-        print('DEBUG: Fallback - individual subtraction from cylinder shell...')
+        logger.debug('Fallback - individual subtraction from cylinder shell...')
         result_shell = cylinder_shell.copy()
         for i, sphere in enumerate(sphere_meshes):
             try:
-                print(f'DEBUG: Subtracting sphere {i + 1}/{len(sphere_meshes)} from cylinder shell...')
+                logger.debug(f'Subtracting sphere {i + 1}/{len(sphere_meshes)} from cylinder shell...')
                 result_shell = trimesh.boolean.difference([result_shell, sphere])
             except Exception as sphere_error:
-                print(f'WARNING: Failed to subtract sphere {i + 1}: {sphere_error}')
+                logger.warning(f'Failed to subtract sphere {i + 1}: {sphere_error}')
                 continue
 
         # Subtract triangles individually (recess them)
         for i, triangle in enumerate(triangle_meshes):
             try:
-                print(f'DEBUG: Subtracting triangle {i + 1}/{len(triangle_meshes)} from cylinder shell...')
+                logger.debug(f'Subtracting triangle {i + 1}/{len(triangle_meshes)} from cylinder shell...')
                 result_shell = trimesh.boolean.difference([result_shell, triangle])
             except Exception as triangle_error:
-                print(f'WARNING: Failed to subtract triangle {i + 1}: {triangle_error}')
+                logger.warning(f'Failed to subtract triangle {i + 1}: {triangle_error}')
                 continue
 
         # Subtract line end markers individually
         for i, line_end in enumerate(line_end_meshes):
             try:
-                print(f'DEBUG: Subtracting line end marker {i + 1}/{len(line_end_meshes)} from cylinder shell...')
+                logger.debug(f'Subtracting line end marker {i + 1}/{len(line_end_meshes)} from cylinder shell...')
                 result_shell = trimesh.boolean.difference([result_shell, line_end])
             except Exception as line_error:
-                print(f'WARNING: Failed to subtract line end marker {i + 1}: {line_error}')
+                logger.warning(f'Failed to subtract line end marker {i + 1}: {line_error}')
                 continue
 
         final_shell = result_shell
         if not final_shell.is_watertight:
             final_shell.fill_holes()
-        print(f'DEBUG: Fallback completed: {len(final_shell.vertices)} vertices, {len(final_shell.faces)} faces')
+        logger.debug(f'Fallback completed: {len(final_shell.vertices)} vertices, {len(final_shell.faces)} faces')
 
         # The cylinder is already created with vertical axis (along Z)
         # No rotation needed - it should stand upright
@@ -1245,8 +1248,8 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
 
         return final_shell
     except Exception as final_error:
-        print(f'ERROR: Cylinder fallback boolean failed: {final_error}')
-        print('WARNING: Returning simple cylinder shell without recesses.')
+        logger.error(f'Cylinder fallback boolean failed: {final_error}')
+        logger.warning('Returning simple cylinder shell without recesses.')
 
         # The cylinder is already created with vertical axis (along Z)
         # No rotation needed - it should stand upright

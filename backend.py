@@ -54,7 +54,10 @@ from app.geometry.dot_shapes import create_braille_dot
 from app.models import CardSettings
 
 # Import utilities from app.utils
-from app.utils import braille_to_dots
+from app.utils import braille_to_dots, get_logger
+
+# Configure logging for this module
+logger = get_logger(__name__)
 
 app = Flask(__name__)
 # CORS configuration - update with your actual domain before deployment
@@ -732,8 +735,8 @@ def create_character_shape_3d(character, x, y, settings: CardSettings, height=1.
         char_2d = _affinity.translate(char_2d, xoff=char_x, yoff=char_y)
 
     except Exception as e:
-        print(f'WARNING: Failed to create character shape using matplotlib: {e}')
-        print('Falling back to rectangle marker')
+        logger.warning(f'Failed to create character shape using matplotlib: {e}')
+        logger.info('Falling back to rectangle marker')
         return create_card_line_end_marker_3d(x, y, settings, height, for_subtraction)
 
     # Extrude to 3D
@@ -747,7 +750,7 @@ def create_character_shape_3d(character, x, y, settings: CardSettings, height=1.
             if not char_prism.is_volume:
                 char_prism.fix_normals()
                 if not char_prism.is_volume:
-                    print('WARNING: Character mesh is not a valid volume')
+                    logger.warning('Character mesh is not a valid volume')
                     return create_card_line_end_marker_3d(x, y, settings, height, for_subtraction)
 
             # Position at the top surface of the card
@@ -761,7 +764,7 @@ def create_character_shape_3d(character, x, y, settings: CardSettings, height=1.
             z_pos = settings.card_thickness
             char_prism.apply_translation([0, 0, z_pos])
     except Exception as e:
-        print(f'WARNING: Failed to extrude character shape: {e}')
+        logger.warning(f'Failed to extrude character shape: {e}')
         return create_card_line_end_marker_3d(x, y, settings, height, for_subtraction)
 
     # Debug: character marker generated
@@ -783,9 +786,9 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
         settings = CardSettings()
 
     grade_name = f'Grade {grade.upper()}' if grade in ['g1', 'g2'] else 'Grade 1'
-    print(f'Creating positive plate mesh with {grade_name} characters')
-    print(f'Grid: {settings.grid_columns} columns × {settings.grid_rows} rows')
-    print(f'Centered margins: L/R={settings.left_margin:.2f}mm, T/B={settings.top_margin:.2f}mm')
+    logger.info(f'Creating positive plate mesh with {grade_name} characters')
+    logger.info(f'Grid: {settings.grid_columns} columns × {settings.grid_rows} rows')
+    logger.info(f'Centered margins: L/R={settings.left_margin:.2f}mm, T/B={settings.top_margin:.2f}mm')
     print(
         f'Spacing: Cell-to-cell {settings.cell_spacing}mm, Line-to-line {settings.line_spacing}mm, Dot-to-dot {settings.dot_spacing}mm'
     )
@@ -824,20 +827,20 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
                 orig = (original_lines[row_num] or '').strip()
                 # If auto supplied a single indicator character per row, just use it
                 indicator_char = orig[0] if orig else ''
-                print(f"DEBUG: Row {row_num} indicator candidate: '{indicator_char}'")
+                logger.debug(f"Row {row_num} indicator candidate: '{indicator_char}'")
                 if indicator_char and (indicator_char.isalpha() or indicator_char.isdigit()):
-                    print(f"DEBUG: Creating character shape for '{indicator_char}' at first cell")
+                    logger.debug(f"Creating character shape for '{indicator_char}' at first cell")
                     line_end_mesh = create_character_shape_3d(
                         indicator_char, x_pos_first, y_pos, settings, height=1.0, for_subtraction=True
                     )
                 else:
-                    print(f'DEBUG: Indicator not alphanumeric or empty, using rectangle for row {row_num}')
+                    logger.debug(f'Indicator not alphanumeric or empty, using rectangle for row {row_num}')
                     line_end_mesh = create_card_line_end_marker_3d(
                         x_pos_first, y_pos, settings, height=0.5, for_subtraction=True
                     )
             else:
                 # No indicator info; default to rectangle
-                print(f'DEBUG: No indicator info for row {row_num}, using rectangle')
+                logger.debug(f'No indicator info for row {row_num}, using rectangle')
                 line_end_mesh = create_card_line_end_marker_3d(
                     x_pos_first, y_pos, settings, height=0.5, for_subtraction=True
                 )
@@ -875,7 +878,7 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
         else:
             # Input is not braille Unicode - this is an error
             error_msg = f'Line {row_num + 1} does not contain proper braille Unicode characters. Frontend must translate text to braille before sending.'
-            print(f'ERROR: {error_msg}')
+            logger.error(f'{error_msg}')
             raise RuntimeError(error_msg)
 
         # Check if braille text exceeds grid capacity
@@ -926,7 +929,7 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
             f'Created positive plate with {len(meshes) - 1} braille dots, {settings.grid_rows} text/number indicators, and {settings.grid_rows} triangle markers'
         )
     else:
-        print(f'Created positive plate with {len(meshes) - 1} braille dots and no indicator shapes')
+        logger.info(f'Created positive plate with {len(meshes) - 1} braille dots and no indicator shapes')
 
     # Combine all positive meshes (base + dots)
     combined_mesh = trimesh.util.concatenate(meshes)
@@ -940,24 +943,24 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
             else:
                 union_markers = trimesh.boolean.union(marker_meshes, engine='manifold')
 
-            print(f'DEBUG: Subtracting {len(marker_meshes)} marker recesses from embossing plate...')
+            logger.debug(f'Subtracting {len(marker_meshes)} marker recesses from embossing plate...')
             # Subtract markers to create recesses
             combined_mesh = trimesh.boolean.difference([combined_mesh, union_markers], engine='manifold')
-            print('DEBUG: Marker subtraction successful')
+            logger.debug('Marker subtraction successful')
         except Exception as e:
-            print(f'WARNING: Could not create marker recesses with manifold engine: {e}')
+            logger.warning(f'Could not create marker recesses with manifold engine: {e}')
             # Try fallback with default engine
             try:
-                print('DEBUG: Trying marker subtraction with default engine...')
+                logger.debug('Trying marker subtraction with default engine...')
                 if len(marker_meshes) == 1:
                     union_markers = marker_meshes[0]
                 else:
                     union_markers = trimesh.boolean.union(marker_meshes)
                 combined_mesh = trimesh.boolean.difference([combined_mesh, union_markers])
-                print('DEBUG: Marker subtraction successful with default engine')
+                logger.debug('Marker subtraction successful with default engine')
             except Exception as e2:
-                print(f'ERROR: Marker subtraction failed with all engines: {e2}')
-                print('Returning embossing plate without marker recesses')
+                logger.error(f'Marker subtraction failed with all engines: {e2}')
+                logger.info('Returning embossing plate without marker recesses')
 
     return combined_mesh
 
@@ -1004,7 +1007,7 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
             # Check if input contains proper braille Unicode
             has_braille_chars = any(ord(char) >= 0x2800 and ord(char) <= 0x28FF for char in line_text)
             if not has_braille_chars:
-                print(f'WARNING: Line {row_num + 1} does not contain proper braille Unicode, skipping')
+                logger.warning(f'Line {row_num + 1} does not contain proper braille Unicode, skipping')
                 continue
 
             # Calculate Y position for this row (same as embossing plate, using safe margin)
@@ -1038,7 +1041,7 @@ def create_simple_negative_plate(settings: CardSettings, lines=None):
                         total_dots += 1
 
     if not holes:
-        print('WARNING: No holes were created! Creating a plate with all possible holes as fallback')
+        logger.warning('No holes were created! Creating a plate with all possible holes as fallback')
         # Fallback: create holes for all possible positions
         return create_universal_counter_plate_fallback(settings)
 
@@ -1127,13 +1130,13 @@ def create_universal_counter_plate_fallback(settings: CardSettings):
         return final_mesh
 
     except Exception as e:
-        print(f'ERROR: Fallback counter plate creation failed: {e}')
+        logger.error(f'Fallback counter plate creation failed: {e}')
         return create_fallback_plate(settings)
 
 
 def create_fallback_plate(settings: CardSettings):
     """Create a simple fallback plate when hole creation fails"""
-    print('WARNING: Creating fallback plate without holes')
+    logger.warning('Creating fallback plate without holes')
     base = trimesh.creation.box(extents=(settings.card_width, settings.card_height, settings.card_thickness))
     base.apply_translation((settings.card_width / 2, settings.card_height / 2, settings.card_thickness / 2))
     return base
@@ -1244,7 +1247,7 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
                 sphere_meshes.append(sphere)
                 total_spheres += 1
 
-    print(f'DEBUG: Created {total_spheres} hemispheres for counter plate')
+    logger.debug(f'Created {total_spheres} hemispheres for counter plate')
 
     # Create end of row line recesses and triangle marker recesses for ALL rows
     line_end_meshes = []
@@ -1272,7 +1275,7 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
     )
 
     if not sphere_meshes:
-        print('WARNING: No spheres were generated. Returning base plate.')
+        logger.warning('No spheres were generated. Returning base plate.')
         return plate_mesh
 
     # Perform boolean operations - try manifold first, then trimesh default
@@ -1281,19 +1284,19 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
     for engine in engines_to_try:
         try:
             engine_name = engine if engine else 'trimesh-default'
-            print(f'DEBUG: Attempting boolean operations with {engine_name} engine...')
+            logger.debug(f'Attempting boolean operations with {engine_name} engine...')
 
             # Union all spheres together for more efficient subtraction
             if len(sphere_meshes) == 1:
                 union_spheres = sphere_meshes[0]
             else:
-                print('DEBUG: Unioning spheres...')
+                logger.debug('Unioning spheres...')
                 union_spheres = trimesh.boolean.union(sphere_meshes, engine=engine)
 
             # Union all triangles (these will be used for subtraction into the plate)
             union_triangles = None
             if triangle_meshes:
-                print(f'DEBUG: Unioning {len(triangle_meshes)} triangles (for subtraction)...')
+                logger.debug(f'Unioning {len(triangle_meshes)} triangles (for subtraction)...')
                 if len(triangle_meshes) == 1:
                     union_triangles = triangle_meshes[0]
                 else:
@@ -1301,14 +1304,14 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
 
             # Union all line end markers
             if line_end_meshes:
-                print(f'DEBUG: Unioning {len(line_end_meshes)} line end markers...')
+                logger.debug(f'Unioning {len(line_end_meshes)} line end markers...')
                 if len(line_end_meshes) == 1:
                     union_line_ends = line_end_meshes[0]
                 else:
                     union_line_ends = trimesh.boolean.union(line_end_meshes, engine=engine)
 
             # Combine cutouts (spheres and line ends) for subtraction
-            print('DEBUG: Combining cutouts for subtraction...')
+            logger.debug('Combining cutouts for subtraction...')
             cutouts_list = [union_spheres]
             if line_end_meshes:
                 cutouts_list.append(union_line_ends)
@@ -1320,16 +1323,16 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
             else:
                 all_cutouts = cutouts_list[0]
 
-            print('DEBUG: Subtracting cutouts from plate...')
+            logger.debug('Subtracting cutouts from plate...')
             # Subtract the cutouts (spheres, line ends, and triangles) from the plate
             counter_plate_mesh = trimesh.boolean.difference([plate_mesh, all_cutouts], engine=engine)
 
             # Verify the mesh is watertight
             if not counter_plate_mesh.is_watertight:
-                print('DEBUG: Counter plate mesh not watertight, attempting to fix...')
+                logger.debug('Counter plate mesh not watertight, attempting to fix...')
                 counter_plate_mesh.fill_holes()
                 if counter_plate_mesh.is_watertight:
-                    print('DEBUG: Successfully fixed counter plate mesh')
+                    logger.debug('Successfully fixed counter plate mesh')
 
             print(
                 f'DEBUG: Counter plate completed with {engine_name} engine: {len(counter_plate_mesh.vertices)} vertices, {len(counter_plate_mesh.faces)} faces'
@@ -1337,45 +1340,45 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
             return counter_plate_mesh
 
         except Exception as e:
-            print(f'ERROR: Boolean operations with {engine_name} failed: {e}')
+            logger.error(f'Boolean operations with {engine_name} failed: {e}')
             if engine == engines_to_try[-1]:  # Last engine failed
                 print(
                     'WARNING: All boolean engines failed. Creating hemisphere counter plate with individual subtraction...'
                 )
                 break
             else:
-                print('WARNING: Trying next engine...')
+                logger.warning('Trying next engine...')
                 continue
 
     # Final fallback: subtract spheres and triangles one by one (slower but more reliable)
     try:
-        print('DEBUG: Attempting individual sphere and triangle subtraction...')
+        logger.debug('Attempting individual sphere and triangle subtraction...')
         counter_plate_mesh = plate_mesh.copy()
 
         for i, sphere in enumerate(sphere_meshes):
             try:
-                print(f'DEBUG: Subtracting sphere {i + 1}/{len(sphere_meshes)}...')
+                logger.debug(f'Subtracting sphere {i + 1}/{len(sphere_meshes)}...')
                 counter_plate_mesh = trimesh.boolean.difference([counter_plate_mesh, sphere])
             except Exception as sphere_error:
-                print(f'WARNING: Failed to subtract sphere {i + 1}: {sphere_error}')
+                logger.warning(f'Failed to subtract sphere {i + 1}: {sphere_error}')
                 continue
 
         # Subtract triangles individually (recess them)
         for i, triangle in enumerate(triangle_meshes):
             try:
-                print(f'DEBUG: Subtracting triangle {i + 1}/{len(triangle_meshes)}...')
+                logger.debug(f'Subtracting triangle {i + 1}/{len(triangle_meshes)}...')
                 counter_plate_mesh = trimesh.boolean.difference([counter_plate_mesh, triangle])
             except Exception as triangle_error:
-                print(f'WARNING: Failed to subtract triangle {i + 1}: {triangle_error}')
+                logger.warning(f'Failed to subtract triangle {i + 1}: {triangle_error}')
                 continue
 
         # Subtract line end markers individually
         for i, line_end in enumerate(line_end_meshes):
             try:
-                print(f'DEBUG: Subtracting line end marker {i + 1}/{len(line_end_meshes)}...')
+                logger.debug(f'Subtracting line end marker {i + 1}/{len(line_end_meshes)}...')
                 counter_plate_mesh = trimesh.boolean.difference([counter_plate_mesh, line_end])
             except Exception as line_error:
-                print(f'WARNING: Failed to subtract line end marker {i + 1}: {line_error}')
+                logger.warning(f'Failed to subtract line end marker {i + 1}: {line_error}')
                 continue
 
         # Try to fix the mesh
@@ -1388,8 +1391,8 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
         return counter_plate_mesh
 
     except Exception as final_error:
-        print(f'ERROR: Individual sphere subtraction failed: {final_error}')
-        print('WARNING: Falling back to simple negative plate method.')
+        logger.error(f'Individual sphere subtraction failed: {final_error}')
+        logger.warning('Falling back to simple negative plate method.')
         # Final fallback to the simple approach
         return create_simple_negative_plate(params)
 
@@ -1451,7 +1454,7 @@ def build_counter_plate_bowl(params: CardSettings) -> trimesh.Trimesh:
                 sphere_meshes.append(sphere)
                 total_spheres += 1
 
-    print(f'DEBUG: Created {total_spheres} bowl caps for counter plate (a={a:.3f}mm, h={h:.3f}mm, R={R:.3f}mm)')
+    logger.debug(f'Created {total_spheres} bowl caps for counter plate (a={a:.3f}mm, h={h:.3f}mm, R={R:.3f}mm)')
 
     # Markers (same as hemispheres)
     line_end_meshes = []
@@ -1466,7 +1469,7 @@ def build_counter_plate_bowl(params: CardSettings) -> trimesh.Trimesh:
         triangle_meshes.append(triangle_mesh)
 
     if not sphere_meshes:
-        print('WARNING: No spheres were generated. Returning base plate.')
+        logger.warning('No spheres were generated. Returning base plate.')
         return plate_mesh
 
     # Boolean operations
@@ -1474,7 +1477,7 @@ def build_counter_plate_bowl(params: CardSettings) -> trimesh.Trimesh:
     for engine in engines_to_try:
         try:
             engine_name = engine if engine else 'trimesh-default'
-            print(f'DEBUG: Bowl boolean ops with {engine_name}...')
+            logger.debug(f'Bowl boolean ops with {engine_name}...')
 
             if len(sphere_meshes) == 1:
                 union_spheres = sphere_meshes[0]
@@ -1508,12 +1511,12 @@ def build_counter_plate_bowl(params: CardSettings) -> trimesh.Trimesh:
             counter_plate_mesh = trimesh.boolean.difference([plate_mesh, all_cutouts], engine=engine)
             if not counter_plate_mesh.is_watertight:
                 counter_plate_mesh.fill_holes()
-            print(f'DEBUG: Counter plate with bowl recess completed: {len(counter_plate_mesh.vertices)} verts')
+            logger.debug(f'Counter plate with bowl recess completed: {len(counter_plate_mesh.vertices)} verts')
             return counter_plate_mesh
         except Exception as e:
-            print(f'ERROR: Bowl boolean with {engine_name} failed: {e}')
+            logger.error(f'Bowl boolean with {engine_name} failed: {e}')
             if engine == engines_to_try[-1]:
-                print('WARNING: Falling back to simple negative plate method.')
+                logger.warning('Falling back to simple negative plate method.')
                 return create_simple_negative_plate(params)
             continue
 
@@ -1628,7 +1631,7 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
         triangle_meshes.append(triangle_mesh)
 
     if not recess_meshes:
-        print('WARNING: No cone recesses were generated. Returning base plate.')
+        logger.warning('No cone recesses were generated. Returning base plate.')
         return plate_mesh
 
     print(
@@ -1647,11 +1650,11 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
             for engine in engines_to_try:
                 try:
                     engine_name = engine if engine else 'trimesh-default'
-                    print(f'DEBUG: Cone union with {engine_name}...')
+                    logger.debug(f'Cone union with {engine_name}...')
                     union_recesses = trimesh.boolean.union(recess_meshes, engine=engine)
                     break
                 except Exception as e:
-                    print(f'WARNING: Failed to union with {engine_name}: {e}')
+                    logger.warning(f'Failed to union with {engine_name}: {e}')
                     continue
 
             if union_recesses is None:
@@ -1689,12 +1692,12 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
 
         if not result_mesh.is_watertight:
             result_mesh.fill_holes()
-        print(f'DEBUG: Cone recess (optimized union approach) completed: {len(result_mesh.vertices)} verts')
+        logger.debug(f'Cone recess (optimized union approach) completed: {len(result_mesh.vertices)} verts')
         return result_mesh
 
     except Exception as e_final:
-        print(f'ERROR: Cone recess union approach failed: {e_final}')
-        print('WARNING: Falling back to individual subtraction method.')
+        logger.error(f'Cone recess union approach failed: {e_final}')
+        logger.warning('Falling back to individual subtraction method.')
 
         # Fallback to individual subtraction if union approach fails
         try:
@@ -1702,30 +1705,30 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
             for i, recess in enumerate(recess_meshes):
                 try:
                     if (i % 50) == 0:
-                        print(f'DEBUG: Subtracting cone frustum {i + 1}/{len(recess_meshes)}...')
+                        logger.debug(f'Subtracting cone frustum {i + 1}/{len(recess_meshes)}...')
                     result_mesh = trimesh.boolean.difference([result_mesh, recess])
                 except Exception as e_sub:
-                    print(f'WARNING: Failed to subtract frustum {i + 1}: {e_sub}')
+                    logger.warning(f'Failed to subtract frustum {i + 1}: {e_sub}')
                     continue
             for i, triangle in enumerate(triangle_meshes):
                 try:
                     result_mesh = trimesh.boolean.difference([result_mesh, triangle])
                 except Exception as e_tri:
-                    print(f'WARNING: Failed to subtract triangle {i + 1}: {e_tri}')
+                    logger.warning(f'Failed to subtract triangle {i + 1}: {e_tri}')
                     continue
             for i, line_end in enumerate(line_end_meshes):
                 try:
                     result_mesh = trimesh.boolean.difference([result_mesh, line_end])
                 except Exception as e_line:
-                    print(f'WARNING: Failed to subtract line end {i + 1}: {e_line}')
+                    logger.warning(f'Failed to subtract line end {i + 1}: {e_line}')
                     continue
             if not result_mesh.is_watertight:
                 result_mesh.fill_holes()
-            print(f'DEBUG: Cone recess (fallback individual subtraction) completed: {len(result_mesh.vertices)} verts')
+            logger.debug(f'Cone recess (fallback individual subtraction) completed: {len(result_mesh.vertices)} verts')
             return result_mesh
         except Exception as e_fallback:
-            print(f'ERROR: All cone recess methods failed: {e_fallback}')
-            print('WARNING: Returning simple negative plate method.')
+            logger.error(f'All cone recess methods failed: {e_fallback}')
+            logger.warning('Returning simple negative plate method.')
             return create_simple_negative_plate(params)
 
 
@@ -1739,7 +1742,7 @@ def index():
     try:
         return render_template('index.html')
     except Exception as e:
-        print(f'Error rendering template: {e}')
+        logger.info(f'Error rendering template: {e}')
         return jsonify({'error': 'Failed to load template'}), 500
 
 
@@ -2106,16 +2109,16 @@ def generate_braille_stl():
                 # It does NOT depend on text input - always creates ALL 6 dots per cell
                 recess_shape = int(getattr(settings, 'recess_shape', 1))
                 if recess_shape == 1:
-                    print('DEBUG: Generating counter plate with bowl (spherical cap) recesses (all positions)')
+                    logger.debug('Generating counter plate with bowl (spherical cap) recesses (all positions)')
                     mesh = build_counter_plate_bowl(settings)
                 elif recess_shape == 0:
-                    print('DEBUG: Generating counter plate with hemispherical recesses (all positions)')
+                    logger.debug('Generating counter plate with hemispherical recesses (all positions)')
                     mesh = build_counter_plate_hemispheres(settings)
                 elif recess_shape == 2:
-                    print('DEBUG: Generating counter plate with conical (frustum) recesses (all positions)')
+                    logger.debug('Generating counter plate with conical (frustum) recesses (all positions)')
                     mesh = build_counter_plate_cone(settings)
                 else:
-                    print('WARNING: Unknown recess_shape value, defaulting to bowl')
+                    logger.warning('Unknown recess_shape value, defaulting to bowl')
                     mesh = build_counter_plate_bowl(settings)
             else:
                 return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
@@ -2132,23 +2135,23 @@ def generate_braille_stl():
 
         # Verify mesh is watertight and manifold
         if not mesh.is_watertight:
-            print(f'WARNING: Generated {plate_type} plate mesh is not watertight!')
+            logger.warning(f'Generated {plate_type} plate mesh is not watertight!')
             # Try to fix the mesh
             mesh.fill_holes()
             if mesh.is_watertight:
-                print('INFO: Mesh holes filled successfully')
+                logger.info('Mesh holes filled successfully')
             else:
-                print('ERROR: Could not make mesh watertight')
+                logger.error('Could not make mesh watertight')
 
         if not mesh.is_winding_consistent:
-            print(f'WARNING: Generated {plate_type} plate mesh has inconsistent winding!')
+            logger.warning(f'Generated {plate_type} plate mesh has inconsistent winding!')
             try:
                 mesh.fix_normals()
-                print('INFO: Fixed mesh normals')
+                logger.info('Fixed mesh normals')
             except ImportError:
                 # fix_normals requires scipy, try unify_normals instead
                 mesh.unify_normals()
-                print('INFO: Unified mesh normals (scipy not available)')
+                logger.info('Unified mesh normals (scipy not available)')
 
         # Compute content-addressable cache key from request payload
         # Build cache payload; exclude user text/grade for counter plates for universal caching
@@ -2266,7 +2269,7 @@ def generate_braille_stl():
 
         # Save config as JSON
         config_json = json.dumps(config_dump, indent=2)
-        print(f'DEBUG: Config dump:\n{config_json}')
+        logger.debug(f'Config dump:\n{config_json}')
 
         # Create filename based on text content with fallback logic
         if plate_type == 'positive':
@@ -2420,16 +2423,16 @@ def generate_counter_plate_stl():
         # It does NOT depend on text input - always creates ALL 6 dots per cell
         recess_shape = int(getattr(settings, 'recess_shape', 1))
         if recess_shape == 1:
-            print('DEBUG: Generating counter plate with bowl (spherical cap) recesses (all positions)')
+            logger.debug('Generating counter plate with bowl (spherical cap) recesses (all positions)')
             mesh = build_counter_plate_bowl(settings)
         elif recess_shape == 0:
-            print('DEBUG: Generating counter plate with hemispherical recesses (all positions)')
+            logger.debug('Generating counter plate with hemispherical recesses (all positions)')
             mesh = build_counter_plate_hemispheres(settings)
         elif recess_shape == 2:
-            print('DEBUG: Generating counter plate with conical (frustum) recesses (all positions)')
+            logger.debug('Generating counter plate with conical (frustum) recesses (all positions)')
             mesh = build_counter_plate_cone(settings)
         else:
-            print(f'WARNING: Unknown recess_shape={recess_shape}, defaulting to hemisphere')
+            logger.warning(f'Unknown recess_shape={recess_shape}, defaulting to hemisphere')
             mesh = build_counter_plate_hemispheres(settings)
 
         # Compute content-addressable cache key from request payload

@@ -9,6 +9,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
+from app.utils import get_logger
+
+# Configure logging for this module
+logger = get_logger(__name__)
+
 
 # Enums for typed models
 class ShapeType(str, Enum):
@@ -283,7 +288,7 @@ class CardSettings:
             self._validate_margins()
         except Exception as e:
             # Don't fail initialization due to validation issues
-            print(f'Note: Margin validation skipped during initialization: {e}')
+            logger.info(f'Note: Margin validation skipped during initialization: {e}')
 
         # Map new parameter names to legacy ones for backward compatibility
         if 'emboss_dot_base_diameter' in kwargs:
@@ -436,13 +441,13 @@ class CardSettings:
             bottom_edge_clearance = self.bottom_margin - max_dot_extension
 
             if margin_warnings:
-                print('⚠ WARNING: Margins below minimum safe values:')
+                logger.warning('WARNING: Margins below minimum safe values:')
                 for warning in margin_warnings:
-                    print(f'  - {warning}')
+                    logger.warning(f'  - {warning}')
                 print(
                     f'  - Recommended minimum margin: {self.min_safe_margin:.2f}mm (½ of {self.cell_spacing:.1f}mm cell spacing)'
                 )
-                print('  - Consider reducing grid size or increasing card dimensions')
+                logger.info('  - Consider reducing grid size or increasing card dimensions')
 
             # Check if dots will extend beyond card edges
             edge_warnings = []
@@ -456,16 +461,16 @@ class CardSettings:
                 edge_warnings.append(f'Bottom edge dots will extend {-bottom_edge_clearance:.2f}mm beyond card edge')
 
             if edge_warnings:
-                print('⚠ CRITICAL WARNING: Braille dots will extend beyond card boundaries!')
+                logger.warning('CRITICAL WARNING: Braille dots will extend beyond card boundaries!')
                 for warning in edge_warnings:
-                    print(f'  - {warning}')
+                    logger.warning(f'  - {warning}')
 
             # Log successful validation if all is well
             if not margin_warnings and not edge_warnings:
-                print('✓ Grid centering validation passed: Braille grid is centered with safe margins')
-                print(f'  - Grid dimensions: {self.grid_width:.2f}mm × {self.grid_height:.2f}mm')
-                print(f'  - Card dimensions: {self.card_width:.2f}mm × {self.card_height:.2f}mm')
-                print(f'  - Centered margins: L/R={self.left_margin:.2f}mm, T/B={self.top_margin:.2f}mm')
+                logger.info('Grid centering validation passed: Braille grid is centered with safe margins')
+                logger.info(f'  - Grid dimensions: {self.grid_width:.2f}mm × {self.grid_height:.2f}mm')
+                logger.info(f'  - Card dimensions: {self.card_width:.2f}mm × {self.card_height:.2f}mm')
+                logger.info(f'  - Centered margins: L/R={self.left_margin:.2f}mm, T/B={self.top_margin:.2f}mm')
                 print(
                     f'  - Minimum safe margin: {self.min_safe_margin:.2f}mm (½ of {self.cell_spacing:.1f}mm cell spacing)'
                 )

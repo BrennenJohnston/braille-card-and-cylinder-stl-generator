@@ -17,18 +17,49 @@ BRAILLE_UNICODE_START = 0x2800  # ⠀
 BRAILLE_UNICODE_END = 0x28FF  # ⣿
 
 
-def setup_logging(level: int = logging.INFO) -> logging.Logger:
+def setup_logging(name: str = None, level: int = None) -> logging.Logger:
     """
-    Configure application logging.
+    Configure application logging with proper formatting.
 
     Args:
-        level: Logging level (DEBUG, INFO, WARNING, ERROR)
+        name: Logger name (module name). If None, returns root logger
+        level: Logging level. If None, reads from LOG_LEVEL env var or defaults to INFO
 
     Returns:
         Configured logger instance
     """
-    logging.basicConfig(level=level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    return logging.getLogger(__name__)
+    import os
+    
+    # Determine log level from environment or parameter
+    if level is None:
+        env_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
+        level = getattr(logging, env_level, logging.INFO)
+    
+    # Configure root logger if not already configured
+    if not logging.getLogger().handlers:
+        logging.basicConfig(
+            level=level,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+    
+    # Return named logger or root logger
+    logger = logging.getLogger(name) if name else logging.getLogger()
+    logger.setLevel(level)
+    return logger
+
+
+def get_logger(name: str) -> logging.Logger:
+    """
+    Get a logger for a module.
+    
+    Args:
+        name: Module name (typically __name__)
+        
+    Returns:
+        Logger instance configured for the module
+    """
+    return setup_logging(name)
 
 
 def is_braille_char(char: str) -> bool:

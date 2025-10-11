@@ -1,6 +1,6 @@
 flask==2.3.3
 trimesh==3.23.5
-numpy==1.24.3
+numpy==1.26.4
 flask-cors==4.0.0
 shapely==2.0.1
 Flask-Limiter==3.8.0

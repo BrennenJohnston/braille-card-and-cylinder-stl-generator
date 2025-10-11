@@ -10,6 +10,7 @@
       }
     }
   ],
+  "buildCommand": "python -m pip install --upgrade pip && python -m pip install -r requirements.txt -t python",
   "routes": [
     {
       "src": "/(.*)",
@@ -19,7 +20,8 @@
   "functions": {
     "wsgi.py": {
       "maxDuration": 60,
-      "memory": 3008
+      "memory": 3008,
+      "includeFiles": "python/**"
     }
   }
 }

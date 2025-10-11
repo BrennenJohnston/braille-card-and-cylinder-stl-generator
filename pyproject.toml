@@ -2,7 +2,7 @@
 name = "braille-stl-generator"
 version = "1.0.0"
 description = "Braille card and cylinder STL generator"
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.12"
 dependencies = [
     "flask==2.3.3",
     "trimesh==3.23.5",
@@ -12,12 +12,12 @@ dependencies = [
     "Flask-Limiter==3.8.0",
     "redis==5.0.7",
     "requests==2.32.3",
-    "scipy==1.10.1",
+    "scipy==1.11.4",
 ]
 
 [tool.ruff]
 line-length = 120
-target-version = "py39"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = [
@@ -45,7 +45,7 @@ indent-style = "space"
 line-ending = "auto"
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false  # Start permissive, tighten later

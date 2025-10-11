@@ -7,6 +7,8 @@ shell creation, dot mapping, and recess operations.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import trimesh
 from shapely.geometry import Polygon as ShapelyPolygon
@@ -16,12 +18,13 @@ from trimesh.creation import extrude_polygon
 from app.geometry.dot_shapes import create_braille_dot
 from app.utils import braille_to_dots, get_logger
 
+if TYPE_CHECKING:
+    from app.models import CardSettings
+
 # Configure logging for this module
 logger = get_logger(__name__)
 
-# Note: CardSettings and _build_character_polygon dependencies:
-# - CardSettings from app.models (passed as parameter, type hints are forward references)
-# - _build_character_polygon lazy imported from backend (temporary, will move in future batch)
+# Note: _build_character_polygon lazy imported from backend (temporary, will move in future batch)
 
 
 def _compute_cylinder_frame(x_arc: float, cylinder_diameter_mm: float, seam_offset_deg: float = 0.0):
@@ -203,21 +206,13 @@ def create_cylinder_shell(
     # The cylinder extends from -height_mm/2 to +height_mm/2
     # Since prism_height > height_mm, the prism will cut through the entire cylinder
 
-    # Perform boolean subtraction to create the cutout
-    try:
-        result = trimesh.boolean.difference([main_cylinder, cutout_prism], engine='manifold')
-        if result.is_watertight:
-            return result
-    except Exception as e:
-        logger.warning(f'Warning: Boolean operation failed with manifold engine: {e}')
-
-    # Fallback: try with default engine
+    # Perform boolean subtraction to create the cutout (serverless-compatible)
     try:
         result = trimesh.boolean.difference([main_cylinder, cutout_prism])
         if result.is_watertight:
             return result
     except Exception as e:
-        logger.warning(f'Warning: Boolean operation failed with default engine: {e}')
+        logger.warning(f'Warning: Boolean operation failed: {e}')
 
     # Final fallback: return the original cylinder if all boolean operations fail
     logger.warning('Warning: Could not create polygonal cutout, returning solid cylinder')
@@ -743,25 +738,14 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
             if len(all_markers) == 1:
                 union_markers = all_markers[0]
             else:
-                union_markers = trimesh.boolean.union(all_markers, engine='manifold')
+                union_markers = trimesh.boolean.union(all_markers)
 
             logger.debug('Marker union successful, subtracting from cylinder shell...')
-            # Subtract from shell to recess
-            cylinder_shell = trimesh.boolean.difference([cylinder_shell, union_markers], engine='manifold')
+            # Subtract from shell to recess (serverless-compatible)
+            cylinder_shell = trimesh.boolean.difference([cylinder_shell, union_markers])
             logger.debug('Marker subtraction successful')
         except Exception as e:
             logger.error(f'Could not create marker cutouts: {e}')
-            # Try fallback with default engine
-            try:
-                logger.debug('Trying marker subtraction with default engine...')
-                if len(all_markers) == 1:
-                    union_markers = all_markers[0]
-                else:
-                    union_markers = trimesh.boolean.union(all_markers)
-                cylinder_shell = trimesh.boolean.difference([cylinder_shell, union_markers])
-                logger.debug('Marker subtraction successful with default engine')
-            except Exception as e2:
-                logger.error(f'Marker subtraction failed with all engines: {e2}')
 
     meshes = [cylinder_shell]
 
@@ -1138,7 +1122,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     # 1) Start with the cylinder shell (which already has the polygonal cutout)
     # 2) Subtract the union of all spheres and triangles to create outer recesses
 
-    engines_to_try = ['manifold', None]  # None uses trimesh default
+    engines_to_try = [None]  # Use trimesh built-in engine (serverless-compatible)
 
     for engine in engines_to_try:
         try:

@@ -57,7 +57,11 @@ from app.models import CardSettings
 from app.utils import braille_to_dots, get_logger
 
 # Import validation from app.validation
-from app.validation import validate_braille_lines, validate_grade, validate_lines, validate_plate_type, validate_request_has_content, validate_settings, validate_shape_type
+from app.validation import (
+    validate_braille_lines,
+    validate_lines,
+    validate_settings,
+)
 
 # Configure logging for this module
 logger = get_logger(__name__)
@@ -293,6 +297,7 @@ def add_security_headers(response):
 
 # Input validation functions
 # Validation functions now imported from app.validation
+
 
 # Add error handling for Vercel environment
 @app.errorhandler(Exception)
@@ -806,26 +811,15 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
             if len(marker_meshes) == 1:
                 union_markers = marker_meshes[0]
             else:
-                union_markers = trimesh.boolean.union(marker_meshes, engine='manifold')
+                union_markers = trimesh.boolean.union(marker_meshes)
 
             logger.debug(f'Subtracting {len(marker_meshes)} marker recesses from embossing plate...')
             # Subtract markers to create recesses
-            combined_mesh = trimesh.boolean.difference([combined_mesh, union_markers], engine='manifold')
+            combined_mesh = trimesh.boolean.difference([combined_mesh, union_markers])
             logger.debug('Marker subtraction successful')
         except Exception as e:
-            logger.warning(f'Could not create marker recesses with manifold engine: {e}')
-            # Try fallback with default engine
-            try:
-                logger.debug('Trying marker subtraction with default engine...')
-                if len(marker_meshes) == 1:
-                    union_markers = marker_meshes[0]
-                else:
-                    union_markers = trimesh.boolean.union(marker_meshes)
-                combined_mesh = trimesh.boolean.difference([combined_mesh, union_markers])
-                logger.debug('Marker subtraction successful with default engine')
-            except Exception as e2:
-                logger.error(f'Marker subtraction failed with all engines: {e2}')
-                logger.info('Returning embossing plate without marker recesses')
+            logger.warning(f'Could not create marker recesses: {e}')
+            logger.info('Returning embossing plate without marker recesses')
 
     return combined_mesh
 
@@ -1048,7 +1042,7 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
     - For each dot center (x, y) in the braille grid, creates an icosphere with radius r
       and translates its center to (x, y, TH - r + ε) so the lower hemisphere sits inside the slab
       and the equator coincides with the top surface.
-    - Subtracts all spheres in one operation using trimesh.boolean.difference with engine='manifold'.
+    - Subtracts all spheres in one operation using trimesh.boolean.difference with built-in engine.
     - Generates dot centers from a full grid using the same layout parameters as the Embossing Plate.
     - Always places all 6 dots per cell (does not consult per-character translation).
     """
@@ -1143,8 +1137,8 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
         logger.warning('No spheres were generated. Returning base plate.')
         return plate_mesh
 
-    # Perform boolean operations - try manifold first, then trimesh default
-    engines_to_try = ['manifold', 'blender', None]  # None uses trimesh default (usually CGAL or OpenSCAD)
+    # Perform boolean operations - try trimesh default first (serverless-compatible)
+    engines_to_try = [None]  # None uses trimesh built-in boolean engine (no external dependencies)
 
     for engine in engines_to_try:
         try:
@@ -1337,8 +1331,8 @@ def build_counter_plate_bowl(params: CardSettings) -> trimesh.Trimesh:
         logger.warning('No spheres were generated. Returning base plate.')
         return plate_mesh
 
-    # Boolean operations
-    engines_to_try = ['manifold', 'blender', None]
+    # Boolean operations - use trimesh default (serverless-compatible)
+    engines_to_try = [None]  # None uses trimesh built-in boolean engine
     for engine in engines_to_try:
         try:
             engine_name = engine if engine else 'trimesh-default'
@@ -1509,8 +1503,8 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
         if len(recess_meshes) == 1:
             union_recesses = recess_meshes[0]
         else:
-            # Try different engines for better performance
-            engines_to_try = ['manifold', 'blender', None]
+            # Use trimesh default engine (serverless-compatible)
+            engines_to_try = [None]  # None uses trimesh built-in boolean engine
             union_recesses = None
             for engine in engines_to_try:
                 try:
@@ -1531,14 +1525,14 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
             if len(triangle_meshes) == 1:
                 union_triangles = triangle_meshes[0]
             else:
-                union_triangles = trimesh.boolean.union(triangle_meshes, engine='manifold')
+                union_triangles = trimesh.boolean.union(triangle_meshes)
 
         union_line_ends = None
         if line_end_meshes:
             if len(line_end_meshes) == 1:
                 union_line_ends = line_end_meshes[0]
             else:
-                union_line_ends = trimesh.boolean.union(line_end_meshes, engine='manifold')
+                union_line_ends = trimesh.boolean.union(line_end_meshes)
 
         # Combine all cutouts
         cutouts_list = [union_recesses]
@@ -1549,11 +1543,11 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
 
         # Single difference operation (much faster than individual subtractions)
         if len(cutouts_list) > 1:
-            union_cutouts = trimesh.boolean.union(cutouts_list, engine='manifold')
+            union_cutouts = trimesh.boolean.union(cutouts_list)
         else:
             union_cutouts = cutouts_list[0]
 
-        result_mesh = trimesh.boolean.difference([plate_mesh, union_cutouts], engine='manifold')
+        result_mesh = trimesh.boolean.difference([plate_mesh, union_cutouts])
 
         if not result_mesh.is_watertight:
             result_mesh.fill_holes()

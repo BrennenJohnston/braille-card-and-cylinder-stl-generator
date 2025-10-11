@@ -52,21 +52,15 @@ def create_braille_dot(x, y, z, settings):
                 parts.append(frustum)
 
             # Spherical cap dome starting at top of frustum; base radius = top_radius
+            # Serverless-friendly: avoid boolean intersection; place sphere so lower portion overlaps cylinder base
+            # The overlap is acceptable for STL export and avoids external boolean backends.
             R = (top_radius * top_radius + dome_h * dome_h) / (2.0 * dome_h)
-            zc = (base_h / 2.0) + (dome_h - R)  # center so cap base lies at z = base_h/2
+            zc = (base_h / 2.0) + (dome_h - R)  # center so cap base lies near z = base_h/2
             sphere = trimesh.creation.icosphere(
                 radius=R, subdivisions=max(2, int(getattr(settings, 'hemisphere_subdivisions', 1)) + 2)
             )
             sphere.apply_translation([0.0, 0.0, zc])
-            # Intersect with a slab to keep only z >= base_h/2
-            slab_height = 2.0 * R + base_h + dome_h
-            slab = trimesh.creation.box(extents=(4.0 * R + base_diameter, 4.0 * R + base_diameter, slab_height))
-            slab.apply_translation([0.0, 0.0, (base_h / 2.0) + (slab_height / 2.0)])
-            try:
-                cap = trimesh.boolean.intersection([sphere, slab], engine='manifold')
-            except Exception:
-                cap = trimesh.boolean.intersection([sphere, slab])
-            parts.append(cap)
+            parts.append(sphere)
 
             # Combine, recenter by shifting down half of dome height, then translate to (x, y, z)
             dot = trimesh.util.concatenate(parts)

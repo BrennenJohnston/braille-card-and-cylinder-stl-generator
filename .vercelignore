@@ -1,0 +1,15 @@
+node_modules/
+third_party/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dll
+*.dylib
+*.log
+.DS_Store
+.env
+venv/
+.env.local
+.env.*

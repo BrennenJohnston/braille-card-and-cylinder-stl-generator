@@ -383,6 +383,32 @@ def create_triangle_marker_polygon(x, y, settings: CardSettings):
     return Polygon(vertices)
 
 
+def create_line_marker_polygon(x, y, settings: CardSettings):
+    """
+    Create a 2D rectangle polygon for the end-of-row line marker at the first cell.
+
+    The rectangle height equals the cell height (2 * dot_spacing) and the
+    width equals one dot spacing, centered at the right column of the first cell.
+
+    Args:
+        x: X position of the cell center
+        y: Y position of the cell center
+        settings: CardSettings object with braille dimensions
+
+    Returns:
+        Shapely Polygon representing the rectangle
+    """
+    line_width = settings.dot_spacing
+    line_x = x + settings.dot_spacing / 2
+    vertices = [
+        (line_x - line_width / 2, y - settings.dot_spacing),  # Bottom left
+        (line_x + line_width / 2, y - settings.dot_spacing),  # Bottom right
+        (line_x + line_width / 2, y + settings.dot_spacing),  # Top right
+        (line_x - line_width / 2, y + settings.dot_spacing),  # Top left
+    ]
+    return Polygon(vertices)
+
+
 def create_card_triangle_marker_3d(x, y, settings: CardSettings, height=0.6, for_subtraction=False):
     """
     Create a 3D triangular prism for card surface marking.
@@ -816,27 +842,58 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
     else:
         logger.info(f'Created positive plate with {len(meshes) - 1} braille dots and no indicator shapes')
 
-    # Combine all positive meshes (base + dots)
-    combined_mesh = trimesh.util.concatenate(meshes)
-
-    # Subtract marker recesses from the combined mesh (avoid heavy 3D booleans on serverless)
-    if getattr(settings, 'indicator_shapes', 1) and marker_meshes and not _is_serverless_env():
+    # Serverless-friendly indicator recess creation: 2D subtract then extrude once
+    if getattr(settings, 'indicator_shapes', 1) and marker_meshes and _is_serverless_env():
         try:
-            # Union all markers for efficient boolean operation
-            if len(marker_meshes) == 1:
-                union_markers = marker_meshes[0]
-            else:
-                union_markers = trimesh.boolean.union(marker_meshes)
+            # 1) Build 2D base rectangle
+            base_2d = Polygon(
+                [
+                    (0.0, 0.0),
+                    (settings.card_width, 0.0),
+                    (settings.card_width, settings.card_height),
+                    (0.0, settings.card_height),
+                ]
+            )
 
-            logger.debug(f'Subtracting {len(marker_meshes)} marker recesses from embossing plate...')
-            # Subtract markers to create recesses
-            combined_mesh = trimesh.boolean.difference([combined_mesh, union_markers])
-            logger.debug('Marker subtraction successful')
-        except Exception as e:
-            logger.warning(f'Could not create marker recesses: {e}')
-            logger.info('Returning embossing plate without marker recesses')
+            # 2) Build 2D marker polygons for all rows (line + triangle) and subtract from base_2d
+            from shapely.ops import unary_union as _unary_union
 
-    return combined_mesh
+            subtractors = []
+            for row_num in range(settings.grid_rows):
+                y_pos = (
+                    settings.card_height
+                    - settings.top_margin
+                    - (row_num * settings.line_spacing)
+                    + settings.braille_y_adjust
+                )
+                x_first = settings.left_margin + settings.braille_x_adjust
+                x_last = (
+                    settings.left_margin
+                    + ((settings.grid_columns - 1) * settings.cell_spacing)
+                    + settings.braille_x_adjust
+                )
+                # Line at first cell (rectangle)
+                subtractors.append(create_line_marker_polygon(x_first, y_pos, settings))
+                # Triangle at last cell
+                subtractors.append(create_triangle_marker_polygon(x_last, y_pos, settings))
+
+            subtractors_2d = _unary_union(subtractors)
+            plate_2d = base_2d.difference(subtractors_2d)
+
+            # 3) Extrude to 3D once
+            plate_3d = trimesh.creation.extrude_polygon(plate_2d, height=settings.card_thickness)
+            # Center in Z to match existing convention
+            plate_3d.apply_translation((0.0, 0.0, settings.card_thickness / 2.0))
+
+            # 4) Add braille dots on top of this geometry
+            full_meshes = [plate_3d] + meshes[1:]  # replace original base with extruded 2D-difference base
+            combined_mesh = trimesh.util.concatenate(full_meshes)
+            return combined_mesh
+        except Exception as e2:
+            logger.warning(f'2D marker recess approach failed: {e2}')
+
+    # Default path: combine (no marker recesses)
+    return trimesh.util.concatenate(meshes)
 
 
 def create_simple_negative_plate(settings: CardSettings, lines=None):

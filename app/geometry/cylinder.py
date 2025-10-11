@@ -7,6 +7,7 @@ shell creation, dot mapping, and recess operations.
 
 from __future__ import annotations
 
+import os as _os
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -26,6 +27,16 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 # Note: _build_character_polygon lazy imported from backend (temporary, will move in future batch)
+
+
+def _is_serverless_env() -> bool:
+    """Detect serverless runtimes (e.g., Vercel/Lambda)."""
+    try:
+        return bool(
+            _os.environ.get('VERCEL') or _os.environ.get('AWS_LAMBDA_FUNCTION_NAME') or _os.environ.get('NOW_REGION')
+        )
+    except Exception:
+        return False
 
 
 def _compute_cylinder_frame(x_arc: float, cylinder_diameter_mm: float, seam_offset_deg: float = 0.0):
@@ -829,6 +840,14 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     cylinder_shell = create_cylinder_shell(
         diameter, height, polygonal_cutout_radius, polygonal_cutout_sides, align_vertex_theta_rad=cutout_align_theta
     )
+
+    # In serverless, skip boolean recess generation entirely to avoid backend errors
+    if _is_serverless_env():
+        logger.warning('Serverless detected: returning cylinder shell without recesses (counter plate)')
+        # Ensure base is at Z=0
+        min_z = cylinder_shell.bounds[0][2]
+        cylinder_shell.apply_translation([0, 0, -min_z])
+        return cylinder_shell
 
     # Use grid_rows from settings
 

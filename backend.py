@@ -855,7 +855,7 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
                 ]
             )
 
-            # 2) Build 2D marker polygons for all rows (line + triangle) and subtract from base_2d
+            # 2) Build 2D marker polygons for all rows (line + triangle)
             from shapely.ops import unary_union as _unary_union
 
             subtractors = []
@@ -872,23 +872,36 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
                     + ((settings.grid_columns - 1) * settings.cell_spacing)
                     + settings.braille_x_adjust
                 )
-                # Line at first cell (rectangle)
                 subtractors.append(create_line_marker_polygon(x_first, y_pos, settings))
-                # Triangle at last cell
                 subtractors.append(create_triangle_marker_polygon(x_last, y_pos, settings))
 
             subtractors_2d = _unary_union(subtractors)
-            plate_2d = base_2d.difference(subtractors_2d)
 
-            # 3) Extrude to 3D once
-            plate_3d = trimesh.creation.extrude_polygon(plate_2d, height=settings.card_thickness)
-            # Center in Z to match existing convention
-            plate_3d.apply_translation((0.0, 0.0, settings.card_thickness / 2.0))
+            # 3) Create two-layer plate: bottom slab + top sheet with 2D holes (recess depth)
+            recess_h = 0.6  # mm; matches triangle recess height used previously
+            bottom_h = max(0.1, settings.card_thickness - recess_h)
 
-            # 4) Add braille dots on top of this geometry
-            full_meshes = [plate_3d] + meshes[1:]  # replace original base with extruded 2D-difference base
-            combined_mesh = trimesh.util.concatenate(full_meshes)
-            return combined_mesh
+            # Bottom slab: full rectangle, no holes
+            bottom_slab = trimesh.creation.extrude_polygon(base_2d, height=bottom_h)
+
+            # Top sheet: base minus markers, extruded to recess depth
+            top_sheet_2d = base_2d.difference(subtractors_2d)
+
+            def _extrude_multipolygon(shape_2d, height):
+                if hasattr(shape_2d, 'geoms'):
+                    parts = [trimesh.creation.extrude_polygon(g, height=height) for g in shape_2d.geoms]
+                    return trimesh.util.concatenate(parts) if parts else None
+                return trimesh.creation.extrude_polygon(shape_2d, height=height)
+
+            top_sheet = _extrude_multipolygon(top_sheet_2d, recess_h)
+            if top_sheet is None:
+                raise RuntimeError('Top sheet extrusion produced no geometry')
+            # Position the top sheet above the bottom slab
+            top_sheet.apply_translation((0.0, 0.0, bottom_h))
+
+            # 4) Combine bottom slab + top sheet + dots
+            full_meshes = [bottom_slab, top_sheet] + meshes[1:]
+            return trimesh.util.concatenate(full_meshes)
         except Exception as e2:
             logger.warning(f'2D marker recess approach failed: {e2}')
 

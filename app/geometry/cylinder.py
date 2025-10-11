@@ -7,9 +7,6 @@ shell creation, dot mapping, and recess operations.
 
 from __future__ import annotations
 
-import json
-from datetime import datetime
-
 import numpy as np
 import trimesh
 from shapely.geometry import Polygon as ShapelyPolygon
@@ -21,7 +18,7 @@ from app.utils import braille_to_dots
 
 # Note: CardSettings and _build_character_polygon dependencies:
 # - CardSettings from app.models (passed as parameter, type hints are forward references)
-# - _build_character_polygon lazy imported from backend (temporary, will move in future batch)  
+# - _build_character_polygon lazy imported from backend (temporary, will move in future batch)
 
 
 def _compute_cylinder_frame(x_arc: float, cylinder_diameter_mm: float, seam_offset_deg: float = 0.0):
@@ -173,8 +170,6 @@ def create_cylinder_shell(
     # Create the polygonal prism using trimesh
     # We'll create it by making a 3D mesh from the 2D polygon
     # Create the polygon using shapely
-    from shapely.geometry import Polygon as ShapelyPolygon
-    from trimesh.creation import extrude_polygon
 
     polygon = ShapelyPolygon(vertices_2d)
 
@@ -226,9 +221,6 @@ def create_cylinder_shell(
     return main_cylinder
 
 
-
-
-
 def create_cylinder_triangle_marker(
     x_arc,
     y_local,
@@ -257,12 +249,11 @@ def create_cylinder_triangle_marker(
     )
 
     # Triangle dimensions - standard guide triangle shape
-    base_height = 2.0 * settings.dot_spacing  # Vertical extent
+    2.0 * settings.dot_spacing  # Vertical extent
     triangle_width = settings.dot_spacing  # Horizontal extent (pointing right in tangent direction)
 
     # Build 2D triangle in local tangent (X=t) and vertical (Y=z) plane
     # Vertices: base on left, apex pointing right
-    from shapely.geometry import Polygon as ShapelyPolygon
 
     if point_left:
         # Mirror along vertical axis so apex points left (negative tangent)
@@ -332,11 +323,14 @@ def create_cylinder_triangle_marker(
     return tri_prism_local
 
 
-
-
-
 def create_cylinder_line_end_marker(
-    x_arc, y_local, settings: CardSettings, cylinder_diameter_mm, seam_offset_deg=0, height_mm=0.5, for_subtraction=True
+    x_arc,
+    y_local,
+    settings: CardSettings,
+    cylinder_diameter_mm,
+    seam_offset_deg=0,
+    height_mm=0.5,
+    for_subtraction=True,
 ):
     """
     Create a line (rectangular prism) for end of row marking on cylinder surface.
@@ -362,12 +356,11 @@ def create_cylinder_line_end_marker(
     z_hat = np.array([0.0, 0.0, 1.0])  # cylinder axis
 
     # Line dimensions - vertical line at end of row
-    line_height = 2.0 * settings.dot_spacing  # Vertical extent (same as cell height)
+    2.0 * settings.dot_spacing  # Vertical extent (same as cell height)
     line_width = settings.dot_spacing  # Horizontal extent in tangent direction
 
     # Build 2D rectangle in local tangent (X=t) and vertical (Y=z) plane
     # Rectangle centered at origin, extending in both directions
-    from shapely.geometry import Polygon as ShapelyPolygon
 
     line_2d = ShapelyPolygon(
         [
@@ -418,9 +411,6 @@ def create_cylinder_line_end_marker(
         line_prism_local.apply_transform(T)
 
     return line_prism_local
-
-
-
 
 
 def create_cylinder_character_shape(
@@ -476,8 +466,10 @@ def create_cylinder_character_shape(
         )
 
     try:
-        # Build character polygon using shared helper
-        char_2d = _build_character_polygon(char_upper, char_width, char_height)
+        # Build character polygon using shared helper (lazy import to avoid circular dependency)
+        import backend as _backend
+
+        char_2d = _backend._build_character_polygon(char_upper, char_width, char_height)
         if char_2d is None:
             return create_cylinder_line_end_marker(
                 x_arc, y_local, settings, cylinder_diameter_mm, seam_offset_deg, height_mm, for_subtraction
@@ -548,9 +540,6 @@ def create_cylinder_character_shape(
     return char_prism_local
 
 
-
-
-
 def create_cylinder_braille_dot(x, y, z, settings: CardSettings, cylinder_diameter_mm, seam_offset_deg=0):
     """
     Create a braille dot transformed to cylinder surface.
@@ -583,9 +572,6 @@ def create_cylinder_braille_dot(x, y, z, settings: CardSettings, cylinder_diamet
     return dot
 
 
-
-
-
 def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None, original_lines=None):
     """
     Generate a cylinder-shaped braille card with dots on the outer surface.
@@ -603,6 +589,8 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
         original_lines: List of original text lines (before braille conversion) for character indicators
     """
     if settings is None:
+        from app.models import CardSettings
+
         settings = CardSettings()
 
     if cylinder_params is None:
@@ -828,9 +816,6 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
     return final_mesh
 
 
-
-
-
 def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_params=None):
     """
     Generate a cylinder-shaped counter plate with hemispherical recesses on the OUTER surface.
@@ -867,7 +852,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
 
     # Use grid dimensions from settings (same as card)
     radius = diameter / 2
-    circumference = np.pi * diameter
+    np.pi * diameter
 
     # Calculate the total grid width (same as card)
     grid_width = (settings.grid_columns - 1) * settings.cell_spacing
@@ -893,7 +878,6 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     )
 
     # Use grid_rows from settings
-    rows_on_cylinder = settings.grid_rows
 
     # Convert dot spacing to angular measurements
     dot_spacing_angle = settings.dot_spacing / radius

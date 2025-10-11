@@ -50,8 +50,7 @@ module_content += functions_code
 output_path = Path(__file__).parent.parent / 'app' / 'geometry' / 'cylinder.py'
 output_path.write_text(module_content, encoding='utf-8')
 
-print(f'✓ Built complete cylinder.py module')
+print('✓ Built complete cylinder.py module')
 print(f'  Total size: {len(module_content)} characters')
 print(f'  Total lines: {len(module_content.splitlines())}')
 print(f'  Location: {output_path}')
-

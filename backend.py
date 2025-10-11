@@ -32,6 +32,8 @@ except Exception:  # pragma: no cover - allow local dev without limiter installe
 
 
 # Import cache functions from app.cache module
+import contextlib
+
 from app.cache import (
     _blob_check_exists,
     _blob_public_base_url,
@@ -44,26 +46,15 @@ from app.cache import (
     compute_cache_key,
 )
 
+# Import geometry functions from app.geometry
+from app.geometry.cylinder import generate_cylinder_counter_plate, generate_cylinder_stl
+from app.geometry.dot_shapes import create_braille_dot
+
 # Import models from app.models
 from app.models import CardSettings
 
 # Import utilities from app.utils
 from app.utils import braille_to_dots
-
-# Import geometry functions from app.geometry
-from app.geometry.cylinder import (
-    _compute_cylinder_frame,
-    create_cylinder_braille_dot,
-    create_cylinder_character_shape,
-    create_cylinder_line_end_marker,
-    create_cylinder_shell,
-    create_cylinder_triangle_marker,
-    cylindrical_transform,
-    generate_cylinder_counter_plate,
-    generate_cylinder_stl,
-    layout_cylindrical_cells,
-)
-from app.geometry.dot_shapes import create_braille_dot
 
 app = Flask(__name__)
 # CORS configuration - update with your actual domain before deployment
@@ -227,10 +218,8 @@ def debug_blob_upload():
                 'status': d_resp.status_code,
                 'text': d_resp.text[:800] if hasattr(d_resp, 'text') else '<no text>',
             }
-            try:
+            with contextlib.suppress(Exception):
                 info['direct']['json'] = d_resp.json()
-            except Exception:
-                pass
         except Exception as e:
             info['direct'] = {'exception': str(e)}
 
@@ -251,10 +240,8 @@ def debug_blob_upload():
                 'status': a_resp.status_code,
                 'text': a_resp.text[:800] if hasattr(a_resp, 'text') else '<no text>',
             }
-            try:
+            with contextlib.suppress(Exception):
                 info['api']['json'] = a_resp.json()
-            except Exception:
-                pass
         except Exception as e:
             info['api'] = {'exception': str(e)}
 
@@ -466,11 +453,8 @@ def request_entity_too_large(error):
 def bad_request(error):
     return jsonify({'error': 'Invalid request format'}), 400
 
+
 # braille_to_dots now imported from app.utils
-
-
-    return dots
-
 
 # create_braille_dot now imported from app.geometry.dot_shapes
 
@@ -491,7 +475,7 @@ def create_triangle_marker_polygon(x, y, settings: CardSettings):
     """
     # Calculate triangle dimensions based on braille dot spacing
     # Base height = distance from top to bottom dot = 2 * dot_spacing
-    base_height = 2 * settings.dot_spacing
+    2 * settings.dot_spacing
 
     # Triangle height (horizontal extension) = dot_spacing (to reach middle-right dot)
     triangle_width = settings.dot_spacing
@@ -525,7 +509,7 @@ def create_card_triangle_marker_3d(x, y, settings: CardSettings, height=0.6, for
         Trimesh object representing the 3D triangle marker
     """
     # Calculate triangle dimensions based on braille dot spacing
-    base_height = 2 * settings.dot_spacing
+    2 * settings.dot_spacing
     triangle_width = settings.dot_spacing
 
     # Triangle vertices (same as 2D version)
@@ -574,7 +558,7 @@ def create_card_line_end_marker_3d(x, y, settings: CardSettings, height=0.5, for
         Trimesh object representing the 3D line marker
     """
     # Calculate line dimensions based on braille dot spacing
-    line_height = 2 * settings.dot_spacing  # Vertical extent (same as cell height)
+    2 * settings.dot_spacing  # Vertical extent (same as cell height)
     line_width = settings.dot_spacing  # Horizontal extent
 
     # Position line at the right column of the cell
@@ -704,6 +688,8 @@ def _build_character_polygon(char_upper: str, target_width: float, target_height
 
 # _compute_cylinder_frame now imported from app.geometry.cylinder
 
+
+def create_character_shape_3d(character, x, y, settings: CardSettings, height=1.0, for_subtraction=True):
     """
     Create a 3D character shape (capital letter A-Z or number 0-9) for end of row marking.
     Uses matplotlib's TextPath for proper font rendering.
@@ -1156,7 +1142,6 @@ def create_fallback_plate(settings: CardSettings):
 # layout_cylindrical_cells now imported from app.geometry.cylinder
 
 
-
 # cylindrical_transform now imported from app.geometry.cylinder
 
 
@@ -1173,6 +1158,7 @@ def create_fallback_plate(settings: CardSettings):
 # generate_cylinder_stl now imported from app.geometry.cylinder
 
 # generate_cylinder_counter_plate now imported from app.geometry.cylinder
+
 
 def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
     """
@@ -2333,7 +2319,7 @@ def generate_braille_stl():
                 resp.headers['X-Blob-Cache'] = 'miss'
                 resp.headers['X-Blob-Cache-Reason'] = 'uploaded-now'
                 # Structured cost log
-                try:
+                with contextlib.suppress(Exception):
                     app.logger.info(
                         json.dumps(
                             {
@@ -2347,8 +2333,6 @@ def generate_braille_stl():
                             }
                         )
                     )
-                except Exception:
-                    pass
                 return resp
 
         # Build response with headers
@@ -2364,7 +2348,7 @@ def generate_braille_stl():
         resp.headers['X-Cache'] = 'origin'
         resp.headers['X-Compute-Time'] = str(compute_ms)
         # Structured cost log for origin send
-        try:
+        with contextlib.suppress(Exception):
             app.logger.info(
                 json.dumps(
                     {
@@ -2378,8 +2362,6 @@ def generate_braille_stl():
                     }
                 )
             )
-        except Exception:
-            pass
         return resp
 
     except Exception as e:
@@ -2525,7 +2507,7 @@ def generate_counter_plate_stl():
             resp.headers['X-Blob-Cache'] = 'miss'
             resp.headers['X-Blob-Cache-Reason'] = 'uploaded-now'
             # Structured cost log
-            try:
+            with contextlib.suppress(Exception):
                 app.logger.info(
                     json.dumps(
                         {
@@ -2539,8 +2521,6 @@ def generate_counter_plate_stl():
                         }
                     )
                 )
-            except Exception:
-                pass
             return resp
 
         # Build response with headers
@@ -2554,7 +2534,7 @@ def generate_counter_plate_stl():
         resp.headers['X-Cache'] = 'origin'
         resp.headers['X-Compute-Time'] = str(compute_ms)
         # Structured cost log for origin send
-        try:
+        with contextlib.suppress(Exception):
             app.logger.info(
                 json.dumps(
                     {
@@ -2568,8 +2548,6 @@ def generate_counter_plate_stl():
                     }
                 )
             )
-        except Exception:
-            pass
         return resp
 
     except Exception as e:

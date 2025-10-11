@@ -29,25 +29,24 @@ for func_name, expected_lines in funcs_to_remove:
         if re.match(pattern, line):
             # Replace function with comment
             comment = f'# {func_name} now imported from app.geometry.cylinder\n\n'
-            
+
             # Find next function/class/route
             j = i + 1
             while j < len(lines):
                 if re.match(r'^(def |class |@app\.route)', lines[j]):
                     break
                 j += 1
-            
+
             actual_lines = j - i
-            print(f'✓ Found {func_name}: line {i+1}, removing {actual_lines} lines (expected ~{expected_lines})')
-            
+            print(f'✓ Found {func_name}: line {i + 1}, removing {actual_lines} lines (expected ~{expected_lines})')
+
             # Remove the function (replace lines i to j with comment)
             lines = lines[:i] + [comment] + lines[j:]
             removed_count += 1
             break
 
-# Write updated backend.py  
+# Write updated backend.py
 backend_path.write_text(''.join(lines), encoding='utf-8')
 
 print(f'\n✓ Removed {removed_count} functions from backend.py')
 print(f'Updated file: {backend_path}')
-

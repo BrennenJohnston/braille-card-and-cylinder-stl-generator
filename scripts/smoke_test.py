@@ -11,23 +11,21 @@ import backend
 
 
 def run():
-    print("Endpoint smoke test starting...")
+    print('Endpoint smoke test starting...')
 
     try:
         client = backend.app.test_client()
-        r = client.get("/health")
-        print("GET /health:", r.status_code, r.json)
+        r = client.get('/health')
+        print('GET /health:', r.status_code, r.json)
 
-        r2 = client.get("/liblouis/tables")
-        tables = (r2.json or {}).get("tables", [])
-        print("GET /liblouis/tables:", r2.status_code, "tables:", len(tables))
+        r2 = client.get('/liblouis/tables')
+        tables = (r2.json or {}).get('tables', [])
+        print('GET /liblouis/tables:', r2.status_code, 'tables:', len(tables))
     except Exception as e:
-        print("Endpoints FAIL:", e)
+        print('Endpoints FAIL:', e)
 
-    print("Endpoint smoke test done.")
+    print('Endpoint smoke test done.')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     run()
-
-

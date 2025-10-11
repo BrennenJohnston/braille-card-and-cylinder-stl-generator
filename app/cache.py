@@ -5,6 +5,7 @@ This module handles blob storage caching (Vercel Blob) and Redis-based
 cache key mapping.
 """
 
+import contextlib
 import hashlib
 import json
 import os
@@ -196,10 +197,8 @@ def _blob_check_exists(public_url: str) -> bool:
     try:
         headers = {'Range': 'bytes=0-0'}
         resp = requests.get(public_url, headers=headers, timeout=6, stream=True, allow_redirects=True)
-        try:
+        with contextlib.suppress(Exception):
             resp.close()
-        except Exception:
-            pass
         return resp.status_code in (200, 206)
     except Exception:
         return False

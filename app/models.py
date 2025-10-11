@@ -51,7 +51,7 @@ class PlacementMode(str, Enum):
 class CylinderParams:
     """
     Parameters specific to cylinder generation.
-    
+
     Provides typed, validated cylinder parameters with sensible defaults.
     """
 
@@ -79,7 +79,7 @@ class CylinderParams:
 class GenerateBrailleRequest:
     """
     Complete typed request for braille STL generation.
-    
+
     Centralizes all request parameters with type safety and defaults.
     """
 
@@ -104,10 +104,10 @@ class GenerateBrailleRequest:
     def from_request_data(data: dict) -> 'GenerateBrailleRequest':
         """
         Parse request JSON into typed GenerateBrailleRequest.
-        
+
         Args:
             data: Request JSON dictionary
-            
+
         Returns:
             GenerateBrailleRequest with validated types
         """
@@ -139,11 +139,11 @@ class GenerateBrailleRequest:
         )
 
 
-@dataclass  
+@dataclass
 class GenerateCounterPlateRequest:
     """
     Typed request for counter plate generation (standalone endpoint).
-    
+
     Counter plates don't need text input - they create all dot positions.
     """
 

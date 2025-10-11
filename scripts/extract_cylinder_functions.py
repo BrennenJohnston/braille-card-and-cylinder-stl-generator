@@ -39,11 +39,11 @@ for func_name in cylinder_functions:
                     break
                 func_lines.append(next_line)
                 j += 1
-            
+
             # Join and store
             func_text = ''.join(func_lines)
-            extracted.append((func_name, i+1, j+1, len(func_lines), func_text))
-            print(f'✓ Extracted {func_name}: lines {i+1}-{j}, {len(func_lines)} lines')
+            extracted.append((func_name, i + 1, j + 1, len(func_lines), func_text))
+            print(f'✓ Extracted {func_name}: lines {i + 1}-{j}, {len(func_lines)} lines')
             break
 
 # Write summary
@@ -61,4 +61,3 @@ with open(output_path, 'w', encoding='utf-8') as f:
         f.write('\n\n')
 
 print(f'\nExtracted functions saved to: {output_path}')
-

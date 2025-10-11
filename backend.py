@@ -56,6 +56,9 @@ from app.models import CardSettings
 # Import utilities from app.utils
 from app.utils import braille_to_dots, get_logger
 
+# Import validation from app.validation
+from app.validation import validate_braille_lines, validate_grade, validate_lines, validate_plate_type, validate_request_has_content, validate_settings, validate_shape_type
+
 # Configure logging for this module
 logger = get_logger(__name__)
 
@@ -289,145 +292,7 @@ def add_security_headers(response):
 
 
 # Input validation functions
-def validate_lines(lines):
-    """Validate the lines input for security and correctness"""
-    if not isinstance(lines, list):
-        raise ValueError('Lines must be a list')
-
-    for i, line in enumerate(lines):
-        if not isinstance(line, str):
-            raise ValueError(f'Line {i + 1} must be a string')
-
-        # Check length to prevent extremely long inputs
-        if len(line) > 50:
-            raise ValueError(f'Line {i + 1} is too long (max 50 characters)')
-
-        # Basic sanitization - remove potentially harmful characters
-        if any(char in line for char in ['<', '>', '&', '"', "'", '\x00']):
-            raise ValueError(f'Line {i + 1} contains invalid characters')
-
-    return True
-
-
-def validate_braille_lines(lines, plate_type='positive'):
-    """
-    Validate that lines contain valid braille Unicode characters.
-    Only validates non-empty lines for positive plates.
-    """
-    if plate_type != 'positive':
-        return True  # Counter plates don't need braille validation
-
-    # Define valid braille Unicode range (U+2800 to U+28FF)
-    BRAILLE_START = 0x2800
-    BRAILLE_END = 0x28FF
-
-    errors = []
-
-    for i, line in enumerate(lines):
-        if line.strip():  # Only validate non-empty lines
-            # Check each character in the line
-            for j, char in enumerate(line):
-                # Allow standard ASCII space characters which represent blank braille cells in our pipeline
-                if char == ' ':
-                    continue
-                char_code = ord(char)
-                if char_code < BRAILLE_START or char_code > BRAILLE_END:
-                    errors.append(
-                        {'line': i + 1, 'position': j + 1, 'character': char, 'char_code': f'U+{char_code:04X}'}
-                    )
-
-    if errors:
-        error_details = []
-        for err in errors[:5]:  # Show first 5 errors to avoid spam
-            error_details.append(
-                f'Line {err["line"]}, position {err["position"]}: '
-                f"'{err['character']}' ({err['char_code']}) is not a valid braille character"
-            )
-
-        if len(errors) > 5:
-            error_details.append(f'... and {len(errors) - 5} more errors')
-
-        raise ValueError(
-            'Invalid braille characters detected. Translation may have failed.\n'
-            + '\n'.join(error_details)
-            + '\n\nPlease ensure text is properly translated to braille before generating STL.'
-        )
-
-    return True
-
-
-def validate_settings(settings_data):
-    """Validate settings data for security"""
-    if not isinstance(settings_data, dict):
-        raise ValueError('Settings must be a dictionary')
-
-    # Define allowed settings keys and their types/ranges
-    allowed_settings = {
-        'card_width': (float, 50, 200),
-        'card_height': (float, 30, 150),
-        'card_thickness': (float, 1, 10),
-        'grid_columns': (int, 1, 20),
-        'grid_rows': (int, 1, 200),
-        'cell_spacing': (float, 2, 15),
-        'line_spacing': (float, 5, 25),
-        'dot_spacing': (float, 1, 5),
-        'emboss_dot_base_diameter': (float, 0.5, 3),
-        'emboss_dot_height': (float, 0.3, 2),
-        'emboss_dot_flat_hat': (float, 0.1, 2),
-        # Rounded dome
-        'use_rounded_dots': (int, 0, 1),
-        'rounded_dot_diameter': (float, 0.5, 3),
-        'rounded_dot_height': (float, 0.2, 2),
-        # New rounded dot with cone base params
-        'rounded_dot_base_diameter': (float, 0.5, 3),
-        'rounded_dot_cylinder_height': (float, 0.0, 2.0),
-        'rounded_dot_base_height': (float, 0.0, 2.0),
-        'rounded_dot_dome_height': (float, 0.1, 2.0),
-        'rounded_dot_dome_diameter': (float, 0.5, 3.0),
-        'braille_x_adjust': (float, -10, 10),
-        'braille_y_adjust': (float, -10, 10),
-        # Support legacy offset and new independent counter base diameter.
-        # If both are provided, counter base diameter takes precedence.
-        'counter_plate_dot_size_offset': (float, 0, 2),
-        'counter_dot_base_diameter': (float, 0.1, 5.0),
-        'hemi_counter_dot_base_diameter': (float, 0.1, 5.0),
-        'bowl_counter_dot_base_diameter': (float, 0.1, 5.0),
-        'hemisphere_subdivisions': (int, 1, 3),
-        'cone_segments': (int, 8, 32),  # Control polygon count for cone shapes
-        # Counter recess shape and depth
-        'use_bowl_recess': (int, 0, 1),
-        # New tri-state recess selector: 0=hemisphere, 1=bowl, 2=cone
-        'recess_shape': (int, 0, 2),
-        # New cone (recess) parameters
-        'cone_counter_dot_base_diameter': (float, 0.1, 5.0),
-        'cone_counter_dot_height': (float, 0.0, 5.0),
-        'cone_counter_dot_flat_hat': (float, 0.0, 5.0),
-        'counter_dot_depth': (float, 0.0, 5.0),
-        # Indicator shapes toggle (1 = on, 0 = off)
-        'indicator_shapes': (int, 0, 1),
-    }
-
-    for key, value in settings_data.items():
-        if key not in allowed_settings:
-            continue  # Ignore unknown settings (CardSettings will use defaults)
-
-        expected_type, min_val, max_val = allowed_settings[key]
-
-        # Type validation
-        try:
-            if expected_type == int:
-                value = int(float(value))  # Allow "2.0" to become int 2
-            else:
-                value = float(value)
-        except (ValueError, TypeError):
-            raise ValueError(f"Setting '{key}' must be a number")
-
-        # Range validation
-        if not (min_val <= value <= max_val):
-            raise ValueError(f"Setting '{key}' must be between {min_val} and {max_val}")
-
-    return True
-
+# Validation functions now imported from app.validation
 
 # Add error handling for Vercel environment
 @app.errorhandler(Exception)

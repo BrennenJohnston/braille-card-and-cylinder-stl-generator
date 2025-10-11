@@ -6,9 +6,11 @@ import sys
 _candidates = [
     '/var/task/.python_packages/lib/site-packages',
     '/var/task/python_modules/lib/site-packages',
+    '/var/task/venv/lib/python3.12/site-packages',
     '/var/task/venv/lib/python3.11/site-packages',
     '/var/task/venv/lib/python3.10/site-packages',
     '/var/task/venv/lib/python3.9/site-packages',
+    '/var/lang/lib/python3.12/site-packages',
     '/var/lang/lib/python3.11/site-packages',
     '/var/lang/lib/python3.10/site-packages',
     '/var/lang/lib/python3.9/site-packages',

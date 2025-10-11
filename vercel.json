@@ -6,12 +6,11 @@
       "use": "@vercel/python",
       "config": {
         "maxLambdaSize": "50mb",
-        "runtime": "python3.11"
+        "runtime": "python3.12"
       }
     }
   ],
-  "installCommand": "pip3 install --upgrade pip && pip3 install -r requirements.txt -t python",
-  "buildCommand": "true",
+
   "routes": [
     {
       "src": "/(.*)",

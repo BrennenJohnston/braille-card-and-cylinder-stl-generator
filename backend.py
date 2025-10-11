@@ -51,7 +51,7 @@ from app.models import CardSettings
 from app.utils import braille_to_dots
 
 # Import geometry functions from app.geometry
-from app.geometry.cylinder import _compute_cylinder_frame, cylindrical_transform
+from app.geometry.cylinder import _compute_cylinder_frame, cylindrical_transform, layout_cylindrical_cells
 
 app = Flask(__name__)
 # CORS configuration - update with your actual domain before deployment
@@ -1211,82 +1211,8 @@ def create_fallback_plate(settings: CardSettings):
     return base
 
 
-def layout_cylindrical_cells(
-    braille_lines, settings: CardSettings, cylinder_diameter_mm: float, cylinder_height_mm: float
-):
-    """
-    Calculate positions for braille cells on a cylinder surface.
-    Returns a list of (braille_char, x_theta, y_z) tuples where:
-    - x_theta is the position along the circumference (will be converted to angle)
-    - y_z is the vertical position on the cylinder
-    """
-    cells = []
-    radius = cylinder_diameter_mm / 2
-    circumference = np.pi * cylinder_diameter_mm
+# layout_cylindrical_cells now imported from app.geometry.cylinder
 
-    # Use grid_columns from settings instead of calculating based on circumference
-    cells_per_row = settings.grid_columns
-
-    # Calculate the total grid width (same as card)
-    grid_width = (settings.grid_columns - 1) * settings.cell_spacing
-
-    # Convert grid width to angular width
-    grid_angle = grid_width / radius
-
-    # Center the grid around the cylinder (calculate left margin angle)
-    # The grid should be centered, so start angle is -grid_angle/2
-    start_angle = -grid_angle / 2
-
-    # Convert cell_spacing from linear to angular
-    cell_spacing_angle = settings.cell_spacing / radius
-
-    # Calculate row height (same as card - vertical spacing doesn't change)
-    row_height = settings.line_spacing
-
-    # Calculate vertical centering
-    # The braille content spans from the top dot of the first row to the bottom dot of the last row
-    # Each cell has dots at offsets [+dot_spacing, 0, -dot_spacing] from cell center
-    # So a cell spans 2 * dot_spacing vertically
-
-    # Total content height calculation:
-    # - Distance between first and last row centers: (grid_rows - 1) * line_spacing
-    # - Half cell height above first row center: dot_spacing
-    # - Half cell height below last row center: dot_spacing
-    braille_content_height = (settings.grid_rows - 1) * settings.line_spacing + 2 * settings.dot_spacing
-
-    # Calculate where to position the first row's center
-    # We want the content centered, so:
-    # - Space above content = space below content = (cylinder_height - content_height) / 2
-    # - First row center = cylinder_height - space_above - dot_spacing
-    space_above = (cylinder_height_mm - braille_content_height) / 2.0
-    first_row_center_y = cylinder_height_mm - space_above - settings.dot_spacing
-
-    # Process up to grid_rows lines
-    for row_num in range(min(settings.grid_rows, len(braille_lines))):
-        line = braille_lines[row_num].strip()
-        if not line:
-            continue
-
-        # Check if input contains proper braille Unicode
-        has_braille_chars = any(ord(char) >= 0x2800 and ord(char) <= 0x28FF for char in line)
-        if not has_braille_chars:
-            continue
-
-        # Calculate Y position for this row with vertical centering
-        y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
-
-        # Process each character up to available columns (reserve 2 if indicators enabled)
-        reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
-        max_cols = settings.grid_columns - reserved
-        for col_num, braille_char in enumerate(line[:max_cols]):
-            # Calculate angular position for this column (shift by one if indicators enabled)
-            angle = start_angle + (
-                (col_num + (1 if getattr(settings, 'indicator_shapes', 1) else 0)) * cell_spacing_angle
-            )
-            x_pos = angle * radius  # Convert to arc length for compatibility
-            cells.append((braille_char, x_pos, y_pos))
-
-    return cells, cells_per_row
 
 
 # cylindrical_transform now imported from app.geometry.cylinder

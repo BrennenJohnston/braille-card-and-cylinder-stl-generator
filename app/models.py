@@ -1,14 +1,16 @@
 """
 Data models and classes for braille STL generation.
 
-This module defines the CardSettings class and will eventually contain
-typed models for request parameters and settings.
+This module defines typed models for request parameters, settings, and configuration,
+replacing magic numbers and untyped dictionaries with explicit, validated structures.
 """
 
+from dataclasses import dataclass, field
 from enum import Enum
+from typing import Optional
 
 
-# Enums for future typed models
+# Enums for typed models
 class ShapeType(str, Enum):
     """Shape type for braille output."""
 
@@ -36,6 +38,121 @@ class RecessShape(int, Enum):
     HEMISPHERE = 0
     BOWL = 1  # Spherical cap
     CONE = 2  # Frustum
+
+
+class PlacementMode(str, Enum):
+    """Placement mode for braille text."""
+
+    MANUAL = 'manual'
+    AUTO = 'auto'
+
+
+@dataclass
+class CylinderParams:
+    """
+    Parameters specific to cylinder generation.
+    
+    Provides typed, validated cylinder parameters with sensible defaults.
+    """
+
+    diameter_mm: float = 31.35
+    height_mm: Optional[float] = None  # If None, uses card_height from settings
+    wall_thickness: float = 2.0
+    seam_offset_deg: float = 355.0
+    polygonal_cutout_radius_mm: float = 13.0
+    polygonal_cutout_sides: int = 12
+
+    @staticmethod
+    def from_dict(data: dict, card_height: float = 52.0) -> 'CylinderParams':
+        """Create CylinderParams from dictionary with defaults."""
+        return CylinderParams(
+            diameter_mm=float(data.get('diameter_mm', data.get('diameter', 31.35))),
+            height_mm=float(data.get('height_mm', data.get('height', card_height))),
+            wall_thickness=float(data.get('wall_thickness', 2.0)),
+            seam_offset_deg=float(data.get('seam_offset_deg', data.get('seam_offset_degrees', 355.0))),
+            polygonal_cutout_radius_mm=float(data.get('polygonal_cutout_radius_mm', 13.0)),
+            polygonal_cutout_sides=int(data.get('polygonal_cutout_sides', 12)),
+        )
+
+
+@dataclass
+class GenerateBrailleRequest:
+    """
+    Complete typed request for braille STL generation.
+    
+    Centralizes all request parameters with type safety and defaults.
+    """
+
+    # Required text input
+    lines: list[str] = field(default_factory=lambda: ['', '', '', ''])
+
+    # Shape and plate configuration
+    shape_type: ShapeType = ShapeType.CARD
+    plate_type: PlateType = PlateType.POSITIVE
+    grade: BrailleGrade = BrailleGrade.G2
+    placement_mode: PlacementMode = PlacementMode.MANUAL
+
+    # Settings and parameters
+    settings: Optional[dict] = None  # Will be converted to CardSettings
+    cylinder_params: Optional[dict] = None  # Will be converted to CylinderParams
+
+    # Optional metadata
+    original_lines: Optional[list[str]] = None
+    per_line_language_tables: Optional[list[str]] = None
+
+    @staticmethod
+    def from_request_data(data: dict) -> 'GenerateBrailleRequest':
+        """
+        Parse request JSON into typed GenerateBrailleRequest.
+        
+        Args:
+            data: Request JSON dictionary
+            
+        Returns:
+            GenerateBrailleRequest with validated types
+        """
+        # Parse enum fields with validation
+        shape_type_str = str(data.get('shape_type', 'card')).lower()
+        shape_type = ShapeType(shape_type_str) if shape_type_str in ['card', 'cylinder'] else ShapeType.CARD
+
+        plate_type_str = str(data.get('plate_type', 'positive')).lower()
+        plate_type = PlateType(plate_type_str) if plate_type_str in ['positive', 'negative'] else PlateType.POSITIVE
+
+        grade_str = str(data.get('grade', 'g2')).lower()
+        grade = BrailleGrade(grade_str) if grade_str in ['g1', 'g2'] else BrailleGrade.G2
+
+        placement_mode_str = str(data.get('placement_mode', 'manual')).lower()
+        placement_mode = (
+            PlacementMode(placement_mode_str) if placement_mode_str in ['manual', 'auto'] else PlacementMode.MANUAL
+        )
+
+        return GenerateBrailleRequest(
+            lines=data.get('lines', ['', '', '', '']),
+            shape_type=shape_type,
+            plate_type=plate_type,
+            grade=grade,
+            placement_mode=placement_mode,
+            settings=data.get('settings', {}),
+            cylinder_params=data.get('cylinder_params'),
+            original_lines=data.get('original_lines'),
+            per_line_language_tables=data.get('per_line_language_tables'),
+        )
+
+
+@dataclass  
+class GenerateCounterPlateRequest:
+    """
+    Typed request for counter plate generation (standalone endpoint).
+    
+    Counter plates don't need text input - they create all dot positions.
+    """
+
+    settings: Optional[dict] = None  # Will be converted to CardSettings
+
+    @staticmethod
+    def from_request_data(data: dict) -> 'GenerateCounterPlateRequest':
+        """Parse request JSON into typed GenerateCounterPlateRequest."""
+        return GenerateCounterPlateRequest(settings=data.get('settings', {}))
 
 
 # CardSettings class (moved from backend.py)

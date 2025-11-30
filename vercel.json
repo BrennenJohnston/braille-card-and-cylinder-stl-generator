@@ -6,12 +6,12 @@
       "use": "@vercel/python",
       "config": {
         "maxLambdaSize": "50mb",
-        "runtime": "python3.12"
+        "runtime": "python3.11"
       }
     }
   ],
   "env": {
-    "PIP_ONLY_BINARY": "shapely"
+    "PIP_ONLY_BINARY": ":all:"
   },
 
   "routes": [

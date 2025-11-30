@@ -29,9 +29,9 @@ logger = get_logger(__name__)
 
 def _build_character_polygon_proxy(char_upper: str, target_width: float, target_height: float):
     """Lazy import helper to avoid circular dependency on backend module."""
-    from backend import _build_character_polygon as backend_character_polygon
+    from app.geometry.braille_layout import _build_character_polygon
 
-    return backend_character_polygon(char_upper, target_width, target_height)
+    return _build_character_polygon(char_upper, target_width, target_height)
 
 
 def _is_serverless_env() -> bool:

@@ -16,11 +16,7 @@ from shapely.geometry import Point as ShapelyPoint
 from shapely.geometry import Polygon as ShapelyPolygon
 from trimesh.creation import extrude_polygon
 
-# Import from backend temporarily (will be moved to braille_layout in cleanup phase)
-import backend
 from app.geometry.booleans import batch_union, mesh_difference, mesh_union
-
-# Import dependencies from other modules
 from app.geometry.dot_shapes import create_braille_dot
 from app.utils import braille_to_dots, get_logger
 
@@ -29,6 +25,13 @@ if TYPE_CHECKING:
 
 # Configure logging for this module
 logger = get_logger(__name__)
+
+
+def _build_character_polygon_proxy(char_upper: str, target_width: float, target_height: float):
+    """Lazy import helper to avoid circular dependency on backend module."""
+    from backend import _build_character_polygon as backend_character_polygon
+
+    return backend_character_polygon(char_upper, target_width, target_height)
 
 
 def _is_serverless_env() -> bool:
@@ -453,7 +456,7 @@ def create_cylinder_character_shape(
 
     try:
         # Build character polygon using shared helper
-        char_2d = backend._build_character_polygon(char_upper, char_width, char_height)
+        char_2d = _build_character_polygon_proxy(char_upper, char_width, char_height)
         if char_2d is None:
             return create_cylinder_line_end_marker(
                 x_arc, y_local, settings, cylinder_diameter_mm, seam_offset_deg, height_mm, for_subtraction

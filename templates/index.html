@@ -1897,7 +1897,10 @@
                 <div id="viewer" role="img" aria-label="3D preview of braille business card STL file" tabindex="0">
                     <div id="error-message" role="alert" aria-live="assertive" aria-atomic="true">
                         <span style="font-weight:bold;" aria-hidden="true">⚠</span>
-                        <span id="error-text"></span>
+                        <span id="error-text-container" style="display: flex; flex-direction: column; align-items: center;">
+                            <span id="error-text"></span>
+                            <span id="error-subtext" style="display: none; font-size: 0.8em; margin-top: 0.4em; opacity: 0.85;"></span>
+                        </span>
                     </div>
                 </div>
                 <!-- Action Button moved here -->
@@ -4283,6 +4286,11 @@
             e.preventDefault();
             errorDiv.style.display = 'none';
             errorText.textContent = '';
+            const errorSubtext = document.getElementById('error-subtext');
+            if (errorSubtext) {
+                errorSubtext.textContent = '';
+                errorSubtext.style.display = 'none';
+            }
 
             // Collect input depending on placement mode
             const placementMode = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
@@ -4505,14 +4513,26 @@
             errorDiv.style.display = 'flex';
             errorDiv.className = 'error-message info';
 
+            // Get shape type and recess shape to determine if we need the long-wait warning
+            const shapeTypeElGen = document.querySelector('input[name="shape_type"]:checked');
+            const shapeType = shapeTypeElGen ? shapeTypeElGen.value : 'card';
+            const recessShapeEl = document.querySelector('input[name="recess_shape"]:checked');
+            const recessShape = recessShapeEl ? recessShapeEl.value : '1';
+            const isConeRecess = recessShape === '2';
+
+            // Show special warning for counter plate + cone recess (takes 1-2 minutes)
+            if (plateType === 'negative' && isConeRecess) {
+                errorSubtext.textContent = 'This may take 1–2 minutes. Leaving or refreshing this page will cancel the process.';
+                errorSubtext.style.display = 'block';
+            } else {
+                errorSubtext.textContent = '';
+                errorSubtext.style.display = 'none';
+            }
+
             // Update button to show loading state
             actionBtn.disabled = true;
             actionBtn.textContent = 'Generating...';
             actionBtn.style.opacity = '0.7';
-
-            // Get shape type and cylinder params
-            const shapeTypeElGen = document.querySelector('input[name="shape_type"]:checked');
-            const shapeType = shapeTypeElGen ? shapeTypeElGen.value : 'card';
             let cylinderParams = {};
 
             if (shapeType === 'cylinder') {
@@ -4613,6 +4633,10 @@
 
             // Hide loading message
             errorDiv.style.display = 'none';
+            if (errorSubtext) {
+                errorSubtext.textContent = '';
+                errorSubtext.style.display = 'none';
+            }
 
             if (!res.ok) {
                 let msg = 'Error generating STL';

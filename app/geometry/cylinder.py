@@ -594,7 +594,7 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
     polygonal_cutout_sides = int(cylinder_params.get('polygonal_cutout_sides', 12) or 12)
     seam_offset = float(cylinder_params.get('seam_offset_deg', 355))
 
-    print(
+    logger.info(
         f'Creating cylinder mesh - Diameter: {diameter}mm, Height: {height}mm, Cutout Radius: {polygonal_cutout_radius}mm'
     )
 
@@ -713,8 +713,8 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
             triangle_meshes.append(triangle_mesh)
 
     # Subtract text/number indicators and triangle markers to recess them into the surface
-    print(
-        f'DEBUG: Creating {len(text_number_meshes)} text/number recesses and {len(triangle_meshes)} triangle recesses on emboss cylinder'
+    logger.debug(
+        f'Creating {len(text_number_meshes)} text/number recesses and {len(triangle_meshes)} triangle recesses on emboss cylinder'
     )
 
     # Combine all markers (text/number indicators and triangles) for efficient boolean operations
@@ -740,8 +740,8 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
     total_cells_available = (settings.grid_columns - reserved) * settings.grid_rows
 
     if total_cells_needed > total_cells_available:
-        print(
-            f'Warning: Text requires {total_cells_needed} cells but grid has {total_cells_available} cells ({settings.grid_columns - reserved}×{settings.grid_rows} after row markers)'
+        logger.warning(
+            f'Text requires {total_cells_needed} cells but grid has {total_cells_available} cells ({settings.grid_columns - reserved}×{settings.grid_rows} after row markers)'
         )
 
     # Check if grid wraps too far around cylinder
@@ -818,7 +818,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     polygonal_cutout_sides = int(cylinder_params.get('polygonal_cutout_sides', 12) or 12)
     seam_offset = float(cylinder_params.get('seam_offset_deg', 355))
 
-    print(
+    logger.info(
         f'Creating cylinder counter plate - Diameter: {diameter}mm, Height: {height}mm, Cutout Radius: {polygonal_cutout_radius}mm'
     )
 
@@ -1144,8 +1144,8 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             logger.debug('Cylinder final shell not watertight, attempting to fill holes...')
             final_shell.fill_holes()
 
-        print(
-            f'DEBUG: Cylinder counter plate completed: {len(final_shell.vertices)} vertices, {len(final_shell.faces)} faces'
+        logger.debug(
+            f'Cylinder counter plate completed: {len(final_shell.vertices)} vertices, {len(final_shell.faces)} faces'
         )
 
         min_z = final_shell.bounds[0][2]

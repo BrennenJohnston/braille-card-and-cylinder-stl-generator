@@ -411,6 +411,51 @@ def create_line_marker_polygon(x, y, settings: CardSettings):
     return Polygon(vertices)
 
 
+def create_character_shape_polygon(character, x, y, settings: CardSettings):
+    """
+    Create a 2D character polygon for the beginning-of-row indicator.
+    This is used for creating recesses in embossing plates using 2D operations.
+
+    Args:
+        character: Single character (A-Z or 0-9)
+        x: X position of the cell center
+        y: Y position of the cell center
+        settings: CardSettings object with braille dimensions
+
+    Returns:
+        Shapely Polygon representing the character, or None if character cannot be created
+    """
+    # Define character size (same as in create_character_shape_3d)
+    char_height = 2 * settings.dot_spacing + 4.375  # 9.375mm for default 2.5mm dot spacing
+    char_width = settings.dot_spacing * 0.8 + 2.6875  # 4.6875mm for default 2.5mm dot spacing
+
+    # Position character at the right column of the cell
+    char_x = x + settings.dot_spacing / 2
+    char_y = y
+
+    # Get the character definition
+    char_upper = character.upper()
+    if not (char_upper.isalpha() or char_upper.isdigit()):
+        # Fall back to rectangle for undefined characters
+        return create_line_marker_polygon(x, y, settings)
+
+    try:
+        # Build character polygon using shared helper
+        char_2d = _build_character_polygon(char_upper, char_width, char_height)
+        if char_2d is None:
+            return create_line_marker_polygon(x, y, settings)
+
+        # Translate to desired position
+        from shapely import affinity as _affinity
+
+        char_2d = _affinity.translate(char_2d, xoff=char_x, yoff=char_y)
+
+        return char_2d
+    except Exception as e:
+        logger.warning(f'Failed to create character polygon: {e}')
+        return create_line_marker_polygon(x, y, settings)
+
+
 def create_card_triangle_marker_3d(x, y, settings: CardSettings, height=0.6, for_subtraction=False):
     """
     Create a 3D triangular prism for card surface marking.
@@ -702,7 +747,7 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
     logger.info(f'Creating positive plate mesh with {grade_name} characters')
     logger.info(f'Grid: {settings.grid_columns} columns × {settings.grid_rows} rows')
     logger.info(f'Centered margins: L/R={settings.left_margin:.2f}mm, T/B={settings.top_margin:.2f}mm')
-    print(
+    logger.info(
         f'Spacing: Cell-to-cell {settings.cell_spacing}mm, Line-to-line {settings.line_spacing}mm, Dot-to-dot {settings.dot_spacing}mm'
     )
 
@@ -733,8 +778,8 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
             # Determine which character to use for beginning-of-row indicator
             # In manual mode: first character from the corresponding manual line
             # In auto mode: original_lines is an array of per-row indicator characters
-            print(
-                f'DEBUG: Row {row_num}, original_lines provided: {original_lines is not None}, length: {len(original_lines) if original_lines else 0}'
+            logger.debug(
+                f'Row {row_num}, original_lines provided: {original_lines is not None}, length: {len(original_lines) if original_lines else 0}'
             )
             if original_lines and row_num < len(original_lines):
                 orig = (original_lines[row_num] or '').strip()
@@ -800,8 +845,8 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
         if len(braille_text) > available_columns:
             # Warn and truncate instead of failing hard
             over = len(braille_text) - available_columns
-            print(
-                f'WARNING: Line {row_num + 1} exceeds available columns by {over} cells. '
+            logger.warning(
+                f'Line {row_num + 1} exceeds available columns by {over} cells. '
                 f'Truncating to {available_columns} cells to continue generation.'
             )
             braille_text = braille_text[:available_columns]
@@ -838,14 +883,15 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
                     meshes.append(dot_mesh)
 
     if getattr(settings, 'indicator_shapes', 1):
-        print(
+        logger.info(
             f'Created positive plate with {len(meshes) - 1} braille dots, {settings.grid_rows} text/number indicators, and {settings.grid_rows} triangle markers'
         )
     else:
         logger.info(f'Created positive plate with {len(meshes) - 1} braille dots and no indicator shapes')
 
-    # Serverless-friendly indicator recess creation: 2D subtract then extrude once
-    if getattr(settings, 'indicator_shapes', 1) and marker_meshes and _is_serverless_env():
+    # Indicator recess creation using 2D operations (works in all environments)
+    # This approach creates recesses by doing 2D boolean operations then extruding
+    if getattr(settings, 'indicator_shapes', 1) and marker_meshes:
         try:
             # 1) Build 2D base rectangle
             base_2d = Polygon(
@@ -857,7 +903,7 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
                 ]
             )
 
-            # 2) Build 2D marker polygons for all rows (line + triangle)
+            # 2) Build 2D marker polygons for all rows (beginning indicator + triangle)
             from shapely.ops import unary_union as _unary_union
 
             subtractors = []
@@ -874,13 +920,34 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
                     + ((settings.grid_columns - 1) * settings.cell_spacing)
                     + settings.braille_x_adjust
                 )
-                subtractors.append(create_line_marker_polygon(x_first, y_pos, settings))
+
+                # Determine which beginning-of-row indicator to use (character or rectangle)
+                # This logic matches lines 739-759 where 3D meshes are created
+                if original_lines and row_num < len(original_lines):
+                    orig = (original_lines[row_num] or '').strip()
+                    indicator_char = orig[0] if orig else ''
+                    if indicator_char and (indicator_char.isalpha() or indicator_char.isdigit()):
+                        # Use character shape
+                        char_polygon = create_character_shape_polygon(indicator_char, x_first, y_pos, settings)
+                        if char_polygon is not None:
+                            subtractors.append(char_polygon)
+                        else:
+                            subtractors.append(create_line_marker_polygon(x_first, y_pos, settings))
+                    else:
+                        # Use rectangle
+                        subtractors.append(create_line_marker_polygon(x_first, y_pos, settings))
+                else:
+                    # No indicator info; default to rectangle
+                    subtractors.append(create_line_marker_polygon(x_first, y_pos, settings))
+
+                # Add triangle marker at the end of row
                 subtractors.append(create_triangle_marker_polygon(x_last, y_pos, settings))
 
             subtractors_2d = _unary_union(subtractors)
 
             # 3) Create two-layer plate: bottom slab + top sheet with 2D holes (recess depth)
-            recess_h = 0.6  # mm; matches triangle recess height used previously
+            # Use 1.0mm depth to accommodate character indicators (which are deeper than triangles)
+            recess_h = 1.0  # mm; matches character indicator depth
             bottom_h = max(0.1, settings.card_thickness - recess_h)
 
             # Bottom slab: full rectangle, no holes
@@ -1138,8 +1205,8 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
     plate_mesh = trimesh.creation.box(extents=(params.card_width, params.card_height, params.plate_thickness))
     plate_mesh.apply_translation((params.card_width / 2, params.card_height / 2, params.plate_thickness / 2))
 
-    print(
-        f'DEBUG: Creating counter plate base: {params.card_width}mm x {params.card_height}mm x {params.plate_thickness}mm'
+    logger.debug(
+        f'Creating counter plate base: {params.card_width}mm x {params.card_height}mm x {params.plate_thickness}mm'
     )
 
     # Dot positioning constants (same as embossing plate)
@@ -1153,8 +1220,8 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
     except Exception:
         counter_base = params.emboss_dot_base_diameter + params.counter_plate_dot_size_offset
     hemisphere_radius = counter_base / 2
-    print(
-        f'DEBUG: Hemisphere radius: {hemisphere_radius:.3f}mm (base: {params.emboss_dot_base_diameter}mm + offset: {params.counter_plate_dot_size_offset}mm)'
+    logger.debug(
+        f'Hemisphere radius: {hemisphere_radius:.3f}mm (base: {params.emboss_dot_base_diameter}mm + offset: {params.counter_plate_dot_size_offset}mm)'
     )
 
     # Create icospheres (hemispheres) for ALL possible dot positions
@@ -1216,8 +1283,8 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
         triangle_mesh = create_card_triangle_marker_3d(x_pos_last, y_pos, params, height=0.5, for_subtraction=True)
         triangle_meshes.append(triangle_mesh)
 
-    print(
-        f'DEBUG: Created {len(triangle_meshes)} triangle markers and {len(line_end_meshes)} line end markers for counter plate'
+    logger.debug(
+        f'Created {len(triangle_meshes)} triangle markers and {len(line_end_meshes)} line end markers for counter plate'
     )
 
     if not sphere_meshes:
@@ -1280,16 +1347,16 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
                 if counter_plate_mesh.is_watertight:
                     logger.debug('Successfully fixed counter plate mesh')
 
-            print(
-                f'DEBUG: Counter plate completed with {engine_name} engine: {len(counter_plate_mesh.vertices)} vertices, {len(counter_plate_mesh.faces)} faces'
+            logger.debug(
+                f'Counter plate completed with {engine_name} engine: {len(counter_plate_mesh.vertices)} vertices, {len(counter_plate_mesh.faces)} faces'
             )
             return counter_plate_mesh
 
         except Exception as e:
             logger.error(f'Boolean operations with {engine_name} failed: {e}')
             if engine == engines_to_try[-1]:  # Last engine failed
-                print(
-                    'WARNING: All boolean engines failed. Creating hemisphere counter plate with individual subtraction...'
+                logger.warning(
+                    'All boolean engines failed. Creating hemisphere counter plate with individual subtraction...'
                 )
                 break
             else:
@@ -1331,8 +1398,8 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
         if not counter_plate_mesh.is_watertight:
             counter_plate_mesh.fill_holes()
 
-        print(
-            f'DEBUG: Individual subtraction completed: {len(counter_plate_mesh.vertices)} vertices, {len(counter_plate_mesh.faces)} faces'
+        logger.debug(
+            f'Individual subtraction completed: {len(counter_plate_mesh.vertices)} vertices, {len(counter_plate_mesh.faces)} faces'
         )
         return counter_plate_mesh
 
@@ -1580,8 +1647,8 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
         logger.warning('No cone recesses were generated. Returning base plate.')
         return plate_mesh
 
-    print(
-        f'DEBUG: Created {total_recess} cone frusta for counter plate (base_d={base_d:.3f}mm, hat_d={hat_d:.3f}mm, h={height_h:.3f}mm)'
+    logger.debug(
+        f'Created {total_recess} cone frusta for counter plate (base_d={base_d:.3f}mm, hat_d={hat_d:.3f}mm, h={height_h:.3f}mm)'
     )
 
     # OPTIMIZATION: Use union operations like bowl/hemisphere for better performance

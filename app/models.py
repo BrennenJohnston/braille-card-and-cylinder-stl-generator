@@ -7,7 +7,6 @@ replacing magic numbers and untyped dictionaries with explicit, validated struct
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 from app.utils import get_logger
 
@@ -61,7 +60,7 @@ class CylinderParams:
     """
 
     diameter_mm: float = 31.35
-    height_mm: Optional[float] = None  # If None, uses card_height from settings
+    height_mm: float | None = None  # If None, uses card_height from settings
     wall_thickness: float = 2.0
     seam_offset_deg: float = 355.0
     polygonal_cutout_radius_mm: float = 13.0
@@ -98,12 +97,12 @@ class GenerateBrailleRequest:
     placement_mode: PlacementMode = PlacementMode.MANUAL
 
     # Settings and parameters
-    settings: Optional[dict] = None  # Will be converted to CardSettings
-    cylinder_params: Optional[dict] = None  # Will be converted to CylinderParams
+    settings: dict | None = None  # Will be converted to CardSettings
+    cylinder_params: dict | None = None  # Will be converted to CylinderParams
 
     # Optional metadata
-    original_lines: Optional[list[str]] = None
-    per_line_language_tables: Optional[list[str]] = None
+    original_lines: list[str] | None = None
+    per_line_language_tables: list[str] | None = None
 
     @staticmethod
     def from_request_data(data: dict) -> 'GenerateBrailleRequest':
@@ -152,7 +151,7 @@ class GenerateCounterPlateRequest:
     Counter plates don't need text input - they create all dot positions.
     """
 
-    settings: Optional[dict] = None  # Will be converted to CardSettings
+    settings: dict | None = None  # Will be converted to CardSettings
 
     @staticmethod
     def from_request_data(data: dict) -> 'GenerateCounterPlateRequest':
@@ -444,7 +443,7 @@ class CardSettings:
                 logger.warning('WARNING: Margins below minimum safe values:')
                 for warning in margin_warnings:
                     logger.warning(f'  - {warning}')
-                print(
+                logger.warning(
                     f'  - Recommended minimum margin: {self.min_safe_margin:.2f}mm (½ of {self.cell_spacing:.1f}mm cell spacing)'
                 )
                 logger.info('  - Consider reducing grid size or increasing card dimensions')
@@ -471,7 +470,7 @@ class CardSettings:
                 logger.info(f'  - Grid dimensions: {self.grid_width:.2f}mm × {self.grid_height:.2f}mm')
                 logger.info(f'  - Card dimensions: {self.card_width:.2f}mm × {self.card_height:.2f}mm')
                 logger.info(f'  - Centered margins: L/R={self.left_margin:.2f}mm, T/B={self.top_margin:.2f}mm')
-                print(
+                logger.info(
                     f'  - Minimum safe margin: {self.min_safe_margin:.2f}mm (½ of {self.cell_spacing:.1f}mm cell spacing)'
                 )
         except Exception:

@@ -47,15 +47,17 @@ from app.cache import (
     _normalize_settings_for_cache,
     compute_cache_key,
 )
+from app.geometry.braille_layout import (
+    create_card_line_end_marker_3d,
+    create_card_triangle_marker_3d,
+)
 
 # Import geometry functions from app.geometry
 from app.geometry.cylinder import generate_cylinder_counter_plate, generate_cylinder_stl
 from app.geometry.dot_shapes import create_braille_dot
 
-# Note: Marker and plate functions are defined below in this file
-# They have also been extracted to modules for reuse:
-# - app.geometry.braille_layout: marker and layout functions
-# - app.geometry.plates: card plate generation functions
+# Note: Other marker and plate functions are defined below in this file
+# The marker functions above are imported to avoid NameError in counter plate generation
 # Import models from app.models
 from app.models import CardSettings
 
@@ -460,105 +462,7 @@ def create_character_shape_polygon(character, x, y, settings: CardSettings):
         return create_line_marker_polygon(x, y, settings)
 
 
-def create_card_triangle_marker_3d(x, y, settings: CardSettings, height=0.6, for_subtraction=False):
-    """
-    Create a 3D triangular prism for card surface marking.
-
-    Args:
-        x, y: Center position of the first braille cell
-        settings: CardSettings object with spacing parameters
-        height: Depth/height of the triangle marker (default 0.6mm)
-        for_subtraction: If True, creates a tool for boolean subtraction to make recesses
-
-    Returns:
-        Trimesh object representing the 3D triangle marker
-    """
-    # Calculate triangle dimensions based on braille dot spacing
-    2 * settings.dot_spacing
-    triangle_width = settings.dot_spacing
-
-    # Triangle vertices (same as 2D version)
-    base_x = x - settings.dot_spacing / 2  # Left column position
-
-    vertices = [
-        (base_x, y - settings.dot_spacing),  # Bottom of base
-        (base_x, y + settings.dot_spacing),  # Top of base
-        (base_x + triangle_width, y),  # Apex (at middle-right dot height)
-    ]
-
-    # Create 2D polygon using Shapely
-    tri_2d = Polygon(vertices)
-
-    if for_subtraction:
-        # For counter plate recesses, extrude downward from top surface
-        # Create a prism that extends from above the surface into the plate
-        extrude_height = height + 0.5  # Extra depth to ensure clean boolean
-        tri_prism = trimesh.creation.extrude_polygon(tri_2d, height=extrude_height)
-
-        # Position at the top surface of the card
-        z_pos = settings.card_thickness - 0.1  # Start slightly above surface
-        tri_prism.apply_translation([0, 0, z_pos])
-    else:
-        # For embossing plate, extrude upward from top surface
-        tri_prism = trimesh.creation.extrude_polygon(tri_2d, height=height)
-
-        # Position on top of the card base
-        z_pos = settings.card_thickness
-        tri_prism.apply_translation([0, 0, z_pos])
-
-    return tri_prism
-
-
-def create_card_line_end_marker_3d(x, y, settings: CardSettings, height=0.5, for_subtraction=False):
-    """
-    Create a 3D line (rectangular prism) for end of row marking on card surface.
-
-    Args:
-        x, y: Center position of the last braille cell in the row
-        settings: CardSettings object with spacing parameters
-        height: Depth/height of the line marker (default 0.5mm)
-        for_subtraction: If True, creates a tool for boolean subtraction to make recesses
-
-    Returns:
-        Trimesh object representing the 3D line marker
-    """
-    # Calculate line dimensions based on braille dot spacing
-    2 * settings.dot_spacing  # Vertical extent (same as cell height)
-    line_width = settings.dot_spacing  # Horizontal extent
-
-    # Position line at the right column of the cell
-    # The line should be centered on the right column dot positions
-    line_x = x + settings.dot_spacing / 2  # Right column position
-
-    # Create rectangle vertices
-    vertices = [
-        (line_x - line_width / 2, y - settings.dot_spacing),  # Bottom left
-        (line_x + line_width / 2, y - settings.dot_spacing),  # Bottom right
-        (line_x + line_width / 2, y + settings.dot_spacing),  # Top right
-        (line_x - line_width / 2, y + settings.dot_spacing),  # Top left
-    ]
-
-    # Create 2D polygon using Shapely
-    line_2d = Polygon(vertices)
-
-    if for_subtraction:
-        # For counter plate recesses, extrude downward from top surface
-        # Create a prism that extends from above the surface into the plate
-        extrude_height = height + 0.5  # Extra depth to ensure clean boolean
-        line_prism = trimesh.creation.extrude_polygon(line_2d, height=extrude_height)
-
-        # Position at the top surface of the card
-        z_pos = settings.card_thickness - 0.1  # Start slightly above surface
-        line_prism.apply_translation([0, 0, z_pos])
-    else:
-        # For embossing plate, extrude upward from top surface
-        line_prism = trimesh.creation.extrude_polygon(line_2d, height=height)
-
-        # Position on top of the card base
-        z_pos = settings.card_thickness
-        line_prism.apply_translation([0, 0, z_pos])
-
-    return line_prism
+# create_card_triangle_marker_3d and create_card_line_end_marker_3d now imported from app.geometry.braille_layout
 
 
 def _build_character_polygon(char_upper: str, target_width: float, target_height: float):

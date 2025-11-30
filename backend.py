@@ -52,6 +52,10 @@ from app.cache import (
 from app.geometry.cylinder import generate_cylinder_counter_plate, generate_cylinder_stl
 from app.geometry.dot_shapes import create_braille_dot
 
+# Note: Marker and plate functions are defined below in this file
+# They have also been extracted to modules for reuse:
+# - app.geometry.braille_layout: marker and layout functions
+# - app.geometry.plates: card plate generation functions
 # Import models from app.models
 from app.models import CardSettings
 

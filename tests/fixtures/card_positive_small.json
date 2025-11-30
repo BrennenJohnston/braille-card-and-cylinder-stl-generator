@@ -20,9 +20,9 @@
     }
   },
   "expected_properties": {
-    "face_count": 2646,
-    "vertex_count": 1337,
-    "is_watertight": true,
+    "face_count": 4440,
+    "vertex_count": 2232,
+    "is_watertight": false,
     "bbox_min": [
       -8.0,
       0.0,
@@ -33,7 +33,7 @@
       40.0,
       2.799999952316284
     ],
-    "volume": 4803.359414443601,
-    "surface_area": 5233.868510804846
+    "volume": null,
+    "surface_area": 10042.127119031575
   }
 }

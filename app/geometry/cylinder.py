@@ -16,6 +16,8 @@ from shapely.geometry import Point as ShapelyPoint
 from shapely.geometry import Polygon as ShapelyPolygon
 from trimesh.creation import extrude_polygon
 
+# Import from backend temporarily (will be moved to braille_layout in cleanup phase)
+import backend
 from app.geometry.booleans import batch_union, mesh_difference, mesh_union
 
 # Import dependencies from other modules
@@ -27,8 +29,6 @@ if TYPE_CHECKING:
 
 # Configure logging for this module
 logger = get_logger(__name__)
-
-# Note: _build_character_polygon lazy imported from backend (temporary, will move in future batch)
 
 
 def _is_serverless_env() -> bool:
@@ -452,10 +452,8 @@ def create_cylinder_character_shape(
         )
 
     try:
-        # Build character polygon using shared helper (lazy import to avoid circular dependency)
-        import backend as _backend
-
-        char_2d = _backend._build_character_polygon(char_upper, char_width, char_height)
+        # Build character polygon using shared helper
+        char_2d = backend._build_character_polygon(char_upper, char_width, char_height)
         if char_2d is None:
             return create_cylinder_line_end_marker(
                 x_arc, y_local, settings, cylinder_diameter_mm, seam_offset_deg, height_mm, for_subtraction

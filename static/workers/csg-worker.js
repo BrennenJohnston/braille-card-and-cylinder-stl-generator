@@ -48,7 +48,7 @@ function createSphericalCap(radius, height, subdivisions = 3) {
 }
 
 /**
- * Create a braille dot mesh at position (x, y, z)
+ * Create a braille dot mesh at position (x, y, z) for flat card
  */
 function createBrailleDot(spec) {
     const { x, y, z, type, params } = spec;
@@ -96,7 +96,170 @@ function createBrailleDot(spec) {
 }
 
 /**
- * Create a rectangular marker
+ * Create a braille dot on a cylinder surface
+ * The dot is positioned at (x, y, z) and oriented radially outward
+ */
+function createCylinderDot(spec) {
+    const { x, y, z, theta, radius: cylRadius, params } = spec;
+    const shape = params.shape || 'standard';
+
+    let geometry;
+    let dotHeight = 0;
+
+    if (shape === 'rounded') {
+        // Rounded dot for positive plate
+        const { base_radius, top_radius, base_height, dome_height, dome_radius } = params;
+        dotHeight = base_height + dome_height;
+
+        if (base_height > 0) {
+            // Frustum base + dome
+            const frustum = createConeFrustum(base_radius, top_radius, base_height, 32);
+            const dome = createSphericalCap(dome_radius, dome_height, 2);
+
+            // Position dome on top of frustum
+            dome.translate(0, base_height / 2, 0);
+
+            const frustumBrush = new Brush(frustum);
+            const domeBrush = new Brush(dome);
+            const combinedBrush = evaluator.evaluate(frustumBrush, domeBrush, ADDITION);
+            geometry = combinedBrush.geometry;
+        } else {
+            // Just dome
+            geometry = createSphericalCap(dome_radius, dome_height, 2);
+        }
+    } else if (shape === 'hemisphere') {
+        // Hemisphere for counter plate recesses
+        const { recess_radius } = params;
+        dotHeight = recess_radius;
+        geometry = new THREE.SphereGeometry(recess_radius, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+    } else if (shape === 'bowl') {
+        // Bowl (spherical cap) for counter plate
+        const { bowl_radius, bowl_depth } = params;
+        dotHeight = bowl_depth;
+        const sphereR = (bowl_radius * bowl_radius + bowl_depth * bowl_depth) / (2.0 * bowl_depth);
+        const thetaEnd = Math.acos(1 - bowl_depth / sphereR);
+        geometry = new THREE.SphereGeometry(sphereR, 16, 16, 0, Math.PI * 2, 0, thetaEnd);
+    } else if (shape === 'cone') {
+        // Cone frustum for counter plate
+        const { base_radius, top_radius, height } = params;
+        dotHeight = height;
+        geometry = createConeFrustum(base_radius, top_radius, height, 16);
+    } else {
+        // Standard cone frustum for positive embossing
+        const { base_radius, top_radius, height } = params;
+        dotHeight = height;
+        geometry = createConeFrustum(base_radius, top_radius, height, 16);
+    }
+
+    // Apply rotation to orient dot radially on cylinder surface
+    // Three.js CylinderGeometry creates along Y-axis (height along Y)
+    // We need to rotate so the dot points radially outward at angle theta
+
+    // Step 1: Rotate -90° around Z so dot points along +X instead of +Y
+    geometry.rotateZ(-Math.PI / 2);
+
+    // Step 2: Rotate around Y by theta to position it at the correct angle
+    geometry.rotateY(theta);
+
+    // Calculate the radial position - dot center should be at cylRadius + dotHeight/2
+    // for the dot to sit on the surface
+    const radialOffset = cylRadius + dotHeight / 2;
+    const posX = radialOffset * Math.cos(theta);
+    const posZ = radialOffset * Math.sin(theta);
+
+    // Translate to position on cylinder surface
+    geometry.translate(posX, y, posZ);
+
+    return geometry;
+}
+
+/**
+ * Create a triangle marker on cylinder surface
+ */
+function createCylinderTriangleMarker(spec) {
+    const { x, y, z, theta, radius: cylRadius, size, depth } = spec;
+
+    // Create triangle shape in XY plane
+    const shape = new THREE.Shape();
+    shape.moveTo(-size / 2, -size);
+    shape.lineTo(size / 2, -size);
+    shape.lineTo(0, size);
+    shape.closePath();
+
+    const extrudeSettings = {
+        depth: depth,
+        bevelEnabled: false
+    };
+
+    const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+
+    // ExtrudeGeometry extrudes along +Z, we need it to point radially
+
+    // Rotate so extrusion points along +X
+    geometry.rotateY(Math.PI / 2);
+
+    // Then rotate to the correct theta position
+    geometry.rotateY(theta);
+
+    // Position at cylinder surface
+    const radialOffset = cylRadius + depth / 2;
+    const posX = radialOffset * Math.cos(theta);
+    const posZ = radialOffset * Math.sin(theta);
+
+    geometry.translate(posX, y, posZ);
+
+    return geometry;
+}
+
+/**
+ * Create a rectangular marker on cylinder surface
+ */
+function createCylinderRectMarker(spec) {
+    const { x, y, z, theta, radius: cylRadius, width, height, depth } = spec;
+
+    // BoxGeometry: width (X), height (Y), depth (Z)
+    // We want depth to point radially outward
+    const geometry = new THREE.BoxGeometry(width, height, depth);
+
+    // Rotate around Y so Z (depth) points at angle theta
+    geometry.rotateY(theta);
+
+    // Position at cylinder surface
+    const radialOffset = cylRadius + depth / 2;
+    const posX = radialOffset * Math.cos(theta);
+    const posZ = radialOffset * Math.sin(theta);
+
+    geometry.translate(posX, y, posZ);
+
+    return geometry;
+}
+
+/**
+ * Create a character marker on cylinder surface
+ */
+function createCylinderCharacterMarker(spec) {
+    const { x, y, z, theta, radius: cylRadius, char, size, depth } = spec;
+
+    // Approximate character as a box
+    const charWidth = size * 0.6;
+    const charHeight = size;
+    const geometry = new THREE.BoxGeometry(charWidth, charHeight, depth);
+
+    // Rotate around Y so depth points at angle theta
+    geometry.rotateY(theta);
+
+    // Position at cylinder surface
+    const radialOffset = cylRadius + depth / 2;
+    const posX = radialOffset * Math.cos(theta);
+    const posZ = radialOffset * Math.sin(theta);
+
+    geometry.translate(posX, y, posZ);
+
+    return geometry;
+}
+
+/**
+ * Create a rectangular marker for flat card
  */
 function createRectMarker(spec) {
     const { x, y, z, width, height, depth } = spec;
@@ -106,7 +269,7 @@ function createRectMarker(spec) {
 }
 
 /**
- * Create a triangular marker
+ * Create a triangular marker for flat card
  */
 function createTriangleMarker(spec) {
     const { x, y, z, size, depth } = spec;
@@ -129,13 +292,12 @@ function createTriangleMarker(spec) {
 }
 
 /**
- * Create a character shape marker (alphanumeric)
+ * Create a character shape marker (alphanumeric) for flat card
  */
 function createCharacterMarker(spec) {
     const { x, y, z, char, size, depth } = spec;
 
     // For simplicity, use a box with approximate character dimensions
-    // In a full implementation, this could use text geometry
     const width = size * 0.6;
     const height = size;
     const geometry = new THREE.BoxGeometry(width, height, depth);
@@ -153,7 +315,8 @@ function createCylinderShell(spec) {
     const outerGeom = new THREE.CylinderGeometry(radius, radius, height, 64);
 
     // Create inner cylinder for hollow shell
-    const innerGeom = new THREE.CylinderGeometry(radius - thickness, radius - thickness, height + 0.1, 64);
+    const innerRadius = radius - thickness;
+    const innerGeom = new THREE.CylinderGeometry(innerRadius, innerRadius, height + 0.1, 64);
 
     // Create brushes and subtract
     const outerBrush = new Brush(outerGeom);
@@ -175,14 +338,17 @@ function createCylinderShell(spec) {
         shape.closePath();
 
         const extrudeSettings = {
-            depth: radius * 3, // Ensure it cuts all the way through
+            depth: height * 1.5, // Ensure it cuts all the way through
             bevelEnabled: false
         };
 
         const cutoutGeom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-        cutoutGeom.rotateX(Math.PI / 2); // Align with cylinder
-        const cutoutBrush = new Brush(cutoutGeom);
+        // Center the extrusion
+        cutoutGeom.translate(0, 0, -height * 0.75);
+        // Rotate to align with cylinder's Y-axis
+        cutoutGeom.rotateX(Math.PI / 2);
 
+        const cutoutBrush = new Brush(cutoutGeom);
         shellBrush = evaluator.evaluate(shellBrush, cutoutBrush, SUBTRACTION);
     }
 
@@ -224,14 +390,19 @@ function batchUnion(geometries, batchSize = 32) {
  * Process geometry spec and perform CSG operations
  */
 function processGeometrySpec(spec) {
-    const { shape_type, plate, dots, markers, cylinder } = spec;
+    const { shape_type, plate_type, plate, dots, markers, cylinder } = spec;
+    const isNegative = plate_type === 'negative';
+    const isCylinder = shape_type === 'cylinder';
+
+    console.log(`CSG Worker: Processing ${shape_type} ${plate_type} with ${dots?.length || 0} dots and ${markers?.length || 0} markers`);
 
     try {
         // Create base geometry
         let baseGeometry;
 
-        if (shape_type === 'cylinder' && cylinder) {
+        if (isCylinder && cylinder) {
             baseGeometry = createCylinderShell(cylinder);
+            console.log('CSG Worker: Created cylinder shell');
         } else {
             // Card plate
             const { width, height, thickness, center_x, center_y, center_z } = plate;
@@ -239,57 +410,105 @@ function processGeometrySpec(spec) {
             baseGeometry.translate(center_x, center_y, center_z);
         }
 
-        // Collect all cutout geometries
-        const cutouts = [];
+        // Collect all feature geometries (dots and markers)
+        const features = [];
 
-        // Add dots
+        // Process dots
         if (dots && dots.length > 0) {
-            dots.forEach(dotSpec => {
-                const dotGeom = createBrailleDot(dotSpec);
-                cutouts.push(dotGeom);
+            console.log(`CSG Worker: Creating ${dots.length} dots`);
+            dots.forEach((dotSpec, i) => {
+                try {
+                    let dotGeom;
+
+                    if (dotSpec.type === 'cylinder_dot') {
+                        // Cylinder surface dot
+                        dotGeom = createCylinderDot(dotSpec);
+                    } else {
+                        // Flat card dot
+                        dotGeom = createBrailleDot(dotSpec);
+                    }
+
+                    if (dotGeom) {
+                        features.push(dotGeom);
+                    }
+                } catch (err) {
+                    console.warn(`CSG Worker: Failed to create dot ${i}:`, err.message);
+                }
             });
         }
 
-        // Add markers
+        // Process markers
         if (markers && markers.length > 0) {
-            markers.forEach(markerSpec => {
-                let markerGeom;
+            console.log(`CSG Worker: Creating ${markers.length} markers`);
+            markers.forEach((markerSpec, i) => {
+                try {
+                    let markerGeom;
 
-                if (markerSpec.type === 'rect') {
-                    markerGeom = createRectMarker(markerSpec);
-                } else if (markerSpec.type === 'triangle') {
-                    markerGeom = createTriangleMarker(markerSpec);
-                } else if (markerSpec.type === 'character') {
-                    markerGeom = createCharacterMarker(markerSpec);
-                }
+                    if (markerSpec.type === 'cylinder_triangle') {
+                        markerGeom = createCylinderTriangleMarker(markerSpec);
+                    } else if (markerSpec.type === 'cylinder_rect') {
+                        markerGeom = createCylinderRectMarker(markerSpec);
+                    } else if (markerSpec.type === 'cylinder_character') {
+                        markerGeom = createCylinderCharacterMarker(markerSpec);
+                    } else if (markerSpec.type === 'rect') {
+                        markerGeom = createRectMarker(markerSpec);
+                    } else if (markerSpec.type === 'triangle') {
+                        markerGeom = createTriangleMarker(markerSpec);
+                    } else if (markerSpec.type === 'character') {
+                        markerGeom = createCharacterMarker(markerSpec);
+                    }
 
-                if (markerGeom) {
-                    cutouts.push(markerGeom);
+                    if (markerGeom) {
+                        features.push(markerGeom);
+                    }
+                } catch (err) {
+                    console.warn(`CSG Worker: Failed to create marker ${i}:`, err.message);
                 }
             });
         }
 
         // Perform CSG operations
-        if (cutouts.length > 0) {
-            // Union all cutouts
-            const unionedCutouts = batchUnion(cutouts, 32);
+        if (features.length > 0) {
+            console.log(`CSG Worker: Performing CSG with ${features.length} features`);
 
-            // Subtract from base
+            // Union all features
+            const unionedFeatures = batchUnion(features, 32);
+
+            // For negative (counter) plates: subtract features (create recesses)
+            // For positive (emboss) plates with cylinders: add features (create protrusions)
+            // For positive cards: features are already positioned above surface, just union
             const baseBrush = new Brush(baseGeometry);
-            const cutoutBrush = new Brush(unionedCutouts);
-            const resultBrush = evaluator.evaluate(baseBrush, cutoutBrush, SUBTRACTION);
+            const featureBrush = new Brush(unionedFeatures);
+
+            let resultBrush;
+
+            if (isNegative) {
+                // Counter plate: subtract to create recesses
+                resultBrush = evaluator.evaluate(baseBrush, featureBrush, SUBTRACTION);
+                console.log('CSG Worker: Subtracted features for counter plate');
+            } else if (isCylinder) {
+                // Positive cylinder: add dots that protrude from surface
+                resultBrush = evaluator.evaluate(baseBrush, featureBrush, ADDITION);
+                console.log('CSG Worker: Added features for embossing cylinder');
+            } else {
+                // Positive card: features protrude above, use addition
+                resultBrush = evaluator.evaluate(baseBrush, featureBrush, ADDITION);
+                console.log('CSG Worker: Added features for embossing card');
+            }
 
             // Fix drawRange for export
             resultBrush.geometry.setDrawRange(0, Infinity);
 
             return resultBrush.geometry;
         } else {
-            // No cutouts, return base as-is
+            console.log('CSG Worker: No features, returning base geometry');
+            // No features, return base as-is
             baseGeometry.setDrawRange(0, Infinity);
             return baseGeometry;
         }
 
     } catch (error) {
+        console.error('CSG Worker: Processing failed:', error);
         throw new Error(`CSG processing failed: ${error.message}`);
     }
 }
@@ -327,6 +546,8 @@ self.onmessage = function(event) {
 
     try {
         if (type === 'generate') {
+            console.log('CSG Worker: Starting generation for request', requestId);
+
             // Process geometry
             const geometry = processGeometrySpec(spec);
 
@@ -347,6 +568,8 @@ self.onmessage = function(event) {
                 transferables.push(stlData);
             }
 
+            console.log('CSG Worker: Generation complete, sending result');
+
             // Send results back
             self.postMessage({
                 type: 'success',
@@ -365,6 +588,7 @@ self.onmessage = function(event) {
         }
 
     } catch (error) {
+        console.error('CSG Worker: Error:', error);
         self.postMessage({
             type: 'error',
             requestId: requestId,

@@ -4737,9 +4737,22 @@
                 // Error handling for server response
                 if (!res.ok) {
                     let msg = 'Error generating STL';
+                    let errorCode = null;
                     try {
                         const data = await res.json();
                         if (data.error) msg = data.error;
+                        if (data.error_code) errorCode = data.error_code;
+
+                        // Handle specific error: no boolean backend available
+                        if (errorCode === 'NO_BOOLEAN_BACKEND') {
+                            if (!useClientSideCSG || !workerReady) {
+                                msg = 'Server cannot generate STL files and client-side generation is not available. Please use a modern browser (Chrome 80+, Firefox 114+, Safari 15+, or Edge 80+) with JavaScript enabled.';
+                                log.error('Server has no boolean backend and client worker not ready');
+                            } else {
+                                msg = 'Client-side generation failed and server cannot generate STL files. Please refresh the page and try again.';
+                                log.error('Both client and server generation failed');
+                            }
+                        }
                     } catch (e) {
                         msg = `Server error: ${res.status} ${res.statusText}`;
                     }

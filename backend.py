@@ -2121,6 +2121,23 @@ def generate_braille_stl():
     # Character limit validation is now done on frontend after braille translation
     # Backend expects lines to already be within limits
 
+    # Check if boolean backends are available - required for server-side generation
+    from app.geometry.booleans import has_boolean_backend
+
+    if not has_boolean_backend():
+        # On Vercel or other serverless platforms without boolean backends
+        # Client-side CSG should be used instead
+        return jsonify(
+            {
+                'error': 'Server-side STL generation requires a modern browser with JavaScript enabled. '
+                'This server does not have 3D boolean operation backends available. '
+                'Please ensure JavaScript is enabled in your browser to use client-side geometry processing.',
+                'error_code': 'NO_BOOLEAN_BACKEND',
+                'suggestion': 'Use a modern browser (Chrome 80+, Firefox 114+, Safari 15+, or Edge 80+) with JavaScript enabled. '
+                'The application will automatically generate STL files in your browser.',
+            }
+        ), 503
+
     try:
         allow_blob_cache = plate_type == 'negative'
         # EARLY BLOB CACHE CHECK (before heavy mesh generation)
@@ -2538,6 +2555,23 @@ def generate_counter_plate_stl():
     except Exception as e:
         app.logger.error(f'Validation error in generate_counter_plate_stl: {e}')
         return jsonify({'error': 'Invalid request data'}), 400
+
+    # Check if boolean backends are available - required for server-side generation
+    from app.geometry.booleans import has_boolean_backend
+
+    if not has_boolean_backend():
+        # On Vercel or other serverless platforms without boolean backends
+        # Client-side CSG should be used instead
+        return jsonify(
+            {
+                'error': 'Server-side STL generation requires a modern browser with JavaScript enabled. '
+                'This server does not have 3D boolean operation backends available. '
+                'Please ensure JavaScript is enabled in your browser to use client-side geometry processing.',
+                'error_code': 'NO_BOOLEAN_BACKEND',
+                'suggestion': 'Use a modern browser (Chrome 80+, Firefox 114+, Safari 15+, or Edge 80+) with JavaScript enabled. '
+                'The application will automatically generate STL files in your browser.',
+            }
+        ), 503
 
     try:
         # EARLY BLOB CACHE CHECK (before heavy mesh generation)

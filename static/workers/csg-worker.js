@@ -175,7 +175,8 @@ function createCylinderDot(spec) {
         const { recess_radius } = params;
         const validRecessRadius = (recess_radius && recess_radius > 0) ? recess_radius : 1.0;
         dotHeight = validRecessRadius;
-        geometry = new THREE.SphereGeometry(validRecessRadius, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+        // Use full sphere for better subtraction overlap (will be positioned to create hemisphere effect)
+        geometry = new THREE.SphereGeometry(validRecessRadius, 16, 16);
     } else if (shape === 'bowl') {
         // Bowl (spherical cap) for counter plate
         const { bowl_radius, bowl_depth } = params;
@@ -187,12 +188,8 @@ function createCylinderDot(spec) {
         dotHeight = validBowlDepth;
         const sphereR = (validBowlRadius * validBowlRadius + validBowlDepth * validBowlDepth) / (2.0 * validBowlDepth);
 
-        // Compute thetaEnd with clamped ratio
-        const ratio = 1 - validBowlDepth / sphereR;
-        const clampedRatio = Math.max(-1, Math.min(1, ratio));
-        const thetaEnd = Math.acos(clampedRatio);
-
-        geometry = new THREE.SphereGeometry(sphereR, 16, 16, 0, Math.PI * 2, 0, thetaEnd);
+        // Use full sphere for better subtraction (positioned to create bowl effect)
+        geometry = new THREE.SphereGeometry(sphereR, 16, 16);
     } else if (shape === 'cone') {
         // Cone frustum for counter plate
         const { base_radius, top_radius, height } = params;
@@ -211,27 +208,33 @@ function createCylinderDot(spec) {
         geometry = createConeFrustum(validBaseRadius, validTopRadius, validHeight, 16);
     }
 
-    // Apply rotation to orient dot radially on cylinder surface
-    // Three.js CylinderGeometry creates along Y-axis (height along Y)
-    // We need to rotate so the dot points radially outward at angle theta
+    // For non-spherical shapes (cones, frustums), apply rotation to orient radially
+    // Spheres don't need rotation since they're symmetric
+    const isSpherical = (shape === 'hemisphere' || shape === 'bowl');
 
-    // Step 1: Rotate -90° around Z so dot points along +X instead of +Y
-    geometry.rotateZ(-Math.PI / 2);
+    if (!isSpherical) {
+        // Apply rotation to orient dot radially on cylinder surface
+        // Three.js CylinderGeometry creates along Y-axis (height along Y)
+        // We need to rotate so the dot points radially outward at angle theta
 
-    // Step 2: Rotate around Y by -theta to position it at the correct radial angle
-    // (negative because rotateY(θ) gives (cos(θ), 0, -sin(θ)) but radial is (cos(θ), 0, +sin(θ)))
-    geometry.rotateY(-theta);
+        // Step 1: Rotate -90° around Z so dot points along +X instead of +Y
+        geometry.rotateZ(-Math.PI / 2);
+
+        // Step 2: Rotate around Y by -theta to position it at the correct radial angle
+        // (negative because rotateY(θ) gives (cos(θ), 0, -sin(θ)) but radial is (cos(θ), 0, +sin(θ)))
+        geometry.rotateY(-theta);
+    }
 
     // Calculate the radial position
-    // For recesses (counter plates): position dot so it overlaps INTO cylinder for subtraction
-    // For protrusions (embossing plates): position dot so base sits on surface
-    // Add small epsilon to prevent coplanar triangles which cause CSG failures
-    const epsilon = 0.01;
+    // For recesses (counter plates): position sphere center AT the surface - subtraction creates cavity
+    // For protrusions (embossing plates): position dot so base sits on surface and extends outward
+    // Use larger epsilon to prevent coplanar triangles which cause CSG failures
+    const epsilon = 0.05;
     let radialOffset;
     if (isRecess) {
-        // For recesses, position so the dot extends INTO the cylinder
-        // The CSG subtraction will carve out the shape
-        radialOffset = cylRadius - dotHeight / 2 + epsilon;
+        // For recesses (spheres), center at surface - half will be inside, half outside
+        // The inside half gets subtracted to create the recess
+        radialOffset = cylRadius;
     } else {
         // For protrusions, position so the dot sits ON the surface and extends outward
         radialOffset = cylRadius + dotHeight / 2 + epsilon;
@@ -292,11 +295,13 @@ function createCylinderTriangleMarker(spec) {
     geometry.rotateY(-theta);
 
     // Position at cylinder surface with epsilon to prevent coplanar issues
-    const epsilon = 0.01;
+    const epsilon = 0.05;
     let radialOffset;
     if (is_recess) {
-        radialOffset = cylRadius - validDepth / 2 + epsilon;
+        // For recesses, position so marker extends INTO cylinder for subtraction
+        radialOffset = cylRadius - validDepth / 2;
     } else {
+        // For protrusions, position so marker sits on surface and extends outward
         radialOffset = cylRadius + validDepth / 2 + epsilon;
     }
     const posX = radialOffset * Math.cos(theta);
@@ -339,11 +344,13 @@ function createCylinderRectMarker(spec) {
     geometry.rotateY(Math.PI / 2 - theta);
 
     // Position at cylinder surface with epsilon to prevent coplanar issues
-    const epsilon = 0.01;
+    const epsilon = 0.05;
     let radialOffset;
     if (is_recess) {
-        radialOffset = cylRadius - validDepth / 2 + epsilon;
+        // For recesses, position so marker extends INTO cylinder for subtraction
+        radialOffset = cylRadius - validDepth / 2;
     } else {
+        // For protrusions, position so marker sits on surface and extends outward
         radialOffset = cylRadius + validDepth / 2 + epsilon;
     }
     const posX = radialOffset * Math.cos(theta);
@@ -386,11 +393,13 @@ function createCylinderCharacterMarker(spec) {
     geometry.rotateY(Math.PI / 2 - theta);
 
     // Position at cylinder surface with epsilon to prevent coplanar issues
-    const epsilon = 0.01;
+    const epsilon = 0.05;
     let radialOffset;
     if (is_recess) {
-        radialOffset = cylRadius - validDepth / 2 + epsilon;
+        // For recesses, position so marker extends INTO cylinder for subtraction
+        radialOffset = cylRadius - validDepth / 2;
     } else {
+        // For protrusions, position so marker sits on surface and extends outward
         radialOffset = cylRadius + validDepth / 2 + epsilon;
     }
     const posX = radialOffset * Math.cos(theta);

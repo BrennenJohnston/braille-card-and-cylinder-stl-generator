@@ -1063,6 +1063,151 @@ def create_fallback_plate(settings: CardSettings):
     return base
 
 
+def create_universal_counter_plate_2d(params: CardSettings) -> trimesh.Trimesh:
+    """
+    Create a universal counter plate using 2D Shapely operations (serverless-compatible).
+
+    This function uses a layered extrusion approach that avoids 3D boolean operations:
+    1. Bottom layer: solid slab (plate_thickness - recess_depth)
+    2. Top layer: slab with holes for dots and indicator shapes (recess_depth)
+
+    This creates flat-bottomed recesses at ALL dot positions and indicator positions.
+
+    Args:
+        params: CardSettings object containing all layout and geometry parameters
+
+    Returns:
+        Trimesh object representing the counter plate with recesses
+    """
+    logger.info('Creating universal counter plate using 2D Shapely operations (serverless-compatible)')
+
+    # Determine recess depth based on recess shape
+    recess_shape = int(getattr(params, 'recess_shape', 1))
+    if recess_shape == 2:  # Cone
+        recess_depth = float(getattr(params, 'cone_counter_dot_height', 0.8))
+    elif recess_shape == 1:  # Bowl
+        recess_depth = float(getattr(params, 'counter_dot_depth', 0.6))
+    else:  # Hemisphere
+        try:
+            counter_base = float(getattr(params, 'hemi_counter_dot_base_diameter', params.counter_dot_base_diameter))
+        except Exception:
+            counter_base = params.emboss_dot_base_diameter + params.counter_plate_dot_size_offset
+        recess_depth = counter_base / 2  # Hemisphere depth equals radius
+
+    # Ensure recess depth doesn't exceed plate thickness
+    recess_depth = min(recess_depth, params.plate_thickness - 0.1)
+    recess_depth = max(0.2, recess_depth)  # Minimum 0.2mm depth
+
+    bottom_h = params.plate_thickness - recess_depth
+
+    # Create base rectangle
+    base_2d = Polygon(
+        [(0, 0), (params.card_width, 0), (params.card_width, params.card_height), (0, params.card_height)]
+    )
+
+    # Dot positioning constants
+    dot_col_offsets = [-params.dot_spacing / 2, params.dot_spacing / 2]
+    dot_row_offsets = [params.dot_spacing, 0, -params.dot_spacing]
+    dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
+
+    # Calculate hole radius based on recess shape
+    if recess_shape == 2:  # Cone
+        hole_radius = float(getattr(params, 'cone_counter_dot_base_diameter', params.counter_dot_base_diameter)) / 2
+    elif recess_shape == 1:  # Bowl
+        hole_radius = float(getattr(params, 'bowl_counter_dot_base_diameter', params.counter_dot_base_diameter)) / 2
+    else:  # Hemisphere
+        try:
+            counter_base = float(getattr(params, 'hemi_counter_dot_base_diameter', params.counter_dot_base_diameter))
+        except Exception:
+            counter_base = params.emboss_dot_base_diameter + params.counter_plate_dot_size_offset
+        hole_radius = counter_base / 2
+
+    hole_radius = max(0.3, hole_radius)  # Minimum radius
+
+    # Create holes for ALL dot positions
+    dot_holes = []
+    reserved = 2 if getattr(params, 'indicator_shapes', 1) else 0
+    for row in range(params.grid_rows):
+        y_pos = params.card_height - params.top_margin - (row * params.line_spacing) + params.braille_y_adjust
+
+        for col in range(params.grid_columns - reserved):
+            x_pos = (
+                params.left_margin
+                + ((col + (1 if getattr(params, 'indicator_shapes', 1) else 0)) * params.cell_spacing)
+                + params.braille_x_adjust
+            )
+
+            for dot_idx in range(6):
+                dot_pos = dot_positions[dot_idx]
+                dot_x = x_pos + dot_col_offsets[dot_pos[1]]
+                dot_y = y_pos + dot_row_offsets[dot_pos[0]]
+                hole = Point(dot_x, dot_y).buffer(hole_radius, resolution=32)
+                dot_holes.append(hole)
+
+    # Create indicator shape holes for all rows
+    indicator_holes = []
+    if getattr(params, 'indicator_shapes', 1):
+        for row_num in range(params.grid_rows):
+            y_pos = params.card_height - params.top_margin - (row_num * params.line_spacing) + params.braille_y_adjust
+            x_pos_first = params.left_margin + params.braille_x_adjust
+            x_pos_last = (
+                params.left_margin + ((params.grid_columns - 1) * params.cell_spacing) + params.braille_x_adjust
+            )
+
+            # Rectangle at first column (line end marker)
+            rect = create_line_marker_polygon(x_pos_first, y_pos, params)
+            indicator_holes.append(rect)
+
+            # Triangle at last column
+            tri = create_triangle_marker_polygon(x_pos_last, y_pos, params)
+            indicator_holes.append(tri)
+
+    # Combine all holes
+    all_holes = dot_holes + indicator_holes
+    if not all_holes:
+        logger.warning('No holes generated, returning plain plate')
+        return create_fallback_plate(params)
+
+    try:
+        combined_holes = unary_union(all_holes)
+        top_sheet_2d = base_2d.difference(combined_holes)
+    except Exception as e:
+        logger.error(f'Failed to create 2D difference: {e}')
+        return create_fallback_plate(params)
+
+    # Extrude layers
+    try:
+        # Bottom slab: full rectangle
+        bottom_slab = trimesh.creation.extrude_polygon(base_2d, height=bottom_h)
+
+        # Top sheet: base with holes
+        def _extrude_multipolygon(shape_2d, height):
+            if hasattr(shape_2d, 'geoms'):
+                parts = [trimesh.creation.extrude_polygon(g, height=height) for g in shape_2d.geoms if g.area > 0.01]
+                return trimesh.util.concatenate(parts) if parts else None
+            return trimesh.creation.extrude_polygon(shape_2d, height=height)
+
+        top_sheet = _extrude_multipolygon(top_sheet_2d, recess_depth)
+        if top_sheet is None:
+            logger.error('Top sheet extrusion produced no geometry')
+            return create_fallback_plate(params)
+
+        # Position the top sheet above the bottom slab
+        top_sheet.apply_translation((0, 0, bottom_h))
+
+        # Combine both layers
+        final_mesh = trimesh.util.concatenate([bottom_slab, top_sheet])
+
+        logger.info(
+            f'Created universal counter plate with {len(dot_holes)} dot recesses and {len(indicator_holes)} indicator recesses using 2D approach'
+        )
+        return final_mesh
+
+    except Exception as e:
+        logger.error(f'Failed to create layered counter plate: {e}')
+        return create_fallback_plate(params)
+
+
 # layout_cylindrical_cells now imported from app.geometry.cylinder
 
 
@@ -2029,18 +2174,35 @@ def generate_braille_stl():
                 # Counter plate: choose recess shape
                 # It does NOT depend on text input - always creates ALL 6 dots per cell
                 recess_shape = int(getattr(settings, 'recess_shape', 1))
-                if recess_shape == 1:
-                    logger.debug('Generating counter plate with bowl (spherical cap) recesses (all positions)')
-                    mesh = build_counter_plate_bowl(settings)
-                elif recess_shape == 0:
-                    logger.debug('Generating counter plate with hemispherical recesses (all positions)')
-                    mesh = build_counter_plate_hemispheres(settings)
-                elif recess_shape == 2:
-                    logger.debug('Generating counter plate with conical (frustum) recesses (all positions)')
-                    mesh = build_counter_plate_cone(settings)
+
+                # In serverless environment, use 2D Shapely approach which is more reliable
+                if _is_serverless_env():
+                    logger.info('Serverless environment detected: using 2D Shapely approach for counter plate')
+                    mesh = create_universal_counter_plate_2d(settings)
                 else:
-                    logger.warning('Unknown recess_shape value, defaulting to bowl')
-                    mesh = build_counter_plate_bowl(settings)
+                    # Try 3D boolean approach first, fall back to 2D if it fails
+                    try:
+                        if recess_shape == 1:
+                            logger.debug('Generating counter plate with bowl (spherical cap) recesses (all positions)')
+                            mesh = build_counter_plate_bowl(settings)
+                        elif recess_shape == 0:
+                            logger.debug('Generating counter plate with hemispherical recesses (all positions)')
+                            mesh = build_counter_plate_hemispheres(settings)
+                        elif recess_shape == 2:
+                            logger.debug('Generating counter plate with conical (frustum) recesses (all positions)')
+                            mesh = build_counter_plate_cone(settings)
+                        else:
+                            logger.warning('Unknown recess_shape value, defaulting to bowl')
+                            mesh = build_counter_plate_bowl(settings)
+
+                        # Check if mesh actually has recesses (rough heuristic: check face count)
+                        # A plain box has ~12 faces, a plate with recesses has many more
+                        if len(mesh.faces) < 100:
+                            logger.warning('3D boolean approach may have failed (low face count), using 2D fallback')
+                            mesh = create_universal_counter_plate_2d(settings)
+                    except Exception as e:
+                        logger.warning(f'3D boolean approach failed: {e}, using 2D fallback')
+                        mesh = create_universal_counter_plate_2d(settings)
             else:
                 return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
 
@@ -2350,18 +2512,34 @@ def generate_counter_plate_stl():
         # Counter plate: choose recess shape
         # It does NOT depend on text input - always creates ALL 6 dots per cell
         recess_shape = int(getattr(settings, 'recess_shape', 1))
-        if recess_shape == 1:
-            logger.debug('Generating counter plate with bowl (spherical cap) recesses (all positions)')
-            mesh = build_counter_plate_bowl(settings)
-        elif recess_shape == 0:
-            logger.debug('Generating counter plate with hemispherical recesses (all positions)')
-            mesh = build_counter_plate_hemispheres(settings)
-        elif recess_shape == 2:
-            logger.debug('Generating counter plate with conical (frustum) recesses (all positions)')
-            mesh = build_counter_plate_cone(settings)
+
+        # In serverless environment, use 2D Shapely approach which is more reliable
+        if _is_serverless_env():
+            logger.info('Serverless environment detected: using 2D Shapely approach for standalone counter plate')
+            mesh = create_universal_counter_plate_2d(settings)
         else:
-            logger.warning(f'Unknown recess_shape={recess_shape}, defaulting to hemisphere')
-            mesh = build_counter_plate_hemispheres(settings)
+            # Try 3D boolean approach first, fall back to 2D if it fails
+            try:
+                if recess_shape == 1:
+                    logger.debug('Generating counter plate with bowl (spherical cap) recesses (all positions)')
+                    mesh = build_counter_plate_bowl(settings)
+                elif recess_shape == 0:
+                    logger.debug('Generating counter plate with hemispherical recesses (all positions)')
+                    mesh = build_counter_plate_hemispheres(settings)
+                elif recess_shape == 2:
+                    logger.debug('Generating counter plate with conical (frustum) recesses (all positions)')
+                    mesh = build_counter_plate_cone(settings)
+                else:
+                    logger.warning(f'Unknown recess_shape={recess_shape}, defaulting to hemisphere')
+                    mesh = build_counter_plate_hemispheres(settings)
+
+                # Check if mesh actually has recesses (rough heuristic: check face count)
+                if len(mesh.faces) < 100:
+                    logger.warning('3D boolean approach may have failed (low face count), using 2D fallback')
+                    mesh = create_universal_counter_plate_2d(settings)
+            except Exception as e:
+                logger.warning(f'3D boolean approach failed: {e}, using 2D fallback')
+                mesh = create_universal_counter_plate_2d(settings)
 
         # Compute content-addressable cache key from request payload
         cache_payload = {

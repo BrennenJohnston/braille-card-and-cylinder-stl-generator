@@ -721,7 +721,8 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
     # Combine all markers (text/number indicators and triangles) for efficient boolean operations
     all_markers = (text_number_meshes + triangle_meshes) if getattr(settings, 'indicator_shapes', 1) else []
 
-    if all_markers and _booleans_enabled():
+    markers_applied = False
+    if all_markers and _booleans_enabled() and not _is_serverless_env():
         try:
             # Union all markers first
             union_markers = mesh_union(all_markers)
@@ -730,8 +731,91 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
             # Subtract from shell to recess (serverless-compatible)
             cylinder_shell = mesh_difference([cylinder_shell, union_markers])
             logger.debug('Marker subtraction successful')
+            markers_applied = True
         except Exception as e:
-            logger.error(f'Could not create marker cutouts: {e}')
+            logger.error(f'Union approach failed for marker cutouts: {e}')
+
+    # If union approach failed or we're in serverless, try individual subtraction
+    if all_markers and not markers_applied and _booleans_enabled():
+        try:
+            logger.debug('Attempting individual marker subtraction...')
+            for i, marker in enumerate(all_markers):
+                try:
+                    cylinder_shell = mesh_difference([cylinder_shell, marker])
+                except Exception as marker_err:
+                    logger.warning(f'Failed to subtract marker {i + 1}: {marker_err}')
+                    continue
+            markers_applied = True
+            logger.debug('Individual marker subtraction completed')
+        except Exception as e:
+            logger.error(f'Individual marker subtraction failed: {e}')
+
+    # If all 3D approaches failed, create markers using 2D cross-section approach
+    if all_markers and not markers_applied:
+        logger.warning('3D marker subtraction failed. Using 2D cross-section approach for indicator recesses.')
+        try:
+            # Create a cylinder shell with holes at marker positions
+            outer_circle = ShapelyPoint(0, 0).buffer(radius, resolution=128)
+
+            # Create inner polygon for cutout
+            if polygonal_cutout_radius > 0:
+                circumscribed_radius = polygonal_cutout_radius / np.cos(np.pi / polygonal_cutout_sides)
+                angles_poly = np.linspace(0, 2 * np.pi, polygonal_cutout_sides, endpoint=False)
+                vertices_2d = [
+                    (
+                        circumscribed_radius * np.cos(a + cutout_align_theta),
+                        circumscribed_radius * np.sin(a + cutout_align_theta),
+                    )
+                    for a in angles_poly
+                ]
+                inner_polygon = ShapelyPolygon(vertices_2d)
+                ring_2d = outer_circle.difference(inner_polygon)
+            else:
+                ring_2d = outer_circle
+
+            # Create holes at marker positions on the ring
+            marker_holes = []
+            for row_num in range(settings.grid_rows):
+                y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
+                y_local = y_pos - (height / 2.0)
+
+                # First column (text/number indicator)
+                first_angle = start_angle + seam_offset_rad
+                first_x = radius * np.cos(first_angle)
+                first_y = radius * np.sin(first_angle)
+                marker_holes.append(ShapelyPoint(first_x, first_y).buffer(settings.dot_spacing * 0.8, resolution=16))
+
+                # Last column (triangle)
+                last_angle = (
+                    start_angle + ((settings.grid_columns - 1) * settings.cell_spacing / radius) + seam_offset_rad
+                )
+                last_x = radius * np.cos(last_angle)
+                last_y = radius * np.sin(last_angle)
+                marker_holes.append(ShapelyPoint(last_x, last_y).buffer(settings.dot_spacing * 0.8, resolution=16))
+
+            if marker_holes:
+                from shapely.ops import unary_union as _unary_union
+
+                combined_marker_holes = _unary_union(marker_holes)
+                ring_with_holes = ring_2d.difference(combined_marker_holes)
+
+                # Create layered cylinder: bottom part without holes, top part with holes
+                recess_depth = 0.6  # marker recess depth
+                bottom_height = height - recess_depth
+
+                # Bottom part (no holes)
+                bottom_shell = extrude_polygon(ring_2d, height=bottom_height)
+                bottom_shell.apply_translation([0, 0, -height / 2])
+
+                # Top part (with holes)
+                top_shell = extrude_polygon(ring_with_holes, height=recess_depth)
+                top_shell.apply_translation([0, 0, -height / 2 + bottom_height])
+
+                cylinder_shell = trimesh.util.concatenate([bottom_shell, top_shell])
+                logger.debug('2D marker approach successful')
+
+        except Exception as e2d:
+            logger.error(f'2D marker approach also failed: {e2d}')
 
     meshes = [cylinder_shell]
 
@@ -850,12 +934,10 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         diameter, height, polygonal_cutout_radius, polygonal_cutout_sides, align_vertex_theta_rad=cutout_align_theta
     )
 
-    # Respect feature flag; allow booleans even in serverless if explicitly enabled
-    if not _booleans_enabled():
-        logger.warning('ENABLE_3D_BOOLEANS disabled: returning cylinder shell without recesses (counter plate)')
-        min_z = cylinder_shell.bounds[0][2]
-        cylinder_shell.apply_translation([0, 0, -min_z])
-        return cylinder_shell
+    # Respect feature flag; use 2D approach when booleans are disabled or in serverless
+    if not _booleans_enabled() or _is_serverless_env():
+        logger.info('Using 2D approach for cylinder counter plate (booleans disabled or serverless environment)')
+        return create_cylinder_counter_plate_2d(settings, cylinder_params)
 
     # Use grid_rows from settings
 
@@ -1199,12 +1281,172 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         return final_shell
     except Exception as final_error:
         logger.error(f'Cylinder fallback boolean failed: {final_error}')
-        logger.warning('Returning simple cylinder shell without recesses.')
+        logger.warning('Using 2D approach for cylinder counter plate.')
+        # Use 2D approach as final fallback
+        return create_cylinder_counter_plate_2d(settings, cylinder_params)
 
-        # The cylinder is already created with vertical axis (along Z)
-        # No rotation needed - it should stand upright
-        # Just ensure the base is at Z=0
-        min_z = cylinder_shell.bounds[0][2]
-        cylinder_shell.apply_translation([0, 0, -min_z])
 
-        return cylinder_shell
+def create_cylinder_counter_plate_2d(settings, cylinder_params=None):
+    """
+    Create a cylinder counter plate using 2D Shapely operations (serverless-compatible).
+
+    This creates a cylinder with through-holes at all dot positions using 2D
+    cross-section operations, which avoids 3D boolean operations entirely.
+
+    Args:
+        settings: CardSettings object
+        cylinder_params: Dictionary with cylinder parameters
+
+    Returns:
+        Trimesh object representing the cylinder counter plate
+    """
+    from shapely.ops import unary_union as _unary_union
+
+    if cylinder_params is None:
+        cylinder_params = {
+            'diameter_mm': 31.35,
+            'height_mm': settings.card_height,
+            'polygonal_cutout_radius_mm': 13,
+            'polygonal_cutout_sides': 12,
+            'seam_offset_deg': 355,
+        }
+
+    diameter = float(cylinder_params.get('diameter_mm', 31.35))
+    height = float(cylinder_params.get('height_mm', settings.card_height))
+    polygonal_cutout_radius = float(cylinder_params.get('polygonal_cutout_radius_mm', 0))
+    polygonal_cutout_sides = int(cylinder_params.get('polygonal_cutout_sides', 12) or 12)
+    seam_offset = float(cylinder_params.get('seam_offset_deg', 355))
+
+    logger.info(f'Creating cylinder counter plate using 2D approach - Diameter: {diameter}mm, Height: {height}mm')
+
+    radius = diameter / 2
+    grid_width = (settings.grid_columns - 1) * settings.cell_spacing
+    grid_angle = grid_width / radius
+    start_angle = -grid_angle / 2
+    cell_spacing_angle = settings.cell_spacing / radius
+    seam_offset_rad = np.radians(seam_offset)
+
+    # Calculate hole radius for dot recesses
+    recess_shape = int(getattr(settings, 'recess_shape', 1))
+    if recess_shape == 2:  # Cone
+        hole_radius = float(getattr(settings, 'cone_counter_dot_base_diameter', settings.counter_dot_base_diameter)) / 2
+    elif recess_shape == 1:  # Bowl
+        hole_radius = float(getattr(settings, 'bowl_counter_dot_base_diameter', settings.counter_dot_base_diameter)) / 2
+    else:  # Hemisphere
+        try:
+            counter_base = float(
+                getattr(settings, 'hemi_counter_dot_base_diameter', settings.counter_dot_base_diameter)
+            )
+        except Exception:
+            counter_base = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
+        hole_radius = counter_base / 2
+
+    hole_radius = max(0.3, hole_radius)
+
+    # Create outer circle for cylinder surface
+    outer_circle = ShapelyPoint(0, 0).buffer(radius, resolution=128)
+
+    # Create inner polygon for cutout
+    if polygonal_cutout_radius > 0:
+        polygonal_cutout_sides = max(3, polygonal_cutout_sides)
+        circumscribed_radius = polygonal_cutout_radius / np.cos(np.pi / polygonal_cutout_sides)
+        angles = np.linspace(0, 2 * np.pi, polygonal_cutout_sides, endpoint=False)
+
+        # Align to first column position
+        first_col_angle = start_angle
+        align_angle = first_col_angle + seam_offset_rad
+
+        vertices_2d = [
+            (circumscribed_radius * np.cos(a + align_angle), circumscribed_radius * np.sin(a + align_angle))
+            for a in angles
+        ]
+        inner_polygon = ShapelyPolygon(vertices_2d)
+        cross_section = outer_circle.difference(inner_polygon)
+    else:
+        cross_section = outer_circle
+
+    # Create holes in the 2D cross-section for all dot positions
+    dot_spacing_angle = settings.dot_spacing / radius
+    dot_col_angle_offsets = [-dot_spacing_angle / 2, dot_spacing_angle / 2]
+    dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
+
+    reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
+    num_text_cols = settings.grid_columns - reserved
+
+    # Create circular holes at each dot position on the outer surface
+    outer_holes = []
+    for _row in range(settings.grid_rows):
+        for col in range(num_text_cols):
+            mirrored_idx = (num_text_cols - 1) - col
+            cell_angle = start_angle + ((mirrored_idx + 1) * cell_spacing_angle) + seam_offset_rad
+
+            for dot_idx in range(6):
+                dot_pos = dot_positions[dot_idx]
+                dot_angle = cell_angle + dot_col_angle_offsets[dot_pos[1]]
+
+                # Create hole on the outer circle at this angle
+                hole_x = radius * np.cos(dot_angle)
+                hole_y = radius * np.sin(dot_angle)
+                hole = ShapelyPoint(hole_x, hole_y).buffer(hole_radius, resolution=16)
+                outer_holes.append(hole)
+
+    # Add indicator shape holes
+    if getattr(settings, 'indicator_shapes', 1):
+        for _row_num in range(settings.grid_rows):
+            # Triangle at first column
+            first_angle = start_angle + seam_offset_rad
+            tri_x = radius * np.cos(first_angle)
+            tri_y = radius * np.sin(first_angle)
+            tri_hole = ShapelyPoint(tri_x, tri_y).buffer(settings.dot_spacing * 0.8, resolution=16)
+            outer_holes.append(tri_hole)
+
+            # Line at last column
+            last_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle) + seam_offset_rad
+            line_x = radius * np.cos(last_angle)
+            line_y = radius * np.sin(last_angle)
+            line_hole = ShapelyPoint(line_x, line_y).buffer(settings.dot_spacing * 0.5, resolution=16)
+            outer_holes.append(line_hole)
+
+    # Combine holes and subtract from cross-section
+    if outer_holes:
+        try:
+            combined_holes = _unary_union(outer_holes)
+            cross_section = cross_section.difference(combined_holes)
+        except Exception as e:
+            logger.warning(f'Failed to create hole pattern: {e}')
+
+    # Extrude the 2D cross-section to 3D
+    try:
+        if cross_section.is_empty:
+            logger.error('Cross-section is empty, returning simple shell')
+            shell = create_cylinder_shell(diameter, height, polygonal_cutout_radius, polygonal_cutout_sides)
+            min_z = shell.bounds[0][2]
+            shell.apply_translation([0, 0, -min_z])
+            return shell
+
+        # Handle MultiPolygon
+        if hasattr(cross_section, 'geoms'):
+            parts = [extrude_polygon(g, height=height) for g in cross_section.geoms if g.area > 0.01]
+            if parts:
+                cylinder_mesh = trimesh.util.concatenate(parts)
+            else:
+                cylinder_mesh = create_cylinder_shell(diameter, height, polygonal_cutout_radius, polygonal_cutout_sides)
+        else:
+            cylinder_mesh = extrude_polygon(cross_section, height=height)
+
+        # Center the cylinder
+        cylinder_mesh.apply_translation([0, 0, -height / 2])
+
+        # Ensure base is at Z=0
+        min_z = cylinder_mesh.bounds[0][2]
+        cylinder_mesh.apply_translation([0, 0, -min_z])
+
+        logger.info(f'Created cylinder counter plate with 2D approach: {len(cylinder_mesh.vertices)} vertices')
+        return cylinder_mesh
+
+    except Exception as e:
+        logger.error(f'Failed to extrude cylinder cross-section: {e}')
+        shell = create_cylinder_shell(diameter, height, polygonal_cutout_radius, polygonal_cutout_sides)
+        min_z = shell.bounds[0][2]
+        shell.apply_translation([0, 0, -min_z])
+        return shell

@@ -2433,7 +2433,9 @@
                 };
 
                 csgWorker.onerror = function(error) {
-                    log.error('CSG Worker error:', error);
+                    log.error('CSG Worker error:', error.message || error);
+                    log.error('CSG Worker error file:', error.filename);
+                    log.error('CSG Worker error line:', error.lineno);
                     workerReady = false;
                     useClientSideCSG = false; // Disable on error
                 };

@@ -2425,10 +2425,15 @@
                 csgWorker = new Worker('/static/workers/csg-worker.js', { type: 'module' });
 
                 csgWorker.onmessage = function(event) {
-                    const { type } = event.data;
+                    const { type, error, stack } = event.data;
                     if (type === 'ready') {
                         workerReady = true;
                         log.info('CSG Worker initialized and ready');
+                    } else if (type === 'init_error') {
+                        log.error('CSG Worker initialization failed:', error);
+                        log.error('CSG Worker init error stack:', stack);
+                        workerReady = false;
+                        useClientSideCSG = false;
                     }
                 };
 

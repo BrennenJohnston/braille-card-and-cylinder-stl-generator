@@ -3,13 +3,33 @@
  * Uses three-bvh-csg for boolean operations
  */
 
-import * as THREE from '/static/three.module.js';
-import { Brush, Evaluator, SUBTRACTION, ADDITION } from '/static/vendor/three-bvh-csg/index.module.js';
-import { STLExporter } from '/static/examples/STLExporter.js';
+let THREE, Brush, Evaluator, SUBTRACTION, ADDITION, STLExporter;
+let evaluator, stlExporter;
+let initError = null;
 
-// Initialize evaluator and exporter
-const evaluator = new Evaluator();
-const stlExporter = new STLExporter();
+try {
+    // Dynamic imports to catch any loading errors
+    const threeModule = await import('/static/three.module.js');
+    THREE = threeModule;
+
+    const csgModule = await import('/static/vendor/three-bvh-csg/index.module.js');
+    Brush = csgModule.Brush;
+    Evaluator = csgModule.Evaluator;
+    SUBTRACTION = csgModule.SUBTRACTION;
+    ADDITION = csgModule.ADDITION;
+
+    const exporterModule = await import('/static/examples/STLExporter.js');
+    STLExporter = exporterModule.STLExporter;
+
+    // Initialize evaluator and exporter
+    evaluator = new Evaluator();
+    stlExporter = new STLExporter();
+
+    console.log('CSG Worker: All modules loaded successfully');
+} catch (error) {
+    initError = error;
+    console.error('CSG Worker initialization error:', error.message, error.stack);
+}
 
 /**
  * Create a cone frustum (truncated cone) for braille dots
@@ -294,6 +314,17 @@ function exportToSTL(geometry) {
 self.onmessage = function(event) {
     const { type, spec, requestId } = event.data;
 
+    // Check if initialization failed
+    if (initError) {
+        self.postMessage({
+            type: 'error',
+            requestId: requestId,
+            error: 'Worker initialization failed: ' + initError.message,
+            stack: initError.stack
+        });
+        return;
+    }
+
     try {
         if (type === 'generate') {
             // Process geometry
@@ -334,5 +365,9 @@ self.onmessage = function(event) {
     }
 };
 
-// Signal that worker is ready
-self.postMessage({ type: 'ready' });
+// Signal that worker is ready (or report initialization error)
+if (initError) {
+    self.postMessage({ type: 'init_error', error: initError.message, stack: initError.stack });
+} else {
+    self.postMessage({ type: 'ready' });
+}

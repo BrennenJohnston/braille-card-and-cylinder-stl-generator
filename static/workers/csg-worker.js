@@ -509,10 +509,10 @@ function processGeometrySpec(spec) {
         }
 
         // For cylinders: rotate from Y-up (Three.js) to Z-up (STL/CAD convention)
-        // Rotate -90° around X-axis so the cylinder stands upright
+        // Rotate +90° around X-axis so the cylinder stands upright in correct orientation
         if (isCylinder) {
-            finalGeometry.rotateX(-Math.PI / 2);
-            console.log('CSG Worker: Rotated cylinder to Z-up orientation');
+            finalGeometry.rotateX(Math.PI / 2);
+            console.log('CSG Worker: Rotated cylinder to Z-up orientation (right-side up)');
         }
 
         return finalGeometry;

@@ -41,9 +41,31 @@ function createConeFrustum(baseRadius, topRadius, height, segments = 16) {
 
 /**
  * Create a spherical cap (dome) for rounded braille dots
+ * Handles edge cases to prevent NaN in geometry
  */
 function createSphericalCap(radius, height, subdivisions = 3) {
-    const geometry = new THREE.SphereGeometry(radius, 16, 16, 0, Math.PI * 2, 0, Math.acos(1 - height / radius));
+    // Validate inputs to prevent NaN
+    if (!radius || radius <= 0 || !isFinite(radius)) {
+        console.warn('createSphericalCap: Invalid radius, using fallback sphere');
+        return new THREE.SphereGeometry(1, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+    }
+    if (!height || height <= 0 || !isFinite(height)) {
+        console.warn('createSphericalCap: Invalid height, using fallback sphere');
+        return new THREE.SphereGeometry(radius, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+    }
+
+    // Calculate the ratio for acos - must be in range [-1, 1]
+    const ratio = 1 - height / radius;
+
+    // Clamp ratio to valid acos range to prevent NaN
+    // This handles cases where height > 2*radius (which would give ratio < -1)
+    const clampedRatio = Math.max(-1, Math.min(1, ratio));
+
+    // If height >= 2*radius, we essentially want a full hemisphere or more
+    // In that case, use π/2 for a hemisphere (maximum practical spherical cap)
+    const phiLength = clampedRatio <= -1 ? Math.PI : Math.acos(clampedRatio);
+
+    const geometry = new THREE.SphereGeometry(radius, 16, 16, 0, Math.PI * 2, 0, phiLength);
     return geometry;
 }
 
@@ -102,6 +124,17 @@ function createBrailleDot(spec) {
  */
 function createCylinderDot(spec) {
     const { x, y, z, theta, radius: cylRadius, params, is_recess } = spec;
+
+    // Validate essential parameters
+    if (!isFinite(theta) || !isFinite(cylRadius) || cylRadius <= 0) {
+        console.warn('createCylinderDot: Invalid theta or cylRadius, skipping dot');
+        return null;
+    }
+    if (!params) {
+        console.warn('createCylinderDot: Missing params, skipping dot');
+        return null;
+    }
+
     const shape = params.shape || 'standard';
 
     let geometry;
@@ -111,15 +144,23 @@ function createCylinderDot(spec) {
     if (shape === 'rounded') {
         // Rounded dot for positive plate
         const { base_radius, top_radius, base_height, dome_height, dome_radius } = params;
-        dotHeight = base_height + dome_height;
 
-        if (base_height > 0) {
+        // Validate rounded dot parameters
+        const validBaseRadius = (base_radius && base_radius > 0) ? base_radius : 1.0;
+        const validTopRadius = (top_radius && top_radius > 0) ? top_radius : 0.75;
+        const validBaseHeight = (base_height && base_height >= 0) ? base_height : 0.2;
+        const validDomeHeight = (dome_height && dome_height > 0) ? dome_height : 0.6;
+        const validDomeRadius = (dome_radius && dome_radius > 0) ? dome_radius : 0.5;
+
+        dotHeight = validBaseHeight + validDomeHeight;
+
+        if (validBaseHeight > 0) {
             // Frustum base + dome
-            const frustum = createConeFrustum(base_radius, top_radius, base_height, 32);
-            const dome = createSphericalCap(dome_radius, dome_height, 2);
+            const frustum = createConeFrustum(validBaseRadius, validTopRadius, validBaseHeight, 32);
+            const dome = createSphericalCap(validDomeRadius, validDomeHeight, 2);
 
             // Position dome on top of frustum
-            dome.translate(0, base_height / 2, 0);
+            dome.translate(0, validBaseHeight / 2, 0);
 
             const frustumBrush = new Brush(frustum);
             const domeBrush = new Brush(dome);
@@ -127,30 +168,47 @@ function createCylinderDot(spec) {
             geometry = combinedBrush.geometry;
         } else {
             // Just dome
-            geometry = createSphericalCap(dome_radius, dome_height, 2);
+            geometry = createSphericalCap(validDomeRadius, validDomeHeight, 2);
         }
     } else if (shape === 'hemisphere') {
         // Hemisphere for counter plate recesses
         const { recess_radius } = params;
-        dotHeight = recess_radius;
-        geometry = new THREE.SphereGeometry(recess_radius, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+        const validRecessRadius = (recess_radius && recess_radius > 0) ? recess_radius : 1.0;
+        dotHeight = validRecessRadius;
+        geometry = new THREE.SphereGeometry(validRecessRadius, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
     } else if (shape === 'bowl') {
         // Bowl (spherical cap) for counter plate
         const { bowl_radius, bowl_depth } = params;
-        dotHeight = bowl_depth;
-        const sphereR = (bowl_radius * bowl_radius + bowl_depth * bowl_depth) / (2.0 * bowl_depth);
-        const thetaEnd = Math.acos(1 - bowl_depth / sphereR);
+
+        // Validate bowl parameters to prevent NaN
+        const validBowlRadius = (bowl_radius && bowl_radius > 0) ? bowl_radius : 1.5;
+        const validBowlDepth = (bowl_depth && bowl_depth > 0) ? bowl_depth : 0.8;
+
+        dotHeight = validBowlDepth;
+        const sphereR = (validBowlRadius * validBowlRadius + validBowlDepth * validBowlDepth) / (2.0 * validBowlDepth);
+
+        // Compute thetaEnd with clamped ratio
+        const ratio = 1 - validBowlDepth / sphereR;
+        const clampedRatio = Math.max(-1, Math.min(1, ratio));
+        const thetaEnd = Math.acos(clampedRatio);
+
         geometry = new THREE.SphereGeometry(sphereR, 16, 16, 0, Math.PI * 2, 0, thetaEnd);
     } else if (shape === 'cone') {
         // Cone frustum for counter plate
         const { base_radius, top_radius, height } = params;
-        dotHeight = height;
-        geometry = createConeFrustum(base_radius, top_radius, height, 16);
+        const validBaseRadius = (base_radius && base_radius > 0) ? base_radius : 1.0;
+        const validTopRadius = (top_radius && top_radius >= 0) ? top_radius : 0.25;
+        const validHeight = (height && height > 0) ? height : 1.0;
+        dotHeight = validHeight;
+        geometry = createConeFrustum(validBaseRadius, validTopRadius, validHeight, 16);
     } else {
         // Standard cone frustum for positive embossing
         const { base_radius, top_radius, height } = params;
-        dotHeight = height;
-        geometry = createConeFrustum(base_radius, top_radius, height, 16);
+        const validBaseRadius = (base_radius && base_radius > 0) ? base_radius : 0.8;
+        const validTopRadius = (top_radius && top_radius >= 0) ? top_radius : 0.25;
+        const validHeight = (height && height > 0) ? height : 0.5;
+        dotHeight = validHeight;
+        geometry = createConeFrustum(validBaseRadius, validTopRadius, validHeight, 16);
     }
 
     // Apply rotation to orient dot radially on cylinder surface
@@ -181,9 +239,16 @@ function createCylinderDot(spec) {
 
     const posX = radialOffset * Math.cos(theta);
     const posZ = radialOffset * Math.sin(theta);
+    const posY = isFinite(y) ? y : 0;
+
+    // Validate final position values
+    if (!isFinite(posX) || !isFinite(posZ) || !isFinite(posY)) {
+        console.warn('createCylinderDot: Invalid position calculated, skipping dot');
+        return null;
+    }
 
     // Translate to position on cylinder surface
-    geometry.translate(posX, y, posZ);
+    geometry.translate(posX, posY, posZ);
 
     return geometry;
 }
@@ -194,19 +259,28 @@ function createCylinderDot(spec) {
 function createCylinderTriangleMarker(spec) {
     const { x, y, z, theta, radius: cylRadius, size, depth, is_recess } = spec;
 
+    // Validate essential parameters
+    if (!isFinite(theta) || !isFinite(cylRadius) || cylRadius <= 0) {
+        console.warn('createCylinderTriangleMarker: Invalid parameters, skipping marker');
+        return null;
+    }
+
+    const validSize = (size && size > 0) ? size : 2.0;
+    const validDepth = (depth && depth > 0) ? depth : 0.6;
+
     // Create triangle shape in XY plane
-    const shape = new THREE.Shape();
-    shape.moveTo(-size / 2, -size);
-    shape.lineTo(size / 2, -size);
-    shape.lineTo(0, size);
-    shape.closePath();
+    const triangleShape = new THREE.Shape();
+    triangleShape.moveTo(-validSize / 2, -validSize);
+    triangleShape.lineTo(validSize / 2, -validSize);
+    triangleShape.lineTo(0, validSize);
+    triangleShape.closePath();
 
     const extrudeSettings = {
-        depth: depth,
+        depth: validDepth,
         bevelEnabled: false
     };
 
-    const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    const geometry = new THREE.ExtrudeGeometry(triangleShape, extrudeSettings);
 
     // ExtrudeGeometry extrudes along +Z, we need it to point radially
 
@@ -221,14 +295,21 @@ function createCylinderTriangleMarker(spec) {
     const epsilon = 0.01;
     let radialOffset;
     if (is_recess) {
-        radialOffset = cylRadius - depth / 2 + epsilon;
+        radialOffset = cylRadius - validDepth / 2 + epsilon;
     } else {
-        radialOffset = cylRadius + depth / 2 + epsilon;
+        radialOffset = cylRadius + validDepth / 2 + epsilon;
     }
     const posX = radialOffset * Math.cos(theta);
     const posZ = radialOffset * Math.sin(theta);
+    const posY = isFinite(y) ? y : 0;
 
-    geometry.translate(posX, y, posZ);
+    // Validate final position
+    if (!isFinite(posX) || !isFinite(posZ)) {
+        console.warn('createCylinderTriangleMarker: Invalid position, skipping marker');
+        return null;
+    }
+
+    geometry.translate(posX, posY, posZ);
 
     return geometry;
 }
@@ -239,9 +320,19 @@ function createCylinderTriangleMarker(spec) {
 function createCylinderRectMarker(spec) {
     const { x, y, z, theta, radius: cylRadius, width, height, depth, is_recess } = spec;
 
+    // Validate essential parameters
+    if (!isFinite(theta) || !isFinite(cylRadius) || cylRadius <= 0) {
+        console.warn('createCylinderRectMarker: Invalid parameters, skipping marker');
+        return null;
+    }
+
+    const validWidth = (width && width > 0) ? width : 2.0;
+    const validHeight = (height && height > 0) ? height : 4.0;
+    const validDepth = (depth && depth > 0) ? depth : 0.5;
+
     // BoxGeometry: width (X), height (Y), depth (Z)
     // We want depth to point radially outward
-    const geometry = new THREE.BoxGeometry(width, height, depth);
+    const geometry = new THREE.BoxGeometry(validWidth, validHeight, validDepth);
 
     // Rotate so depth (Z) points radially outward at angle theta
     // First rotate π/2 to align Z with +X, then -theta to point toward (cos(θ), 0, sin(θ))
@@ -251,14 +342,21 @@ function createCylinderRectMarker(spec) {
     const epsilon = 0.01;
     let radialOffset;
     if (is_recess) {
-        radialOffset = cylRadius - depth / 2 + epsilon;
+        radialOffset = cylRadius - validDepth / 2 + epsilon;
     } else {
-        radialOffset = cylRadius + depth / 2 + epsilon;
+        radialOffset = cylRadius + validDepth / 2 + epsilon;
     }
     const posX = radialOffset * Math.cos(theta);
     const posZ = radialOffset * Math.sin(theta);
+    const posY = isFinite(y) ? y : 0;
 
-    geometry.translate(posX, y, posZ);
+    // Validate final position
+    if (!isFinite(posX) || !isFinite(posZ)) {
+        console.warn('createCylinderRectMarker: Invalid position, skipping marker');
+        return null;
+    }
+
+    geometry.translate(posX, posY, posZ);
 
     return geometry;
 }
@@ -269,10 +367,19 @@ function createCylinderRectMarker(spec) {
 function createCylinderCharacterMarker(spec) {
     const { x, y, z, theta, radius: cylRadius, char, size, depth, is_recess } = spec;
 
+    // Validate essential parameters
+    if (!isFinite(theta) || !isFinite(cylRadius) || cylRadius <= 0) {
+        console.warn('createCylinderCharacterMarker: Invalid parameters, skipping marker');
+        return null;
+    }
+
+    const validSize = (size && size > 0) ? size : 3.0;
+    const validDepth = (depth && depth > 0) ? depth : 1.0;
+
     // Approximate character as a box
-    const charWidth = size * 0.6;
-    const charHeight = size;
-    const geometry = new THREE.BoxGeometry(charWidth, charHeight, depth);
+    const charWidth = validSize * 0.6;
+    const charHeight = validSize;
+    const geometry = new THREE.BoxGeometry(charWidth, charHeight, validDepth);
 
     // Rotate so depth (Z) points radially outward at angle theta
     // First rotate π/2 to align Z with +X, then -theta to point toward (cos(θ), 0, sin(θ))
@@ -282,14 +389,21 @@ function createCylinderCharacterMarker(spec) {
     const epsilon = 0.01;
     let radialOffset;
     if (is_recess) {
-        radialOffset = cylRadius - depth / 2 + epsilon;
+        radialOffset = cylRadius - validDepth / 2 + epsilon;
     } else {
-        radialOffset = cylRadius + depth / 2 + epsilon;
+        radialOffset = cylRadius + validDepth / 2 + epsilon;
     }
     const posX = radialOffset * Math.cos(theta);
     const posZ = radialOffset * Math.sin(theta);
+    const posY = isFinite(y) ? y : 0;
 
-    geometry.translate(posX, y, posZ);
+    // Validate final position
+    if (!isFinite(posX) || !isFinite(posZ)) {
+        console.warn('createCylinderCharacterMarker: Invalid position, skipping marker');
+        return null;
+    }
+
+    geometry.translate(posX, posY, posZ);
 
     return geometry;
 }
@@ -347,12 +461,17 @@ function createCharacterMarker(spec) {
 function createCylinderShell(spec) {
     const { radius, height, thickness, polygon_points } = spec;
 
+    // Validate essential parameters
+    const validRadius = (radius && radius > 0) ? radius : 30;
+    const validHeight = (height && height > 0) ? height : 80;
+    const validThickness = (thickness && thickness > 0) ? thickness : 3;
+
     // Create outer cylinder
-    const outerGeom = new THREE.CylinderGeometry(radius, radius, height, 64);
+    const outerGeom = new THREE.CylinderGeometry(validRadius, validRadius, validHeight, 64);
 
     // Create inner cylinder for hollow shell
-    const innerRadius = radius - thickness;
-    const innerGeom = new THREE.CylinderGeometry(innerRadius, innerRadius, height + 0.1, 64);
+    const innerRadius = Math.max(validRadius - validThickness, 0.1);
+    const innerGeom = new THREE.CylinderGeometry(innerRadius, innerRadius, validHeight + 0.1, 64);
 
     // Create brushes and subtract
     const outerBrush = new Brush(outerGeom);
@@ -362,30 +481,37 @@ function createCylinderShell(spec) {
 
     // If polygon cutout is specified, create and subtract it
     if (polygon_points && polygon_points.length > 0) {
-        // Create extruded polygon
-        const shape = new THREE.Shape();
-        polygon_points.forEach((pt, i) => {
-            if (i === 0) {
-                shape.moveTo(pt.x, pt.y);
-            } else {
-                shape.lineTo(pt.x, pt.y);
-            }
-        });
-        shape.closePath();
+        // Validate polygon points
+        const validPoints = polygon_points.filter(pt =>
+            pt && isFinite(pt.x) && isFinite(pt.y)
+        );
 
-        const extrudeSettings = {
-            depth: height * 1.5, // Ensure it cuts all the way through
-            bevelEnabled: false
-        };
+        if (validPoints.length >= 3) {
+            // Create extruded polygon
+            const polygonShape = new THREE.Shape();
+            validPoints.forEach((pt, i) => {
+                if (i === 0) {
+                    polygonShape.moveTo(pt.x, pt.y);
+                } else {
+                    polygonShape.lineTo(pt.x, pt.y);
+                }
+            });
+            polygonShape.closePath();
 
-        const cutoutGeom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-        // Center the extrusion
-        cutoutGeom.translate(0, 0, -height * 0.75);
-        // Rotate to align with cylinder's Y-axis
-        cutoutGeom.rotateX(Math.PI / 2);
+            const extrudeSettings = {
+                depth: validHeight * 1.5, // Ensure it cuts all the way through
+                bevelEnabled: false
+            };
 
-        const cutoutBrush = new Brush(cutoutGeom);
-        shellBrush = evaluator.evaluate(shellBrush, cutoutBrush, SUBTRACTION);
+            const cutoutGeom = new THREE.ExtrudeGeometry(polygonShape, extrudeSettings);
+            // Center the extrusion
+            cutoutGeom.translate(0, 0, -validHeight * 0.75);
+            // Rotate to align with cylinder's Y-axis
+            cutoutGeom.rotateX(Math.PI / 2);
+
+            const cutoutBrush = new Brush(cutoutGeom);
+            shellBrush = evaluator.evaluate(shellBrush, cutoutBrush, SUBTRACTION);
+        }
     }
 
     return shellBrush.geometry;

@@ -148,13 +148,22 @@ def allow_serverless_booleans() -> bool:
     Returns True if either an explicit ALLOW_SERVERLESS_BOOLEANS env flag is set or
     the manifold3d backend is importable (indicating native binaries are available).
     """
+    logger = get_logger(__name__)
+
     env_value = os.environ.get('ALLOW_SERVERLESS_BOOLEANS')
     if env_value is not None:
-        return _truthy(env_value)
+        result = _truthy(env_value)
+        logger.info(f'ALLOW_SERVERLESS_BOOLEANS env var set to {env_value!r} -> {result}')
+        return result
 
     try:
         import manifold3d  # noqa: F401
 
+        logger.info('manifold3d imported successfully - serverless booleans available')
         return True
-    except Exception:
+    except ImportError as e:
+        logger.warning(f'manifold3d import failed (ImportError): {e}')
+        return False
+    except Exception as e:
+        logger.warning(f'manifold3d import failed (unexpected error): {type(e).__name__}: {e}')
         return False

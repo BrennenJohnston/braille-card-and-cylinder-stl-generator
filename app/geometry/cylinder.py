@@ -56,10 +56,19 @@ def _booleans_enabled() -> bool:
 def _booleans_available() -> bool:
     """Return True when boolean operations are enabled and safe for the current runtime."""
     if not _booleans_enabled():
+        logger.debug('Booleans disabled via ENABLE_3D_BOOLEANS env var')
         return False
     if not _is_serverless_env():
+        logger.debug('Booleans available (not serverless environment)')
         return True
-    return allow_serverless_booleans()
+    result = allow_serverless_booleans()
+    if result:
+        logger.debug('Booleans available in serverless (manifold3d importable or ALLOW_SERVERLESS_BOOLEANS set)')
+    else:
+        logger.warning(
+            'Booleans NOT available in serverless - manifold3d import failed and ALLOW_SERVERLESS_BOOLEANS not set'
+        )
+    return result
 
 
 def _compute_cylinder_frame(x_arc: float, cylinder_diameter_mm: float, seam_offset_deg: float = 0.0):

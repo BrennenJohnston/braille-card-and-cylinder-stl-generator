@@ -11,7 +11,8 @@
     }
   ],
   "env": {
-    "PIP_ONLY_BINARY": ":all:"
+    "PIP_ONLY_BINARY": ":all:",
+    "ALLOW_SERVERLESS_BOOLEANS": "1"
   },
 
   "routes": [

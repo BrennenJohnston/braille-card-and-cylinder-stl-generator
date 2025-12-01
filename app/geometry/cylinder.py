@@ -888,9 +888,9 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         diameter, height, polygonal_cutout_radius, polygonal_cutout_sides, align_vertex_theta_rad=cutout_align_theta
     )
 
-    # Require 3D booleans; fail if unavailable
+    # Log warning if 3D booleans unavailable - fallback logic in booleans.py will handle gracefully
     if not _booleans_available():
-        raise RuntimeError('3D boolean backend not available (manifold3d missing)')
+        logger.warning('3D boolean backend not available - using fallback mesh operations (results may be degraded)')
 
     # Use grid_rows from settings
 

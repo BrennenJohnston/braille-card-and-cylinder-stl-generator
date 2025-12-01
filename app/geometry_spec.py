@@ -152,8 +152,9 @@ def extract_card_geometry_spec(lines, grade, settings: CardSettings, original_li
                 # Get dots for this character
                 dots = braille_to_dots(char)
 
-                for dot_idx in dots:
-                    if dot_idx < 0 or dot_idx >= 6:
+                # braille_to_dots returns a 6-length list of 0/1 indicators.
+                for dot_idx, dot_val in enumerate(dots):
+                    if dot_val != 1:
                         continue
                     row_off_idx, col_off_idx = dot_positions[dot_idx]
                     dot_x = x_pos + dot_col_offsets[col_off_idx]

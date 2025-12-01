@@ -6,6 +6,8 @@ used across the application.
 """
 
 import logging
+import os
+from functools import lru_cache
 from typing import Any
 
 # Constants
@@ -28,21 +30,17 @@ def setup_logging(name: str = None, level: int = None) -> logging.Logger:
     Returns:
         Configured logger instance
     """
-    import os
-    
     # Determine log level from environment or parameter
     if level is None:
         env_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
         level = getattr(logging, env_level, logging.INFO)
-    
+
     # Configure root logger if not already configured
     if not logging.getLogger().handlers:
         logging.basicConfig(
-            level=level,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
+            level=level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
         )
-    
+
     # Return named logger or root logger
     logger = logging.getLogger(name) if name else logging.getLogger()
     logger.setLevel(level)
@@ -52,10 +50,10 @@ def setup_logging(name: str = None, level: int = None) -> logging.Logger:
 def get_logger(name: str) -> logging.Logger:
     """
     Get a logger for a module.
-    
+
     Args:
         name: Module name (typically __name__)
-        
+
     Returns:
         Logger instance configured for the module
     """
@@ -133,3 +131,30 @@ def braille_to_dots(braille_char: str) -> list:
             dots[i] = 1
 
     return dots
+
+
+def _truthy(value: str | None) -> bool:
+    """Return True for common truthy strings."""
+    if value is None:
+        return False
+    return str(value).strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+@lru_cache(maxsize=1)
+def allow_serverless_booleans() -> bool:
+    """
+    Determine if we can safely execute 3D boolean operations in serverless environments.
+
+    Returns True if either an explicit ALLOW_SERVERLESS_BOOLEANS env flag is set or
+    the manifold3d backend is importable (indicating native binaries are available).
+    """
+    env_value = os.environ.get('ALLOW_SERVERLESS_BOOLEANS')
+    if env_value is not None:
+        return _truthy(env_value)
+
+    try:
+        import manifold3d  # noqa: F401
+
+        return True
+    except Exception:
+        return False

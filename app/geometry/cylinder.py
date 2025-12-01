@@ -18,7 +18,7 @@ from trimesh.creation import extrude_polygon
 
 from app.geometry.booleans import batch_union, mesh_difference, mesh_union
 from app.geometry.dot_shapes import create_braille_dot
-from app.utils import braille_to_dots, get_logger
+from app.utils import allow_serverless_booleans, braille_to_dots, get_logger
 
 if TYPE_CHECKING:
     from app.models import CardSettings
@@ -51,6 +51,15 @@ def _booleans_enabled() -> bool:
         return str(val).lower() not in ('0', 'false', 'no')
     except Exception:
         return True
+
+
+def _booleans_available() -> bool:
+    """Return True when boolean operations are enabled and safe for the current runtime."""
+    if not _booleans_enabled():
+        return False
+    if not _is_serverless_env():
+        return True
+    return allow_serverless_booleans()
 
 
 def _compute_cylinder_frame(x_arc: float, cylinder_diameter_mm: float, seam_offset_deg: float = 0.0):
@@ -722,7 +731,7 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
     all_markers = (text_number_meshes + triangle_meshes) if getattr(settings, 'indicator_shapes', 1) else []
 
     markers_applied = False
-    if all_markers and _booleans_enabled() and not _is_serverless_env():
+    if all_markers and _booleans_available():
         try:
             # Union all markers first
             union_markers = mesh_union(all_markers)
@@ -736,7 +745,7 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
             logger.error(f'Union approach failed for marker cutouts: {e}')
 
     # If union approach failed or we're in serverless, try individual subtraction
-    if all_markers and not markers_applied and _booleans_enabled():
+    if all_markers and not markers_applied and _booleans_available():
         try:
             logger.debug('Attempting individual marker subtraction...')
             for i, marker in enumerate(all_markers):
@@ -935,7 +944,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     )
 
     # Respect feature flag; use 2D approach when booleans are disabled or in serverless
-    if not _booleans_enabled() or _is_serverless_env():
+    if not _booleans_available():
         logger.info('Using 2D approach for cylinder counter plate (booleans disabled or serverless environment)')
         return create_cylinder_counter_plate_2d(settings, cylinder_params)
 

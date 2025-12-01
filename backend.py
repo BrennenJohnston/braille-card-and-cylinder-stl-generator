@@ -62,7 +62,7 @@ from app.geometry.dot_shapes import create_braille_dot
 from app.models import CardSettings
 
 # Import utilities from app.utils
-from app.utils import braille_to_dots, get_logger
+from app.utils import allow_serverless_booleans, braille_to_dots, get_logger
 
 # Import validation from app.validation
 from app.validation import (
@@ -2176,7 +2176,8 @@ def generate_braille_stl():
                 recess_shape = int(getattr(settings, 'recess_shape', 1))
 
                 # In serverless environment, use 2D Shapely approach which is more reliable
-                if _is_serverless_env():
+                serverless_no_booleans = _is_serverless_env() and not allow_serverless_booleans()
+                if serverless_no_booleans:
                     logger.info('Serverless environment detected: using 2D Shapely approach for counter plate')
                     mesh = create_universal_counter_plate_2d(settings)
                 else:
@@ -2514,7 +2515,7 @@ def generate_counter_plate_stl():
         recess_shape = int(getattr(settings, 'recess_shape', 1))
 
         # In serverless environment, use 2D Shapely approach which is more reliable
-        if _is_serverless_env():
+        if _is_serverless_env() and not allow_serverless_booleans():
             logger.info('Serverless environment detected: using 2D Shapely approach for standalone counter plate')
             mesh = create_universal_counter_plate_2d(settings)
         else:

@@ -158,8 +158,9 @@ function createCylinderDot(spec) {
     // Step 1: Rotate -90° around Z so dot points along +X instead of +Y
     geometry.rotateZ(-Math.PI / 2);
 
-    // Step 2: Rotate around Y by theta to position it at the correct angle
-    geometry.rotateY(theta);
+    // Step 2: Rotate around Y by -theta to position it at the correct radial angle
+    // (negative because rotateY(θ) gives (cos(θ), 0, -sin(θ)) but radial is (cos(θ), 0, +sin(θ)))
+    geometry.rotateY(-theta);
 
     // Calculate the radial position - dot center should be at cylRadius + dotHeight/2
     // for the dot to sit on the surface
@@ -198,8 +199,9 @@ function createCylinderTriangleMarker(spec) {
     // Rotate so extrusion points along +X
     geometry.rotateY(Math.PI / 2);
 
-    // Then rotate to the correct theta position
-    geometry.rotateY(theta);
+    // Then rotate to the correct radial position using -theta
+    // (negative because rotateY(θ) gives (cos(θ), 0, -sin(θ)) but radial is (cos(θ), 0, +sin(θ)))
+    geometry.rotateY(-theta);
 
     // Position at cylinder surface
     const radialOffset = cylRadius + depth / 2;
@@ -221,8 +223,9 @@ function createCylinderRectMarker(spec) {
     // We want depth to point radially outward
     const geometry = new THREE.BoxGeometry(width, height, depth);
 
-    // Rotate around Y so Z (depth) points at angle theta
-    geometry.rotateY(theta);
+    // Rotate so depth (Z) points radially outward at angle theta
+    // First rotate π/2 to align Z with +X, then -theta to point toward (cos(θ), 0, sin(θ))
+    geometry.rotateY(Math.PI / 2 - theta);
 
     // Position at cylinder surface
     const radialOffset = cylRadius + depth / 2;
@@ -245,8 +248,9 @@ function createCylinderCharacterMarker(spec) {
     const charHeight = size;
     const geometry = new THREE.BoxGeometry(charWidth, charHeight, depth);
 
-    // Rotate around Y so depth points at angle theta
-    geometry.rotateY(theta);
+    // Rotate so depth (Z) points radially outward at angle theta
+    // First rotate π/2 to align Z with +X, then -theta to point toward (cos(θ), 0, sin(θ))
+    geometry.rotateY(Math.PI / 2 - theta);
 
     // Position at cylinder surface
     const radialOffset = cylRadius + depth / 2;

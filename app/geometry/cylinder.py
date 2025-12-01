@@ -16,7 +16,7 @@ from shapely.geometry import Point as ShapelyPoint
 from shapely.geometry import Polygon as ShapelyPolygon
 from trimesh.creation import extrude_polygon
 
-from app.geometry.booleans import batch_union, mesh_difference, mesh_union
+from app.geometry.booleans import batch_union, has_boolean_backend, mesh_difference, mesh_union
 from app.geometry.dot_shapes import create_braille_dot
 from app.utils import allow_serverless_booleans, braille_to_dots, get_logger
 
@@ -54,20 +54,26 @@ def _booleans_enabled() -> bool:
 
 
 def _booleans_available() -> bool:
-    """Return True when boolean operations are enabled and safe for the current runtime."""
+    """Return True when boolean operations are enabled and a backend is actually available."""
     if not _booleans_enabled():
         logger.debug('Booleans disabled via ENABLE_3D_BOOLEANS env var')
         return False
+
+    # Check if we actually have a working boolean backend (manifold3d)
+    # Trimesh's default engine requires blender/openscad which aren't on serverless
+    if not has_boolean_backend():
+        logger.debug('No boolean backend available (manifold3d not installed) - using 2D approach')
+        return False
+
     if not _is_serverless_env():
-        logger.debug('Booleans available (not serverless environment)')
+        logger.debug('Booleans available (not serverless environment, manifold3d installed)')
         return True
+
     result = allow_serverless_booleans()
     if result:
-        logger.debug('Booleans available in serverless (manifold3d importable or ALLOW_SERVERLESS_BOOLEANS set)')
+        logger.debug('Booleans available in serverless (manifold3d installed and allowed)')
     else:
-        logger.warning(
-            'Booleans NOT available in serverless - manifold3d import failed and ALLOW_SERVERLESS_BOOLEANS not set'
-        )
+        logger.debug('Booleans disabled in serverless (ALLOW_SERVERLESS_BOOLEANS not set)')
     return result
 
 

@@ -18,6 +18,40 @@ from app.utils import get_logger
 logger = get_logger(__name__)
 
 
+_manifold_available: bool | None = None
+
+
+def _check_manifold_available() -> bool:
+    """Check once if manifold3d is importable and cache the result."""
+    global _manifold_available
+    if _manifold_available is not None:
+        return _manifold_available
+
+    try:
+        import manifold3d  # noqa: F401
+
+        _manifold_available = True
+        logger.info('manifold3d is available for boolean operations')
+    except ImportError:
+        _manifold_available = False
+        logger.info('manifold3d not available - will use 2D fallbacks for boolean operations')
+    except Exception as e:
+        _manifold_available = False
+        logger.warning(f'manifold3d check failed ({type(e).__name__}): {e}')
+
+    return _manifold_available
+
+
+def has_boolean_backend() -> bool:
+    """
+    Check if any boolean backend is available.
+
+    Returns True if manifold3d is importable (the only reliable serverless backend).
+    Trimesh's default engine requires blender/openscad which aren't available on serverless.
+    """
+    return _check_manifold_available()
+
+
 def _candidate_engines(preferred: str | None = None) -> list[str | None]:
     """
     Return a list of candidate engines to try for boolean ops.
@@ -25,25 +59,18 @@ def _candidate_engines(preferred: str | None = None) -> list[str | None]:
     Order of preference:
     - preferred (if provided)
     - 'manifold' (if manifold3d is installed) - preferred for reliability
-    - trimesh default (None)
+    - trimesh default (None) - only works with blender/openscad installed
     """
     engines: list[str | None] = []
     if preferred not in (None, ''):
         engines.append(preferred)
 
     # Try manifold first - it's most reliable when available
-    try:
-        import manifold3d  # noqa: F401
-
-        if 'manifold' not in engines:
-            engines.append('manifold')
-            logger.debug('manifold3d available - added to boolean engines')
-    except ImportError as e:
-        logger.warning(f'manifold3d not available (ImportError): {e}')
-    except Exception as e:
-        logger.warning(f'manifold3d not available ({type(e).__name__}): {e}')
+    if _check_manifold_available() and 'manifold' not in engines:
+        engines.append('manifold')
 
     # Trimesh default auto-selects an available backend as fallback
+    # Note: This usually requires blender or openscad, not available on serverless
     if None not in engines:
         engines.append(None)
 
@@ -53,7 +80,6 @@ def _candidate_engines(preferred: str | None = None) -> list[str | None]:
         if e not in deduped:
             deduped.append(e)
 
-    logger.debug(f'Boolean engine candidates: {[e or "trimesh-default" for e in deduped]}')
     return deduped
 
 

@@ -2449,6 +2449,71 @@ def generate_braille_stl():
         return jsonify({'error': f'Failed to generate STL: {str(e)}'}), 500
 
 
+@app.route('/geometry_spec', methods=['POST'])
+@limiter.limit('20 per minute')
+def geometry_spec():
+    """
+    Generate geometry specification (positions, dimensions) for client-side CSG.
+    Returns JSON describing primitives without performing boolean operations.
+    """
+    try:
+        # Validate request content type
+        if not request.is_json:
+            return jsonify({'error': 'Content-Type must be application/json'}), 400
+
+        data = request.get_json(force=True)
+
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+
+        lines = data.get('lines', ['', '', '', ''])
+        original_lines = data.get('original_lines', None)
+        plate_type = data.get('plate_type', 'positive')
+        grade = data.get('grade', 'g2')
+        settings_data = data.get('settings', {})
+        shape_type = data.get('shape_type', 'card')
+        cylinder_params = data.get('cylinder_params', {})
+
+        # Validate inputs
+        validate_lines(lines)
+        validate_settings(settings_data)
+        validate_braille_lines(lines, plate_type)
+
+        # Validate plate_type
+        if plate_type not in ['positive', 'negative']:
+            return jsonify({'error': 'Invalid plate_type. Must be "positive" or "negative"'}), 400
+
+        # Validate grade
+        if grade not in ['g1', 'g2']:
+            return jsonify({'error': 'Invalid grade. Must be "g1" or "g2"'}), 400
+
+        # Validate shape_type
+        if shape_type not in ['card', 'cylinder']:
+            return jsonify({'error': 'Invalid shape_type. Must be "card" or "cylinder"'}), 400
+
+        settings = CardSettings(**settings_data)
+
+        # Import geometry spec extraction functions
+        from app.geometry_spec import extract_card_geometry_spec, extract_cylinder_geometry_spec
+
+        # Extract geometry spec
+        if shape_type == 'card':
+            spec = extract_card_geometry_spec(lines, grade, settings, original_lines, plate_type)
+        elif shape_type == 'cylinder':
+            spec = extract_cylinder_geometry_spec(lines, grade, settings, cylinder_params, original_lines, plate_type)
+        else:
+            return jsonify({'error': f'Invalid shape_type: {shape_type}'}), 400
+
+        # Return spec as JSON
+        return jsonify(spec), 200
+
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        app.logger.error(f'Error in geometry_spec: {e}')
+        return jsonify({'error': 'Failed to generate geometry specification'}), 500
+
+
 @app.route('/generate_counter_plate_stl', methods=['POST'])
 @limiter.limit('10 per minute')
 def generate_counter_plate_stl():

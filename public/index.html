@@ -2410,6 +2410,113 @@
         import * as THREE from '/static/three.module.js';
         import { STLLoader } from '/static/STLLoader.js';
         import { OrbitControls } from '/static/OrbitControls.js';
+
+        // Client-side CSG Worker Setup
+        let csgWorker = null;
+        let workerReady = false;
+        let workerRequestId = 0;
+        let useClientSideCSG = true; // Feature flag
+
+        // Initialize CSG worker
+        function initCSGWorker() {
+            if (csgWorker || !useClientSideCSG) return;
+
+            try {
+                csgWorker = new Worker('/static/workers/csg-worker.js', { type: 'module' });
+
+                csgWorker.onmessage = function(event) {
+                    const { type } = event.data;
+                    if (type === 'ready') {
+                        workerReady = true;
+                        log.info('CSG Worker initialized and ready');
+                    }
+                };
+
+                csgWorker.onerror = function(error) {
+                    log.error('CSG Worker error:', error);
+                    workerReady = false;
+                    useClientSideCSG = false; // Disable on error
+                };
+
+            } catch (error) {
+                log.warn('Failed to initialize CSG Worker, falling back to server:', error);
+                useClientSideCSG = false;
+            }
+        }
+
+        // Try client-side CSG generation
+        async function tryClientSideCSG(requestData) {
+            if (!useClientSideCSG || !workerReady) {
+                return null; // Fall back to server
+            }
+
+            try {
+                log.info('Attempting client-side CSG generation...');
+
+                // Fetch geometry spec from server
+                const specRes = await fetch('/geometry_spec', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                });
+
+                if (!specRes.ok) {
+                    log.warn('Geometry spec fetch failed, falling back to server');
+                    return null;
+                }
+
+                const spec = await specRes.json();
+                log.debug('Geometry spec received:', spec);
+
+                // Send to worker
+                const requestId = ++workerRequestId;
+
+                return new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        reject(new Error('Worker timeout'));
+                    }, 120000); // 2 minute timeout
+
+                    const handler = function(event) {
+                        const { type, requestId: respId, geometry, stl, error } = event.data;
+
+                        if (respId !== requestId) return; // Not our response
+
+                        clearTimeout(timeout);
+                        csgWorker.removeEventListener('message', handler);
+
+                        if (type === 'success') {
+                            log.info('Client-side CSG generation successful');
+                            resolve({ geometry, stl });
+                        } else if (type === 'error') {
+                            log.error('CSG Worker error:', error);
+                            reject(new Error(error));
+                        }
+                    };
+
+                    csgWorker.addEventListener('message', handler);
+
+                    // Send generation request
+                    csgWorker.postMessage({
+                        type: 'generate',
+                        spec: spec,
+                        requestId: requestId
+                    });
+                });
+
+            } catch (error) {
+                log.warn('Client-side CSG failed:', error);
+                return null; // Fall back to server
+            }
+        }
+
+        // Initialize worker on page load
+        if (typeof Worker !== 'undefined') {
+            initCSGWorker();
+        } else {
+            log.warn('Web Workers not supported, client-side CSG disabled');
+            useClientSideCSG = false;
+        }
+
         async function loadLanguageOptions() {
             const select = document.getElementById('language-table');
             if (!select) return;
@@ -4587,21 +4694,64 @@
                 }
             }
 
-            const res = await fetch('/generate_braille_stl', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    lines: translatedLines,
-                    original_lines: originalForIndicators,
-                    placement_mode: placementMode,
-                    grade: 'g2',
-                    plate_type: plateType,
-                    shape_type: shapeType,
-                    cylinder_params: cylinderParams,
-                    per_line_language_tables: perLineLanguageTables,
-                    settings: settings
-                })
-            });
+            // Try client-side CSG first, fall back to server
+            const requestData = {
+                lines: translatedLines,
+                original_lines: originalForIndicators,
+                placement_mode: placementMode,
+                grade: 'g2',
+                plate_type: plateType,
+                shape_type: shapeType,
+                cylinder_params: cylinderParams,
+                per_line_language_tables: perLineLanguageTables,
+                settings: settings
+            };
+
+            let blob;
+            let clientSideSuccess = false;
+
+            // Try client-side CSG
+            if (useClientSideCSG && workerReady) {
+                try {
+                    const result = await tryClientSideCSG(requestData);
+                    if (result && result.stl) {
+                        // Create blob from STL ArrayBuffer
+                        blob = new Blob([result.stl], { type: 'application/octet-stream' });
+                        clientSideSuccess = true;
+                        log.info('Using client-side generated STL');
+                    }
+                } catch (error) {
+                    log.warn('Client-side CSG failed, falling back to server:', error);
+                }
+            }
+
+            // Fall back to server if client-side failed or unavailable
+            if (!clientSideSuccess) {
+                log.info('Using server-side STL generation');
+                const res = await fetch('/generate_braille_stl', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                });
+
+                // Error handling for server response
+                if (!res.ok) {
+                    let msg = 'Error generating STL';
+                    try {
+                        const data = await res.json();
+                        if (data.error) msg = data.error;
+                    } catch (e) {
+                        msg = `Server error: ${res.status} ${res.statusText}`;
+                    }
+                    errorText.textContent = msg;
+                    errorDiv.style.display = 'flex';
+                    errorDiv.className = 'error-message';
+                    resetToGenerateState();
+                    return;
+                }
+
+                blob = await res.blob();
+            }
 
             // Hide loading message
             errorDiv.style.display = 'none';
@@ -4610,26 +4760,8 @@
                 errorSubtext.style.display = 'none';
             }
 
-            if (!res.ok) {
-                let msg = 'Error generating STL';
-                try {
-                    const data = await res.json();
-                    if (data.error) msg = data.error;
-                } catch (e) {
-                    msg = `Server error: ${res.status} ${res.statusText}`;
-                }
-                errorText.textContent = msg;
-                errorDiv.style.display = 'flex';
-                errorDiv.className = 'error-message'; // Reset to error style
-                // Re-enable button on error and reset to generate state
-                resetToGenerateState();
-                return;
-            }
-
-
             try {
-                // Create blob and URL for 3D preview
-                const blob = await res.blob();
+                // blob already created above (either client-side or server-side)
                 if (lastSTLUrl) URL.revokeObjectURL(lastSTLUrl);
                 lastSTLUrl = URL.createObjectURL(blob);
 

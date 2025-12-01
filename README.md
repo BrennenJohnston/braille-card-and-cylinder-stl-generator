@@ -41,8 +41,12 @@ This web application generates STL files for 3D-printable braille embossing and 
 3. **Select braille grade** (Grade 2 recommended for most users)
 4. **Choose shape**: Business card (flat) or cylinder
 5. **Click Generate** to create STL files
+   - ✨ **New**: Generation happens in your browser (no timeouts!)
+   - Automatic fallback to server if needed
 6. **Download** and 3D print your files
 7. **Test** with actual card stock and adjust if needed
+
+> **⚡ Client-Side Generation**: STL files are now generated in your browser using advanced CSG algorithms. This means no timeout limits, faster iteration, and works perfectly on Vercel's free tier. See [CLIENT_SIDE_CSG_DOCUMENTATION.md](CLIENT_SIDE_CSG_DOCUMENTATION.md) for details.
 
 ### For Business Cards:
 - Print both emboss and counter plates
@@ -199,11 +203,57 @@ python backend.py  # opens http://localhost:5001
 
 ---
 
-## 12. References
+## 12. Architecture: Client-Side CSG
 
-[1] BANA — Size & Spacing of Braille Characters: https://brailleauthority.org/size-and-spacing-braille-characters  
-[2] NLS Specification 800 (PDF): https://www.loc.gov/nls/wp-content/uploads/2019/09/Spec800.11October2014.final_.pdf  
-[3] U.S. Access Board — 2010 ADA Standards: https://www.access-board.gov/aba/guides/chapter-7-signs/  
+### Why Client-Side?
+
+STL generation now happens **in your browser** using the `three-bvh-csg` library:
+- ✅ **No timeout limits** - Perfect for Vercel's free tier (no 10-60 second limits)
+- ✅ **Fast iteration** - No cold starts or serverless delays
+- ✅ **Zero server dependencies** - No need for Blender, OpenSCAD, or manifold3d binaries
+- ✅ **Better scalability** - Each user's browser does the work
+- ✅ **Automatic fallback** - Falls back to server if browser doesn't support it
+
+### How It Works
+
+```
+Browser → Fetch geometry spec (JSON) → CSG Worker → STL file
+   ↓ (on error)
+   └──→ Server-side generation (fallback)
+```
+
+1. **User enters text** → Braille translation (client-side via liblouis)
+2. **Click Generate** → Fetch geometry specification from `/geometry_spec` endpoint
+3. **Web Worker** builds 3D primitives and performs boolean operations
+4. **Export STL** directly in browser
+5. **Render preview** and offer download
+
+### Browser Compatibility
+
+- ✅ Chrome 80+, Edge 80+, Firefox 114+, Safari 15+
+- ⚠️ Older browsers automatically fall back to server generation
+- 📦 Bundle size impact: ~215 KB (60-80 KB gzipped)
+
+### Configuration
+
+Feature flag in `public/index.html`:
+```javascript
+let useClientSideCSG = true; // Set to false to force server-side
+```
+
+### Documentation
+
+- **Full Architecture**: [CLIENT_SIDE_CSG_DOCUMENTATION.md](CLIENT_SIDE_CSG_DOCUMENTATION.md)
+- **Testing Guide**: [CLIENT_SIDE_CSG_TEST_PLAN.md](CLIENT_SIDE_CSG_TEST_PLAN.md)
+- **Optional Enhancement**: Client-side manifold3d (WASM) for maximum robustness
+
+---
+
+## 13. References
+
+[1] BANA — Size & Spacing of Braille Characters: https://brailleauthority.org/size-and-spacing-braille-characters
+[2] NLS Specification 800 (PDF): https://www.loc.gov/nls/wp-content/uploads/2019/09/Spec800.11October2014.final_.pdf
+[3] U.S. Access Board — 2010 ADA Standards: https://www.access-board.gov/aba/guides/chapter-7-signs/
 [4] ICC/ANSI A117.1-2003 — Accessible & Usable Buildings & Facilities
 
 ---
@@ -220,4 +270,3 @@ python backend.py  # opens http://localhost:5001
 - Dependencies: Keep `requirements_vercel.txt` minimal; add heavier packages only to `requirements.txt` when required locally.
 - Assets: Serve static assets from `static/`; avoid runtime reads from `node_modules/` on Vercel.
 - Releases: Test `/health` and `/liblouis/tables` after deploy; smoke-test STL generation for both card and cylinder.
-

@@ -24,32 +24,36 @@ def _candidate_engines(preferred: str | None = None) -> list[str | None]:
 
     Order of preference:
     - preferred (if provided)
+    - 'manifold' (if manifold3d is installed) - preferred for reliability
     - trimesh default (None)
-    - 'manifold' (if manifold3d is installed)
     """
     engines: list[str | None] = []
     if preferred not in (None, ''):
         engines.append(preferred)
 
-    # Trimesh default auto-selects an available backend
-    if None not in engines:
-        engines.append(None)
-
-    # If manifold3d looks available, include it next
+    # Try manifold first - it's most reliable when available
     try:
         import manifold3d  # noqa: F401
 
         if 'manifold' not in engines:
             engines.append('manifold')
-    except Exception:
-        # Not available; skip
-        pass
+            logger.debug('manifold3d available - added to boolean engines')
+    except ImportError as e:
+        logger.warning(f'manifold3d not available (ImportError): {e}')
+    except Exception as e:
+        logger.warning(f'manifold3d not available ({type(e).__name__}): {e}')
+
+    # Trimesh default auto-selects an available backend as fallback
+    if None not in engines:
+        engines.append(None)
 
     # De-duplicate while preserving order
     deduped: list[str | None] = []
     for e in engines:
         if e not in deduped:
             deduped.append(e)
+
+    logger.debug(f'Boolean engine candidates: {[e or "trimesh-default" for e in deduped]}')
     return deduped
 
 

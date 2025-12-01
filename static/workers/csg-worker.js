@@ -338,6 +338,15 @@ self.onmessage = function(event) {
             const normals = geometry.attributes.normal ? geometry.attributes.normal.array : null;
             const indices = geometry.index ? geometry.index.array : null;
 
+            // Build transferable array carefully
+            const transferables = [positions.buffer];
+            if (normals) transferables.push(normals.buffer);
+            if (indices) transferables.push(indices.buffer);
+            // stlData is an ArrayBuffer, so add it if valid
+            if (stlData instanceof ArrayBuffer) {
+                transferables.push(stlData);
+            }
+
             // Send results back
             self.postMessage({
                 type: 'success',
@@ -348,7 +357,7 @@ self.onmessage = function(event) {
                     indices: indices
                 },
                 stl: stlData
-            }, [positions.buffer, stlData, ...(normals ? [normals.buffer] : []), ...(indices ? [indices.buffer] : [])]);
+            }, transferables);
 
         } else if (type === 'ping') {
             // Health check

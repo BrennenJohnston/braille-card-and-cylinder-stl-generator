@@ -98,13 +98,15 @@ function createBrailleDot(spec) {
 /**
  * Create a braille dot on a cylinder surface
  * The dot is positioned at (x, y, z) and oriented radially outward
+ * For counter plates (recesses), the dot overlaps INTO the cylinder for subtraction
  */
 function createCylinderDot(spec) {
-    const { x, y, z, theta, radius: cylRadius, params } = spec;
+    const { x, y, z, theta, radius: cylRadius, params, is_recess } = spec;
     const shape = params.shape || 'standard';
 
     let geometry;
     let dotHeight = 0;
+    const isRecess = is_recess || shape === 'hemisphere' || shape === 'bowl';
 
     if (shape === 'rounded') {
         // Rounded dot for positive plate
@@ -162,9 +164,21 @@ function createCylinderDot(spec) {
     // (negative because rotateY(θ) gives (cos(θ), 0, -sin(θ)) but radial is (cos(θ), 0, +sin(θ)))
     geometry.rotateY(-theta);
 
-    // Calculate the radial position - dot center should be at cylRadius + dotHeight/2
-    // for the dot to sit on the surface
-    const radialOffset = cylRadius + dotHeight / 2;
+    // Calculate the radial position
+    // For recesses (counter plates): position dot so it overlaps INTO cylinder for subtraction
+    // For protrusions (embossing plates): position dot so base sits on surface
+    // Add small epsilon to prevent coplanar triangles which cause CSG failures
+    const epsilon = 0.01;
+    let radialOffset;
+    if (isRecess) {
+        // For recesses, position so the dot extends INTO the cylinder
+        // The CSG subtraction will carve out the shape
+        radialOffset = cylRadius - dotHeight / 2 + epsilon;
+    } else {
+        // For protrusions, position so the dot sits ON the surface and extends outward
+        radialOffset = cylRadius + dotHeight / 2 + epsilon;
+    }
+
     const posX = radialOffset * Math.cos(theta);
     const posZ = radialOffset * Math.sin(theta);
 
@@ -178,7 +192,7 @@ function createCylinderDot(spec) {
  * Create a triangle marker on cylinder surface
  */
 function createCylinderTriangleMarker(spec) {
-    const { x, y, z, theta, radius: cylRadius, size, depth } = spec;
+    const { x, y, z, theta, radius: cylRadius, size, depth, is_recess } = spec;
 
     // Create triangle shape in XY plane
     const shape = new THREE.Shape();
@@ -203,8 +217,14 @@ function createCylinderTriangleMarker(spec) {
     // (negative because rotateY(θ) gives (cos(θ), 0, -sin(θ)) but radial is (cos(θ), 0, +sin(θ)))
     geometry.rotateY(-theta);
 
-    // Position at cylinder surface
-    const radialOffset = cylRadius + depth / 2;
+    // Position at cylinder surface with epsilon to prevent coplanar issues
+    const epsilon = 0.01;
+    let radialOffset;
+    if (is_recess) {
+        radialOffset = cylRadius - depth / 2 + epsilon;
+    } else {
+        radialOffset = cylRadius + depth / 2 + epsilon;
+    }
     const posX = radialOffset * Math.cos(theta);
     const posZ = radialOffset * Math.sin(theta);
 
@@ -217,7 +237,7 @@ function createCylinderTriangleMarker(spec) {
  * Create a rectangular marker on cylinder surface
  */
 function createCylinderRectMarker(spec) {
-    const { x, y, z, theta, radius: cylRadius, width, height, depth } = spec;
+    const { x, y, z, theta, radius: cylRadius, width, height, depth, is_recess } = spec;
 
     // BoxGeometry: width (X), height (Y), depth (Z)
     // We want depth to point radially outward
@@ -227,8 +247,14 @@ function createCylinderRectMarker(spec) {
     // First rotate π/2 to align Z with +X, then -theta to point toward (cos(θ), 0, sin(θ))
     geometry.rotateY(Math.PI / 2 - theta);
 
-    // Position at cylinder surface
-    const radialOffset = cylRadius + depth / 2;
+    // Position at cylinder surface with epsilon to prevent coplanar issues
+    const epsilon = 0.01;
+    let radialOffset;
+    if (is_recess) {
+        radialOffset = cylRadius - depth / 2 + epsilon;
+    } else {
+        radialOffset = cylRadius + depth / 2 + epsilon;
+    }
     const posX = radialOffset * Math.cos(theta);
     const posZ = radialOffset * Math.sin(theta);
 
@@ -241,7 +267,7 @@ function createCylinderRectMarker(spec) {
  * Create a character marker on cylinder surface
  */
 function createCylinderCharacterMarker(spec) {
-    const { x, y, z, theta, radius: cylRadius, char, size, depth } = spec;
+    const { x, y, z, theta, radius: cylRadius, char, size, depth, is_recess } = spec;
 
     // Approximate character as a box
     const charWidth = size * 0.6;
@@ -252,8 +278,14 @@ function createCylinderCharacterMarker(spec) {
     // First rotate π/2 to align Z with +X, then -theta to point toward (cos(θ), 0, sin(θ))
     geometry.rotateY(Math.PI / 2 - theta);
 
-    // Position at cylinder surface
-    const radialOffset = cylRadius + depth / 2;
+    // Position at cylinder surface with epsilon to prevent coplanar issues
+    const epsilon = 0.01;
+    let radialOffset;
+    if (is_recess) {
+        radialOffset = cylRadius - depth / 2 + epsilon;
+    } else {
+        radialOffset = cylRadius + depth / 2 + epsilon;
+    }
     const posX = radialOffset * Math.cos(theta);
     const posZ = radialOffset * Math.sin(theta);
 

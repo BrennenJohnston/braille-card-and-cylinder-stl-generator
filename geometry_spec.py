@@ -354,7 +354,14 @@ def extract_cylinder_geometry_spec(
                 # Triangle marker at first column
                 triangle_angle = start_angle + seam_offset_rad
                 marker_spec = _create_cylinder_marker_spec(
-                    triangle_angle, y_local, radius, settings, 'triangle', original_lines, row_num
+                    triangle_angle,
+                    y_local,
+                    radius,
+                    settings,
+                    'triangle',
+                    original_lines,
+                    row_num,
+                    plate_type='negative',
                 )
                 spec['markers'].append(marker_spec)
 
@@ -373,14 +380,29 @@ def extract_cylinder_geometry_spec(
                             original_lines,
                             row_num,
                             char=first_char,
+                            plate_type='negative',
                         )
                     else:
                         marker_spec = _create_cylinder_marker_spec(
-                            last_col_angle, y_local, radius, settings, 'rect', original_lines, row_num
+                            last_col_angle,
+                            y_local,
+                            radius,
+                            settings,
+                            'rect',
+                            original_lines,
+                            row_num,
+                            plate_type='negative',
                         )
                 else:
                     marker_spec = _create_cylinder_marker_spec(
-                        last_col_angle, y_local, radius, settings, 'rect', original_lines, row_num
+                        last_col_angle,
+                        y_local,
+                        radius,
+                        settings,
+                        'rect',
+                        original_lines,
+                        row_num,
+                        plate_type='negative',
                     )
                 spec['markers'].append(marker_spec)
 
@@ -430,21 +452,43 @@ def extract_cylinder_geometry_spec(
                             original_lines,
                             row_num,
                             char=first_char,
+                            plate_type='positive',
                         )
                     else:
                         marker_spec = _create_cylinder_marker_spec(
-                            first_col_angle, y_local, radius, settings, 'rect', original_lines, row_num
+                            first_col_angle,
+                            y_local,
+                            radius,
+                            settings,
+                            'rect',
+                            original_lines,
+                            row_num,
+                            plate_type='positive',
                         )
                 else:
                     marker_spec = _create_cylinder_marker_spec(
-                        first_col_angle, y_local, radius, settings, 'rect', original_lines, row_num
+                        first_col_angle,
+                        y_local,
+                        radius,
+                        settings,
+                        'rect',
+                        original_lines,
+                        row_num,
+                        plate_type='positive',
                     )
                 spec['markers'].append(marker_spec)
 
                 # Triangle marker at last column
                 last_col_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle) + seam_offset_rad
                 marker_spec = _create_cylinder_marker_spec(
-                    last_col_angle, y_local, radius, settings, 'triangle', original_lines, row_num
+                    last_col_angle,
+                    y_local,
+                    radius,
+                    settings,
+                    'triangle',
+                    original_lines,
+                    row_num,
+                    plate_type='positive',
                 )
                 spec['markers'].append(marker_spec)
 
@@ -511,6 +555,7 @@ def _create_cylinder_dot_spec(
                 'z': z,
                 'theta': theta,
                 'radius': radius,
+                'is_recess': True,
                 'params': {
                     'shape': 'hemisphere',
                     'recess_radius': recess_radius,
@@ -526,6 +571,7 @@ def _create_cylinder_dot_spec(
                 'z': z,
                 'theta': theta,
                 'radius': radius,
+                'is_recess': True,
                 'params': {
                     'shape': 'bowl',
                     'bowl_radius': bowl_radius,
@@ -544,6 +590,7 @@ def _create_cylinder_dot_spec(
                 'z': z,
                 'theta': theta,
                 'radius': radius,
+                'is_recess': True,
                 'params': {
                     'shape': 'cone',
                     'base_radius': base_dia / 2,
@@ -566,6 +613,7 @@ def _create_cylinder_dot_spec(
                 'z': z,
                 'theta': theta,
                 'radius': radius,
+                'is_recess': False,
                 'params': {
                     'shape': 'rounded',
                     'base_radius': base_dia / 2,
@@ -584,6 +632,7 @@ def _create_cylinder_dot_spec(
                 'z': z,
                 'theta': theta,
                 'radius': radius,
+                'is_recess': False,
                 'params': {
                     'shape': 'standard',
                     'base_radius': settings.emboss_dot_base_diameter / 2,
@@ -602,6 +651,7 @@ def _create_cylinder_marker_spec(
     original_lines: list[str] | None = None,
     row_num: int = 0,
     char: str | None = None,
+    plate_type: str = 'positive',
 ) -> dict[str, Any]:
     """
     Create a marker spec with 3D position on cylinder surface.
@@ -610,6 +660,7 @@ def _create_cylinder_marker_spec(
     x = radius * math.cos(theta)
     z = radius * math.sin(theta)
     y = y_local
+    is_recess = plate_type == 'negative'
 
     if marker_type == 'triangle':
         return {
@@ -621,6 +672,7 @@ def _create_cylinder_marker_spec(
             'radius': radius,
             'size': settings.dot_spacing,
             'depth': 0.6,
+            'is_recess': is_recess,
         }
     elif marker_type == 'character':
         return {
@@ -633,6 +685,7 @@ def _create_cylinder_marker_spec(
             'char': char or 'A',
             'size': settings.dot_spacing * 1.5,
             'depth': 1.0,
+            'is_recess': is_recess,
         }
     else:  # rect
         return {
@@ -645,4 +698,5 @@ def _create_cylinder_marker_spec(
             'width': settings.dot_spacing,
             'height': 2 * settings.dot_spacing,
             'depth': 0.5,
+            'is_recess': is_recess,
         }

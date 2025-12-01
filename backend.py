@@ -15,6 +15,7 @@ from shapely.ops import unary_union
 from werkzeug.exceptions import HTTPException
 
 from app.geometry.booleans import mesh_difference, mesh_union
+from geometry_spec import extract_card_geometry_spec, extract_cylinder_geometry_spec
 
 try:
     import requests  # Optional, used for Vercel Blob REST API
@@ -2510,14 +2511,26 @@ def geometry_spec():
 
         settings = CardSettings(**settings_data)
 
-        # Import geometry spec extraction functions
-        from app.geometry_spec import extract_card_geometry_spec, extract_cylinder_geometry_spec
-
         # Extract geometry spec
         if shape_type == 'card':
-            spec = extract_card_geometry_spec(lines, grade, settings, original_lines, plate_type)
+            spec = extract_card_geometry_spec(
+                lines,
+                grade,
+                settings,
+                original_lines,
+                plate_type,
+                braille_to_dots_func=braille_to_dots,
+            )
         elif shape_type == 'cylinder':
-            spec = extract_cylinder_geometry_spec(lines, grade, settings, cylinder_params, original_lines, plate_type)
+            spec = extract_cylinder_geometry_spec(
+                lines,
+                grade,
+                settings,
+                cylinder_params,
+                original_lines,
+                plate_type,
+                braille_to_dots_func=braille_to_dots,
+            )
         else:
             return jsonify({'error': f'Invalid shape_type: {shape_type}'}), 400
 

@@ -1386,8 +1386,8 @@ def create_cylinder_counter_plate_2d(settings, cylinder_params=None):
     """
     Create a cylinder counter plate using 2D Shapely operations (serverless-compatible).
 
-    This creates a cylinder with through-holes at all dot positions using 2D
-    cross-section operations, which avoids 3D boolean operations entirely.
+    This creates a cylinder with recessed notches on the OUTER CIRCUMFERENCE at all dot positions
+    using horizontal slicing - creating cross-sections with inward notches at specific Z heights.
 
     Args:
         settings: CardSettings object
@@ -1396,8 +1396,6 @@ def create_cylinder_counter_plate_2d(settings, cylinder_params=None):
     Returns:
         Trimesh object representing the cylinder counter plate
     """
-    from shapely.ops import unary_union as _unary_union
-
     if cylinder_params is None:
         cylinder_params = {
             'diameter_mm': 31.35,
@@ -1413,7 +1411,9 @@ def create_cylinder_counter_plate_2d(settings, cylinder_params=None):
     polygonal_cutout_sides = int(cylinder_params.get('polygonal_cutout_sides', 12) or 12)
     seam_offset = float(cylinder_params.get('seam_offset_deg', 355))
 
-    logger.info(f'Creating cylinder counter plate using 2D approach - Diameter: {diameter}mm, Height: {height}mm')
+    logger.info(
+        f'Creating cylinder counter plate using 2D slicing approach - Diameter: {diameter}mm, Height: {height}mm'
+    )
 
     radius = diameter / 2
     grid_width = (settings.grid_columns - 1) * settings.cell_spacing
@@ -1422,12 +1422,18 @@ def create_cylinder_counter_plate_2d(settings, cylinder_params=None):
     cell_spacing_angle = settings.cell_spacing / radius
     seam_offset_rad = np.radians(seam_offset)
 
-    # Calculate hole radius for dot recesses
+    # Calculate recess depth and dimensions
     recess_shape = int(getattr(settings, 'recess_shape', 1))
     if recess_shape == 2:  # Cone
-        hole_radius = float(getattr(settings, 'cone_counter_dot_base_diameter', settings.counter_dot_base_diameter)) / 2
+        recess_radius = (
+            float(getattr(settings, 'cone_counter_dot_base_diameter', settings.counter_dot_base_diameter)) / 2
+        )
+        recess_depth = float(getattr(settings, 'cone_counter_dot_height', 0.8))
     elif recess_shape == 1:  # Bowl
-        hole_radius = float(getattr(settings, 'bowl_counter_dot_base_diameter', settings.counter_dot_base_diameter)) / 2
+        recess_radius = (
+            float(getattr(settings, 'bowl_counter_dot_base_diameter', settings.counter_dot_base_diameter)) / 2
+        )
+        recess_depth = float(getattr(settings, 'counter_dot_depth', 0.8))
     else:  # Hemisphere
         try:
             counter_base = float(
@@ -1435,18 +1441,21 @@ def create_cylinder_counter_plate_2d(settings, cylinder_params=None):
             )
         except Exception:
             counter_base = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
-        hole_radius = counter_base / 2
+        recess_radius = counter_base / 2
+        recess_depth = float(getattr(settings, 'counter_dot_depth', 0.8))
 
-    hole_radius = max(0.3, hole_radius)
+    recess_radius = max(0.3, recess_radius)
+    recess_depth = max(0.2, min(recess_depth, radius - polygonal_cutout_radius - 1))  # Clamp depth
 
-    # Create outer circle for cylinder surface
-    outer_circle = ShapelyPoint(0, 0).buffer(radius, resolution=128)
+    # Angular half-width for each dot recess
+    dot_angular_half_width = (recess_radius * 1.2) / radius  # Slightly wider for visibility
 
-    # Create inner polygon for cutout
+    # Create inner polygon for cutout (used in all cross-sections)
+    inner_polygon = None
     if polygonal_cutout_radius > 0:
         polygonal_cutout_sides = max(3, polygonal_cutout_sides)
         circumscribed_radius = polygonal_cutout_radius / np.cos(np.pi / polygonal_cutout_sides)
-        angles = np.linspace(0, 2 * np.pi, polygonal_cutout_sides, endpoint=False)
+        angles_poly = np.linspace(0, 2 * np.pi, polygonal_cutout_sides, endpoint=False)
 
         # Align to first column position
         first_col_angle = start_angle
@@ -1454,84 +1463,166 @@ def create_cylinder_counter_plate_2d(settings, cylinder_params=None):
 
         vertices_2d = [
             (circumscribed_radius * np.cos(a + align_angle), circumscribed_radius * np.sin(a + align_angle))
-            for a in angles
+            for a in angles_poly
         ]
         inner_polygon = ShapelyPolygon(vertices_2d)
-        cross_section = outer_circle.difference(inner_polygon)
-    else:
-        cross_section = outer_circle
 
-    # Create holes in the 2D cross-section for all dot positions
+    # Helper function to create cross-section with notches at specific angles
+    def create_ring_with_notches(notch_angles, outer_r, notch_depth_val, resolution=128):
+        """Create a ring cross-section with inward notches at specified angles."""
+        angles = np.linspace(0, 2 * np.pi, resolution, endpoint=False)
+        vertices = []
+        for a in angles:
+            # Check if this angle is within any notch
+            r = outer_r
+            for notch_angle in notch_angles:
+                # Handle wraparound at 2π
+                angle_diff = abs((a - notch_angle + np.pi) % (2 * np.pi) - np.pi)
+                if angle_diff < dot_angular_half_width:
+                    r = outer_r - notch_depth_val
+                    break
+            vertices.append((r * np.cos(a), r * np.sin(a)))
+        outer_shape = ShapelyPolygon(vertices)
+        if inner_polygon is not None and not inner_polygon.is_empty:
+            return outer_shape.difference(inner_polygon)
+        return outer_shape
+
+    # Create normal ring (without notches) for non-dot sections
+    outer_circle = ShapelyPoint(0, 0).buffer(radius, resolution=128)
+    if inner_polygon is not None:
+        ring_normal = outer_circle.difference(inner_polygon)
+    else:
+        ring_normal = outer_circle
+
+    # Calculate vertical centering (same as embossing plate)
+    braille_content_height = (settings.grid_rows - 1) * settings.line_spacing + 2 * settings.dot_spacing
+    space_above = (height - braille_content_height) / 2.0
+    first_row_center_y = height - space_above - settings.dot_spacing
+
+    # Dot positioning
     dot_spacing_angle = settings.dot_spacing / radius
     dot_col_angle_offsets = [-dot_spacing_angle / 2, dot_spacing_angle / 2]
-    dot_positions = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
+    dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]
+    dot_positions_pattern = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]
 
     reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
     num_text_cols = settings.grid_columns - reserved
 
-    # Create circular holes at each dot position on the outer surface
-    outer_holes = []
-    for _row in range(settings.grid_rows):
+    # Collect all dot positions for each row: (z_center, [list of angles])
+    row_dot_data = []  # List of (z_center, dot_height, [angles])
+    dot_vertical_extent = recess_radius * 2.5  # Vertical extent of each dot recess
+
+    for row_num in range(settings.grid_rows):
+        y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
+
+        # Collect all dot angles for this row
+        row_angles = []
+
+        # Add indicator shapes if enabled
+        if getattr(settings, 'indicator_shapes', 1):
+            # Triangle at first column
+            first_angle = start_angle + seam_offset_rad
+            row_angles.append(first_angle)
+
+            # Line at last column
+            last_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle) + seam_offset_rad
+            row_angles.append(last_angle)
+
+        # Add all 6 dots for each cell in this row
         for col in range(num_text_cols):
             mirrored_idx = (num_text_cols - 1) - col
             cell_angle = start_angle + ((mirrored_idx + 1) * cell_spacing_angle) + seam_offset_rad
 
             for dot_idx in range(6):
-                dot_pos = dot_positions[dot_idx]
+                dot_pos = dot_positions_pattern[dot_idx]
                 dot_angle = cell_angle + dot_col_angle_offsets[dot_pos[1]]
+                # Each dot has its own vertical offset within the cell
+                dot_y = y_pos + dot_row_offsets[dot_pos[0]]
+                z_local = dot_y - (height / 2.0)
+                row_dot_data.append((z_local, dot_vertical_extent, [dot_angle]))
 
-                # Create hole on the outer circle at this angle
-                hole_x = radius * np.cos(dot_angle)
-                hole_y = radius * np.sin(dot_angle)
-                hole = ShapelyPoint(hole_x, hole_y).buffer(hole_radius, resolution=16)
-                outer_holes.append(hole)
+        # Add indicator shapes as separate entries with their own Z positions
+        if getattr(settings, 'indicator_shapes', 1):
+            z_local = y_pos - (height / 2.0)
+            indicator_height = settings.dot_spacing * 2
+            # Triangle
+            row_dot_data.append((z_local, indicator_height, [start_angle + seam_offset_rad]))
+            # Line marker
+            row_dot_data.append(
+                (
+                    z_local,
+                    indicator_height,
+                    [start_angle + ((settings.grid_columns - 1) * cell_spacing_angle) + seam_offset_rad],
+                )
+            )
 
-    # Add indicator shape holes
-    if getattr(settings, 'indicator_shapes', 1):
-        for _row_num in range(settings.grid_rows):
-            # Triangle at first column
-            first_angle = start_angle + seam_offset_rad
-            tri_x = radius * np.cos(first_angle)
-            tri_y = radius * np.sin(first_angle)
-            tri_hole = ShapelyPoint(tri_x, tri_y).buffer(settings.dot_spacing * 0.8, resolution=16)
-            outer_holes.append(tri_hole)
+    # Merge overlapping Z ranges and combine their angles
+    merged_ranges = []  # (z_start, z_end, [all angles in range])
+    for z_center, vert_extent, angles in row_dot_data:
+        z_start = z_center - vert_extent / 2
+        z_end = z_center + vert_extent / 2
 
-            # Line at last column
-            last_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle) + seam_offset_rad
-            line_x = radius * np.cos(last_angle)
-            line_y = radius * np.sin(last_angle)
-            line_hole = ShapelyPoint(line_x, line_y).buffer(settings.dot_spacing * 0.5, resolution=16)
-            outer_holes.append(line_hole)
+        # Find overlapping range or create new one
+        merged = False
+        for i, (r_start, r_end, angle_list) in enumerate(merged_ranges):
+            if not (z_end < r_start - 0.1 or z_start > r_end + 0.1):  # Overlaps
+                new_start = min(z_start, r_start)
+                new_end = max(z_end, r_end)
+                angle_list.extend(angles)
+                merged_ranges[i] = (new_start, new_end, angle_list)
+                merged = True
+                break
+        if not merged:
+            merged_ranges.append((z_start, z_end, list(angles)))
 
-    # Combine holes and subtract from cross-section
-    if outer_holes:
-        try:
-            combined_holes = _unary_union(outer_holes)
-            cross_section = cross_section.difference(combined_holes)
-        except Exception as e:
-            logger.warning(f'Failed to create hole pattern: {e}')
+    # Sort ranges by z_start
+    merged_ranges.sort(key=lambda r: r[0])
 
-    # Extrude the 2D cross-section to 3D
+    # Build cylinder as horizontal slices
+    slices = []
+    z_bottom = -height / 2.0
+    z_top = height / 2.0
+    current_z = z_bottom
+
+    for range_start, range_end, angle_list in merged_ranges:
+        # Normal section before this notched range
+        if current_z < range_start - 0.01:
+            slice_height = range_start - current_z
+            if slice_height > 0.01:
+                normal_slice = extrude_polygon(ring_normal, height=slice_height)
+                normal_slice.apply_translation([0, 0, current_z])
+                slices.append(normal_slice)
+            current_z = range_start
+
+        # Notched section
+        if current_z < range_end:
+            slice_height = range_end - current_z
+            if slice_height > 0.01:
+                # Remove duplicate angles
+                unique_angles = list(set(angle_list))
+                ring_notched = create_ring_with_notches(unique_angles, radius, recess_depth)
+                notched_slice = extrude_polygon(ring_notched, height=slice_height)
+                notched_slice.apply_translation([0, 0, current_z])
+                slices.append(notched_slice)
+            current_z = range_end
+
+    # Final normal section after all notched ranges
+    if current_z < z_top - 0.01:
+        slice_height = z_top - current_z
+        if slice_height > 0.01:
+            normal_slice = extrude_polygon(ring_normal, height=slice_height)
+            normal_slice.apply_translation([0, 0, current_z])
+            slices.append(normal_slice)
+
+    # Combine all slices
     try:
-        if cross_section.is_empty:
-            logger.error('Cross-section is empty, returning simple shell')
-            shell = create_cylinder_shell(diameter, height, polygonal_cutout_radius, polygonal_cutout_sides)
-            min_z = shell.bounds[0][2]
-            shell.apply_translation([0, 0, -min_z])
-            return shell
-
-        # Handle MultiPolygon
-        if hasattr(cross_section, 'geoms'):
-            parts = [extrude_polygon(g, height=height) for g in cross_section.geoms if g.area > 0.01]
-            if parts:
-                cylinder_mesh = trimesh.util.concatenate(parts)
-            else:
-                cylinder_mesh = create_cylinder_shell(diameter, height, polygonal_cutout_radius, polygonal_cutout_sides)
+        if slices:
+            cylinder_mesh = trimesh.util.concatenate(slices)
+            logger.debug(f'Created cylinder counter plate with {len(slices)} horizontal slices')
         else:
-            cylinder_mesh = extrude_polygon(cross_section, height=height)
-
-        # Center the cylinder
-        cylinder_mesh.apply_translation([0, 0, -height / 2])
+            # Fallback to simple shell
+            cylinder_mesh = create_cylinder_shell(diameter, height, polygonal_cutout_radius, polygonal_cutout_sides)
+            cylinder_mesh.apply_translation([0, 0, -height / 2])
 
         # Ensure base is at Z=0
         min_z = cylinder_mesh.bounds[0][2]

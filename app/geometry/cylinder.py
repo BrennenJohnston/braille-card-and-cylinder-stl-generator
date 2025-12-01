@@ -18,7 +18,7 @@ from trimesh.creation import extrude_polygon
 
 from app.geometry.booleans import batch_union, has_boolean_backend, mesh_difference, mesh_union
 from app.geometry.dot_shapes import create_braille_dot
-from app.utils import allow_serverless_booleans, braille_to_dots, get_logger
+from app.utils import braille_to_dots, get_logger
 
 if TYPE_CHECKING:
     from app.models import CardSettings
@@ -62,19 +62,12 @@ def _booleans_available() -> bool:
     # Check if we actually have a working boolean backend (manifold3d)
     # Trimesh's default engine requires blender/openscad which aren't on serverless
     if not has_boolean_backend():
-        logger.debug('No boolean backend available (manifold3d not installed) - using 2D approach')
+        logger.debug('No boolean backend available (manifold3d not installed)')
         return False
 
-    if not _is_serverless_env():
-        logger.debug('Booleans available (not serverless environment, manifold3d installed)')
-        return True
-
-    result = allow_serverless_booleans()
-    if result:
-        logger.debug('Booleans available in serverless (manifold3d installed and allowed)')
-    else:
-        logger.debug('Booleans disabled in serverless (ALLOW_SERVERLESS_BOOLEANS not set)')
-    return result
+    # Serverless environments are allowed when manifold3d is available
+    logger.debug('Booleans available (manifold3d installed)')
+    return True
 
 
 def _compute_cylinder_frame(x_arc: float, cylinder_diameter_mm: float, seam_offset_deg: float = 0.0):
@@ -774,144 +767,9 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
         except Exception as e:
             logger.error(f'Individual marker subtraction failed: {e}')
 
-    # If all 3D approaches failed, create markers using 2D cross-section approach
-    # This approach creates horizontal slices with inward notches at marker positions
+    # If all 3D approaches failed, surface an error (no 2D fallback)
     if all_markers and not markers_applied:
-        logger.warning(
-            '3D marker subtraction failed. Using 2D slicing approach for indicator recesses on outer surface.'
-        )
-        try:
-            # Collect all marker positions: (z_local, angle, angular_half_width, marker_height)
-            marker_positions = []
-            recess_depth = 0.6  # How deep the notches go into the surface
-            marker_vertical_extent = settings.dot_spacing * 2  # Vertical extent of each marker
-
-            for row_num in range(settings.grid_rows):
-                y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
-                z_local = y_pos - (height / 2.0)
-
-                # First column (text/number indicator) - wider for character shape
-                first_angle = start_angle + seam_offset_rad
-                indicator_angular_half_width = (settings.dot_spacing * 0.6) / radius
-                marker_positions.append((z_local, first_angle, indicator_angular_half_width, marker_vertical_extent))
-
-                # Last column (triangle marker)
-                last_angle = (
-                    start_angle + ((settings.grid_columns - 1) * settings.cell_spacing / radius) + seam_offset_rad
-                )
-                triangle_angular_half_width = (settings.dot_spacing * 0.6) / radius
-                marker_positions.append((z_local, last_angle, triangle_angular_half_width, marker_vertical_extent))
-
-            # Create inner polygon for cutout (used in all slices)
-            inner_polygon = None
-            if polygonal_cutout_radius > 0:
-                circumscribed_radius = polygonal_cutout_radius / np.cos(np.pi / polygonal_cutout_sides)
-                angles_poly = np.linspace(0, 2 * np.pi, polygonal_cutout_sides, endpoint=False)
-                vertices_2d = [
-                    (
-                        circumscribed_radius * np.cos(a + cutout_align_theta),
-                        circumscribed_radius * np.sin(a + cutout_align_theta),
-                    )
-                    for a in angles_poly
-                ]
-                inner_polygon = ShapelyPolygon(vertices_2d)
-
-            # Helper function to create cross-section with notches at specific angles
-            def create_ring_with_notches(notch_angles, notch_half_widths, outer_r, notch_depth_val, resolution=128):
-                """Create a ring cross-section with inward notches at specified angles."""
-                angles = np.linspace(0, 2 * np.pi, resolution, endpoint=False)
-                vertices = []
-                for a in angles:
-                    # Check if this angle is within any notch
-                    r = outer_r
-                    for notch_angle, half_width in zip(notch_angles, notch_half_widths, strict=False):
-                        # Handle wraparound at 2π
-                        angle_diff = abs((a - notch_angle + np.pi) % (2 * np.pi) - np.pi)
-                        if angle_diff < half_width:
-                            r = outer_r - notch_depth_val
-                            break
-                    vertices.append((r * np.cos(a), r * np.sin(a)))
-                outer_shape = ShapelyPolygon(vertices)
-                if inner_polygon is not None and not inner_polygon.is_empty:
-                    return outer_shape.difference(inner_polygon)
-                return outer_shape
-
-            # Create normal ring (without notches) for non-marker sections
-            outer_circle = ShapelyPoint(0, 0).buffer(radius, resolution=128)
-            if inner_polygon is not None:
-                ring_normal = outer_circle.difference(inner_polygon)
-            else:
-                ring_normal = outer_circle
-
-            # Build cylinder as horizontal slices
-            # Group markers by their Z position to create slices
-            slices = []
-
-            # Define Z bounds
-            z_bottom = -height / 2.0
-            z_top = height / 2.0
-
-            # Collect Z ranges that need notched cross-sections
-            notched_ranges = []  # (z_start, z_end, [(angle, half_width), ...])
-            for z_local, angle, half_width, vert_extent in marker_positions:
-                z_start = z_local - vert_extent / 2
-                z_end = z_local + vert_extent / 2
-                # Find or create a range for this Z
-                found = False
-                for i, (r_start, r_end, angle_list) in enumerate(notched_ranges):
-                    # Check if overlaps with existing range
-                    if not (z_end < r_start or z_start > r_end):
-                        # Merge ranges
-                        new_start = min(z_start, r_start)
-                        new_end = max(z_end, r_end)
-                        angle_list.append((angle, half_width))
-                        notched_ranges[i] = (new_start, new_end, angle_list)
-                        found = True
-                        break
-                if not found:
-                    notched_ranges.append((z_start, z_end, [(angle, half_width)]))
-
-            # Sort ranges by z_start
-            notched_ranges.sort(key=lambda r: r[0])
-
-            # Build slices: alternate between normal and notched sections
-            current_z = z_bottom
-            for range_start, range_end, angle_list in notched_ranges:
-                # Normal section before this notched range
-                if current_z < range_start:
-                    slice_height = range_start - current_z
-                    if slice_height > 0.01:  # Skip very thin slices
-                        normal_slice = extrude_polygon(ring_normal, height=slice_height)
-                        normal_slice.apply_translation([0, 0, current_z])
-                        slices.append(normal_slice)
-                    current_z = range_start
-
-                # Notched section
-                if current_z < range_end:
-                    slice_height = range_end - current_z
-                    if slice_height > 0.01:
-                        notch_angles = [a for a, _ in angle_list]
-                        notch_widths = [w for _, w in angle_list]
-                        ring_notched = create_ring_with_notches(notch_angles, notch_widths, radius, recess_depth)
-                        notched_slice = extrude_polygon(ring_notched, height=slice_height)
-                        notched_slice.apply_translation([0, 0, current_z])
-                        slices.append(notched_slice)
-                    current_z = range_end
-
-            # Final normal section after all notched ranges
-            if current_z < z_top:
-                slice_height = z_top - current_z
-                if slice_height > 0.01:
-                    normal_slice = extrude_polygon(ring_normal, height=slice_height)
-                    normal_slice.apply_translation([0, 0, current_z])
-                    slices.append(normal_slice)
-
-            if slices:
-                cylinder_shell = trimesh.util.concatenate(slices)
-                logger.debug(f'2D slicing approach successful: created {len(slices)} slices for indicator recesses')
-
-        except Exception as e2d:
-            logger.error(f'2D slicing approach for indicator recesses failed: {e2d}')
+        raise RuntimeError('3D marker subtraction failed for cylinder surface (no 2D fallback)')
 
     meshes = [cylinder_shell]
 
@@ -1030,10 +888,9 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         diameter, height, polygonal_cutout_radius, polygonal_cutout_sides, align_vertex_theta_rad=cutout_align_theta
     )
 
-    # Respect feature flag; use 2D approach when booleans are disabled or in serverless
+    # Require 3D booleans; fail if unavailable
     if not _booleans_available():
-        logger.info('Using 2D approach for cylinder counter plate (booleans disabled or serverless environment)')
-        return create_cylinder_counter_plate_2d(settings, cylinder_params)
+        raise RuntimeError('3D boolean backend not available (manifold3d missing)')
 
     # Use grid_rows from settings
 
@@ -1376,10 +1233,9 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
 
         return final_shell
     except Exception as final_error:
-        logger.error(f'Cylinder fallback boolean failed: {final_error}')
-        logger.warning('Using 2D approach for cylinder counter plate.')
-        # Use 2D approach as final fallback
-        return create_cylinder_counter_plate_2d(settings, cylinder_params)
+        logger.error(f'Cylinder boolean operations failed: {final_error}')
+        # Surface the error to the caller (no 2D fallback)
+        raise
 
 
 def create_cylinder_counter_plate_2d(settings, cylinder_params=None):

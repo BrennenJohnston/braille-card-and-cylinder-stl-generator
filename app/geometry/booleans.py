@@ -34,7 +34,7 @@ def _check_manifold_available() -> bool:
         logger.info('manifold3d is available for boolean operations')
     except ImportError:
         _manifold_available = False
-        logger.info('manifold3d not available - will use 2D fallbacks for boolean operations')
+        logger.info('manifold3d not available - 3D boolean operations unavailable')
     except Exception as e:
         _manifold_available = False
         logger.warning(f'manifold3d check failed ({type(e).__name__}): {e}')

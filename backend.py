@@ -62,7 +62,7 @@ from app.geometry.dot_shapes import create_braille_dot
 from app.models import CardSettings
 
 # Import utilities from app.utils
-from app.utils import allow_serverless_booleans, braille_to_dots, get_logger
+from app.utils import braille_to_dots, get_logger
 
 # Import validation from app.validation
 from app.validation import (
@@ -2174,36 +2174,23 @@ def generate_braille_stl():
                 # Counter plate: choose recess shape
                 # It does NOT depend on text input - always creates ALL 6 dots per cell
                 recess_shape = int(getattr(settings, 'recess_shape', 1))
-
-                # In serverless environment, use 2D Shapely approach which is more reliable
-                serverless_no_booleans = _is_serverless_env() and not allow_serverless_booleans()
-                if serverless_no_booleans:
-                    logger.info('Serverless environment detected: using 2D Shapely approach for counter plate')
-                    mesh = create_universal_counter_plate_2d(settings)
+                # Always use 3D boolean approach; failure results in 500 to surface deployment/runtime issues
+                if recess_shape == 1:
+                    logger.debug('Generating counter plate with bowl (spherical cap) recesses (all positions)')
+                    mesh = build_counter_plate_bowl(settings)
+                elif recess_shape == 0:
+                    logger.debug('Generating counter plate with hemispherical recesses (all positions)')
+                    mesh = build_counter_plate_hemispheres(settings)
+                elif recess_shape == 2:
+                    logger.debug('Generating counter plate with conical (frustum) recesses (all positions)')
+                    mesh = build_counter_plate_cone(settings)
                 else:
-                    # Try 3D boolean approach first, fall back to 2D if it fails
-                    try:
-                        if recess_shape == 1:
-                            logger.debug('Generating counter plate with bowl (spherical cap) recesses (all positions)')
-                            mesh = build_counter_plate_bowl(settings)
-                        elif recess_shape == 0:
-                            logger.debug('Generating counter plate with hemispherical recesses (all positions)')
-                            mesh = build_counter_plate_hemispheres(settings)
-                        elif recess_shape == 2:
-                            logger.debug('Generating counter plate with conical (frustum) recesses (all positions)')
-                            mesh = build_counter_plate_cone(settings)
-                        else:
-                            logger.warning('Unknown recess_shape value, defaulting to bowl')
-                            mesh = build_counter_plate_bowl(settings)
+                    logger.warning('Unknown recess_shape value, defaulting to bowl')
+                    mesh = build_counter_plate_bowl(settings)
 
-                        # Check if mesh actually has recesses (rough heuristic: check face count)
-                        # A plain box has ~12 faces, a plate with recesses has many more
-                        if len(mesh.faces) < 100:
-                            logger.warning('3D boolean approach may have failed (low face count), using 2D fallback')
-                            mesh = create_universal_counter_plate_2d(settings)
-                    except Exception as e:
-                        logger.warning(f'3D boolean approach failed: {e}, using 2D fallback')
-                        mesh = create_universal_counter_plate_2d(settings)
+                # Rough sanity check: ensure we actually produced a complex mesh (counter plate should be detailed)
+                if len(mesh.faces) < 100:
+                    raise RuntimeError('3D boolean approach produced suspiciously few faces (possible failure)')
             else:
                 return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
 
@@ -2514,33 +2501,23 @@ def generate_counter_plate_stl():
         # It does NOT depend on text input - always creates ALL 6 dots per cell
         recess_shape = int(getattr(settings, 'recess_shape', 1))
 
-        # In serverless environment, use 2D Shapely approach which is more reliable
-        if _is_serverless_env() and not allow_serverless_booleans():
-            logger.info('Serverless environment detected: using 2D Shapely approach for standalone counter plate')
-            mesh = create_universal_counter_plate_2d(settings)
+        # Always use 3D boolean approach; failure results in 500 to surface deployment/runtime issues
+        if recess_shape == 1:
+            logger.debug('Generating counter plate with bowl (spherical cap) recesses (all positions)')
+            mesh = build_counter_plate_bowl(settings)
+        elif recess_shape == 0:
+            logger.debug('Generating counter plate with hemispherical recesses (all positions)')
+            mesh = build_counter_plate_hemispheres(settings)
+        elif recess_shape == 2:
+            logger.debug('Generating counter plate with conical (frustum) recesses (all positions)')
+            mesh = build_counter_plate_cone(settings)
         else:
-            # Try 3D boolean approach first, fall back to 2D if it fails
-            try:
-                if recess_shape == 1:
-                    logger.debug('Generating counter plate with bowl (spherical cap) recesses (all positions)')
-                    mesh = build_counter_plate_bowl(settings)
-                elif recess_shape == 0:
-                    logger.debug('Generating counter plate with hemispherical recesses (all positions)')
-                    mesh = build_counter_plate_hemispheres(settings)
-                elif recess_shape == 2:
-                    logger.debug('Generating counter plate with conical (frustum) recesses (all positions)')
-                    mesh = build_counter_plate_cone(settings)
-                else:
-                    logger.warning(f'Unknown recess_shape={recess_shape}, defaulting to hemisphere')
-                    mesh = build_counter_plate_hemispheres(settings)
+            logger.warning(f'Unknown recess_shape={recess_shape}, defaulting to hemisphere')
+            mesh = build_counter_plate_hemispheres(settings)
 
-                # Check if mesh actually has recesses (rough heuristic: check face count)
-                if len(mesh.faces) < 100:
-                    logger.warning('3D boolean approach may have failed (low face count), using 2D fallback')
-                    mesh = create_universal_counter_plate_2d(settings)
-            except Exception as e:
-                logger.warning(f'3D boolean approach failed: {e}, using 2D fallback')
-                mesh = create_universal_counter_plate_2d(settings)
+        # Rough sanity check: ensure we actually produced a complex mesh (counter plate should be detailed)
+        if len(mesh.faces) < 100:
+            raise RuntimeError('3D boolean approach produced suspiciously few faces (possible failure)')
 
         # Compute content-addressable cache key from request payload
         cache_payload = {

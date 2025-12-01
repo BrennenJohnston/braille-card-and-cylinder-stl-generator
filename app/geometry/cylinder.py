@@ -760,13 +760,35 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
             logger.error(f'Individual marker subtraction failed: {e}')
 
     # If all 3D approaches failed, create markers using 2D cross-section approach
+    # This approach creates horizontal slices with inward notches at marker positions
     if all_markers and not markers_applied:
-        logger.warning('3D marker subtraction failed. Using 2D cross-section approach for indicator recesses.')
+        logger.warning(
+            '3D marker subtraction failed. Using 2D slicing approach for indicator recesses on outer surface.'
+        )
         try:
-            # Create a cylinder shell with holes at marker positions
-            outer_circle = ShapelyPoint(0, 0).buffer(radius, resolution=128)
+            # Collect all marker positions: (z_local, angle, angular_half_width, marker_height)
+            marker_positions = []
+            recess_depth = 0.6  # How deep the notches go into the surface
+            marker_vertical_extent = settings.dot_spacing * 2  # Vertical extent of each marker
 
-            # Create inner polygon for cutout
+            for row_num in range(settings.grid_rows):
+                y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
+                z_local = y_pos - (height / 2.0)
+
+                # First column (text/number indicator) - wider for character shape
+                first_angle = start_angle + seam_offset_rad
+                indicator_angular_half_width = (settings.dot_spacing * 0.6) / radius
+                marker_positions.append((z_local, first_angle, indicator_angular_half_width, marker_vertical_extent))
+
+                # Last column (triangle marker)
+                last_angle = (
+                    start_angle + ((settings.grid_columns - 1) * settings.cell_spacing / radius) + seam_offset_rad
+                )
+                triangle_angular_half_width = (settings.dot_spacing * 0.6) / radius
+                marker_positions.append((z_local, last_angle, triangle_angular_half_width, marker_vertical_extent))
+
+            # Create inner polygon for cutout (used in all slices)
+            inner_polygon = None
             if polygonal_cutout_radius > 0:
                 circumscribed_radius = polygonal_cutout_radius / np.cos(np.pi / polygonal_cutout_sides)
                 angles_poly = np.linspace(0, 2 * np.pi, polygonal_cutout_sides, endpoint=False)
@@ -778,53 +800,103 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
                     for a in angles_poly
                 ]
                 inner_polygon = ShapelyPolygon(vertices_2d)
-                ring_2d = outer_circle.difference(inner_polygon)
+
+            # Helper function to create cross-section with notches at specific angles
+            def create_ring_with_notches(notch_angles, notch_half_widths, outer_r, notch_depth_val, resolution=128):
+                """Create a ring cross-section with inward notches at specified angles."""
+                angles = np.linspace(0, 2 * np.pi, resolution, endpoint=False)
+                vertices = []
+                for a in angles:
+                    # Check if this angle is within any notch
+                    r = outer_r
+                    for notch_angle, half_width in zip(notch_angles, notch_half_widths, strict=False):
+                        # Handle wraparound at 2π
+                        angle_diff = abs((a - notch_angle + np.pi) % (2 * np.pi) - np.pi)
+                        if angle_diff < half_width:
+                            r = outer_r - notch_depth_val
+                            break
+                    vertices.append((r * np.cos(a), r * np.sin(a)))
+                outer_shape = ShapelyPolygon(vertices)
+                if inner_polygon is not None and not inner_polygon.is_empty:
+                    return outer_shape.difference(inner_polygon)
+                return outer_shape
+
+            # Create normal ring (without notches) for non-marker sections
+            outer_circle = ShapelyPoint(0, 0).buffer(radius, resolution=128)
+            if inner_polygon is not None:
+                ring_normal = outer_circle.difference(inner_polygon)
             else:
-                ring_2d = outer_circle
+                ring_normal = outer_circle
 
-            # Create holes at marker positions on the ring
-            marker_holes = []
-            for row_num in range(settings.grid_rows):
-                y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
-                y_local = y_pos - (height / 2.0)
+            # Build cylinder as horizontal slices
+            # Group markers by their Z position to create slices
+            slices = []
 
-                # First column (text/number indicator)
-                first_angle = start_angle + seam_offset_rad
-                first_x = radius * np.cos(first_angle)
-                first_y = radius * np.sin(first_angle)
-                marker_holes.append(ShapelyPoint(first_x, first_y).buffer(settings.dot_spacing * 0.8, resolution=16))
+            # Define Z bounds
+            z_bottom = -height / 2.0
+            z_top = height / 2.0
 
-                # Last column (triangle)
-                last_angle = (
-                    start_angle + ((settings.grid_columns - 1) * settings.cell_spacing / radius) + seam_offset_rad
-                )
-                last_x = radius * np.cos(last_angle)
-                last_y = radius * np.sin(last_angle)
-                marker_holes.append(ShapelyPoint(last_x, last_y).buffer(settings.dot_spacing * 0.8, resolution=16))
+            # Collect Z ranges that need notched cross-sections
+            notched_ranges = []  # (z_start, z_end, [(angle, half_width), ...])
+            for z_local, angle, half_width, vert_extent in marker_positions:
+                z_start = z_local - vert_extent / 2
+                z_end = z_local + vert_extent / 2
+                # Find or create a range for this Z
+                found = False
+                for i, (r_start, r_end, angle_list) in enumerate(notched_ranges):
+                    # Check if overlaps with existing range
+                    if not (z_end < r_start or z_start > r_end):
+                        # Merge ranges
+                        new_start = min(z_start, r_start)
+                        new_end = max(z_end, r_end)
+                        angle_list.append((angle, half_width))
+                        notched_ranges[i] = (new_start, new_end, angle_list)
+                        found = True
+                        break
+                if not found:
+                    notched_ranges.append((z_start, z_end, [(angle, half_width)]))
 
-            if marker_holes:
-                from shapely.ops import unary_union as _unary_union
+            # Sort ranges by z_start
+            notched_ranges.sort(key=lambda r: r[0])
 
-                combined_marker_holes = _unary_union(marker_holes)
-                ring_with_holes = ring_2d.difference(combined_marker_holes)
+            # Build slices: alternate between normal and notched sections
+            current_z = z_bottom
+            for range_start, range_end, angle_list in notched_ranges:
+                # Normal section before this notched range
+                if current_z < range_start:
+                    slice_height = range_start - current_z
+                    if slice_height > 0.01:  # Skip very thin slices
+                        normal_slice = extrude_polygon(ring_normal, height=slice_height)
+                        normal_slice.apply_translation([0, 0, current_z])
+                        slices.append(normal_slice)
+                    current_z = range_start
 
-                # Create layered cylinder: bottom part without holes, top part with holes
-                recess_depth = 0.6  # marker recess depth
-                bottom_height = height - recess_depth
+                # Notched section
+                if current_z < range_end:
+                    slice_height = range_end - current_z
+                    if slice_height > 0.01:
+                        notch_angles = [a for a, _ in angle_list]
+                        notch_widths = [w for _, w in angle_list]
+                        ring_notched = create_ring_with_notches(notch_angles, notch_widths, radius, recess_depth)
+                        notched_slice = extrude_polygon(ring_notched, height=slice_height)
+                        notched_slice.apply_translation([0, 0, current_z])
+                        slices.append(notched_slice)
+                    current_z = range_end
 
-                # Bottom part (no holes)
-                bottom_shell = extrude_polygon(ring_2d, height=bottom_height)
-                bottom_shell.apply_translation([0, 0, -height / 2])
+            # Final normal section after all notched ranges
+            if current_z < z_top:
+                slice_height = z_top - current_z
+                if slice_height > 0.01:
+                    normal_slice = extrude_polygon(ring_normal, height=slice_height)
+                    normal_slice.apply_translation([0, 0, current_z])
+                    slices.append(normal_slice)
 
-                # Top part (with holes)
-                top_shell = extrude_polygon(ring_with_holes, height=recess_depth)
-                top_shell.apply_translation([0, 0, -height / 2 + bottom_height])
-
-                cylinder_shell = trimesh.util.concatenate([bottom_shell, top_shell])
-                logger.debug('2D marker approach successful')
+            if slices:
+                cylinder_shell = trimesh.util.concatenate(slices)
+                logger.debug(f'2D slicing approach successful: created {len(slices)} slices for indicator recesses')
 
         except Exception as e2d:
-            logger.error(f'2D marker approach also failed: {e2d}')
+            logger.error(f'2D slicing approach for indicator recesses failed: {e2d}')
 
     meshes = [cylinder_shell]
 

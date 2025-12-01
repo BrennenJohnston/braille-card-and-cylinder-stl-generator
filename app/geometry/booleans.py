@@ -31,9 +31,13 @@ def _check_manifold_available() -> bool:
         import manifold3d  # noqa: F401
 
         _manifold_available = True
-        logger.info('manifold3d is available for boolean operations')
-    except ImportError:
+        logger.info(
+            f'manifold3d is available for boolean operations (version: {getattr(manifold3d, "__version__", "unknown")})'
+        )
+    except ImportError as e:
         _manifold_available = False
+        # Log detailed import error to help diagnose glibc/wheel compatibility issues
+        logger.warning(f'manifold3d import failed (ImportError): {e}')
         logger.info('manifold3d not available - 3D boolean operations unavailable')
     except Exception as e:
         _manifold_available = False

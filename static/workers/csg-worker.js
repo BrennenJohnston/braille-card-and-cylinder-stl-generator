@@ -468,6 +468,8 @@ function processGeometrySpec(spec) {
         }
 
         // Perform CSG operations
+        let finalGeometry;
+
         if (features.length > 0) {
             console.log(`CSG Worker: Performing CSG with ${features.length} features`);
 
@@ -498,14 +500,22 @@ function processGeometrySpec(spec) {
 
             // Fix drawRange for export
             resultBrush.geometry.setDrawRange(0, Infinity);
-
-            return resultBrush.geometry;
+            finalGeometry = resultBrush.geometry;
         } else {
             console.log('CSG Worker: No features, returning base geometry');
             // No features, return base as-is
             baseGeometry.setDrawRange(0, Infinity);
-            return baseGeometry;
+            finalGeometry = baseGeometry;
         }
+
+        // For cylinders: rotate from Y-up (Three.js) to Z-up (STL/CAD convention)
+        // Rotate -90° around X-axis so the cylinder stands upright
+        if (isCylinder) {
+            finalGeometry.rotateX(-Math.PI / 2);
+            console.log('CSG Worker: Rotated cylinder to Z-up orientation');
+        }
+
+        return finalGeometry;
 
     } catch (error) {
         console.error('CSG Worker: Processing failed:', error);

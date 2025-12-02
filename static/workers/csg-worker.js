@@ -255,7 +255,7 @@ function createCylinderDot(spec) {
 
         // Step 2: Rotate around Y by -theta to position it at the correct radial angle
         // (negative because rotateY(θ) gives (cos(θ), 0, -sin(θ)) but radial is (cos(θ), 0, +sin(θ)))
-        geometry.rotateY(-theta);
+        geometry.rotateY(theta);
     }
 
     // Calculate the radial position
@@ -322,9 +322,8 @@ function createCylinderTriangleMarker(spec) {
     // Rotate so extrusion points along +X
     geometry.rotateY(Math.PI / 2);
 
-    // Then rotate to the correct radial position using -theta
-    // (negative because rotateY(θ) gives (cos(θ), 0, -sin(θ)) but radial is (cos(θ), 0, +sin(θ)))
-    geometry.rotateY(-theta);
+    // Then rotate to the correct radial position using +theta so radial points (cosθ, 0, sinθ)
+    geometry.rotateY(theta);
 
     // Position at cylinder surface with epsilon to prevent coplanar issues
     const epsilon = 0.05;
@@ -372,8 +371,8 @@ function createCylinderRectMarker(spec) {
     const geometry = new THREE.BoxGeometry(validWidth, validHeight, validDepth);
 
     // Rotate so depth (Z) points radially outward at angle theta
-    // First rotate π/2 to align Z with +X, then -theta to point toward (cos(θ), 0, sin(θ))
-    geometry.rotateY(Math.PI / 2 - theta);
+    // Rotate π/2 to align depth with +X, then +theta to aim toward (cosθ, 0, sinθ)
+    geometry.rotateY(Math.PI / 2 + theta);
 
     // Position at cylinder surface with epsilon to prevent coplanar issues
     const epsilon = 0.05;
@@ -421,8 +420,8 @@ function createCylinderCharacterMarker(spec) {
     const geometry = new THREE.BoxGeometry(charWidth, charHeight, validDepth);
 
     // Rotate so depth (Z) points radially outward at angle theta
-    // First rotate π/2 to align Z with +X, then -theta to point toward (cos(θ), 0, sin(θ))
-    geometry.rotateY(Math.PI / 2 - theta);
+    // Rotate π/2 to align depth with +X, then +theta to aim toward (cosθ, 0, sinθ)
+    geometry.rotateY(Math.PI / 2 + theta);
 
     // Position at cylinder surface with epsilon to prevent coplanar issues
     const epsilon = 0.05;

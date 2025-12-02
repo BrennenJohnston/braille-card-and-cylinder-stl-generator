@@ -322,6 +322,9 @@ function createCylinderTriangleMarker(spec) {
     // Rotate so extrusion points along +X
     geometry.rotateY(Math.PI / 2);
 
+    // Align triangle so base runs vertically (matches server STL orientation)
+    geometry.rotateX(Math.PI / 2);
+
     // Then rotate to the correct radial position using -theta
     // (negative because rotateY(θ) gives (cos(θ), 0, -sin(θ)) but radial is (cos(θ), 0, +sin(θ)))
     geometry.rotateY(-theta);

@@ -303,12 +303,13 @@ function createCylinderTriangleMarker(spec) {
     const validSize = (size && size > 0) ? size : 2.0;
     const validDepth = (depth && depth > 0) ? depth : 0.6;
 
-    // Create triangle shape in XY plane with base along the left edge (matching server STL)
+    // Create triangle shape in XY plane matching server Python implementation exactly:
+    // Base at X=0 (vertical edge), apex pointing right at X=validSize
+    // Vertical extent is from -validSize to +validSize (2 * dot_spacing total)
     const triangleShape = new THREE.Shape();
-    const halfHeight = validSize; // Cell height is 2 * dot spacing
-    triangleShape.moveTo(-validSize / 2, -halfHeight);
-    triangleShape.lineTo(-validSize / 2, halfHeight);
-    triangleShape.lineTo(validSize / 2, 0);
+    triangleShape.moveTo(0, -validSize);      // Bottom of base at X=0
+    triangleShape.lineTo(0, validSize);       // Top of base at X=0
+    triangleShape.lineTo(validSize, 0);       // Apex pointing right at X=validSize
     triangleShape.closePath();
 
     const recessPadding = 0.2; // Small outward extension to avoid coplanar booleans

@@ -70,6 +70,29 @@ function createSphericalCap(radius, height, subdivisions = 3) {
 }
 
 /**
+ * Recenter geometry along the Y axis and return its height.
+ */
+function recenterGeometryAlongY(geometry) {
+    if (!geometry) {
+        return 0;
+    }
+
+    geometry.computeBoundingBox();
+    const bbox = geometry.boundingBox;
+    if (!bbox || !bbox.min || !bbox.max) {
+        return 0;
+    }
+
+    const height = bbox.max.y - bbox.min.y;
+    const centerY = (bbox.max.y + bbox.min.y) / 2;
+    if (isFinite(centerY)) {
+        geometry.translate(0, -centerY, 0);
+    }
+
+    return isFinite(height) ? height : 0;
+}
+
+/**
  * Create a braille dot mesh at position (x, y, z) for flat card
  */
 function createBrailleDot(spec) {
@@ -147,29 +170,39 @@ function createCylinderDot(spec) {
 
         // Validate rounded dot parameters
         const validBaseRadius = (base_radius && base_radius > 0) ? base_radius : 1.0;
-        const validTopRadius = (top_radius && top_radius > 0) ? top_radius : 0.75;
+        const validTopRadius = (top_radius && top_radius > 0) ? top_radius : validBaseRadius;
         const validBaseHeight = (base_height && base_height >= 0) ? base_height : 0.2;
         const validDomeHeight = (dome_height && dome_height > 0) ? dome_height : 0.6;
-        const validDomeRadius = (dome_radius && dome_radius > 0) ? dome_radius : 0.5;
+        const validDomeRadius = (dome_radius && dome_radius > 0) ? dome_radius : Math.max(validTopRadius, 0.5);
 
-        dotHeight = validBaseHeight + validDomeHeight;
+        let baseGeometry = null;
+        let domeGeometry = null;
 
-        if (validBaseHeight > 0) {
-            // Frustum base + dome
-            const frustum = createConeFrustum(validBaseRadius, validTopRadius, validBaseHeight, 32);
-            const dome = createSphericalCap(validDomeRadius, validDomeHeight, 2);
+        if (validBaseHeight > 0 && validBaseRadius > 0) {
+            baseGeometry = createConeFrustum(validBaseRadius, validTopRadius, validBaseHeight, 32);
+        }
 
-            // Position dome on top of frustum
-            dome.translate(0, validBaseHeight / 2, 0);
+        if (validDomeHeight > 0 && validDomeRadius > 0) {
+            domeGeometry = createSphericalCap(validDomeRadius, validDomeHeight, 2);
+            const sphereCenterOffset = (validBaseHeight / 2) + (validDomeHeight - validDomeRadius);
+            domeGeometry.translate(0, sphereCenterOffset, 0);
+        }
 
-            const frustumBrush = new Brush(frustum);
-            const domeBrush = new Brush(dome);
+        if (baseGeometry && domeGeometry) {
+            const frustumBrush = new Brush(baseGeometry);
+            const domeBrush = new Brush(domeGeometry);
             const combinedBrush = evaluator.evaluate(frustumBrush, domeBrush, ADDITION);
             geometry = combinedBrush.geometry;
+        } else if (baseGeometry) {
+            geometry = baseGeometry;
+        } else if (domeGeometry) {
+            geometry = domeGeometry;
         } else {
-            // Just dome
-            geometry = createSphericalCap(validDomeRadius, validDomeHeight, 2);
+            return null;
         }
+
+        const roundedHeight = recenterGeometryAlongY(geometry);
+        dotHeight = roundedHeight > 0 ? roundedHeight : (validBaseHeight + validDomeHeight);
     } else if (shape === 'hemisphere') {
         // Hemisphere for counter plate recesses
         const { recess_radius } = params;
@@ -228,8 +261,7 @@ function createCylinderDot(spec) {
     // Calculate the radial position
     // For recesses (counter plates): position sphere center AT the surface - subtraction creates cavity
     // For protrusions (embossing plates): position dot so base sits on surface and extends outward
-    // Use larger epsilon to prevent coplanar triangles which cause CSG failures
-    const epsilon = 0.05;
+    const epsilon = 0;
     let radialOffset;
     if (isRecess) {
         // For recesses (spheres), center at surface - half will be inside, half outside

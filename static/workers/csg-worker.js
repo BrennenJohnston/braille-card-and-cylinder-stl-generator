@@ -303,11 +303,11 @@ function createCylinderTriangleMarker(spec) {
     const validSize = (size && size > 0) ? size : 2.0;
     const validDepth = (depth && depth > 0) ? depth : 0.6;
 
-    // Create triangle shape in XY plane
+    // Create triangle shape in XY plane with base along the left edge (matching server STL)
     const triangleShape = new THREE.Shape();
-    triangleShape.moveTo(-validSize / 2, -validSize);
-    triangleShape.lineTo(validSize / 2, -validSize);
-    triangleShape.lineTo(0, validSize);
+    triangleShape.moveTo(-validSize / 2, -validSize); // Bottom of vertical base
+    triangleShape.lineTo(-validSize / 2, validSize); // Top of vertical base
+    triangleShape.lineTo(validSize / 2, 0); // Apex pointing to the right
     triangleShape.closePath();
 
     const extrudeSettings = {
@@ -465,11 +465,11 @@ function createRectMarker(spec) {
 function createTriangleMarker(spec) {
     const { x, y, z, size, depth } = spec;
 
-    // Create triangle shape
+    // Create triangle shape with base vertical on the left (aligns with server orientation)
     const shape = new THREE.Shape();
-    shape.moveTo(-size / 2, -size / 2);
-    shape.lineTo(size / 2, -size / 2);
-    shape.lineTo(0, size / 2);
+    shape.moveTo(-size / 2, -size); // Bottom of base
+    shape.lineTo(-size / 2, size); // Top of base
+    shape.lineTo(size / 2, 0); // Apex pointing right
     shape.closePath();
 
     const extrudeSettings = {

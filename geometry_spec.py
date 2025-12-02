@@ -655,12 +655,20 @@ def _create_cylinder_marker_spec(
 ) -> dict[str, Any]:
     """
     Create a marker spec with 3D position on cylinder surface.
+
+    Note: Markers (triangles, characters, rectangles) are ALWAYS recessed
+    (subtracted) on both positive and negative cylinder plates. The is_recess
+    flag should always be True for markers - this differs from dots which
+    are only recessed on negative (counter) plates.
     """
     # Convert cylindrical to 3D Cartesian (Y-up for Three.js)
     x = radius * math.cos(theta)
     z = radius * math.sin(theta)
     y = y_local
-    is_recess = plate_type == 'negative'
+    # Markers are ALWAYS recessed (subtracted) regardless of plate type
+    # This matches the local Python behavior in generate_cylinder_stl()
+    # where markers are subtracted using mesh_difference()
+    is_recess = True
 
     if marker_type == 'triangle':
         return {

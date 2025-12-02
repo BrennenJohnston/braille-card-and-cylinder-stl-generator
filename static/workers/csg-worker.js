@@ -559,6 +559,10 @@ function batchUnion(geometries, batchSize = 32) {
 
 /**
  * Process geometry spec and perform CSG operations
+ *
+ * CSG Operation Logic:
+ * - Dots: ADD for positive plates (protrusions), SUBTRACT for negative plates (recesses)
+ * - Markers: ALWAYS SUBTRACT (markers are always recessed on both plate types)
  */
 function processGeometrySpec(spec) {
     const { shape_type, plate_type, plate, dots, markers, cylinder } = spec;
@@ -581,8 +585,8 @@ function processGeometrySpec(spec) {
             baseGeometry.translate(center_x, center_y, center_z);
         }
 
-        // Collect all feature geometries (dots and markers)
-        const features = [];
+        // Collect dot geometries (separate from markers for different CSG operations)
+        const dotGeometries = [];
 
         // Process dots
         if (dots && dots.length > 0) {
@@ -600,13 +604,16 @@ function processGeometrySpec(spec) {
                     }
 
                     if (dotGeom) {
-                        features.push(dotGeom);
+                        dotGeometries.push(dotGeom);
                     }
                 } catch (err) {
                     console.warn(`CSG Worker: Failed to create dot ${i}:`, err.message);
                 }
             });
         }
+
+        // Collect marker geometries (always subtracted for recesses)
+        const markerGeometries = [];
 
         // Process markers
         if (markers && markers.length > 0) {
@@ -630,7 +637,7 @@ function processGeometrySpec(spec) {
                     }
 
                     if (markerGeom) {
-                        features.push(markerGeom);
+                        markerGeometries.push(markerGeom);
                     }
                 } catch (err) {
                     console.warn(`CSG Worker: Failed to create marker ${i}:`, err.message);
@@ -639,39 +646,45 @@ function processGeometrySpec(spec) {
         }
 
         // Perform CSG operations
-        let finalGeometry;
+        let currentBrush = new Brush(baseGeometry);
 
-        if (features.length > 0) {
-            console.log(`CSG Worker: Performing CSG with ${features.length} features`);
-
-            // Union all features
-            const unionedFeatures = batchUnion(features, 32);
-
-            // For negative (counter) plates: subtract features (create recesses)
-            // For positive (emboss) plates with cylinders: add features (create protrusions)
-            // For positive cards: features are already positioned above surface, just union
-            const baseBrush = new Brush(baseGeometry);
-            const featureBrush = new Brush(unionedFeatures);
-
-            let resultBrush;
+        // Step 1: Process dots
+        // For negative (counter) plates: subtract dots (create recesses)
+        // For positive (emboss) plates: add dots (create protrusions)
+        if (dotGeometries.length > 0) {
+            console.log(`CSG Worker: Processing ${dotGeometries.length} dots`);
+            const unionedDots = batchUnion(dotGeometries, 32);
+            const dotsBrush = new Brush(unionedDots);
 
             if (isNegative) {
                 // Counter plate: subtract to create recesses
-                resultBrush = evaluator.evaluate(baseBrush, featureBrush, SUBTRACTION);
-                console.log('CSG Worker: Subtracted features for counter plate');
-            } else if (isCylinder) {
-                // Positive cylinder: add dots that protrude from surface
-                resultBrush = evaluator.evaluate(baseBrush, featureBrush, ADDITION);
-                console.log('CSG Worker: Added features for embossing cylinder');
+                currentBrush = evaluator.evaluate(currentBrush, dotsBrush, SUBTRACTION);
+                console.log('CSG Worker: Subtracted dots for counter plate');
             } else {
-                // Positive card: features protrude above, use addition
-                resultBrush = evaluator.evaluate(baseBrush, featureBrush, ADDITION);
-                console.log('CSG Worker: Added features for embossing card');
+                // Positive plate: add to create protrusions
+                currentBrush = evaluator.evaluate(currentBrush, dotsBrush, ADDITION);
+                console.log('CSG Worker: Added dots for embossing plate');
             }
+        }
 
+        // Step 2: Process markers (ALWAYS subtract - markers are always recessed)
+        // This matches the local Python behavior where markers are subtracted
+        // using mesh_difference() regardless of plate type
+        if (markerGeometries.length > 0) {
+            console.log(`CSG Worker: Processing ${markerGeometries.length} markers (subtracting for recesses)`);
+            const unionedMarkers = batchUnion(markerGeometries, 32);
+            const markersBrush = new Brush(unionedMarkers);
+
+            // Always subtract markers to create recesses
+            currentBrush = evaluator.evaluate(currentBrush, markersBrush, SUBTRACTION);
+            console.log('CSG Worker: Subtracted markers to create recesses');
+        }
+
+        let finalGeometry;
+        if (dotGeometries.length > 0 || markerGeometries.length > 0) {
             // Fix drawRange for export
-            resultBrush.geometry.setDrawRange(0, Infinity);
-            finalGeometry = resultBrush.geometry;
+            currentBrush.geometry.setDrawRange(0, Infinity);
+            finalGeometry = currentBrush.geometry;
         } else {
             console.log('CSG Worker: No features, returning base geometry');
             // No features, return base as-is

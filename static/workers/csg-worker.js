@@ -305,36 +305,42 @@ function createCylinderTriangleMarker(spec) {
 
     // Create triangle shape in XY plane with base along the left edge (matching server STL)
     const triangleShape = new THREE.Shape();
-    triangleShape.moveTo(-validSize / 2, -validSize); // Bottom of vertical base
-    triangleShape.lineTo(-validSize / 2, validSize); // Top of vertical base
-    triangleShape.lineTo(validSize / 2, 0); // Apex pointing to the right
+    const halfHeight = validSize; // Cell height is 2 * dot spacing
+    triangleShape.moveTo(-validSize / 2, -halfHeight);
+    triangleShape.lineTo(-validSize / 2, halfHeight);
+    triangleShape.lineTo(validSize / 2, 0);
     triangleShape.closePath();
 
+    const recessPadding = 0.2; // Small outward extension to avoid coplanar booleans
     const extrudeSettings = {
-        depth: validDepth,
+        depth: is_recess ? validDepth + recessPadding : validDepth,
         bevelEnabled: false
     };
 
     const geometry = new THREE.ExtrudeGeometry(triangleShape, extrudeSettings);
 
-    // ExtrudeGeometry extrudes along +Z, we need it to point radially
+    if (is_recess) {
+        // Shift so the triangle extends validDepth into the surface and a small pad outward
+        geometry.translate(0, 0, -validDepth);
+    }
 
-    // Rotate so extrusion points along +X
-    geometry.rotateY(Math.PI / 2);
+    // Build orientation matrix so local axes match server implementation
+    const cosTheta = Math.cos(theta);
+    const sinTheta = Math.sin(theta);
+    const tangential = new THREE.Vector3(-sinTheta, 0, cosTheta); // +X axis (points to the right of the cell)
+    const vertical = new THREE.Vector3(0, 1, 0); // +Y axis (cylinder height)
+    const radial = new THREE.Vector3(cosTheta, 0, sinTheta); // +Z axis (radial outward)
 
-    // Align triangle so base runs vertically (matches server STL orientation)
-    geometry.rotateX(Math.PI / 2);
-
-    // Then rotate to the correct radial position using -theta
-    // (negative because rotateY(θ) gives (cos(θ), 0, -sin(θ)) but radial is (cos(θ), 0, +sin(θ)))
-    geometry.rotateY(-theta);
+    const orientation = new THREE.Matrix4();
+    orientation.makeBasis(tangential, vertical, radial);
+    geometry.applyMatrix4(orientation);
 
     // Position at cylinder surface with epsilon to prevent coplanar issues
     const epsilon = 0.05;
     let radialOffset;
     if (is_recess) {
-        // For recesses, position so marker extends INTO cylinder for subtraction
-        radialOffset = cylRadius - validDepth / 2;
+        // Geometry already extends inward; just place the surface at cylinder radius
+        radialOffset = cylRadius + epsilon;
     } else {
         // For protrusions, position so marker sits on surface and extends outward
         radialOffset = cylRadius + validDepth / 2 + epsilon;

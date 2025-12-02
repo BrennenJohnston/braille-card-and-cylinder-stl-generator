@@ -240,6 +240,15 @@ def create_cylinder_triangle_marker(
     """
     Create a triangular prism for cylinder surface marking.
 
+    The triangle has corners at braille dots 1, 3, and 5:
+    - Dot 1: top-left of braille cell (-dot_spacing/2, +dot_spacing)
+    - Dot 3: bottom-left of braille cell (-dot_spacing/2, -dot_spacing)
+    - Dot 5: middle-right of braille cell (+dot_spacing/2, 0) - the apex
+
+    This creates a triangle with:
+    - Vertical base on the left (height = 2 * dot_spacing)
+    - Apex pointing right (width = dot_spacing)
+
     Args:
         x_arc: Arc length position along circumference (same units as mm on the card)
         y_local: Z position relative to cylinder center (card Y minus height/2)
@@ -254,28 +263,30 @@ def create_cylinder_triangle_marker(
         x_arc, cylinder_diameter_mm, seam_offset_deg
     )
 
-    # Triangle dimensions - standard guide triangle shape
-    2.0 * settings.dot_spacing  # Vertical extent
-    triangle_width = settings.dot_spacing  # Horizontal extent (pointing right in tangent direction)
+    # Triangle dimensions - positioned at braille dots 1, 3, 5
+    # Vertical extent: 2 * dot_spacing (from dot 3 at bottom to dot 1 at top)
+    # Horizontal extent: dot_spacing (from left column to right column)
+    half_width = settings.dot_spacing / 2.0
 
     # Build 2D triangle in local tangent (X=t) and vertical (Y=z) plane
-    # Vertices: base on left, apex pointing right
+    # Vertices positioned at braille dots 1, 3, 5 relative to cell center
 
     if point_left:
         # Mirror along vertical axis so apex points left (negative tangent)
         tri_2d = ShapelyPolygon(
             [
-                (0.0, -settings.dot_spacing),  # Bottom of base (right side)
-                (0.0, settings.dot_spacing),  # Top of base (right side)
-                (-triangle_width, 0.0),  # Apex (pointing left)
+                (half_width, -settings.dot_spacing),  # Dot 6 position (bottom right)
+                (half_width, settings.dot_spacing),  # Dot 4 position (top right)
+                (-half_width, 0.0),  # Dot 2 position (middle left, apex)
             ]
         )
     else:
+        # Normal orientation: apex points right
         tri_2d = ShapelyPolygon(
             [
-                (0.0, -settings.dot_spacing),  # Bottom of base
-                (0.0, settings.dot_spacing),  # Top of base
-                (triangle_width, 0.0),  # Apex (pointing right/tangentially)
+                (-half_width, -settings.dot_spacing),  # Dot 3 - bottom left
+                (-half_width, settings.dot_spacing),  # Dot 1 - top left
+                (half_width, 0.0),  # Dot 5 - middle right (apex)
             ]
         )
 

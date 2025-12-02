@@ -4,6 +4,7 @@
  */
 
 let THREE, Brush, Evaluator, SUBTRACTION, ADDITION, STLExporter;
+let FontLoader, TextGeometry, LoadedFont = null;
 let evaluator, stlExporter;
 let initError = null;
 
@@ -20,6 +21,56 @@ try {
 
     const exporterModule = await import('/static/examples/STLExporter.js');
     STLExporter = exporterModule.STLExporter;
+
+    // Try to load FontLoader and TextGeometry (local first, then CDN fallback)
+    try {
+        const fontLoaderModule = await import('/static/examples/jsm/loaders/FontLoader.js');
+        FontLoader = fontLoaderModule.FontLoader;
+    } catch (e1) {
+        try {
+            const fontLoaderModule = await import('https://unpkg.com/three@0.152.2/examples/jsm/loaders/FontLoader.js');
+            FontLoader = fontLoaderModule.FontLoader;
+        } catch (e2) {
+            console.warn('CSG Worker: Failed to load FontLoader locally and from CDN');
+        }
+    }
+
+    try {
+        const textGeomModule = await import('/static/examples/jsm/geometries/TextGeometry.js');
+        TextGeometry = textGeomModule.TextGeometry;
+    } catch (e1) {
+        try {
+            const textGeomModule = await import('https://unpkg.com/three@0.152.2/examples/jsm/geometries/TextGeometry.js');
+            TextGeometry = textGeomModule.TextGeometry;
+        } catch (e2) {
+            console.warn('CSG Worker: Failed to load TextGeometry locally and from CDN');
+        }
+    }
+
+    // Attempt to load a default font (local first, then CDN); non-fatal if it fails
+    if (FontLoader) {
+        const fontUrls = [
+            '/static/fonts/helvetiker_regular.typeface.json',
+            'https://unpkg.com/three@0.152.2/examples/fonts/helvetiker_regular.typeface.json',
+        ];
+        for (const url of fontUrls) {
+            try {
+                const resp = await fetch(url, { mode: 'cors' });
+                if (resp && resp.ok) {
+                    const json = await resp.json();
+                    const loader = new FontLoader();
+                    LoadedFont = loader.parse(json);
+                    console.log('CSG Worker: Loaded font from', url);
+                    break;
+                }
+            } catch (e) {
+                // Try next
+            }
+        }
+        if (!LoadedFont) {
+            console.warn('CSG Worker: No font available; character markers will fall back to rectangles');
+        }
+    }
 
     // Initialize evaluator and exporter
     evaluator = new Evaluator();
@@ -290,6 +341,15 @@ function createCylinderDot(spec) {
 
 /**
  * Create a triangle marker on cylinder surface
+ *
+ * The triangle is positioned with corners at braille dots 1, 3, and 5:
+ * - Dot 1: top-left of braille cell (-dot_spacing/2, +dot_spacing)
+ * - Dot 3: bottom-left of braille cell (-dot_spacing/2, -dot_spacing)
+ * - Dot 5: middle-right of braille cell (+dot_spacing/2, 0) - the apex
+ *
+ * This creates a triangle with:
+ * - Vertical base on the left (height = 2 * dot_spacing)
+ * - Apex pointing right (width = dot_spacing)
  */
 function createCylinderTriangleMarker(spec) {
     const { x, y, z, theta, radius: cylRadius, size, depth, is_recess } = spec;
@@ -303,49 +363,41 @@ function createCylinderTriangleMarker(spec) {
     const validSize = (size && size > 0) ? size : 2.0;
     const validDepth = (depth && depth > 0) ? depth : 0.6;
 
-    // Create triangle shape in XY plane matching server Python implementation exactly:
-    // Base at X=0 (vertical edge), apex pointing right at X=validSize
-    // Vertical extent is from -validSize to +validSize (2 * dot_spacing total)
+    // Create triangle shape with vertices at braille dots 1, 3, 5
+    // Using COUNTER-CLOCKWISE winding for correct front-facing normals:
+    // Start at dot 3 (bottom-left), go to dot 1 (top-left), then to dot 5 (apex right)
     const triangleShape = new THREE.Shape();
-    triangleShape.moveTo(0, -validSize);      // Bottom of base at X=0
-    triangleShape.lineTo(0, validSize);       // Top of base at X=0
-    triangleShape.lineTo(validSize, 0);       // Apex pointing right at X=validSize
+    triangleShape.moveTo(-validSize / 2, -validSize);  // Dot 3 - bottom left of cell
+    triangleShape.lineTo(-validSize / 2, validSize);   // Dot 1 - top left of cell
+    triangleShape.lineTo(validSize / 2, 0);            // Dot 5 - apex, middle right of cell
     triangleShape.closePath();
 
-    const recessPadding = 0.2; // Small outward extension to avoid coplanar booleans
+    const recessPadding = is_recess ? 0.2 : 0; // Small extension to avoid coplanar booleans
     const extrudeSettings = {
-        depth: is_recess ? validDepth + recessPadding : validDepth,
+        depth: validDepth + recessPadding,
         bevelEnabled: false
     };
 
     const geometry = new THREE.ExtrudeGeometry(triangleShape, extrudeSettings);
 
-    if (is_recess) {
-        // Shift so the triangle extends validDepth into the surface and a small pad outward
-        geometry.translate(0, 0, -validDepth);
-    }
+    // Center the extrusion along its depth axis (Z)
+    geometry.translate(0, 0, -(validDepth + recessPadding) / 2);
 
-    // Build orientation matrix so local axes match server implementation
-    const cosTheta = Math.cos(theta);
-    const sinTheta = Math.sin(theta);
-    const tangential = new THREE.Vector3(-sinTheta, 0, cosTheta); // +X axis (points to the right of the cell)
-    const vertical = new THREE.Vector3(0, 1, 0); // +Y axis (cylinder height)
-    const radial = new THREE.Vector3(cosTheta, 0, sinTheta); // +Z axis (radial outward)
+    // Rotate so the depth (Z axis) points radially outward at angle theta
+    // Same rotation approach as createCylinderRectMarker for consistency
+    geometry.rotateY(Math.PI / 2 - theta);
 
-    const orientation = new THREE.Matrix4();
-    orientation.makeBasis(tangential, vertical, radial);
-    geometry.applyMatrix4(orientation);
-
-    // Position at cylinder surface with epsilon to prevent coplanar issues
+    // Position at cylinder surface - use same logic as rect marker for consistency
     const epsilon = 0.05;
     let radialOffset;
     if (is_recess) {
-        // Geometry already extends inward; just place the surface at cylinder radius
-        radialOffset = cylRadius + epsilon;
+        // For recesses, position so marker extends INTO cylinder for subtraction
+        radialOffset = cylRadius - validDepth / 2;
     } else {
         // For protrusions, position so marker sits on surface and extends outward
         radialOffset = cylRadius + validDepth / 2 + epsilon;
     }
+
     const posX = radialOffset * Math.cos(theta);
     const posZ = radialOffset * Math.sin(theta);
     const posY = isFinite(y) ? y : 0;
@@ -423,32 +475,62 @@ function createCylinderCharacterMarker(spec) {
     }
 
     const validSize = (size && size > 0) ? size : 3.0;
-    const validDepth = (depth && depth > 0) ? depth : 1.0;
+    const baseDepth = (depth && depth > 0) ? depth : 1.0;
+    const recessPadding = 0.1; // small outward extension to avoid coplanar issues
+    const extrudeDepth = is_recess ? (baseDepth + recessPadding) : baseDepth;
 
-    // Approximate character as a box
-    const charWidth = validSize * 0.6;
-    const charHeight = validSize;
-    const geometry = new THREE.BoxGeometry(charWidth, charHeight, validDepth);
+    const charUpper = (char ? String(char) : 'A').toUpperCase();
+
+    let geometry;
+    if (LoadedFont && TextGeometry) {
+        try {
+            geometry = new TextGeometry(charUpper, {
+                font: LoadedFont,
+                size: validSize,
+                height: extrudeDepth,
+                curveSegments: 4,
+                bevelEnabled: false
+            });
+
+            // Center the text geometry around origin in XY for proper placement
+            geometry.computeBoundingBox();
+            const bb = geometry.boundingBox;
+            if (bb && bb.min && bb.max) {
+                const cx = (bb.max.x - bb.min.x) / 2 + bb.min.x;
+                const cy = (bb.max.y - bb.min.y) / 2 + bb.min.y;
+                geometry.translate(-cx, -cy, 0);
+            }
+        } catch (e) {
+            console.warn('createCylinderCharacterMarker: TextGeometry failed, falling back to rectangle:', e?.message);
+            geometry = null;
+        }
+    }
+
+    // Fallback: box approximation if font failed to load
+    if (!geometry) {
+        const charWidth = validSize * 0.6;
+        const charHeight = validSize;
+        geometry = new THREE.BoxGeometry(charWidth, charHeight, extrudeDepth);
+    }
 
     // Rotate so depth (Z) points radially outward at angle theta
     // First rotate π/2 to align Z with +X, then -theta to point toward (cos(θ), 0, sin(θ))
     geometry.rotateY(Math.PI / 2 - theta);
 
-    // Position at cylinder surface with epsilon to prevent coplanar issues
+    // Position at cylinder surface
     const epsilon = 0.05;
     let radialOffset;
     if (is_recess) {
-        // For recesses, position so marker extends INTO cylinder for subtraction
-        radialOffset = cylRadius - validDepth / 2;
+        // Extend into the cylinder for subtraction
+        radialOffset = cylRadius - extrudeDepth / 2;
     } else {
-        // For protrusions, position so marker sits on surface and extends outward
-        radialOffset = cylRadius + validDepth / 2 + epsilon;
+        radialOffset = cylRadius + extrudeDepth / 2 + epsilon;
     }
+
     const posX = radialOffset * Math.cos(theta);
     const posZ = radialOffset * Math.sin(theta);
     const posY = isFinite(y) ? y : 0;
 
-    // Validate final position
     if (!isFinite(posX) || !isFinite(posZ)) {
         console.warn('createCylinderCharacterMarker: Invalid position, skipping marker');
         return null;

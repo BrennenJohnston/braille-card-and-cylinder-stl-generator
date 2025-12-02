@@ -240,7 +240,11 @@ def _create_dot_spec(
         dome_dia = float(getattr(settings, 'rounded_dot_dome_diameter', 1.5))
         base_h = float(getattr(settings, 'rounded_dot_base_height', 0.2))
         dome_h = float(getattr(settings, 'rounded_dot_dome_height', 0.6))
-        R = (dome_dia / 2) ** 2 / (2.0 * dome_h) if dome_h > 0 else 1.0
+        top_radius = dome_dia / 2.0
+        if dome_h > 0:
+            R = (top_radius * top_radius + dome_h * dome_h) / (2.0 * dome_h)
+        else:
+            R = max(top_radius, 1.0)
         return {
             'type': 'rounded',
             'x': x,
@@ -605,7 +609,11 @@ def _create_cylinder_dot_spec(
             dome_dia = float(getattr(settings, 'rounded_dot_dome_diameter', 1.5))
             base_h = float(getattr(settings, 'rounded_dot_base_height', 0.2))
             dome_h = float(getattr(settings, 'rounded_dot_dome_height', 0.6))
-            R = (dome_dia / 2) ** 2 / (2.0 * dome_h) if dome_h > 0 else 1.0
+            top_radius = dome_dia / 2.0
+            if dome_h > 0:
+                R = (top_radius * top_radius + dome_h * dome_h) / (2.0 * dome_h)
+            else:
+                R = max(top_radius, 1.0)
             return {
                 'type': 'cylinder_dot',
                 'x': x,

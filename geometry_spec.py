@@ -347,6 +347,10 @@ def extract_cylinder_geometry_spec(
 
     seam_offset_rad = math.radians(seam_offset)
 
+    def apply_seam(angle: float) -> float:
+        """Convert planar angle to cylinder theta respecting seam orientation."""
+        return seam_offset_rad - angle
+
     if plate_type == 'negative':
         # Counter plate: generate all 6 dots per cell for all cells
         for row_num in range(settings.grid_rows):
@@ -356,7 +360,7 @@ def extract_cylinder_geometry_spec(
             # Add markers
             if getattr(settings, 'indicator_shapes', 1):
                 # Triangle marker at first column
-                triangle_angle = start_angle + seam_offset_rad
+                triangle_angle = apply_seam(start_angle)
                 marker_spec = _create_cylinder_marker_spec(
                     triangle_angle,
                     y_local,
@@ -370,7 +374,7 @@ def extract_cylinder_geometry_spec(
                 spec['markers'].append(marker_spec)
 
                 # Character/rect marker at last column
-                last_col_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle) + seam_offset_rad
+                last_col_angle = apply_seam(start_angle + ((settings.grid_columns - 1) * cell_spacing_angle))
                 if original_lines and row_num < len(original_lines):
                     orig = (original_lines[row_num] or '').strip()
                     first_char = orig[0] if orig else ''
@@ -412,11 +416,11 @@ def extract_cylinder_geometry_spec(
 
             # Generate all 6 dots for all cells
             for col_num in range(settings.grid_columns):
-                col_angle = start_angle + (col_num * cell_spacing_angle) + seam_offset_rad
+                col_raw_angle = start_angle + (col_num * cell_spacing_angle)
 
                 for dot_idx in range(6):
                     row_off_idx, col_off_idx = dot_positions[dot_idx]
-                    dot_angle = col_angle + dot_col_angle_offsets[col_off_idx]
+                    dot_angle = apply_seam(col_raw_angle + dot_col_angle_offsets[col_off_idx])
                     dot_y = y_local + dot_row_offsets[row_off_idx]
 
                     # Transform to 3D cylindrical coordinates
@@ -442,7 +446,7 @@ def extract_cylinder_geometry_spec(
             # Add markers
             if getattr(settings, 'indicator_shapes', 1):
                 # End-of-row indicator at first column
-                first_col_angle = start_angle + seam_offset_rad
+                first_col_angle = apply_seam(start_angle)
                 if original_lines and row_num < len(original_lines):
                     orig = (original_lines[row_num] or '').strip()
                     first_char = orig[0] if orig else ''
@@ -483,7 +487,7 @@ def extract_cylinder_geometry_spec(
                 spec['markers'].append(marker_spec)
 
                 # Triangle marker at last column
-                last_col_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle) + seam_offset_rad
+                last_col_angle = apply_seam(start_angle + ((settings.grid_columns - 1) * cell_spacing_angle))
                 marker_spec = _create_cylinder_marker_spec(
                     last_col_angle,
                     y_local,
@@ -504,7 +508,7 @@ def extract_cylinder_geometry_spec(
             for col_num, braille_char in enumerate(chars):
                 # Shift column by 1 if indicators are enabled (first col is for indicator)
                 actual_col = col_num + (1 if getattr(settings, 'indicator_shapes', 1) else 0)
-                col_angle = start_angle + (actual_col * cell_spacing_angle) + seam_offset_rad
+                col_raw_angle = start_angle + (actual_col * cell_spacing_angle)
 
                 # Get dot pattern for this braille character
                 dots = braille_to_dots_func(braille_char)
@@ -514,7 +518,7 @@ def extract_cylinder_geometry_spec(
                         continue
 
                     row_off_idx, col_off_idx = dot_positions[dot_idx]
-                    dot_angle = col_angle + dot_col_angle_offsets[col_off_idx]
+                    dot_angle = apply_seam(col_raw_angle + dot_col_angle_offsets[col_off_idx])
                     dot_y = y_local + dot_row_offsets[row_off_idx]
 
                     # Transform to 3D cylindrical coordinates

@@ -78,7 +78,7 @@ def _compute_cylinder_frame(x_arc: float, cylinder_diameter_mm: float, seam_offs
     """
     radius = cylinder_diameter_mm / 2.0
     circumference = np.pi * cylinder_diameter_mm
-    theta = (x_arc / circumference) * 2.0 * np.pi + np.radians(seam_offset_deg)
+    theta = np.radians(seam_offset_deg) - (x_arc / circumference) * 2.0 * np.pi
     r_hat = np.array([np.cos(theta), np.sin(theta), 0.0])
     t_hat = np.array([-np.sin(theta), np.cos(theta), 0.0])
     z_hat = np.array([0.0, 0.0, 1.0])
@@ -96,7 +96,7 @@ def cylindrical_transform(x, y, z, cylinder_diameter_mm, seam_offset_deg=0):
     circumference = np.pi * cylinder_diameter_mm
 
     # Convert x position to angle
-    theta = (x / circumference) * 2 * np.pi + np.radians(seam_offset_deg)
+    theta = np.radians(seam_offset_deg) - (x / circumference) * 2 * np.pi
 
     # Calculate cylindrical coordinates
     cyl_x = radius * np.cos(theta)
@@ -354,7 +354,7 @@ def create_cylinder_line_end_marker(
     circumference = np.pi * cylinder_diameter_mm
 
     # Angle around cylinder for planar x position
-    theta = (x_arc / circumference) * 2.0 * np.pi + np.radians(seam_offset_deg)
+    theta = np.radians(seam_offset_deg) - (x_arc / circumference) * 2.0 * np.pi
 
     # Local orthonormal frame at theta
     r_hat = np.array([np.cos(theta), np.sin(theta), 0.0])  # radial outward
@@ -452,7 +452,7 @@ def create_cylinder_character_shape(
     circumference = np.pi * cylinder_diameter_mm
 
     # Angle around cylinder for planar x position
-    theta = (x_arc / circumference) * 2.0 * np.pi + np.radians(seam_offset_deg)
+    theta = np.radians(seam_offset_deg) - (x_arc / circumference) * 2.0 * np.pi
 
     # Local orthonormal frame at theta
     r_hat = np.array([np.cos(theta), np.sin(theta), 0.0])  # radial outward
@@ -556,7 +556,7 @@ def create_cylinder_braille_dot(x, y, z, settings: CardSettings, cylinder_diamet
     circumference = np.pi * cylinder_diameter_mm
 
     # Angle around cylinder for planar x-position
-    theta = (x / circumference) * 2.0 * np.pi + np.radians(seam_offset_deg)
+    theta = np.radians(seam_offset_deg) - (x / circumference) * 2.0 * np.pi
 
     # Unit vectors at this theta
     r_hat = np.array([np.cos(theta), np.sin(theta), 0.0])
@@ -635,7 +635,7 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
     grid_angle = grid_width / radius
     start_angle = -grid_angle / 2
     triangle_angle = start_angle + ((settings.grid_columns - 1) * settings.cell_spacing / radius)
-    cutout_align_theta = triangle_angle + seam_offset_rad
+    cutout_align_theta = seam_offset_rad - triangle_angle
 
     # Create cylinder shell with polygon cutout aligned to triangle marker column
     cylinder_shell = create_cylinder_shell(
@@ -881,7 +881,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     # Counter plate uses triangle at the first column
     seam_offset_rad = np.radians(seam_offset)
     first_col_angle = start_angle
-    cutout_align_theta = first_col_angle + seam_offset_rad
+    cutout_align_theta = seam_offset_rad - first_col_angle
 
     # Create cylinder shell with polygon cutout aligned to triangle marker column
     cylinder_shell = create_cylinder_shell(
@@ -1043,7 +1043,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
                             pass
                     # Transform to cylinder surface with local frame
                     outer_radius = diameter / 2
-                    theta = (dot_x / (np.pi * diameter)) * 2 * np.pi + np.radians(seam_offset)
+                    theta = np.radians(seam_offset) - (dot_x / (np.pi * diameter)) * 2 * np.pi
                     r_hat = np.array([np.cos(theta), np.sin(theta), 0.0])
                     t_hat = np.array([-np.sin(theta), np.cos(theta), 0.0])
                     z_hat = np.array([0.0, 0.0, 1.0])
@@ -1086,7 +1086,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
                     if not sphere.is_volume:
                         sphere.fix_normals()
                     outer_radius = diameter / 2
-                    theta = (dot_x / (np.pi * diameter)) * 2 * np.pi + np.radians(seam_offset)
+                    theta = np.radians(seam_offset) - (dot_x / (np.pi * diameter)) * 2 * np.pi
                     overcut = max(settings.epsilon, getattr(settings, 'cylinder_counter_plate_overcut_mm', 0.05))
                     if use_bowl:
                         h = float(getattr(settings, 'counter_dot_depth', 0.6))
@@ -1315,7 +1315,7 @@ def create_cylinder_counter_plate_2d(settings, cylinder_params=None):
 
         # Align to first column position
         first_col_angle = start_angle
-        align_angle = first_col_angle + seam_offset_rad
+        align_angle = seam_offset_rad - first_col_angle
 
         vertices_2d = [
             (circumscribed_radius * np.cos(a + align_angle), circumscribed_radius * np.sin(a + align_angle))
@@ -1377,17 +1377,17 @@ def create_cylinder_counter_plate_2d(settings, cylinder_params=None):
         # Add indicator shapes if enabled
         if getattr(settings, 'indicator_shapes', 1):
             # Triangle at first column
-            first_angle = start_angle + seam_offset_rad
+            first_angle = seam_offset_rad - start_angle
             row_angles.append(first_angle)
 
             # Line at last column
-            last_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle) + seam_offset_rad
+            last_angle = seam_offset_rad - (start_angle + ((settings.grid_columns - 1) * cell_spacing_angle))
             row_angles.append(last_angle)
 
         # Add all 6 dots for each cell in this row
         for col in range(num_text_cols):
             mirrored_idx = (num_text_cols - 1) - col
-            cell_angle = start_angle + ((mirrored_idx + 1) * cell_spacing_angle) + seam_offset_rad
+            cell_angle = seam_offset_rad - (start_angle + ((mirrored_idx + 1) * cell_spacing_angle))
 
             for dot_idx in range(6):
                 dot_pos = dot_positions_pattern[dot_idx]
@@ -1402,13 +1402,13 @@ def create_cylinder_counter_plate_2d(settings, cylinder_params=None):
             z_local = y_pos - (height / 2.0)
             indicator_height = settings.dot_spacing * 2
             # Triangle
-            row_dot_data.append((z_local, indicator_height, [start_angle + seam_offset_rad]))
+            row_dot_data.append((z_local, indicator_height, [seam_offset_rad - start_angle]))
             # Line marker
             row_dot_data.append(
                 (
                     z_local,
                     indicator_height,
-                    [start_angle + ((settings.grid_columns - 1) * cell_spacing_angle) + seam_offset_rad],
+                    [seam_offset_rad - (start_angle + ((settings.grid_columns - 1) * cell_spacing_angle))],
                 )
             )
 

@@ -2128,15 +2128,15 @@
                                         <legend class="grade-label">Output Shape (Emboss and Counter)</legend>
                                         <div class="radio-group" role="radiogroup" aria-required="true">
                                             <label class="radio-option">
-                                                <input type="radio" name="shape_type" value="cylinder" aria-describedby="cylinder-shape-desc">
+                                                <input type="radio" name="shape_type" value="cylinder" checked aria-describedby="cylinder-shape-desc">
                                                 <span class="radio-text">Cylinder</span>
                                             </label>
                                             <span id="cylinder-shape-desc" class="sr-only">Creates a cylindrical braille surface</span>
-                                            <label class="radio-option">
-                                                <input type="radio" name="shape_type" value="card" checked aria-describedby="card-shape-desc">
-                                                <span class="radio-text">Flat Card</span>
+                                            <label class="radio-option" style="opacity: 0.5; cursor: not-allowed;">
+                                                <input type="radio" name="shape_type" value="card" disabled aria-describedby="card-shape-desc">
+                                                <span class="radio-text">Flat Card <em style="font-size: 0.85em; color: var(--warning-color, #f39c12);">(temporarily disabled)</em></span>
                                             </label>
-                                            <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card</span>
+                                            <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card - temporarily disabled</span>
                                         </div>
                                     </fieldset>
                                 </div>

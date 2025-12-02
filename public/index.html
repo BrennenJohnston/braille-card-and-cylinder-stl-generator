@@ -2134,11 +2134,11 @@
                                                 <span class="radio-text">Cylinder</span>
                                             </label>
                                             <span id="cylinder-shape-desc" class="sr-only">Creates a cylindrical braille surface</span>
-                                            <label class="radio-option">
-                                                <input type="radio" name="shape_type" value="card" aria-describedby="card-shape-desc">
-                                                <span class="radio-text">Flat Card</span>
+                                            <label class="radio-option" style="opacity: 0.5; cursor: not-allowed;">
+                                                <input type="radio" name="shape_type" value="card" disabled aria-describedby="card-shape-desc">
+                                                <span class="radio-text">Flat Card <em style="font-size: 0.85em; color: var(--warning-color, #f39c12);">(temporarily disabled)</em></span>
                                             </label>
-                                            <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card</span>
+                                            <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card - temporarily disabled</span>
                                         </div>
                                     </fieldset>
                                 </div>
@@ -2410,6 +2410,15 @@
         import * as THREE from '/static/three.module.js';
         import { STLLoader } from '/static/STLLoader.js';
         import { OrbitControls } from '/static/OrbitControls.js';
+
+        // Production logging - only log errors in production (defined early for CSG worker)
+        const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+        const log = {
+            debug: isProduction ? () => {} : console.log,
+            info: isProduction ? () => {} : console.log,
+            warn: isProduction ? () => {} : console.warn,
+            error: console.error // Always log errors
+        };
 
         // Client-side CSG Worker Setup
         let csgWorker = null;
@@ -2743,15 +2752,6 @@
         // Declare 3D scene variables at module scope
         let renderer, scene, camera, mesh, controls;
         let lastSTLUrl = null;
-
-        // Production logging - only log errors in production
-        const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-        const log = {
-            debug: isProduction ? () => {} : console.log,
-            info: isProduction ? () => {} : console.log,
-            warn: isProduction ? () => {} : console.warn,
-            error: console.error // Always log errors
-        };
 
         // Theme switching functionality
         const themes = ['dark', 'high-contrast', 'light'];

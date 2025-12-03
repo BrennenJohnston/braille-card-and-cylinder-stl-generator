@@ -53,6 +53,10 @@ def has_boolean_backend() -> bool:
     Returns True if manifold3d is importable (the only reliable serverless backend).
     Trimesh's default engine requires blender/openscad which aren't available on serverless.
     """
+    import os
+
+    if os.environ.get('FORCE_CLIENT_CSG', '').lower() in ('1', 'true', 'yes'):
+        return False  # Force client-side CSG for debugging
     return _check_manifold_available()
 
 

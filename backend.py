@@ -8,7 +8,7 @@ from datetime import datetime
 
 import numpy as np
 import trimesh
-from flask import Flask, jsonify, make_response, redirect, render_template, request, send_file, send_from_directory
+from flask import Flask, jsonify, make_response, redirect, request, send_file, send_from_directory
 from flask_cors import CORS
 from shapely.geometry import Point, Polygon
 from shapely.ops import unary_union
@@ -1806,11 +1806,17 @@ def health_check():
 
 @app.route('/')
 def index():
+    """
+    Serve the main application page.
+    Uses public/index.html as the single source of truth for both local and Vercel deployments.
+    This ensures the client-side CSG generation logic is consistent across environments.
+    """
     try:
-        return render_template('index.html')
+        # Serve public/index.html directly - same file used by Vercel
+        return send_from_directory('public', 'index.html')
     except Exception as e:
-        logger.info(f'Error rendering template: {e}')
-        return jsonify({'error': 'Failed to load template'}), 500
+        logger.info(f'Error serving index.html: {e}')
+        return jsonify({'error': 'Failed to load page'}), 500
 
 
 # @app.route('/node_modules/<path:filename>')

@@ -130,10 +130,12 @@ def extract_card_geometry_spec(
                     spec['dots'].append(dot_spec)
 
     else:
-        # Positive plate: only add dots that are present in the braille text
-        for row_num, line in enumerate(lines):
-            if row_num >= settings.grid_rows:
-                break
+        # Positive plate: add row indicators for ALL rows (including empty rows),
+        # and add dots only for rows that have braille characters.
+        # This matches the backend.py behavior in create_positive_plate_mesh().
+        for row_num in range(settings.grid_rows):
+            # Get line content if available
+            line = lines[row_num] if row_num < len(lines) else ''
 
             y_pos = (
                 settings.card_height
@@ -142,21 +144,71 @@ def extract_card_geometry_spec(
                 + settings.braille_y_adjust
             )
 
-            # Add markers
+            # Add markers for ALL rows when indicator_shapes is enabled
             if getattr(settings, 'indicator_shapes', 1):
                 x_pos_first = settings.left_margin + settings.braille_x_adjust
+                x_pos_last = (
+                    settings.left_margin
+                    + ((settings.grid_columns - 1) * settings.cell_spacing)
+                    + settings.braille_x_adjust
+                )
 
-                # Triangle marker at end of row
+                # Character or rectangle indicator at first column (column 0)
+                if original_lines and row_num < len(original_lines):
+                    orig = (original_lines[row_num] or '').strip()
+                    indicator_char = orig[0] if orig else ''
+                    if indicator_char and (indicator_char.isalpha() or indicator_char.isdigit()):
+                        spec['markers'].append(
+                            {
+                                'type': 'character',
+                                'char': indicator_char,
+                                'x': x_pos_first,
+                                'y': y_pos,
+                                'z': settings.card_thickness,
+                                'size': settings.dot_spacing * 1.5,
+                                'depth': 1.0,
+                            }
+                        )
+                    else:
+                        spec['markers'].append(
+                            {
+                                'type': 'rect',
+                                'x': x_pos_first + settings.dot_spacing / 2,
+                                'y': y_pos,
+                                'z': settings.card_thickness,
+                                'width': settings.dot_spacing,
+                                'height': 2 * settings.dot_spacing,
+                                'depth': 0.5,
+                            }
+                        )
+                else:
+                    spec['markers'].append(
+                        {
+                            'type': 'rect',
+                            'x': x_pos_first + settings.dot_spacing / 2,
+                            'y': y_pos,
+                            'z': settings.card_thickness,
+                            'width': settings.dot_spacing,
+                            'height': 2 * settings.dot_spacing,
+                            'depth': 0.5,
+                        }
+                    )
+
+                # Triangle marker at last column (grid_columns - 1)
                 spec['markers'].append(
                     {
                         'type': 'triangle',
-                        'x': x_pos_first,
+                        'x': x_pos_last,
                         'y': y_pos,
                         'z': settings.card_thickness,
                         'size': settings.dot_spacing,
-                        'depth': 0.5,
+                        'depth': 0.6,
                     }
                 )
+
+            # Only process braille dots if the line has content
+            if not line:
+                continue
 
             # Process each character in the line
             chars = list(line)
@@ -387,7 +439,7 @@ def extract_cylinder_geometry_spec(
                             'character',
                             original_lines,
                             row_num,
-                            char=first_char,
+                            char=first_char.upper(),
                             plate_type='negative',
                         )
                     else:
@@ -428,30 +480,27 @@ def extract_cylinder_geometry_spec(
                     spec['dots'].append(dot_spec)
 
     else:
-        # Positive plate: only generate dots that exist in the braille text
-        for row_num, line in enumerate(lines):
-            if row_num >= settings.grid_rows:
-                break
-            if not line.strip():
-                continue
-
-            # Check for braille Unicode
-            has_braille = any(0x2800 <= ord(c) <= 0x28FF for c in line)
-            if not has_braille:
-                continue
+        # Positive plate: add row indicators for ALL rows (including empty rows),
+        # and add dots only for rows with braille characters.
+        # Layout matches Python backend: Character at first column, Triangle at last column
+        for row_num in range(settings.grid_rows):
+            # Get line content if available
+            line = lines[row_num] if row_num < len(lines) else ''
 
             y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
             y_local = y_pos - (height / 2.0)
 
-            # Add markers
+            # Add indicators when enabled:
+            # - Character indicator (or rectangle fallback) at first column (column 0)
+            # - Triangle at last column (grid_columns - 1)
             if getattr(settings, 'indicator_shapes', 1):
-                # End-of-row indicator at first column
+                # Character (or rectangle fallback) at first column (column 0)
                 first_col_angle = apply_seam(start_angle)
                 if original_lines and row_num < len(original_lines):
                     orig = (original_lines[row_num] or '').strip()
                     first_char = orig[0] if orig else ''
                     if first_char and (first_char.isalpha() or first_char.isdigit()):
-                        marker_spec = _create_cylinder_marker_spec(
+                        char_spec = _create_cylinder_marker_spec(
                             first_col_angle,
                             y_local,
                             radius,
@@ -459,11 +508,11 @@ def extract_cylinder_geometry_spec(
                             'character',
                             original_lines,
                             row_num,
-                            char=first_char,
+                            char=first_char.upper(),
                             plate_type='positive',
                         )
                     else:
-                        marker_spec = _create_cylinder_marker_spec(
+                        char_spec = _create_cylinder_marker_spec(
                             first_col_angle,
                             y_local,
                             radius,
@@ -474,7 +523,7 @@ def extract_cylinder_geometry_spec(
                             plate_type='positive',
                         )
                 else:
-                    marker_spec = _create_cylinder_marker_spec(
+                    char_spec = _create_cylinder_marker_spec(
                         first_col_angle,
                         y_local,
                         radius,
@@ -484,11 +533,11 @@ def extract_cylinder_geometry_spec(
                         row_num,
                         plate_type='positive',
                     )
-                spec['markers'].append(marker_spec)
+                spec['markers'].append(char_spec)
 
-                # Triangle marker at last column
+                # Triangle at last column (grid_columns - 1)
                 last_col_angle = apply_seam(start_angle + ((settings.grid_columns - 1) * cell_spacing_angle))
-                marker_spec = _create_cylinder_marker_spec(
+                triangle_spec = _create_cylinder_marker_spec(
                     last_col_angle,
                     y_local,
                     radius,
@@ -498,15 +547,21 @@ def extract_cylinder_geometry_spec(
                     row_num,
                     plate_type='positive',
                 )
-                spec['markers'].append(marker_spec)
+                spec['markers'].append(triangle_spec)
 
-            # Process braille characters
+            # Process braille characters (dots) only if the row has braille
+            has_braille = any(0x2800 <= ord(c) <= 0x28FF for c in line) if line else False
+            if not has_braille:
+                continue
+
+            # Reserve 2 columns total (1 at start for character, 1 at end for triangle)
+            # Braille content starts at column 1 (shift by 1)
             reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
-            max_cols = settings.grid_columns - reserved
+            max_cols = max(0, settings.grid_columns - reserved)
             chars = list(line.strip())[:max_cols]
 
             for col_num, braille_char in enumerate(chars):
-                # Shift column by 1 if indicators are enabled (first col is for indicator)
+                # Shift by 1 column to leave room for character at first column
                 actual_col = col_num + (1 if getattr(settings, 'indicator_shapes', 1) else 0)
                 col_raw_angle = start_angle + (actual_col * cell_spacing_angle)
 

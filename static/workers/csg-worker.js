@@ -360,6 +360,11 @@ function createCylinderTriangleMarker(spec) {
         return null;
     }
 
+    // Validate Y position specifically
+    if (!isFinite(y)) {
+        console.warn(`createCylinderTriangleMarker: Invalid y value: ${y}, defaulting to 0`);
+    }
+
     const validSize = (size && size > 0) ? size : 2.0;
     const validDepth = (depth && depth > 0) ? depth : 0.6;
 

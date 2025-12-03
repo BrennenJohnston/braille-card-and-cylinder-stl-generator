@@ -2419,6 +2419,7 @@
             warn: isProduction ? () => {} : console.warn,
             error: console.error // Always log errors
         };
+        const disableCSGFallback = !isProduction; // Debug client-side CSG locally by surfacing errors
 
         // Client-side CSG Worker Setup
         let csgWorker = null;
@@ -2463,7 +2464,11 @@
         // Try client-side CSG generation
         async function tryClientSideCSG(requestData) {
             if (!useClientSideCSG || !workerReady) {
-                return null; // Fall back to server
+                const err = new Error('Client-side CSG worker is not ready');
+                if (disableCSGFallback) {
+                    throw err;
+                }
+                return null; // Fall back to server in production
             }
 
             try {
@@ -2477,7 +2482,11 @@
                 });
 
                 if (!specRes.ok) {
+                    const err = new Error(`Geometry spec fetch failed: ${specRes.status} ${specRes.statusText}`);
                     log.warn('Geometry spec fetch failed, falling back to server');
+                    if (disableCSGFallback) {
+                        throw err;
+                    }
                     return null;
                 }
 
@@ -2521,6 +2530,9 @@
 
             } catch (error) {
                 log.warn('Client-side CSG failed:', error);
+                if (disableCSGFallback) {
+                    throw error;
+                }
                 return null; // Fall back to server
             }
         }
@@ -2957,6 +2969,18 @@
             actionBtn.setAttribute('aria-label', 'Generate STL file from entered text');
             actionBtn.style.opacity = '1';
             actionBtn.disabled = false;
+        }
+
+        function showCSGDebugError(message, subtext = 'Client-side CSG fallback is disabled for debugging. Check the console for details.') {
+            const errorSubtext = document.getElementById('error-subtext');
+            errorText.textContent = message;
+            errorDiv.style.display = 'flex';
+            errorDiv.className = 'error-message';
+            if (errorSubtext) {
+                errorSubtext.textContent = subtext;
+                errorSubtext.style.display = 'block';
+            }
+            resetToGenerateState();
         }
 
         // Function to set button to download state
@@ -4730,11 +4754,22 @@
                     }
                 } catch (error) {
                     log.warn('Client-side CSG failed, falling back to server:', error);
+                    if (disableCSGFallback) {
+                        showCSGDebugError(`Client-side CSG failed: ${error?.message || error}`);
+                        return;
+                    }
                 }
+            } else if (disableCSGFallback) {
+                showCSGDebugError('Client-side CSG worker is unavailable. Fallback is disabled for debugging.');
+                return;
             }
 
             // Fall back to server if client-side failed or unavailable
             if (!clientSideSuccess) {
+                if (disableCSGFallback) {
+                    showCSGDebugError('Client-side CSG did not produce an STL and fallback has been disabled.');
+                    return;
+                }
                 log.info('Using server-side STL generation');
                 const res = await fetch('/generate_braille_stl', {
                     method: 'POST',

@@ -158,13 +158,13 @@ def layout_cylindrical_cells(braille_lines, settings, cylinder_diameter_mm: floa
         y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
 
         # Process each character up to available columns (reserve 2 if indicators enabled)
+        # Indicators are at columns 0 (triangle) and 1 (letter/number), braille starts at column 2
         reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
         max_cols = settings.grid_columns - reserved
         for col_num, braille_char in enumerate(line[:max_cols]):
-            # Calculate angular position for this column (shift by one if indicators enabled)
-            angle = start_angle + (
-                (col_num + (1 if getattr(settings, 'indicator_shapes', 1) else 0)) * cell_spacing_angle
-            )
+            # Calculate angular position for this column (shift by 2 if indicators enabled)
+            # Braille cells start at column 2 (after triangle at col 0 and letter at col 1)
+            angle = start_angle + ((col_num + reserved) * cell_spacing_angle)
             x_pos = angle * radius  # Convert to arc length for compatibility
             cells.append((braille_char, x_pos, y_pos))
 
@@ -642,10 +642,11 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
     logger.info(f'  - Dot spacing: {settings.dot_spacing}mm → {dot_spacing_angle_deg:.2f}° on cylinder')
 
     # Compute triangle column absolute angle (including seam) to align polygon cutout vertex
+    # Triangle is now at column 0 (Cell #1, leftmost position)
     seam_offset_rad = np.radians(seam_offset)
     grid_angle = grid_width / radius
     start_angle = -grid_angle / 2
-    triangle_angle = start_angle + ((settings.grid_columns - 1) * settings.cell_spacing / radius)
+    triangle_angle = start_angle  # Triangle at column 0
     cutout_align_theta = seam_offset_rad - triangle_angle
 
     # Create cylinder shell with polygon cutout aligned to triangle marker column
@@ -691,17 +692,26 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
         y_local = y_pos - (height / 2.0)
 
         if getattr(settings, 'indicator_shapes', 1):
-            # Add end-of-row text/number indicator at the first cell position (column 0)
-            text_number_x = start_angle * radius
+            # Cell #1 (column 0): Triangle indicator - apex pointing right (default orientation)
+            triangle_x = start_angle * radius
+            triangle_mesh = create_cylinder_triangle_marker(
+                triangle_x, y_local, settings, diameter, seam_offset, height_mm=0.6, for_subtraction=True
+            )
+            triangle_meshes.append(triangle_mesh)
 
-            # Determine which character to use for end-of-row indicator
+            # Cell #2 (column 1): Letter/number indicator
+            cell_spacing_angle = settings.cell_spacing / radius
+            text_number_angle = start_angle + cell_spacing_angle
+            text_number_x = text_number_angle * radius
+
+            # Determine which character to use for the indicator
             if original_lines and row_num < len(original_lines):
                 original_text = original_lines[row_num].strip()
                 if original_text:
                     # Get the first character (letter or number)
                     first_char = original_text[0]
                     if first_char.isalpha() or first_char.isdigit():
-                        # Create character shape for end-of-row indicator (1.0mm deep)
+                        # Create character shape for indicator (1.0mm deep)
                         text_number_mesh = create_cylinder_character_shape(
                             first_char,
                             text_number_x,
@@ -729,17 +739,6 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
                 )
 
             text_number_meshes.append(text_number_mesh)
-
-            # Add triangle marker at the last cell position (grid_columns - 1)
-            # Calculate X position for the last column
-            triangle_angle = start_angle + ((settings.grid_columns - 1) * settings.cell_spacing / radius)
-            triangle_x = triangle_angle * radius
-
-            # Create triangle marker for subtraction (will create recess)
-            triangle_mesh = create_cylinder_triangle_marker(
-                triangle_x, y_local, settings, diameter, seam_offset, height_mm=0.6, for_subtraction=True
-            )
-            triangle_meshes.append(triangle_mesh)
 
     # Subtract text/number indicators and triangle markers to recess them into the surface
     logger.debug(
@@ -888,11 +887,11 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     # Convert cell_spacing from linear to angular
     cell_spacing_angle = settings.cell_spacing / radius
 
-    # Compute first-column triangle absolute angle (including seam) to align polygon cutout vertex
-    # Counter plate uses triangle at the first column
+    # Compute last-column triangle absolute angle (including seam) to align polygon cutout vertex
+    # Counter plate uses triangle at the last column (mirrored from embossing plate's first column position)
     seam_offset_rad = np.radians(seam_offset)
-    first_col_angle = start_angle
-    cutout_align_theta = seam_offset_rad - first_col_angle
+    last_col_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle)
+    cutout_align_theta = seam_offset_rad - last_col_angle
 
     # Create cylinder shell with polygon cutout aligned to triangle marker column
     cylinder_shell = create_cylinder_shell(
@@ -936,32 +935,38 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     triangle_meshes = []
 
     # Create line ends and triangles for ALL rows in the grid to match embossing plate layout
+    # For proper mirroring: Triangle at rightmost (last column), Rectangle at second-to-last column
     for row_num in range(settings.grid_rows):
         # Calculate Y position for this row with vertical centering
         y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
         y_local = y_pos - (height / 2.0)
 
         if getattr(settings, 'indicator_shapes', 1):
-            # For counter plate: triangle at first column (apex pointing left), line at last column
-            # First column (triangle):
-            triangle_x_first = start_angle * radius
+            # For counter plate (mirrored from embossing plate):
+            # - Triangle at LAST column (grid_columns-1), apex pointing left (mirrored orientation)
+            # - Rectangle placeholder at SECOND-TO-LAST column (grid_columns-2)
+            # This mirrors the embossing plate layout where Triangle is at column 0 and Letter is at column 1
+
+            # Last column (triangle with mirrored orientation):
+            triangle_col_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle)
+            triangle_x = triangle_col_angle * radius
             triangle_mesh = create_cylinder_triangle_marker(
-                triangle_x_first,
+                triangle_x,
                 y_local,
                 settings,
                 diameter,
                 seam_offset,
                 height_mm=0.5,
                 for_subtraction=True,
-                point_left=True,
+                point_left=True,  # Mirrored orientation - apex points left
             )
             triangle_meshes.append(triangle_mesh)
 
-            # Last column (line end):
-            last_col_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle)
-            line_end_x_last = last_col_angle * radius
+            # Second-to-last column (rectangle placeholder):
+            rect_col_angle = start_angle + ((settings.grid_columns - 2) * cell_spacing_angle)
+            line_end_x = rect_col_angle * radius
             line_end_mesh = create_cylinder_line_end_marker(
-                line_end_x_last, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
+                line_end_x, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
             )
             line_end_meshes.append(line_end_mesh)
 
@@ -973,17 +978,28 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
 
     # Process ALL cells in the grid (not just those with braille content)
     # Mirror horizontally (right-to-left) so the counter plate reads R→L when printed
-    num_text_cols = settings.grid_columns - 2
+    # Check indicator_shapes setting to match embossing plate behavior
+    reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
+    num_text_cols = settings.grid_columns - reserved
+
+    logger.info(
+        f'Counter plate grid: {settings.grid_columns} columns, {reserved} reserved for indicators, {num_text_cols} braille cells per row'
+    )
+
     for row_num in range(settings.grid_rows):
         # Calculate Y position for this row with vertical centering
         y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
 
-        # Process ALL columns mirrored (minus two for first cell indicator and last cell triangle)
+        # Process ALL columns mirrored
+        # Braille cells are at columns 0 to (num_text_cols-1) when indicators are at the rightmost positions
+        # When indicator_shapes is enabled: braille at cols 0 to grid_columns-3, indicators at grid_columns-2 and grid_columns-1
+        # When indicator_shapes is disabled: braille at cols 0 to grid_columns-1 (all columns)
         for col_num in range(num_text_cols):
             # Mirror column index across row so cells are placed right-to-left
+            # This creates the mirror effect where embossing plate's first braille cell aligns with counter plate's last braille cell
             mirrored_idx = (num_text_cols - 1) - col_num
-            # Calculate cell position (shifted by one cell due to first cell indicator)
-            cell_angle = start_angle + ((mirrored_idx + 1) * cell_spacing_angle)
+            # Calculate cell position - braille cells start from column 0 (leftmost)
+            cell_angle = start_angle + (mirrored_idx * cell_spacing_angle)
             cell_x = cell_angle * radius  # Convert to arc length
 
             # Create recess tool for ALL 6 dots in this cell

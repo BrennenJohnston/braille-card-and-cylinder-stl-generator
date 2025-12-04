@@ -466,8 +466,13 @@ def extract_cylinder_geometry_spec(
                     )
                 spec['markers'].append(marker_spec)
 
-            # Generate all 6 dots for all cells
-            for col_num in range(settings.grid_columns):
+            # Generate all 6 dots for all TEXT cells (skipping indicator columns)
+            # When indicator_shapes is ON: indicators at columns 0 and grid_columns-1
+            # Text cells are at columns 1 to grid_columns-2 (total of grid_columns-2 text cells)
+            reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
+            start_col = 1 if reserved else 0
+            end_col = settings.grid_columns - 1 if reserved else settings.grid_columns
+            for col_num in range(start_col, end_col):
                 col_raw_angle = start_angle + (col_num * cell_spacing_angle)
 
                 for dot_idx in range(6):

@@ -55,3 +55,6 @@ debug_*.stl
 tmp_geom_spec.py
 tmp_geom_spec_vercel.py
 tmp_spec_direct.py
+
+# Vercel
+.vercel/

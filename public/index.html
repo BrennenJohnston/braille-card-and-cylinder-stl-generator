@@ -3067,8 +3067,10 @@
                     gridColumnsNote.textContent = indicatorOn
                         ? 'For embossing plates: 2 cells are reserved for row indicators (start/end markers).'
                         : 'Indicators off: all columns are available for text.';
-                    // Always normalize the dial to the recommended default to avoid drift
-                    gridColumnsInput.value = indicatorOn ? '13' : '15';
+                    // Only set default value if not preserving user input
+                    if (!preserveValue) {
+                        gridColumnsInput.value = indicatorOn ? '13' : '15';
+                    }
                 } else {
                     // Counter plate - available cells depend on indicator toggle
                     gridColumnsLabel.textContent = 'Available Braille Cells for Text:';
@@ -3076,8 +3078,10 @@
                         ? 'For counter plates: 2 cells are reserved for row indicators (start/end markers), leaving 13 cells available for text.'
                         : 'Indicators off: all columns are available for text.';
                     gridColumnsNote.style.display = 'block';
-                    // Always normalize the dial to the recommended default to avoid drift
-                    gridColumnsInput.value = indicatorOn ? '13' : '15';
+                    // Only set default value if not preserving user input
+                    if (!preserveValue) {
+                        gridColumnsInput.value = indicatorOn ? '13' : '15';
+                    }
                 }
             }
             // Expose for other handlers safely

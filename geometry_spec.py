@@ -124,7 +124,10 @@ def extract_card_geometry_spec(
                     dot_y = y_pos + dot_row_offsets[row_off_idx]
 
                     # Choose recess shape based on settings
-                    recess_shape = getattr(settings, 'counter_plate_recess_shape', 'hemisphere')
+                    # recess_shape is an integer: 0=hemisphere, 1=bowl, 2=cone
+                    recess_shape_int = int(getattr(settings, 'recess_shape', 1))
+                    recess_shape_map = {0: 'hemisphere', 1: 'bowl', 2: 'cone'}
+                    recess_shape = recess_shape_map.get(recess_shape_int, 'bowl')
 
                     dot_spec = _create_dot_spec(dot_x, dot_y, settings, recess_shape, plate_type)
                     spec['dots'].append(dot_spec)
@@ -243,7 +246,14 @@ def _create_dot_spec(
 
     if shape_type == 'hemisphere':
         # Hemisphere for counter plates
-        radius = getattr(settings, 'counter_hemisphere_radius', 1.0)
+        # Use hemi_counter_dot_base_diameter to match CardSettings
+        try:
+            hemi_base = float(
+                getattr(settings, 'hemi_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter', 1.6))
+            )
+        except Exception:
+            hemi_base = 1.6
+        radius = hemi_base / 2
         return {
             'type': 'rounded',
             'x': x,
@@ -259,8 +269,15 @@ def _create_dot_spec(
         }
     elif shape_type == 'bowl':
         # Bowl (spherical cap) for counter plates
-        radius = getattr(settings, 'counter_bowl_radius', 1.5)
-        depth = getattr(settings, 'counter_bowl_depth', 0.8)
+        # Use bowl_counter_dot_base_diameter and counter_dot_depth to match CardSettings
+        try:
+            bowl_base = float(
+                getattr(settings, 'bowl_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter', 1.8))
+            )
+        except Exception:
+            bowl_base = 1.8
+        radius = bowl_base / 2
+        depth = float(getattr(settings, 'counter_dot_depth', 0.8))
         return {
             'type': 'rounded',
             'x': x,
@@ -276,9 +293,12 @@ def _create_dot_spec(
         }
     elif shape_type == 'cone':
         # Cone frustum for counter plates
-        base_dia = getattr(settings, 'counter_cone_base_diameter', 2.0)
-        top_dia = getattr(settings, 'counter_cone_top_diameter', 0.5)
-        height = getattr(settings, 'counter_cone_depth', 1.0)
+        # Use cone_counter_dot parameters to match CardSettings and backend.py
+        base_dia = float(
+            getattr(settings, 'cone_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter', 1.6))
+        )
+        top_dia = float(getattr(settings, 'cone_counter_dot_flat_hat', 0.4))
+        height = float(getattr(settings, 'cone_counter_dot_height', 0.8))
         return {
             'type': 'standard',
             'x': x,
@@ -355,17 +375,46 @@ def extract_cylinder_geometry_spec(
     polygonal_cutout_sides = int(cylinder_params.get('polygonal_cutout_sides', 12) or 12)
     seam_offset = float(cylinder_params.get('seam_offset_deg', 0))
 
+    logger.info(f'Cylinder seam_offset_deg received: {seam_offset} (rotates polygon cutout ONLY, not braille content)')
+
     radius = diameter / 2
 
-    # Compute polygon cutout points if specified
+    # Calculate grid layout parameters (needed for polygon alignment)
+    grid_width = (settings.grid_columns - 1) * settings.cell_spacing
+    grid_angle = grid_width / radius
+    start_angle = -grid_angle / 2
+    cell_spacing_angle = settings.cell_spacing / radius
+    dot_spacing_angle = settings.dot_spacing / radius
+
+    # Compute polygon cutout alignment angle
+    # Seam offset rotates ONLY the polygon cutout, NOT the braille content
+    # This allows users to align polygon vertices independently of braille position
+    seam_offset_rad = math.radians(seam_offset)
+    if plate_type == 'negative':
+        # Counter plate: rotate polygon CLOCKWISE (positive angle direction)
+        cutout_align_theta = seam_offset_rad
+    else:
+        # Embossing plate: rotate polygon COUNTER-CLOCKWISE (negative angle direction)
+        cutout_align_theta = -seam_offset_rad
+
+    logger.info(f'Cylinder cutout_align_theta: {math.degrees(cutout_align_theta):.2f} degrees')
+
+    # Compute polygon cutout points if specified, with rotation applied
     polygon_points = []
     if polygonal_cutout_radius > 0:
         circumscribed_radius = polygonal_cutout_radius / math.cos(math.pi / polygonal_cutout_sides)
         for i in range(polygonal_cutout_sides):
-            angle = 2 * math.pi * i / polygonal_cutout_sides
+            base_angle = 2 * math.pi * i / polygonal_cutout_sides
+            # Apply the cutout alignment rotation
+            rotated_angle = base_angle + cutout_align_theta
             polygon_points.append(
-                {'x': circumscribed_radius * math.cos(angle), 'y': circumscribed_radius * math.sin(angle)}
+                {
+                    'x': circumscribed_radius * math.cos(rotated_angle),
+                    'y': circumscribed_radius * math.sin(rotated_angle),
+                }
             )
+        # Log first 3 polygon points for debugging
+        logger.info(f'Polygon points (first 3): {polygon_points[:3]}')
 
     spec: dict[str, Any] = {
         'shape_type': 'cylinder',
@@ -380,13 +429,6 @@ def extract_cylinder_geometry_spec(
         'markers': [],
     }
 
-    # Calculate grid layout parameters
-    grid_width = (settings.grid_columns - 1) * settings.cell_spacing
-    grid_angle = grid_width / radius
-    start_angle = -grid_angle / 2
-    cell_spacing_angle = settings.cell_spacing / radius
-    dot_spacing_angle = settings.dot_spacing / radius
-
     # Dot positioning with angular offsets for columns, linear for rows
     dot_col_angle_offsets = [-dot_spacing_angle / 2, dot_spacing_angle / 2]
     dot_row_offsets = [settings.dot_spacing, 0, -settings.dot_spacing]
@@ -397,22 +439,40 @@ def extract_cylinder_geometry_spec(
     space_above = (height - braille_content_height) / 2.0
     first_row_center_y = height - space_above - settings.dot_spacing
 
-    seam_offset_rad = math.radians(seam_offset)
+    # Note: seam_offset only affects polygon cutout rotation (computed above)
+    # Braille content positioning uses fixed angles (not affected by seam_offset)
 
     def apply_seam(angle: float) -> float:
-        """Convert planar angle to cylinder theta respecting seam orientation."""
-        return seam_offset_rad - angle
+        """Convert planar angle to cylinder theta (for embossing plate).
+
+        Braille content is positioned independently of seam_offset.
+        Content flows counter-clockwise when viewed from above.
+        """
+        return -angle
+
+    def apply_seam_mirrored(angle: float) -> float:
+        """Convert planar angle to cylinder theta with mirrored direction (for counter plate).
+
+        Uses + instead of - to reverse the angular direction, making content flow
+        clockwise instead of counter-clockwise when viewed from above.
+        Braille content is positioned independently of seam_offset.
+        """
+        return angle
 
     if plate_type == 'negative':
-        # Counter plate: generate all 6 dots per cell for all cells
+        # Counter plate: Mirror of embossing plate along vertical axis
+        # Layout: triangle at col 0, rectangle placeholder at col 1, braille cells at cols 2+
+        # Note: Counter plates use rectangle placeholders (not character indicators) at column 1
+        # Uses mirrored angular direction so content flows CLOCKWISE instead of counter-clockwise
         for row_num in range(settings.grid_rows):
             y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
             y_local = y_pos - (height / 2.0)
 
-            # Add markers
+            # Add markers (same column positions as embossing, but mirrored direction)
             if getattr(settings, 'indicator_shapes', 1):
-                # Triangle marker at first column
-                triangle_angle = apply_seam(start_angle)
+                # Triangle marker at column 0 (first position, same as embossing)
+                # Use rotate_180=True for counter plate to properly align with embosser plate
+                triangle_angle = apply_seam_mirrored(start_angle)
                 marker_spec = _create_cylinder_marker_spec(
                     triangle_angle,
                     y_local,
@@ -422,62 +482,40 @@ def extract_cylinder_geometry_spec(
                     original_lines,
                     row_num,
                     plate_type='negative',
+                    rotate_180=True,
                 )
                 spec['markers'].append(marker_spec)
 
-                # Character/rect marker at last column
-                last_col_angle = apply_seam(start_angle + ((settings.grid_columns - 1) * cell_spacing_angle))
-                if original_lines and row_num < len(original_lines):
-                    orig = (original_lines[row_num] or '').strip()
-                    first_char = orig[0] if orig else ''
-                    if first_char and (first_char.isalpha() or first_char.isdigit()):
-                        marker_spec = _create_cylinder_marker_spec(
-                            last_col_angle,
-                            y_local,
-                            radius,
-                            settings,
-                            'character',
-                            original_lines,
-                            row_num,
-                            char=first_char.upper(),
-                            plate_type='negative',
-                        )
-                    else:
-                        marker_spec = _create_cylinder_marker_spec(
-                            last_col_angle,
-                            y_local,
-                            radius,
-                            settings,
-                            'rect',
-                            original_lines,
-                            row_num,
-                            plate_type='negative',
-                        )
-                else:
-                    marker_spec = _create_cylinder_marker_spec(
-                        last_col_angle,
-                        y_local,
-                        radius,
-                        settings,
-                        'rect',
-                        original_lines,
-                        row_num,
-                        plate_type='negative',
-                    )
+                # Rectangle placeholder marker at column 1 (second position)
+                # Counter plates ALWAYS use rectangle placeholders, not character indicators
+                # This matches the Python backend behavior in cylinder.py which uses
+                # create_cylinder_line_end_marker for this position
+                char_col_angle = apply_seam_mirrored(start_angle + cell_spacing_angle)
+                marker_spec = _create_cylinder_marker_spec(
+                    char_col_angle,
+                    y_local,
+                    radius,
+                    settings,
+                    'rect',  # Always rectangle for counter plate (not character)
+                    original_lines,
+                    row_num,
+                    plate_type='negative',
+                )
                 spec['markers'].append(marker_spec)
 
-            # Generate all 6 dots for all TEXT cells (skipping indicator columns)
-            # When indicator_shapes is ON: indicators at columns 0 and grid_columns-1
-            # Text cells are at columns 1 to grid_columns-2 (total of grid_columns-2 text cells)
+            # Generate all 6 dots for all TEXT cells (starting at column 2, same as embossing)
+            # Uses mirrored angular direction so dots flow clockwise
             reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
-            start_col = 1 if reserved else 0
-            end_col = settings.grid_columns - 1 if reserved else settings.grid_columns
-            for col_num in range(start_col, end_col):
-                col_raw_angle = start_angle + (col_num * cell_spacing_angle)
+            num_text_cols = settings.grid_columns - reserved
+            for col_num in range(num_text_cols):
+                # Braille cells start at column 2 (after triangle and character)
+                actual_col = col_num + (2 if getattr(settings, 'indicator_shapes', 1) else 0)
+                col_raw_angle = start_angle + (actual_col * cell_spacing_angle)
 
                 for dot_idx in range(6):
                     row_off_idx, col_off_idx = dot_positions[dot_idx]
-                    dot_angle = apply_seam(col_raw_angle + dot_col_angle_offsets[col_off_idx])
+                    # Use mirrored seam for clockwise direction
+                    dot_angle = apply_seam_mirrored(col_raw_angle + dot_col_angle_offsets[col_off_idx])
                     dot_y = y_local + dot_row_offsets[row_off_idx]
 
                     # Transform to 3D cylindrical coordinates
@@ -487,7 +525,7 @@ def extract_cylinder_geometry_spec(
     else:
         # Positive plate: add row indicators for ALL rows (including empty rows),
         # and add dots only for rows with braille characters.
-        # Layout matches Python backend: Character at first column, Triangle at last column
+        # Layout matches Python backend: Triangle at column 0, Character at column 1
         for row_num in range(settings.grid_rows):
             # Get line content if available
             line = lines[row_num] if row_num < len(lines) else ''
@@ -496,54 +534,13 @@ def extract_cylinder_geometry_spec(
             y_local = y_pos - (height / 2.0)
 
             # Add indicators when enabled:
-            # - Character indicator (or rectangle fallback) at first column (column 0)
-            # - Triangle at last column (grid_columns - 1)
+            # - Triangle at column 0 (first position)
+            # - Character indicator (or rectangle fallback) at column 1 (second position)
             if getattr(settings, 'indicator_shapes', 1):
-                # Character (or rectangle fallback) at first column (column 0)
-                first_col_angle = apply_seam(start_angle)
-                if original_lines and row_num < len(original_lines):
-                    orig = (original_lines[row_num] or '').strip()
-                    first_char = orig[0] if orig else ''
-                    if first_char and (first_char.isalpha() or first_char.isdigit()):
-                        char_spec = _create_cylinder_marker_spec(
-                            first_col_angle,
-                            y_local,
-                            radius,
-                            settings,
-                            'character',
-                            original_lines,
-                            row_num,
-                            char=first_char.upper(),
-                            plate_type='positive',
-                        )
-                    else:
-                        char_spec = _create_cylinder_marker_spec(
-                            first_col_angle,
-                            y_local,
-                            radius,
-                            settings,
-                            'rect',
-                            original_lines,
-                            row_num,
-                            plate_type='positive',
-                        )
-                else:
-                    char_spec = _create_cylinder_marker_spec(
-                        first_col_angle,
-                        y_local,
-                        radius,
-                        settings,
-                        'rect',
-                        original_lines,
-                        row_num,
-                        plate_type='positive',
-                    )
-                spec['markers'].append(char_spec)
-
-                # Triangle at last column (grid_columns - 1)
-                last_col_angle = apply_seam(start_angle + ((settings.grid_columns - 1) * cell_spacing_angle))
+                # Triangle at column 0 (first position)
+                triangle_angle = apply_seam(start_angle)
                 triangle_spec = _create_cylinder_marker_spec(
-                    last_col_angle,
+                    triangle_angle,
                     y_local,
                     radius,
                     settings,
@@ -554,20 +551,61 @@ def extract_cylinder_geometry_spec(
                 )
                 spec['markers'].append(triangle_spec)
 
+                # Character (or rectangle fallback) at column 1 (second position)
+                char_col_angle = apply_seam(start_angle + cell_spacing_angle)
+                if original_lines and row_num < len(original_lines):
+                    orig = (original_lines[row_num] or '').strip()
+                    first_char = orig[0] if orig else ''
+                    if first_char and (first_char.isalpha() or first_char.isdigit()):
+                        char_spec = _create_cylinder_marker_spec(
+                            char_col_angle,
+                            y_local,
+                            radius,
+                            settings,
+                            'character',
+                            original_lines,
+                            row_num,
+                            char=first_char.upper(),
+                            plate_type='positive',
+                        )
+                    else:
+                        char_spec = _create_cylinder_marker_spec(
+                            char_col_angle,
+                            y_local,
+                            radius,
+                            settings,
+                            'rect',
+                            original_lines,
+                            row_num,
+                            plate_type='positive',
+                        )
+                else:
+                    char_spec = _create_cylinder_marker_spec(
+                        char_col_angle,
+                        y_local,
+                        radius,
+                        settings,
+                        'rect',
+                        original_lines,
+                        row_num,
+                        plate_type='positive',
+                    )
+                spec['markers'].append(char_spec)
+
             # Process braille characters (dots) only if the row has braille
             has_braille = any(0x2800 <= ord(c) <= 0x28FF for c in line) if line else False
             if not has_braille:
                 continue
 
-            # Reserve 2 columns total (1 at start for character, 1 at end for triangle)
-            # Braille content starts at column 1 (shift by 1)
+            # Reserve 2 columns for indicators (triangle at col 0, character at col 1)
+            # Braille content starts at column 2 (shift by 2)
             reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
             max_cols = max(0, settings.grid_columns - reserved)
             chars = list(line.strip())[:max_cols]
 
             for col_num, braille_char in enumerate(chars):
-                # Shift by 1 column to leave room for character at first column
-                actual_col = col_num + (1 if getattr(settings, 'indicator_shapes', 1) else 0)
+                # Shift by 2 columns to leave room for triangle (col 0) and character (col 1)
+                actual_col = col_num + (2 if getattr(settings, 'indicator_shapes', 1) else 0)
                 col_raw_angle = start_angle + (actual_col * cell_spacing_angle)
 
                 # Get dot pattern for this braille character
@@ -612,10 +650,20 @@ def _create_cylinder_dot_spec(
 
     if plate_type == 'negative':
         # Counter plate - use recess shape
-        recess_shape = getattr(settings, 'counter_plate_recess_shape', 'hemisphere')
+        # recess_shape is an integer: 0=hemisphere, 1=bowl, 2=cone
+        recess_shape = int(getattr(settings, 'recess_shape', 1))
 
-        if recess_shape == 'hemisphere':
-            recess_radius = getattr(settings, 'counter_hemisphere_radius', 1.0)
+        if recess_shape == 0:  # Hemisphere
+            # Use hemisphere counter dot base diameter
+            try:
+                hemi_base = float(
+                    getattr(
+                        settings, 'hemi_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter', 1.6)
+                    )
+                )
+            except Exception:
+                hemi_base = 1.6
+            recess_radius = hemi_base / 2
             return {
                 'type': 'cylinder_dot',
                 'x': x,
@@ -629,9 +677,18 @@ def _create_cylinder_dot_spec(
                     'recess_radius': recess_radius,
                 },
             }
-        elif recess_shape == 'bowl':
-            bowl_radius = getattr(settings, 'counter_bowl_radius', 1.5)
-            bowl_depth = getattr(settings, 'counter_bowl_depth', 0.8)
+        elif recess_shape == 1:  # Bowl
+            # Use bowl counter dot base diameter
+            try:
+                bowl_base = float(
+                    getattr(
+                        settings, 'bowl_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter', 1.8)
+                    )
+                )
+            except Exception:
+                bowl_base = 1.8
+            bowl_radius = bowl_base / 2
+            bowl_depth = float(getattr(settings, 'counter_dot_depth', 0.8))
             return {
                 'type': 'cylinder_dot',
                 'x': x,
@@ -646,11 +703,13 @@ def _create_cylinder_dot_spec(
                     'bowl_depth': bowl_depth,
                 },
             }
-        else:
-            # Cone
-            base_dia = getattr(settings, 'counter_cone_base_diameter', 2.0)
-            top_dia = getattr(settings, 'counter_cone_top_diameter', 0.5)
-            cone_depth = getattr(settings, 'counter_cone_depth', 1.0)
+        else:  # Cone (recess_shape == 2)
+            # Use cone counter dot parameters matching CardSettings and cylinder.py
+            base_dia = float(
+                getattr(settings, 'cone_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter', 1.6))
+            )
+            top_dia = float(getattr(settings, 'cone_counter_dot_flat_hat', 0.4))
+            cone_height = float(getattr(settings, 'cone_counter_dot_height', 0.8))
             return {
                 'type': 'cylinder_dot',
                 'x': x,
@@ -663,7 +722,7 @@ def _create_cylinder_dot_spec(
                     'shape': 'cone',
                     'base_radius': base_dia / 2,
                     'top_radius': top_dia / 2,
-                    'height': cone_depth,
+                    'height': cone_height,
                 },
             }
     else:
@@ -724,6 +783,7 @@ def _create_cylinder_marker_spec(
     row_num: int = 0,
     char: str | None = None,
     plate_type: str = 'positive',
+    rotate_180: bool = False,
 ) -> dict[str, Any]:
     """
     Create a marker spec with 3D position on cylinder surface.
@@ -732,6 +792,18 @@ def _create_cylinder_marker_spec(
     (subtracted) on both positive and negative cylinder plates. The is_recess
     flag should always be True for markers - this differs from dots which
     are only recessed on negative (counter) plates.
+
+    Args:
+        theta: Angle around cylinder (radians)
+        y_local: Height position relative to cylinder center
+        radius: Cylinder radius
+        settings: CardSettings
+        marker_type: Type of marker ('triangle', 'character', 'rect')
+        original_lines: Original text lines for character extraction
+        row_num: Row number for character extraction
+        char: Character for character markers
+        plate_type: 'positive' or 'negative'
+        rotate_180: If True, rotate triangle 180 degrees from center (for counter plate alignment)
     """
     # Convert cylindrical to 3D Cartesian (Y-up for Three.js)
     x = radius * math.cos(theta)
@@ -753,6 +825,7 @@ def _create_cylinder_marker_spec(
             'size': settings.dot_spacing,
             'depth': 0.6,
             'is_recess': is_recess,
+            'rotate_180': rotate_180,
         }
     elif marker_type == 'character':
         return {

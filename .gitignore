@@ -58,3 +58,6 @@ tmp_spec_direct.py
 
 # Vercel
 .vercel/
+
+.vercel
+.env*.local

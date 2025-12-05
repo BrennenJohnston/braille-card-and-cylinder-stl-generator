@@ -2636,6 +2636,29 @@
             error: console.error // Always log errors
         };
 
+        // Helper function to sync emboss cone params to counter cone params (module scope)
+        function syncEmbossToCounterConeParams() {
+            const embossBase = document.getElementById('emboss_dot_base_diameter');
+            const embossHeight = document.getElementById('emboss_dot_height');
+            const embossFlatHat = document.getElementById('emboss_dot_flat_hat');
+            const counterBase = document.getElementById('cone_counter_dot_base_diameter');
+            const counterHeight = document.getElementById('cone_counter_dot_height');
+            const counterFlatHat = document.getElementById('cone_counter_dot_flat_hat');
+
+            if (embossBase && counterBase) {
+                counterBase.value = embossBase.value;
+                log.debug('Synced cone_counter_dot_base_diameter to:', embossBase.value);
+            }
+            if (embossHeight && counterHeight) {
+                counterHeight.value = embossHeight.value;
+                log.debug('Synced cone_counter_dot_height to:', embossHeight.value);
+            }
+            if (embossFlatHat && counterFlatHat) {
+                counterFlatHat.value = embossFlatHat.value;
+                log.debug('Synced cone_counter_dot_flat_hat to:', embossFlatHat.value);
+            }
+        }
+
         // Theme switching functionality
         const themes = ['dark', 'high-contrast', 'light'];
         const themeIcons = {
@@ -3039,6 +3062,11 @@
                         }
                     });
 
+                    // Sync emboss cone parameters to counter cone parameters when cone is selected
+                    if (isCone) {
+                        syncEmbossToCounterConeParams();
+                    }
+
                     // Update dimension groups visibility
                     const bowlGroup = document.getElementById('bowl_dimensions_group');
                     const coneGroup = document.getElementById('cone_dimensions_group');
@@ -3050,6 +3078,20 @@
                     const currentRecessShape = document.querySelector('input[name="recess_shape"]:checked')?.value;
                     console.log('After sync - dot_shape:', currentDotShape, 'recess_shape:', currentRecessShape);
                 });
+            });
+
+            // Add listeners to sync emboss cone params to counter cone params when changed
+            ['emboss_dot_base_diameter', 'emboss_dot_height', 'emboss_dot_flat_hat'].forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.addEventListener('input', function() {
+                        // Only sync if cone shape is selected
+                        const isCone = document.querySelector('input[name="combined_shape"]:checked')?.value === 'cone';
+                        if (isCone) {
+                            syncEmbossToCounterConeParams();
+                        }
+                    });
+                }
             });
 
             // Expert mode parametric dials
@@ -3586,6 +3628,9 @@
                 'braille_prefs_plate_type',
                 'braille_prefs_shape_type',
                 'braille_prefs_dot_shape',
+                'braille_prefs_combined_shape',
+                'braille_prefs_placement_mode',
+                'braille_prefs_indicator_shapes',
                 'braille_prefs_expert_visible',
                 'braille_prefs_grid_columns',
                 'braille_prefs_grid_rows',
@@ -3622,10 +3667,22 @@
         }
 
         function applyPersistedSettings() {
+            // Placement mode (auto/manual)
+            const savedPlacement = readPersisted('braille_prefs_placement_mode');
+            if (savedPlacement === 'auto' || savedPlacement === 'manual') {
+                const radio = document.querySelector(`input[name="placement_mode"][value="${savedPlacement}"]`);
+                if (radio) radio.checked = true;
+            }
             // Plate type
             const savedPlate = readPersisted('braille_prefs_plate_type');
             if (savedPlate === 'positive' || savedPlate === 'negative') {
                 const radio = document.querySelector(`input[name="plate_type"][value="${savedPlate}"]`);
+                if (radio) radio.checked = true;
+            }
+            // Indicator shapes (on/off)
+            const savedIndicator = readPersisted('braille_prefs_indicator_shapes');
+            if (savedIndicator === '1' || savedIndicator === '0') {
+                const radio = document.querySelector(`input[name="indicator_shapes"][value="${savedIndicator}"]`);
                 if (radio) radio.checked = true;
             }
             // Shape type
@@ -3659,6 +3716,8 @@
                 } else if (savedCombined === 'cone') {
                     dotShapeRadios.forEach(r => { if (r.value === 'cone') r.checked = true; });
                     recessShapeRadios.forEach(r => { if (r.value === '2') r.checked = true; }); // Cone
+                    // Sync emboss cone params to counter cone params on initialization
+                    syncEmbossToCounterConeParams();
                     console.log('Initialized to cone - dot_shape: cone, recess_shape: 2');
                 }
             }
@@ -3673,6 +3732,7 @@
             }
             // Numeric/text inputs
             const map = [
+                ['grid_rows','braille_prefs_grid_rows'],
                 ['cell_spacing','braille_prefs_cell_spacing'],
                 ['line_spacing','braille_prefs_line_spacing'],
                 ['dot_spacing','braille_prefs_dot_spacing'],
@@ -3731,9 +3791,17 @@
         }
 
         function wirePersistenceListeners() {
+            // Placement mode (auto/manual)
+            document.querySelectorAll('input[name="placement_mode"]').forEach(r => {
+                r.addEventListener('change', () => persistValue('braille_prefs_placement_mode', document.querySelector('input[name="placement_mode"]:checked').value));
+            });
             // Plate type
             document.querySelectorAll('input[name="plate_type"]').forEach(r => {
                 r.addEventListener('change', () => persistValue('braille_prefs_plate_type', document.querySelector('input[name="plate_type"]:checked').value));
+            });
+            // Indicator shapes (on/off)
+            document.querySelectorAll('input[name="indicator_shapes"]').forEach(r => {
+                r.addEventListener('change', () => persistValue('braille_prefs_indicator_shapes', document.querySelector('input[name="indicator_shapes"]:checked').value));
             });
             // Shape type
             document.querySelectorAll('input[name="shape_type"]').forEach(r => {
@@ -3763,6 +3831,7 @@
             // Numeric/text inputs
             const map = [
                 ['grid_columns','braille_prefs_grid_columns'],
+                ['grid_rows','braille_prefs_grid_rows'],
                 ['cell_spacing','braille_prefs_cell_spacing'],
                 ['line_spacing','braille_prefs_line_spacing'],
                 ['dot_spacing','braille_prefs_dot_spacing'],
@@ -3809,6 +3878,8 @@
         // On load, restore persisted settings, then wire listeners
         try { applyPersistedSettings(); } catch (e) {}
         try { wirePersistenceListeners(); } catch (e) {}
+        // After restoring persisted settings, update placement UI to reflect restored mode
+        try { updatePlacementUI(); } catch (e) {}
 
         // Reset to defaults button
         const resetBtn = document.getElementById('reset-defaults-btn');

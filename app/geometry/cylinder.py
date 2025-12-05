@@ -236,6 +236,7 @@ def create_cylinder_triangle_marker(
     height_mm=0.6,
     for_subtraction=True,
     point_left=False,
+    rotate_180=False,
 ):
     """
     Create a triangular prism for cylinder surface marking.
@@ -258,6 +259,7 @@ def create_cylinder_triangle_marker(
         height_mm: Depth/height of the triangle marker (default 0.6mm)
         for_subtraction: If True, creates a tool for boolean subtraction to make recesses
         point_left: If True, mirror triangle so apex points toward negative tangent (left in unrolled view)
+        rotate_180: If True, rotate triangle 180 degrees from center (for counter plate alignment)
     """
     r_hat, t_hat, z_hat, radius, circumference, theta = _compute_cylinder_frame(
         x_arc, cylinder_diameter_mm, seam_offset_deg
@@ -271,7 +273,19 @@ def create_cylinder_triangle_marker(
     # Build 2D triangle in local tangent (X=t) and vertical (Y=z) plane
     # Vertices positioned at braille dots 1, 3, 5 relative to cell center
 
-    if point_left:
+    if rotate_180:
+        # 180-degree rotation from center: negate both X and Y coordinates
+        # This is used for counter plates to properly align with embosser plate triangles
+        # Original vertices: (-half_width, -dot_spacing), (-half_width, +dot_spacing), (+half_width, 0)
+        # After 180° rotation: (+half_width, +dot_spacing), (+half_width, -dot_spacing), (-half_width, 0)
+        tri_2d = ShapelyPolygon(
+            [
+                (half_width, settings.dot_spacing),  # Rotated Dot 3 (was bottom-left, now top-right)
+                (half_width, -settings.dot_spacing),  # Rotated Dot 1 (was top-left, now bottom-right)
+                (-half_width, 0.0),  # Rotated Dot 5 (apex now on left)
+            ]
+        )
+    elif point_left:
         # Mirror along vertical axis so apex points left (negative tangent)
         tri_2d = ShapelyPolygon(
             [
@@ -641,13 +655,15 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
     logger.info(f'  - Cell spacing: {settings.cell_spacing}mm → {cell_spacing_angle_deg:.2f}° on cylinder')
     logger.info(f'  - Dot spacing: {settings.dot_spacing}mm → {dot_spacing_angle_deg:.2f}° on cylinder')
 
-    # Compute triangle column absolute angle (including seam) to align polygon cutout vertex
-    # Triangle is now at column 0 (Cell #1, leftmost position)
+    # Compute polygon cutout rotation angle
+    # Seam offset ONLY rotates the polygon cutout, NOT the braille content
+    # This allows users to align polygon vertices independently of braille position
+    # For embossing plate: rotate polygon COUNTER-CLOCKWISE (negative angle)
     seam_offset_rad = np.radians(seam_offset)
+    cutout_align_theta = -seam_offset_rad
+
     grid_angle = grid_width / radius
     start_angle = -grid_angle / 2
-    triangle_angle = start_angle  # Triangle at column 0
-    cutout_align_theta = seam_offset_rad - triangle_angle
 
     # Create cylinder shell with polygon cutout aligned to triangle marker column
     cylinder_shell = create_cylinder_shell(
@@ -695,7 +711,7 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
             # Cell #1 (column 0): Triangle indicator - apex pointing right (default orientation)
             triangle_x = start_angle * radius
             triangle_mesh = create_cylinder_triangle_marker(
-                triangle_x, y_local, settings, diameter, seam_offset, height_mm=0.6, for_subtraction=True
+                triangle_x, y_local, settings, diameter, 0, height_mm=0.6, for_subtraction=True
             )
             triangle_meshes.append(triangle_mesh)
 
@@ -718,24 +734,24 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
                             y_local,
                             settings,
                             diameter,
-                            seam_offset,
+                            0,  # Braille content uses fixed position (seam_offset only affects polygon)
                             height_mm=1.0,
                             for_subtraction=True,
                         )
                     else:
                         # Fall back to rectangle for non-alphanumeric first characters
                         text_number_mesh = create_cylinder_line_end_marker(
-                            text_number_x, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
+                            text_number_x, y_local, settings, diameter, 0, height_mm=0.5, for_subtraction=True
                         )
                 else:
                     # Empty line, use rectangle
                     text_number_mesh = create_cylinder_line_end_marker(
-                        text_number_x, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
+                        text_number_x, y_local, settings, diameter, 0, height_mm=0.5, for_subtraction=True
                     )
             else:
                 # No original text provided, use rectangle as fallback
                 text_number_mesh = create_cylinder_line_end_marker(
-                    text_number_x, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
+                    text_number_x, y_local, settings, diameter, 0, height_mm=0.5, for_subtraction=True
                 )
 
             text_number_meshes.append(text_number_mesh)
@@ -820,7 +836,7 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
                 dot_z_local = dot_y - (height / 2.0)
                 z = polygonal_cutout_radius + settings.active_dot_height / 2  # unused in transform now
 
-                dot_mesh = create_cylinder_braille_dot(dot_x, dot_z_local, z, settings, diameter, seam_offset)
+                dot_mesh = create_cylinder_braille_dot(dot_x, dot_z_local, z, settings, diameter, 0)
                 meshes.append(dot_mesh)
 
     logger.info(f'Created cylinder with {len(meshes) - 1} braille dots')
@@ -887,11 +903,11 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     # Convert cell_spacing from linear to angular
     cell_spacing_angle = settings.cell_spacing / radius
 
-    # Compute last-column triangle absolute angle (including seam) to align polygon cutout vertex
-    # Counter plate uses triangle at the last column (mirrored from embossing plate's first column position)
+    # Compute polygon cutout rotation angle
+    # Seam offset ONLY rotates the polygon cutout, NOT the braille content
+    # For counter plate: rotate polygon CLOCKWISE (positive angle) to mirror embossing plate
     seam_offset_rad = np.radians(seam_offset)
-    last_col_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle)
-    cutout_align_theta = seam_offset_rad - last_col_angle
+    cutout_align_theta = seam_offset_rad
 
     # Create cylinder shell with polygon cutout aligned to triangle marker column
     cylinder_shell = create_cylinder_shell(
@@ -947,7 +963,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             # - Rectangle placeholder at SECOND-TO-LAST column (grid_columns-2)
             # This mirrors the embossing plate layout where Triangle is at column 0 and Letter is at column 1
 
-            # Last column (triangle with mirrored orientation):
+            # Last column (triangle with 180-degree rotation for counter plate alignment):
             triangle_col_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle)
             triangle_x = triangle_col_angle * radius
             triangle_mesh = create_cylinder_triangle_marker(
@@ -955,10 +971,10 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
                 y_local,
                 settings,
                 diameter,
-                seam_offset,
+                0,  # Braille content uses fixed position (seam_offset only affects polygon)
                 height_mm=0.5,
                 for_subtraction=True,
-                point_left=True,  # Mirrored orientation - apex points left
+                rotate_180=True,  # 180-degree rotation from center for counter plate
             )
             triangle_meshes.append(triangle_mesh)
 
@@ -966,7 +982,7 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
             rect_col_angle = start_angle + ((settings.grid_columns - 2) * cell_spacing_angle)
             line_end_x = rect_col_angle * radius
             line_end_mesh = create_cylinder_line_end_marker(
-                line_end_x, y_local, settings, diameter, seam_offset, height_mm=0.5, for_subtraction=True
+                line_end_x, y_local, settings, diameter, 0, height_mm=0.5, for_subtraction=True
             )
             line_end_meshes.append(line_end_mesh)
 
@@ -1069,8 +1085,9 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
                         except Exception:
                             pass
                     # Transform to cylinder surface with local frame
+                    # Braille content uses fixed position (seam_offset only affects polygon cutout)
                     outer_radius = diameter / 2
-                    theta = np.radians(seam_offset) - (dot_x / (np.pi * diameter)) * 2 * np.pi
+                    theta = -(dot_x / (np.pi * diameter)) * 2 * np.pi
                     r_hat = np.array([np.cos(theta), np.sin(theta), 0.0])
                     t_hat = np.array([-np.sin(theta), np.cos(theta), 0.0])
                     z_hat = np.array([0.0, 0.0, 1.0])
@@ -1113,7 +1130,8 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
                     if not sphere.is_volume:
                         sphere.fix_normals()
                     outer_radius = diameter / 2
-                    theta = np.radians(seam_offset) - (dot_x / (np.pi * diameter)) * 2 * np.pi
+                    # Braille content uses fixed position (seam_offset only affects polygon cutout)
+                    theta = -(dot_x / (np.pi * diameter)) * 2 * np.pi
                     overcut = max(settings.epsilon, getattr(settings, 'cylinder_counter_plate_overcut_mm', 0.05))
                     if use_bowl:
                         h = float(getattr(settings, 'counter_dot_depth', 0.6))
@@ -1340,9 +1358,9 @@ def create_cylinder_counter_plate_2d(settings, cylinder_params=None):
         circumscribed_radius = polygonal_cutout_radius / np.cos(np.pi / polygonal_cutout_sides)
         angles_poly = np.linspace(0, 2 * np.pi, polygonal_cutout_sides, endpoint=False)
 
-        # Align to first column position
-        first_col_angle = start_angle
-        align_angle = seam_offset_rad - first_col_angle
+        # Polygon cutout rotation controlled by seam_offset only
+        # For this counter plate variant, use same direction as main counter plate (clockwise)
+        align_angle = seam_offset_rad
 
         vertices_2d = [
             (circumscribed_radius * np.cos(a + align_angle), circumscribed_radius * np.sin(a + align_angle))
@@ -1402,19 +1420,20 @@ def create_cylinder_counter_plate_2d(settings, cylinder_params=None):
         row_angles = []
 
         # Add indicator shapes if enabled
+        # Braille content uses fixed positions (seam_offset only affects polygon cutout)
         if getattr(settings, 'indicator_shapes', 1):
             # Triangle at first column
-            first_angle = seam_offset_rad - start_angle
+            first_angle = -start_angle
             row_angles.append(first_angle)
 
             # Line at last column
-            last_angle = seam_offset_rad - (start_angle + ((settings.grid_columns - 1) * cell_spacing_angle))
+            last_angle = -(start_angle + ((settings.grid_columns - 1) * cell_spacing_angle))
             row_angles.append(last_angle)
 
         # Add all 6 dots for each cell in this row
         for col in range(num_text_cols):
             mirrored_idx = (num_text_cols - 1) - col
-            cell_angle = seam_offset_rad - (start_angle + ((mirrored_idx + 1) * cell_spacing_angle))
+            cell_angle = -(start_angle + ((mirrored_idx + 1) * cell_spacing_angle))
 
             for dot_idx in range(6):
                 dot_pos = dot_positions_pattern[dot_idx]
@@ -1425,17 +1444,18 @@ def create_cylinder_counter_plate_2d(settings, cylinder_params=None):
                 row_dot_data.append((z_local, dot_vertical_extent, [dot_angle]))
 
         # Add indicator shapes as separate entries with their own Z positions
+        # Braille content uses fixed positions (seam_offset only affects polygon cutout)
         if getattr(settings, 'indicator_shapes', 1):
             z_local = y_pos - (height / 2.0)
             indicator_height = settings.dot_spacing * 2
             # Triangle
-            row_dot_data.append((z_local, indicator_height, [seam_offset_rad - start_angle]))
+            row_dot_data.append((z_local, indicator_height, [-start_angle]))
             # Line marker
             row_dot_data.append(
                 (
                     z_local,
                     indicator_height,
-                    [seam_offset_rad - (start_angle + ((settings.grid_columns - 1) * cell_spacing_angle))],
+                    [-(start_angle + ((settings.grid_columns - 1) * cell_spacing_angle))],
                 )
             )
 

@@ -275,13 +275,18 @@ function createCylinderDot(spec) {
         // Use full sphere for better subtraction (positioned to create bowl effect)
         geometry = new THREE.SphereGeometry(sphereR, 16, 16);
     } else if (shape === 'cone') {
-        // Cone frustum for counter plate
+        // Cone frustum for counter plate recess
+        // For recesses: large opening (base_radius) at the outer surface, small tip (top_radius) pointing inward
+        // After rotateZ(-π/2) and rotateY(-theta), +Y becomes the radial outward direction
+        // So we need to swap the radii so the large base ends up at +Y (outer surface)
         const { base_radius, top_radius, height } = params;
         const validBaseRadius = (base_radius && base_radius > 0) ? base_radius : 1.0;
         const validTopRadius = (top_radius && top_radius >= 0) ? top_radius : 0.25;
         const validHeight = (height && height > 0) ? height : 1.0;
         dotHeight = validHeight;
-        geometry = createConeFrustum(validBaseRadius, validTopRadius, validHeight, 16);
+        // IMPORTANT: Swap base and top radii for recesses so large opening is at outer surface
+        // createConeFrustum puts second param at +Y, which becomes radial outward after rotations
+        geometry = createConeFrustum(validTopRadius, validBaseRadius, validHeight, 16);
     } else {
         // Standard cone frustum for positive embossing
         const { base_radius, top_radius, height } = params;
@@ -350,9 +355,13 @@ function createCylinderDot(spec) {
  * This creates a triangle with:
  * - Vertical base on the left (height = 2 * dot_spacing)
  * - Apex pointing right (width = dot_spacing)
+ *
+ * For counter plates (rotate_180=true), the triangle is rotated 180 degrees
+ * from the center of the braille cell bounds to properly align with the
+ * embosser plate when the paper is pressed between them.
  */
 function createCylinderTriangleMarker(spec) {
-    const { x, y, z, theta, radius: cylRadius, size, depth, is_recess } = spec;
+    const { x, y, z, theta, radius: cylRadius, size, depth, is_recess, rotate_180 } = spec;
 
     // Validate essential parameters
     if (!isFinite(theta) || !isFinite(cylRadius) || cylRadius <= 0) {
@@ -369,12 +378,24 @@ function createCylinderTriangleMarker(spec) {
     const validDepth = (depth && depth > 0) ? depth : 0.6;
 
     // Create triangle shape with vertices at braille dots 1, 3, 5
-    // Using COUNTER-CLOCKWISE winding for correct front-facing normals:
-    // Start at dot 3 (bottom-left), go to dot 1 (top-left), then to dot 5 (apex right)
+    // Using COUNTER-CLOCKWISE winding for correct front-facing normals
     const triangleShape = new THREE.Shape();
-    triangleShape.moveTo(-validSize / 2, -validSize);  // Dot 3 - bottom left of cell
-    triangleShape.lineTo(-validSize / 2, validSize);   // Dot 1 - top left of cell
-    triangleShape.lineTo(validSize / 2, 0);            // Dot 5 - apex, middle right of cell
+
+    if (rotate_180) {
+        // 180-degree rotation from center: negate both X and Y coordinates
+        // Used for counter plates to properly align with embosser plate triangles
+        // Original vertices: (-size/2, -size), (-size/2, +size), (+size/2, 0)
+        // After 180° rotation: (+size/2, +size), (+size/2, -size), (-size/2, 0)
+        triangleShape.moveTo(validSize / 2, validSize);    // Rotated Dot 3 (was bottom-left, now top-right)
+        triangleShape.lineTo(validSize / 2, -validSize);   // Rotated Dot 1 (was top-left, now bottom-right)
+        triangleShape.lineTo(-validSize / 2, 0);           // Rotated Dot 5 (apex now on left)
+    } else {
+        // Normal orientation: apex points right
+        // Start at dot 3 (bottom-left), go to dot 1 (top-left), then to dot 5 (apex right)
+        triangleShape.moveTo(-validSize / 2, -validSize);  // Dot 3 - bottom left of cell
+        triangleShape.lineTo(-validSize / 2, validSize);   // Dot 1 - top left of cell
+        triangleShape.lineTo(validSize / 2, 0);            // Dot 5 - apex, middle right of cell
+    }
     triangleShape.closePath();
 
     const recessPadding = is_recess ? 0.2 : 0; // Small extension to avoid coplanar booleans
@@ -595,64 +616,78 @@ function createCharacterMarker(spec) {
 
 /**
  * Create cylinder shell with polygonal cutout
+ *
+ * Behavior matches Python server-side code (cylinder.py create_cylinder_shell):
+ * - If a polygonal cutout is specified with valid points: create a ring shape
+ *   (outer circle minus polygon) - the polygon IS the inner boundary
+ * - If no polygonal cutout is specified: return a solid cylinder
+ *
+ * NOTE: The 'thickness' parameter is NOT used when a polygon cutout is specified,
+ * because the polygon defines the inner boundary. This prevents the issue where
+ * increasing the outer diameter causes the inner cylinder (based on fixed wall
+ * thickness) to grow larger than the polygon cutout, making it invisible.
  */
 function createCylinderShell(spec) {
     const { radius, height, thickness, polygon_points } = spec;
 
+    // Debug: Log received polygon points with actual values
+    if (polygon_points && polygon_points.length > 0) {
+        const pt0 = polygon_points[0];
+        const angle = Math.atan2(pt0.y, pt0.x) * 180 / Math.PI;
+        console.log(`CSG Worker: polygon_points[0] = (${pt0.x.toFixed(2)}, ${pt0.y.toFixed(2)}) angle=${angle.toFixed(1)}°`);
+    }
+
     // Validate essential parameters
     const validRadius = (radius && radius > 0) ? radius : 30;
     const validHeight = (height && height > 0) ? height : 80;
-    const validThickness = (thickness && thickness > 0) ? thickness : 3;
 
     // Create outer cylinder
     const outerGeom = new THREE.CylinderGeometry(validRadius, validRadius, validHeight, 64);
-
-    // Create inner cylinder for hollow shell
-    const innerRadius = Math.max(validRadius - validThickness, 0.1);
-    const innerGeom = new THREE.CylinderGeometry(innerRadius, innerRadius, validHeight + 0.1, 64);
-
-    // Create brushes and subtract
     const outerBrush = new Brush(outerGeom);
-    const innerBrush = new Brush(innerGeom);
 
-    let shellBrush = evaluator.evaluate(outerBrush, innerBrush, SUBTRACTION);
+    // Check if polygon cutout is specified with valid points
+    const validPoints = (polygon_points && polygon_points.length > 0)
+        ? polygon_points.filter(pt => pt && isFinite(pt.x) && isFinite(pt.y))
+        : [];
 
-    // If polygon cutout is specified, create and subtract it
-    if (polygon_points && polygon_points.length > 0) {
-        // Validate polygon points
-        const validPoints = polygon_points.filter(pt =>
-            pt && isFinite(pt.x) && isFinite(pt.y)
-        );
+    if (validPoints.length >= 3) {
+        // Polygon cutout specified: use polygon as the inner boundary
+        // This matches Python behavior where the polygon IS the inner shape,
+        // NOT an additional subtraction from a wall-thickness-based inner cylinder
 
-        if (validPoints.length >= 3) {
-            // Create extruded polygon
-            const polygonShape = new THREE.Shape();
-            validPoints.forEach((pt, i) => {
-                if (i === 0) {
-                    polygonShape.moveTo(pt.x, pt.y);
-                } else {
-                    polygonShape.lineTo(pt.x, pt.y);
-                }
-            });
-            polygonShape.closePath();
+        // Create extruded polygon for the inner cutout
+        const polygonShape = new THREE.Shape();
+        validPoints.forEach((pt, i) => {
+            if (i === 0) {
+                polygonShape.moveTo(pt.x, pt.y);
+            } else {
+                polygonShape.lineTo(pt.x, pt.y);
+            }
+        });
+        polygonShape.closePath();
 
-            const extrudeSettings = {
-                depth: validHeight * 1.5, // Ensure it cuts all the way through
-                bevelEnabled: false
-            };
+        const extrudeSettings = {
+            depth: validHeight * 1.5, // Ensure it cuts all the way through
+            bevelEnabled: false
+        };
 
-            const cutoutGeom = new THREE.ExtrudeGeometry(polygonShape, extrudeSettings);
-            // Center the extrusion
-            cutoutGeom.translate(0, 0, -validHeight * 0.75);
-            // Rotate to align with cylinder's Y-axis
-            cutoutGeom.rotateX(Math.PI / 2);
+        const cutoutGeom = new THREE.ExtrudeGeometry(polygonShape, extrudeSettings);
+        // Center the extrusion
+        cutoutGeom.translate(0, 0, -validHeight * 0.75);
+        // Rotate to align with cylinder's Y-axis
+        cutoutGeom.rotateX(Math.PI / 2);
 
-            const cutoutBrush = new Brush(cutoutGeom);
-            shellBrush = evaluator.evaluate(shellBrush, cutoutBrush, SUBTRACTION);
-        }
+        const cutoutBrush = new Brush(cutoutGeom);
+
+        // Subtract polygon from outer cylinder (no inner cylinder based on thickness)
+        const shellBrush = evaluator.evaluate(outerBrush, cutoutBrush, SUBTRACTION);
+        return shellBrush.geometry;
+    } else {
+        // No polygon cutout: return solid cylinder (matching Python behavior)
+        // The Python code returns a solid cylinder when polygonal_cutout_radius_mm <= 0
+        console.log('CSG Worker: No polygon cutout specified, returning solid cylinder');
+        return outerGeom;
     }
-
-    return shellBrush.geometry;
 }
 
 /**

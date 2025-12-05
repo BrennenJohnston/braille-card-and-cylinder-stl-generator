@@ -315,14 +315,21 @@ function createCylinderDot(spec) {
     }
 
     // Calculate the radial position
-    // For recesses (counter plates): position sphere center AT the surface - subtraction creates cavity
+    // For recesses (counter plates): position shape so opening is at surface
     // For protrusions (embossing plates): position dot so base sits on surface and extends outward
     const epsilon = 0;
     let radialOffset;
     if (isRecess) {
-        // For recesses (spheres), center at surface - half will be inside, half outside
-        // The inside half gets subtracted to create the recess
-        radialOffset = cylRadius;
+        if (shape === 'cone') {
+            // For cone recesses: position so the large opening (base) is exactly at the cylinder surface
+            // After rotations, the cone center is at origin, with base at +height/2 along radial direction
+            // We shift inward by height/2 so the base lands exactly at the surface
+            radialOffset = cylRadius - dotHeight / 2;
+        } else {
+            // For spherical recesses (hemisphere, bowl), center at surface - half will be inside, half outside
+            // The inside half gets subtracted to create the recess
+            radialOffset = cylRadius;
+        }
     } else {
         // For protrusions, position so the dot sits ON the surface and extends outward
         radialOffset = cylRadius + dotHeight / 2 + epsilon;

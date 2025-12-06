@@ -1,5 +1,58 @@
 # Cursor Rules for Braille Card and Cylinder STL Generator
 
+## Core Architecture Principles
+
+### Settings Schema and Specification-Driven Development
+
+This project uses a **centralized settings architecture** with specification-driven development. Before making any changes to settings, defaults, UI controls, or core features:
+
+1. **ALWAYS consult the master index first:**
+   - `SPECIFICATIONS_INDEX.md` — Master index for all specifications
+   - `SETTINGS_SCHEMA_CORE_SPECIFICATIONS.md` — Unified settings schema reference
+   - `settings.schema.json` — JSON Schema for validation
+
+2. **Follow the Source Priority Order (for each domain):**
+   - Settings/Validation: `settings.schema.json` > `app/models.py` > `backend.py`
+   - Translation: `backend.py` > `static/liblouis-worker.js`
+   - Geometry: `geometry_spec.py` > `app/geometry/*.py`
+   - Caching: `app/cache.py` > `backend.py`
+
+3. **When modifying defaults or adding parameters:**
+   - Update `settings.schema.json` first (single source of truth)
+   - Update `app/models.py` CardSettings defaults
+   - Update relevant specification document(s)
+   - Update `SPECIFICATIONS_INDEX.md` if adding new systems
+
+4. **Cross-Validation Checklist:**
+   - [ ] Schema validates new parameter structure
+   - [ ] Defaults are consistent across schema, models, and UI
+   - [ ] Related specification documents updated
+   - [ ] Cache key normalization handles new fields (if geometry-affecting)
+   - [ ] UI elements reflect schema constraints
+
+5. **Key Constants (must remain consistent across 9+ modules):**
+   - Unicode Braille Range: `0x2800` to `0x28FF`
+   - Dot Position Mapping: `[[0,0], [1,0], [2,0], [0,1], [1,1], [2,1]]`
+   - Shape Types: `card`, `cylinder`
+   - Plate Types: `positive`, `negative`
+   - Placement Modes: `auto`, `manual`
+
+### Specification Documents Reference
+
+| Domain | Primary Specification |
+|--------|----------------------|
+| Settings/Defaults | `SETTINGS_SCHEMA_CORE_SPECIFICATIONS.md` |
+| UI/Accessibility | `UI_INTERFACE_CORE_SPECIFICATIONS.md` |
+| Text Input | `BRAILLE_TEXT_INPUT_AND_LANGUAGE_SPECIFICATIONS.md` |
+| Translation | `LIBLOUIS_TRANSLATION_CORE_SPECIFICATIONS.md` |
+| Geometry | `SURFACE_DIMENSIONS_SPECIFICATIONS.md` |
+| Dot Shapes | `BRAILLE_DOT_ADJUSTMENTS_SPECIFICATIONS.md` |
+| Indicators | `RECESS_INDICATOR_SPECIFICATIONS.md` |
+| Export | `STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS.md` |
+| Caching | `CACHING_SYSTEM_CORE_SPECIFICATIONS.md` |
+
+---
+
 ## Git Commit and Push Workflow
 
 When the user asks to commit and/or push code to GitHub (including phrases like "prepare a commit", "prepare a commit and push", "commit and push", "push to github", etc.):

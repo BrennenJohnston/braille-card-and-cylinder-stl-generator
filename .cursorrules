@@ -4,9 +4,9 @@
 
 When the user asks to commit and/or push code to GitHub:
 
-1. **Do NOT execute git commands directly** - There is a known bug with Cursor that prevents git commit and push operations from working properly through the IDE.
+**Preferred approach: Prepare commands for manual execution** - This method has proven reliable (successful commit 2024-12-06). While Cursor's direct git execution may have inconsistent output display, preparing commands for manual terminal execution ensures the user has full visibility and control.
 
-2. **Instead, prepare the commands for manual execution:**
+1. **Prepare the commands for manual execution:**
    - Check git status to identify modified, staged, and untracked files
    - Review the changes using git diff
    - Check recent commit history to follow the repository's commit message style
@@ -16,21 +16,23 @@ When the user asks to commit and/or push code to GitHub:
      - Follows the repository's existing commit message conventions
    - Identify the current branch and remote tracking branch
 
-3. **Provide ready-to-use PowerShell commands:**
+2. **Provide ready-to-use PowerShell commands:**
    ```powershell
    cd "c:\Users\WATAP\Documents\github\braille-card-and-cylinder-stl-generator"
 
-   git add [files to stage]
+   git add -A
 
    git commit -m "Commit message here"
 
    git push origin [branch-name]
    ```
 
-4. **Include clear instructions:**
+3. **Include clear instructions:**
    - Explain what each command does
    - Tell the user to copy and paste the commands into their terminal
    - Mention that they can modify the commit message if needed before executing
+
+**Note:** As of 2024-12-06, manual execution of prepared git commands has been verified to work successfully on the first attempt when pre-commit hooks don't require file modifications.
 
 ## Pre-Commit Hook Failure Workaround
 

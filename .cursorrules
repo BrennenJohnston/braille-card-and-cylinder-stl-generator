@@ -2,7 +2,7 @@
 
 ## Git Commit and Push Workflow
 
-When the user asks to commit and/or push code to GitHub:
+When the user asks to commit and/or push code to GitHub (including phrases like "prepare a commit", "prepare a commit and push", "commit and push", "push to github", etc.):
 
 **Preferred approach: Prepare commands for manual execution** - This method has proven reliable (successful commit 2024-12-06). While Cursor's direct git execution may have inconsistent output display, preparing commands for manual terminal execution ensures the user has full visibility and control.
 

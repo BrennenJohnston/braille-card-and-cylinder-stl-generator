@@ -548,6 +548,9 @@ def extract_cylinder_geometry_spec(
                 if original_lines and row_num < len(original_lines):
                     orig = (original_lines[row_num] or '').strip()
                     first_char = orig[0] if orig else ''
+                    logger.info(
+                        f"Row {row_num}: original_line='{orig}', first_char='{first_char}', isalnum={first_char and (first_char.isalpha() or first_char.isdigit())}"
+                    )
                     if first_char and (first_char.isalpha() or first_char.isdigit()):
                         char_spec = _create_cylinder_marker_spec(
                             char_col_angle,
@@ -560,6 +563,7 @@ def extract_cylinder_geometry_spec(
                             char=first_char.upper(),
                             plate_type='positive',
                         )
+                        logger.info(f"Row {row_num}: Created character marker for '{first_char.upper()}'")
                     else:
                         char_spec = _create_cylinder_marker_spec(
                             char_col_angle,
@@ -571,6 +575,7 @@ def extract_cylinder_geometry_spec(
                             row_num,
                             plate_type='positive',
                         )
+                        logger.info(f'Row {row_num}: Created rectangle marker (non-alphanumeric)')
                 else:
                     char_spec = _create_cylinder_marker_spec(
                         char_col_angle,
@@ -582,6 +587,7 @@ def extract_cylinder_geometry_spec(
                         row_num,
                         plate_type='positive',
                     )
+                    logger.info(f'Row {row_num}: Created rectangle marker (no original_lines)')
                 spec['markers'].append(char_spec)
 
             # Process braille characters (dots) only if the row has braille

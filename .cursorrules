@@ -1,0 +1,40 @@
+# Cursor Rules for Braille Card and Cylinder STL Generator
+
+## Git Commit and Push Workflow
+
+When the user asks to commit and/or push code to GitHub:
+
+1. **Do NOT execute git commands directly** - There is a known bug with Cursor that prevents git commit and push operations from working properly through the IDE.
+
+2. **Instead, prepare the commands for manual execution:**
+   - Check git status to identify modified, staged, and untracked files
+   - Review the changes using git diff
+   - Check recent commit history to follow the repository's commit message style
+   - Draft an appropriate commit message that:
+     - Summarizes the nature of changes (feature, enhancement, bug fix, refactoring, docs, etc.)
+     - Is concise (1-2 sentences for simple changes, or multi-line for complex changes)
+     - Follows the repository's existing commit message conventions
+   - Identify the current branch and remote tracking branch
+
+3. **Provide ready-to-use PowerShell commands:**
+   ```powershell
+   cd "c:\Users\WATAP\Documents\github\braille-card-and-cylinder-stl-generator"
+
+   git add [files to stage]
+
+   git commit -m "Commit message here"
+
+   git push origin [branch-name]
+   ```
+
+4. **Include clear instructions:**
+   - Explain what each command does
+   - Tell the user to copy and paste the commands into their terminal
+   - Mention that they can modify the commit message if needed before executing
+
+## Additional Git Guidelines
+
+- Always check for sensitive information before preparing commits
+- Ensure commit messages are descriptive and follow conventional commit style when appropriate
+- For large changesets, consider breaking into multiple logical commits
+- Always verify the correct branch before pushing

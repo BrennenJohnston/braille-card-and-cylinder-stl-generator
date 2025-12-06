@@ -2450,7 +2450,11 @@
         let workerRequestId = 0;
         let useClientSideCSG = true; // Feature flag
 
-        // Initialize CSG worker
+        // Manifold CSG Worker for cylinders (guaranteed manifold output)
+        let manifoldWorker = null;
+        let manifoldWorkerReady = false;
+
+        // Initialize standard CSG worker (three-bvh-csg based)
         function initCSGWorker() {
             if (csgWorker || !useClientSideCSG) return;
 
@@ -2481,6 +2485,38 @@
             } catch (error) {
                 log.warn('Failed to initialize CSG Worker, falling back to server:', error);
                 useClientSideCSG = false;
+            }
+        }
+
+        // Initialize Manifold CSG worker for cylinders
+        function initManifoldWorker() {
+            if (manifoldWorker) return;
+
+            try {
+                console.log('Frontend: Initializing Manifold CSG Worker...');
+                manifoldWorker = new Worker('/static/workers/csg-worker-manifold.js', { type: 'module' });
+
+                manifoldWorker.onmessage = function(event) {
+                    const { type, error, stack } = event.data;
+                    if (type === 'ready') {
+                        manifoldWorkerReady = true;
+                        console.log('Frontend: ✓ Manifold CSG Worker initialized and ready (for cylinders)');
+                    } else if (type === 'init_error') {
+                        console.warn('Frontend: ✗ Manifold CSG Worker initialization failed:', error);
+                        console.warn('Frontend: Manifold worker will not be used, falling back to standard worker');
+                        manifoldWorkerReady = false;
+                    }
+                };
+
+                manifoldWorker.onerror = function(error) {
+                    console.error('Frontend: ✗ Manifold CSG Worker error:', error.message || error);
+                    console.error('Frontend: Error details:', error);
+                    manifoldWorkerReady = false;
+                };
+
+            } catch (error) {
+                console.error('Frontend: ✗ Failed to initialize Manifold CSG Worker:', error);
+                manifoldWorkerReady = false;
             }
         }
 
@@ -2516,13 +2552,30 @@
                 const spec = await specRes.json();
                 log.debug('Geometry spec received:', spec);
 
+                // Determine which worker to use based on shape type
+                // Use Manifold worker for cylinders (guaranteed manifold output)
+                // Use standard worker for flat cards (faster, simpler geometry)
+                const isCylinder = spec.shape_type === 'cylinder';
+                console.log('Frontend: Shape type:', spec.shape_type, '| Is cylinder:', isCylinder);
+                console.log('Frontend: Manifold worker ready:', manifoldWorkerReady);
+
+                const useManifold = isCylinder && manifoldWorkerReady;
+                const activeWorker = useManifold ? manifoldWorker : csgWorker;
+                const workerName = useManifold ? 'Manifold' : 'Standard';
+
+                if (isCylinder && !manifoldWorkerReady) {
+                    console.warn('Frontend: ⚠ Manifold worker NOT READY for cylinder - using standard worker (WILL have non-manifold edges)');
+                }
+
+                console.log(`Frontend: >>> Using ${workerName} CSG worker for ${spec.shape_type} generation <<<`);
+
                 // Send to worker
                 const requestId = ++workerRequestId;
 
                 return new Promise((resolve, reject) => {
                     const timeout = setTimeout(() => {
                         reject(new Error('Worker timeout'));
-                    }, 120000); // 2 minute timeout
+                    }, 180000); // 3 minute timeout for Manifold (larger meshes)
 
                     const handler = function(event) {
                         const { type, requestId: respId, geometry, stl, error } = event.data;
@@ -2530,21 +2583,54 @@
                         if (respId !== requestId) return; // Not our response
 
                         clearTimeout(timeout);
-                        csgWorker.removeEventListener('message', handler);
+                        activeWorker.removeEventListener('message', handler);
 
                         if (type === 'success') {
-                            log.info('Client-side CSG generation successful');
+                            console.log(`Frontend: ✓ ${workerName} CSG generation successful`);
+                            if (useManifold) {
+                                console.log('Frontend: ✓ Mesh was generated with Manifold - should be watertight with 0 non-manifold edges');
+                            }
                             resolve({ geometry, stl });
                         } else if (type === 'error') {
-                            log.error('CSG Worker error:', error);
-                            reject(new Error(error));
+                            console.error(`Frontend: ✗ ${workerName} CSG Worker error:`, error);
+
+                            // If Manifold failed, try falling back to standard worker
+                            if (useManifold && workerReady) {
+                                log.warn('Manifold worker failed, retrying with standard worker');
+                                activeWorker.removeEventListener('message', handler);
+                                clearTimeout(timeout);
+
+                                // Retry with standard worker
+                                const retryId = ++workerRequestId;
+                                const retryTimeout = setTimeout(() => {
+                                    reject(new Error('Standard worker timeout after Manifold fallback'));
+                                }, 120000);
+
+                                const retryHandler = function(retryEvent) {
+                                    const { type: retryType, requestId: retryRespId, geometry: retryGeom, stl: retryStl, error: retryError } = retryEvent.data;
+                                    if (retryRespId !== retryId) return;
+                                    clearTimeout(retryTimeout);
+                                    csgWorker.removeEventListener('message', retryHandler);
+                                    if (retryType === 'success') {
+                                        log.info('Standard CSG fallback successful (may have non-manifold edges)');
+                                        resolve({ geometry: retryGeom, stl: retryStl });
+                                    } else {
+                                        reject(new Error(retryError));
+                                    }
+                                };
+
+                                csgWorker.addEventListener('message', retryHandler);
+                                csgWorker.postMessage({ type: 'generate', spec: spec, requestId: retryId });
+                            } else {
+                                reject(new Error(error));
+                            }
                         }
                     };
 
-                    csgWorker.addEventListener('message', handler);
+                    activeWorker.addEventListener('message', handler);
 
                     // Send generation request
-                    csgWorker.postMessage({
+                    activeWorker.postMessage({
                         type: 'generate',
                         spec: spec,
                         requestId: requestId
@@ -2560,9 +2646,10 @@
             }
         }
 
-        // Initialize worker on page load
+        // Initialize workers on page load
         if (typeof Worker !== 'undefined') {
             initCSGWorker();
+            initManifoldWorker(); // Initialize Manifold worker for cylinders
         } else {
             log.warn('Web Workers not supported, client-side CSG disabled');
             useClientSideCSG = false;

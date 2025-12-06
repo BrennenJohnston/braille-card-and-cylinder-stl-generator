@@ -300,9 +300,16 @@ def add_security_headers(response):
     # Also allow generic Vercel Blob CDN wildcard as a fallback if no env set
     if not blob_base:
         connect_sources.append('https://*.vercel-storage.com')
+    # Allow CDN sources for manifold-3d WASM loading
+    connect_sources.append('https://cdn.jsdelivr.net')
+    connect_sources.append('https://unpkg.com')
     csp_policy = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://vercel.live; "
+        # 'wasm-unsafe-eval' allows WebAssembly compilation (more secure than full unsafe-eval)
+        # Fallback to 'unsafe-eval' for older browsers that don't support wasm-unsafe-eval
+        "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' 'unsafe-eval' "
+        'https://fonts.googleapis.com https://vercel.live '
+        'https://cdn.jsdelivr.net https://unpkg.com; '
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data: blob:; "

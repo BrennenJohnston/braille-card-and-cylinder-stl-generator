@@ -71,47 +71,39 @@ def extract_card_geometry_spec(
             # Add markers if enabled
             if getattr(settings, 'indicator_shapes', 1):
                 x_pos_first = settings.left_margin + settings.braille_x_adjust
+                x_pos_last = (
+                    settings.left_margin
+                    + ((settings.grid_columns - 1) * settings.cell_spacing)
+                    + settings.braille_x_adjust
+                )
 
-                # Determine marker type
-                if original_lines and row_num < len(original_lines):
-                    orig = (original_lines[row_num] or '').strip()
-                    indicator_char = orig[0] if orig else ''
-                    if indicator_char and (indicator_char.isalpha() or indicator_char.isdigit()):
-                        spec['markers'].append(
-                            {
-                                'type': 'character',
-                                'char': indicator_char,
-                                'x': x_pos_first,
-                                'y': y_pos,
-                                'z': settings.card_thickness,
-                                'size': settings.dot_spacing * 1.5,
-                                'depth': 1.0,
-                            }
-                        )
-                    else:
-                        spec['markers'].append(
-                            {
-                                'type': 'rect',
-                                'x': x_pos_first + settings.dot_spacing / 2,
-                                'y': y_pos,
-                                'z': settings.card_thickness,
-                                'width': settings.dot_spacing,
-                                'height': 2 * settings.dot_spacing,
-                                'depth': 0.5,
-                            }
-                        )
-                else:
-                    spec['markers'].append(
-                        {
-                            'type': 'rect',
-                            'x': x_pos_first + settings.dot_spacing / 2,
-                            'y': y_pos,
-                            'z': settings.card_thickness,
-                            'width': settings.dot_spacing,
-                            'height': 2 * settings.dot_spacing,
-                            'depth': 0.5,
-                        }
-                    )
+                # Universal counter plates ALWAYS use rectangle markers at column 0
+                # (never character indicators) - this matches backend.py behavior
+                # in create_universal_counter_plate_2d() which uses create_line_marker_polygon()
+                spec['markers'].append(
+                    {
+                        'type': 'rect',
+                        'x': x_pos_first + settings.dot_spacing / 2,
+                        'y': y_pos,
+                        'z': settings.card_thickness,
+                        'width': settings.dot_spacing,
+                        'height': 2 * settings.dot_spacing,
+                        'depth': 0.5,
+                    }
+                )
+
+                # Triangle marker at last column (grid_columns - 1)
+                # This matches backend.py create_universal_counter_plate_2d() behavior
+                spec['markers'].append(
+                    {
+                        'type': 'triangle',
+                        'x': x_pos_last,
+                        'y': y_pos,
+                        'z': settings.card_thickness,
+                        'size': settings.dot_spacing,
+                        'depth': 0.6,
+                    }
+                )
 
             # Add all dots for all columns
             for col_num in range(settings.grid_columns):

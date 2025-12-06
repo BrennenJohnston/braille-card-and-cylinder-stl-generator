@@ -7,6 +7,8 @@ let THREE, Brush, Evaluator, SUBTRACTION, ADDITION, STLExporter;
 let FontLoader, TextGeometry, LoadedFont = null;
 let evaluator, stlExporter;
 let initError = null;
+let ManifoldModule = null;
+let manifoldReady = false;
 
 try {
     // Dynamic imports to catch any loading errors
@@ -75,6 +77,33 @@ try {
     // Initialize evaluator and exporter
     evaluator = new Evaluator();
     stlExporter = new STLExporter();
+
+    // Load manifold3d WASM for mesh repair (optional, non-fatal)
+    try {
+        const manifoldUrls = [
+            'https://cdn.jsdelivr.net/npm/manifold-3d@2.5.1/manifold.js',
+            'https://unpkg.com/manifold-3d@2.5.1/manifold.js'
+        ];
+
+        for (const url of manifoldUrls) {
+            try {
+                ManifoldModule = await import(url);
+                // Initialize WASM
+                await ManifoldModule.default();
+                manifoldReady = true;
+                console.log('CSG Worker: Manifold3D WASM loaded for mesh repair from', url);
+                break;
+            } catch (e) {
+                // Try next URL
+            }
+        }
+
+        if (!manifoldReady) {
+            console.warn('CSG Worker: Manifold3D not available from any CDN, mesh repair disabled');
+        }
+    } catch (e) {
+        console.warn('CSG Worker: Manifold3D not available, mesh repair disabled:', e.message);
+    }
 
     console.log('CSG Worker: All modules loaded successfully');
 } catch (error) {
@@ -879,6 +908,67 @@ function processGeometrySpec(spec) {
 }
 
 /**
+ * Repair geometry using Manifold3D to fix non-manifold edges
+ */
+function repairGeometryWithManifold(geometry) {
+    if (!manifoldReady || !ManifoldModule) {
+        console.warn('CSG Worker: Manifold not available, skipping repair');
+        return geometry;
+    }
+
+    try {
+        const { Manifold, Mesh } = ManifoldModule;
+
+        // Ensure geometry is non-indexed for Manifold
+        const nonIndexed = geometry.index ? geometry.toNonIndexed() : geometry;
+        const positions = nonIndexed.attributes.position.array;
+
+        // Manifold expects triangles, so positions.length should be divisible by 9 (3 vertices * 3 coords)
+        if (positions.length % 9 !== 0) {
+            console.warn('CSG Worker: Invalid geometry for Manifold repair, skipping');
+            return geometry;
+        }
+
+        // Convert to Manifold mesh format
+        const numVerts = positions.length / 3;
+        const triVerts = new Uint32Array(numVerts);
+        for (let i = 0; i < numVerts; i++) {
+            triVerts[i] = i;
+        }
+
+        const mesh = new Mesh({
+            numProp: 3,
+            vertProperties: new Float32Array(positions),
+            triVerts: triVerts
+        });
+
+        // Create Manifold (automatically repairs non-manifold edges)
+        const manifold = new Manifold(mesh);
+
+        // Export repaired mesh
+        const repairedMesh = manifold.getMesh();
+
+        // Convert back to Three.js BufferGeometry
+        const repairedGeometry = new THREE.BufferGeometry();
+        repairedGeometry.setAttribute('position',
+            new THREE.Float32BufferAttribute(repairedMesh.vertProperties, 3));
+        repairedGeometry.setIndex(Array.from(repairedMesh.triVerts));
+        repairedGeometry.computeVertexNormals();
+
+        // Clean up Manifold objects (manual memory management)
+        manifold.delete();
+        mesh.delete();
+
+        console.log('CSG Worker: Mesh repaired with Manifold3D');
+        return repairedGeometry;
+    } catch (error) {
+        console.error('CSG Worker: Manifold repair failed:', error);
+        console.warn('CSG Worker: Returning unrepaired geometry');
+        return geometry;
+    }
+}
+
+/**
  * Export geometry to binary STL
  */
 function exportToSTL(geometry) {
@@ -914,7 +1004,10 @@ self.onmessage = function(event) {
             console.log('CSG Worker: Starting generation for request', requestId);
 
             // Process geometry
-            const geometry = processGeometrySpec(spec);
+            let geometry = processGeometrySpec(spec);
+
+            // Repair non-manifold edges before export
+            geometry = repairGeometryWithManifold(geometry);
 
             // Export to STL
             const stlData = exportToSTL(geometry);

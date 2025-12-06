@@ -673,9 +673,9 @@ function createCylinderShell(spec) {
         console.log(`CSG Worker: polygon_points[0] = (${pt0.x.toFixed(2)}, ${pt0.y.toFixed(2)}) angle=${angle.toFixed(1)}°`);
     }
 
-    // Validate essential parameters
-    const validRadius = (radius && radius > 0) ? radius : 30;
-    const validHeight = (height && height > 0) ? height : 80;
+    // Validate essential parameters (defaults match UI: diameter 30.75mm, height 52mm)
+    const validRadius = (radius && radius > 0) ? radius : 15.375;  // 30.75 / 2
+    const validHeight = (height && height > 0) ? height : 52;
 
     // Create outer cylinder
     const outerGeom = new THREE.CylinderGeometry(validRadius, validRadius, validHeight, 64);

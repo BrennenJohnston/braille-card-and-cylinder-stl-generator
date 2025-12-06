@@ -360,12 +360,12 @@ def extract_cylinder_geometry_spec(
     if cylinder_params is None:
         cylinder_params = {}
 
-    diameter = float(cylinder_params.get('diameter', cylinder_params.get('diameter_mm', 60.0)))
+    diameter = float(cylinder_params.get('diameter', cylinder_params.get('diameter_mm', 30.75)))
     height = float(cylinder_params.get('height', cylinder_params.get('height_mm', settings.card_height)))
-    thickness = float(cylinder_params.get('thickness', 3.0))
+    thickness = float(cylinder_params.get('wall_thickness', cylinder_params.get('thickness', 2.0)))
     polygonal_cutout_radius = float(cylinder_params.get('polygonal_cutout_radius_mm', 0))
     polygonal_cutout_sides = int(cylinder_params.get('polygonal_cutout_sides', 12) or 12)
-    seam_offset = float(cylinder_params.get('seam_offset_deg', 0))
+    seam_offset = float(cylinder_params.get('seam_offset_deg', 355))
 
     logger.info(f'Cylinder seam_offset_deg received: {seam_offset} (rotates polygon cutout ONLY, not braille content)')
 

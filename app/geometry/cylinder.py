@@ -624,14 +624,14 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
 
     if cylinder_params is None:
         cylinder_params = {
-            'diameter_mm': 31.35,
+            'diameter_mm': 30.75,  # Default matches UI
             'height_mm': settings.card_height,
             'polygonal_cutout_radius_mm': 13,
             'polygonal_cutout_sides': 12,
             'seam_offset_deg': 355,
         }
 
-    diameter = float(cylinder_params.get('diameter_mm', 31.35))
+    diameter = float(cylinder_params.get('diameter_mm', 30.75))
     height = float(cylinder_params.get('height_mm', settings.card_height))
     polygonal_cutout_radius = float(cylinder_params.get('polygonal_cutout_radius_mm', 0))
     polygonal_cutout_sides = int(cylinder_params.get('polygonal_cutout_sides', 12) or 12)
@@ -870,14 +870,14 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
     """
     if cylinder_params is None:
         cylinder_params = {
-            'diameter_mm': 31.35,
+            'diameter_mm': 30.75,  # Default matches UI
             'height_mm': settings.card_height,
             'polygonal_cutout_radius_mm': 13,
             'polygonal_cutout_sides': 12,
             'seam_offset_deg': 355,
         }
 
-    diameter = float(cylinder_params.get('diameter_mm', 31.35))
+    diameter = float(cylinder_params.get('diameter_mm', 30.75))
     height = float(cylinder_params.get('height_mm', settings.card_height))
     polygonal_cutout_radius = float(cylinder_params.get('polygonal_cutout_radius_mm', 0))
     polygonal_cutout_sides = int(cylinder_params.get('polygonal_cutout_sides', 12) or 12)
@@ -1299,14 +1299,14 @@ def create_cylinder_counter_plate_2d(settings, cylinder_params=None):
     """
     if cylinder_params is None:
         cylinder_params = {
-            'diameter_mm': 31.35,
+            'diameter_mm': 30.75,  # Default matches UI
             'height_mm': settings.card_height,
             'polygonal_cutout_radius_mm': 13,
             'polygonal_cutout_sides': 12,
             'seam_offset_deg': 355,
         }
 
-    diameter = float(cylinder_params.get('diameter_mm', 31.35))
+    diameter = float(cylinder_params.get('diameter_mm', 30.75))
     height = float(cylinder_params.get('height_mm', settings.card_height))
     polygonal_cutout_radius = float(cylinder_params.get('polygonal_cutout_radius_mm', 0))
     polygonal_cutout_sides = int(cylinder_params.get('polygonal_cutout_sides', 12) or 12)

@@ -59,7 +59,7 @@ class CylinderParams:
     Provides typed, validated cylinder parameters with sensible defaults.
     """
 
-    diameter_mm: float = 31.35
+    diameter_mm: float = 30.75  # Default matches UI
     height_mm: float | None = None  # If None, uses card_height from settings
     wall_thickness: float = 2.0
     seam_offset_deg: float = 355.0
@@ -70,7 +70,7 @@ class CylinderParams:
     def from_dict(data: dict, card_height: float = 52.0) -> 'CylinderParams':
         """Create CylinderParams from dictionary with defaults."""
         return CylinderParams(
-            diameter_mm=float(data.get('diameter_mm', data.get('diameter', 31.35))),
+            diameter_mm=float(data.get('diameter_mm', data.get('diameter', 30.75))),
             height_mm=float(data.get('height_mm', data.get('height', card_height))),
             wall_thickness=float(data.get('wall_thickness', 2.0)),
             seam_offset_deg=float(data.get('seam_offset_deg', data.get('seam_offset_degrees', 355.0))),

@@ -835,7 +835,7 @@ def _create_cylinder_marker_spec(
             'radius': radius,
             'char': char or 'A',
             'size': settings.dot_spacing * 1.5,
-            'depth': 1.0,
+            'depth': 0.5,
             'is_recess': is_recess,
         }
     else:  # rect

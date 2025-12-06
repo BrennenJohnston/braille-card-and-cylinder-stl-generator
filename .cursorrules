@@ -32,9 +32,37 @@ When the user asks to commit and/or push code to GitHub:
    - Tell the user to copy and paste the commands into their terminal
    - Mention that they can modify the commit message if needed before executing
 
+## Pre-Commit Hook Failure Workaround
+
+This repository uses pre-commit hooks that automatically fix files (trailing whitespace, end-of-file newlines, ruff formatting). **When the hooks fix files, the commit will fail** because the modified files are no longer staged.
+
+**Symptom:**
+```
+[WARNING] Unstaged files detected.
+trim trailing whitespace.................................................Failed
+- files were modified by this hook
+fix end of files.........................................................Failed
+- files were modified by this hook
+ruff format..............................................................Failed
+- files were modified by this hook
+```
+
+**Solution - Re-stage and commit again:**
+```powershell
+# After a failed commit due to pre-commit hooks fixing files:
+git add -A
+git commit -m "Your commit message"
+
+# The second attempt should succeed because the hooks already fixed the files
+```
+
+**Always include this note when providing commit commands:**
+> If the commit fails with "files were modified by this hook", run `git add -A` and `git commit -m "..."` again. The second attempt will succeed.
+
 ## Additional Git Guidelines
 
 - Always check for sensitive information before preparing commits
 - Ensure commit messages are descriptive and follow conventional commit style when appropriate
 - For large changesets, consider breaking into multiple logical commits
 - Always verify the correct branch before pushing
+- Always use `git add -A` to stage all changes (including files fixed by pre-commit hooks)

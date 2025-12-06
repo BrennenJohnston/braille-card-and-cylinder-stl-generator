@@ -213,12 +213,16 @@ Shows the first alphanumeric character of each row as a tactile indicator, allow
 ```
 Shape: Extruded font character (A-Z, 0-9)
 
-Dimensions:
-- Character Height: 2 × dot_spacing + 4.375mm
-  (= 9.375mm for default dot_spacing of 2.5mm)
-- Character Width: dot_spacing × 0.8 + 2.6875mm
-  (= 4.6875mm for default dot_spacing of 2.5mm)
-- Recess Depth: 1.0mm (DEEPER than other markers)
+Dimensions (fit within braille cell boundary):
+- Character Width: 1 × dot_spacing (horizontal/tangential direction)
+  (= 2.5mm for default dot_spacing of 2.5mm)
+- Character Height: 2 × dot_spacing (vertical/cylinder axis direction)
+  (= 5.0mm for default dot_spacing of 2.5mm)
+- Recess Depth: 0.5mm (matches rectangle marker depth)
+
+Viewing Orientation (from outer cylinder surface, cylinder axis vertical):
+- Width = left-right direction = dot_spacing
+- Height = top-bottom direction = 2 × dot_spacing
 
 Center Position (given cell center at x, y):
 - Character centered at: (x + dot_spacing/2, y)
@@ -227,14 +231,14 @@ Center Position (given cell center at x, y):
 Font:
 - Primary: "Arial Rounded MT Bold" (tactile-friendly)
 - Fallback: "monospace, bold"
-- Scaling: 0.8 × min(target_width/actual_width, target_height/actual_height)
+- Scaling: Fit character within cell boundary
 ```
 
 ### Rendering Methods
 
 1. **Python Backend**: Uses matplotlib TextPath
 2. **Standard CSG Worker**: Uses Three.js TextGeometry with loaded font
-3. **Manifold CSG Worker**: Creates simplified box with notch (font not available)
+3. **Manifold CSG Worker**: Uses 8x8 bitmap font converted to box primitives
 
 ### Fallback Behavior
 
@@ -264,10 +268,161 @@ If character rendering fails (no font, non-alphanumeric character, rendering err
 | `backend.py` | `_build_character_polygon()` | 476-563 |
 | `app/geometry/braille_layout.py` | `create_character_shape_polygon()` | 171-213 |
 | `app/geometry/braille_layout.py` | `create_character_shape_3d()` | 317-393 |
-| `geometry_spec.py` | Character marker spec generation | 160-174, 556-593 |
+| `geometry_spec.py` | Character marker spec generation | 828-840 |
 | `csg-worker.js` | `createCharacterMarker()` | 642-651 |
 | `csg-worker.js` | `createCylinderCharacterMarker()` | 530-604 |
-| `csg-worker-manifold.js` | `createCylinderCharacterMarkerManifold()` | 482-546 |
+| `csg-worker-manifold.js` | `createLetterShapeManifold()` | 566-635 |
+| `csg-worker-manifold.js` | `createCylinderCharacterMarkerManifold()` | 985-1065 |
+
+---
+
+## 3.1 Manifold WASM Character Generation (Detailed Specification)
+
+This section provides detailed technical specifications for the Manifold WASM character generation process, enabling future iterations to replicate or modify this architecture correctly.
+
+### Overview
+
+The Manifold WASM process cannot use font rendering libraries (matplotlib, Three.js TextGeometry) because it runs in a Web Worker with only the Manifold 3D library available. Instead, characters are generated using an **8x8 bitmap font converted to box primitives**.
+
+### Bitmap Font Format
+
+```javascript
+// Font data structure: FONT8X8_BASIC object
+// Each character maps to an array of 8 bytes (one per row)
+// Each byte represents one row of pixels (8 bits = 8 columns)
+// Bit 0 (LSB) = leftmost pixel, Bit 7 (MSB) = rightmost pixel
+
+'T': [
+    0x7E,  // Row 0: .██████. (top bar)
+    0x18,  // Row 1: ...██... (stem)
+    0x18,  // Row 2: ...██...
+    0x18,  // Row 3: ...██...
+    0x18,  // Row 4: ...██...
+    0x18,  // Row 5: ...██...
+    0x18,  // Row 6: ...██...
+    0x00   // Row 7: ........ (empty)
+]
+```
+
+### Supported Characters
+
+- **Letters**: A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z
+- **Numbers**: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+- **Unsupported characters**: Fall back to rectangle marker
+
+### Font Style
+
+- **Type**: Clean sans-serif geometric font
+- **Grid**: 8 rows × 7 effective columns (column 8 typically empty)
+- **Stroke Width**: 2 pixels typical
+- **Design Principle**: No serifs, no decorative flourishes, uniform stroke widths
+
+### Pixel-to-Box Conversion Algorithm
+
+```
+Input: Character, target width, target height, depth
+Output: Manifold object (union of box primitives)
+
+1. Look up character in FONT8X8_BASIC dictionary
+2. Calculate pixel dimensions:
+   - pixelWidth = targetWidth / 7 (7 effective columns)
+   - pixelHeight = targetHeight / 8 (8 rows)
+
+3. For each row (0-7) and column (0-6):
+   - Check if bit is set: (rowData >> col) & 1
+   - If set, create a Manifold box at calculated position
+
+4. CRITICAL - Horizontal Mirroring:
+   - posX = +halfWidth - (col + 0.5) × pixelWidth
+   - This mirrors the letter so it appears correct when viewed
+     from OUTSIDE the cylinder surface
+   - Without mirroring, letters appear reversed (like reading
+     through glass from behind)
+
+5. Vertical positioning (no mirroring needed):
+   - posZ = +halfHeight - (row + 0.5) × pixelHeight
+   - Row 0 at top (+Z), Row 7 at bottom (-Z)
+
+6. Union all pixel boxes into single Manifold object
+```
+
+### Coordinate System (Manifold Z-up)
+
+```
+Letter is created in XZ plane:
+- X axis: Width (tangential direction on cylinder)
+- Y axis: Depth (radial direction - points outward after rotation)
+- Z axis: Height (along cylinder axis)
+
+Origin: Center of character bounding box
+
+After creation:
+1. Rotate around Z: (theta - 90°) to align Y with radial direction
+2. Translate to cylinder surface position
+```
+
+### Cylinder Surface Placement
+
+```javascript
+// Theta adjustment (CRITICAL for coordinate system compatibility)
+const adjustedTheta = -theta;  // Negate to match Three.js convention
+
+// Rotation to point depth radially outward
+const thetaDeg = adjustedTheta * 180 / Math.PI;
+letterShape.rotate(0, 0, thetaDeg - 90);
+
+// Radial position (recess into surface)
+const radialOffset = cylRadius - depth / 2;
+
+// Final position
+posX = radialOffset × cos(adjustedTheta)
+posY = radialOffset × sin(adjustedTheta)
+posZ = y_local  // Height along cylinder axis
+```
+
+### Critical Implementation Notes
+
+1. **Theta Negation**: The theta angle must be negated (`-theta`) to match Three.js coordinate conventions. Without this, characters appear at wrong angular positions.
+
+2. **Horizontal Mirroring**: Letters must be mirrored horizontally during pixel placement because they are viewed from outside the cylinder. The mirroring formula is:
+   ```
+   posX = +halfWidth - (col + 0.5) × pixelWidth  // Mirrored
+   ```
+   Not:
+   ```
+   posX = -halfWidth + (col + 0.5) × pixelWidth  // Non-mirrored (WRONG)
+   ```
+
+3. **Depth Direction**: The Y axis becomes the radial (depth) direction after rotation. Positive Y points outward from cylinder center.
+
+4. **Recess Positioning**: For recessed markers, the radial offset is `cylRadius - depth/2` to center the marker geometry at the correct depth below the surface.
+
+### Dimension Calculations
+
+```javascript
+// Input from geometry_spec.py
+size = dot_spacing × 1.5  // Passed in spec
+
+// Manifold worker calculations
+dotSpacing = size / 1.5   // Recover original dot_spacing
+charWidth = dotSpacing    // = dot_spacing (fits cell width)
+charHeight = 2 × dotSpacing  // = 2 × dot_spacing (fits cell height)
+depth = 0.5               // Default recess depth in mm
+```
+
+### Error Handling and Fallback
+
+1. If character not in `FONT8X8_BASIC`: Return `null`, caller creates rectangle marker
+2. If Manifold operations fail: Catch exception, return rectangle marker with 0.5mm depth
+3. If parameters invalid (NaN theta, zero radius): Return `null` immediately
+
+### Testing Verification
+
+To verify correct character rendering:
+1. **Symmetrical letters** (A, H, I, M, O, T, U, V, W, X, Y, 0, 1, 8): Should appear identical regardless of mirroring
+2. **Asymmetrical letters** (B, C, D, E, F, G, J, K, L, N, P, Q, R, S, Z, 2-7, 9): Verify correct orientation
+3. **Letter "B"**: Vertical bar should be on LEFT side when viewing from outside cylinder
+4. **Letter "C"**: Opening should face RIGHT when viewing from outside cylinder
 
 ---
 
@@ -282,7 +437,7 @@ There is an intentional difference between the embossing plate and universal cou
 | **Dots** | Only active braille dots (raised) | ALL 6 dots per cell (recessed) |
 | **Column 0 Indicator** | Character OR Rectangle (based on first char) | **ALWAYS Rectangle** |
 | **Triangle at Last Column** | Yes (recessed) | Yes (recessed) |
-| **Recess Depth** | Variable (0.5-1.0mm per indicator type) | Unified depth (based on recess_shape) |
+| **Recess Depth** | 0.5-0.6mm per indicator type | Unified depth (based on recess_shape) |
 
 ### Rationale for Rectangle-Only on Counter Plates
 
@@ -366,8 +521,8 @@ All indicators on embossing plates are recesses (subtracted from the raised surf
 | Indicator Type | Depth | Notes |
 |----------------|-------|-------|
 | Triangle Marker | 0.6mm | Standard depth |
-| Rectangle Marker | 0.5mm | Fallback indicator depth |
-| Character Marker | 1.0mm | Deeper for tactile recognition |
+| Rectangle Marker | 0.5mm | Standard fallback depth |
+| Character Marker | 0.5mm | Matches rectangle marker depth |
 
 ### Universal Counter Plate (Negative) Depths
 
@@ -561,10 +716,13 @@ When implementing or modifying indicator code, verify:
 
 ### Character Marker
 - [ ] Only created when first character is alphanumeric
-- [ ] Depth is 1.0mm (deeper than other markers) on embossing plates
+- [ ] Depth is 0.5mm on embossing plates (matches rectangle)
+- [ ] Width = dot_spacing, Height = 2 × dot_spacing (fits within cell)
 - [ ] Falls back to rectangle on failure
 - [ ] NOT used on counter plate cylinders
 - [ ] NOT used on universal counter plates for CARDS
+- [ ] **Manifold WASM**: Letters horizontally mirrored for correct outside-cylinder viewing
+- [ ] **Manifold WASM**: Asymmetric letters (B, C, D, etc.) appear correctly oriented
 
 ### All Markers
 - [ ] Always SUBTRACTED (recessed), never added
@@ -613,6 +771,7 @@ When implementing or modifying indicator code, verify:
 |------|---------|---------|
 | 2024-10-11 | 1.0 | Initial documentation during Phase 0 refactoring |
 | 2024-12-06 | 2.0 | Expanded with Manifold WASM implementation details, coordinate system documentation, common bugs |
+| 2024-12-06 | 2.1 | Changed character marker depth from 1.0mm to 0.5mm; Added Section 3.1 with detailed Manifold WASM character generation specifications including bitmap font format, pixel-to-box conversion algorithm, horizontal mirroring requirements, and coordinate system details |
 
 ---
 

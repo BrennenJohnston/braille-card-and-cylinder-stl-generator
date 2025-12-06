@@ -502,44 +502,582 @@ function createCylinderRectMarkerManifold(spec) {
 }
 
 /**
+ * Clean Sans-Serif 8x8 Bitmap Font
+ *
+ * A minimal, geometric sans-serif font designed for clarity at small sizes.
+ * No serifs, no decorative flourishes - pure functional letterforms.
+ *
+ * Each character is an 8x8 bitmap represented as 8 bytes.
+ * Each byte represents one row (top to bottom), with bit 0 being the leftmost pixel.
+ * A set bit (1) means the pixel is "on" and should be rendered as a box.
+ *
+ * Visual guide for hex values:
+ *   0x00 = 00000000 = ........
+ *   0x18 = 00011000 = ...██...
+ *   0x3C = 00111100 = ..████..
+ *   0x7E = 01111110 = .██████.
+ *   0x66 = 01100110 = .██..██.
+ */
+const FONT8X8_BASIC = {
+    // Letters A-Z (Clean Sans-Serif)
+    'A': [
+        0x18,  // ...██...
+        0x3C,  // ..████..
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x7E,  // .██████.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x00   // ........
+    ],
+    'B': [
+        0x3E,  // .█████..
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x3E,  // .█████..
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x3E,  // .█████..
+        0x00   // ........
+    ],
+    'C': [
+        0x3C,  // ..████..
+        0x66,  // .██..██.
+        0x06,  // .....██.
+        0x06,  // .....██.
+        0x06,  // .....██.
+        0x66,  // .██..██.
+        0x3C,  // ..████..
+        0x00   // ........
+    ],
+    'D': [
+        0x1E,  // .████...
+        0x36,  // .██.██..
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x36,  // .██.██..
+        0x1E,  // .████...
+        0x00   // ........
+    ],
+    'E': [
+        0x7E,  // .██████.
+        0x06,  // .....██.
+        0x06,  // .....██.
+        0x3E,  // .█████..
+        0x06,  // .....██.
+        0x06,  // .....██.
+        0x7E,  // .██████.
+        0x00   // ........
+    ],
+    'F': [
+        0x7E,  // .██████.
+        0x06,  // .....██.
+        0x06,  // .....██.
+        0x3E,  // .█████..
+        0x06,  // .....██.
+        0x06,  // .....██.
+        0x06,  // .....██.
+        0x00   // ........
+    ],
+    'G': [
+        0x3C,  // ..████..
+        0x66,  // .██..██.
+        0x06,  // .....██.
+        0x76,  // .███.██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x3C,  // ..████..
+        0x00   // ........
+    ],
+    'H': [
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x7E,  // .██████.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x00   // ........
+    ],
+    'I': [
+        0x3C,  // ..████..
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x3C,  // ..████..
+        0x00   // ........
+    ],
+    'J': [
+        0x60,  // .....██.
+        0x60,  // .....██.
+        0x60,  // .....██.
+        0x60,  // .....██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x3C,  // ..████..
+        0x00   // ........
+    ],
+    'K': [
+        0x66,  // .██..██.
+        0x36,  // .██.██..
+        0x1E,  // .████...
+        0x0E,  // .███....
+        0x1E,  // .████...
+        0x36,  // .██.██..
+        0x66,  // .██..██.
+        0x00   // ........
+    ],
+    'L': [
+        0x06,  // .....██.
+        0x06,  // .....██.
+        0x06,  // .....██.
+        0x06,  // .....██.
+        0x06,  // .....██.
+        0x06,  // .....██.
+        0x7E,  // .██████.
+        0x00   // ........
+    ],
+    'M': [
+        0x63,  // ██...██.
+        0x77,  // ███.███.
+        0x7F,  // ███████.
+        0x6B,  // ██.█.██.
+        0x63,  // ██...██.
+        0x63,  // ██...██.
+        0x63,  // ██...██.
+        0x00   // ........
+    ],
+    'N': [
+        0x66,  // .██..██.
+        0x6E,  // .███.██.
+        0x7E,  // .██████.
+        0x76,  // .███.██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x00   // ........
+    ],
+    'O': [
+        0x3C,  // ..████..
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x3C,  // ..████..
+        0x00   // ........
+    ],
+    'P': [
+        0x3E,  // .█████..
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x3E,  // .█████..
+        0x06,  // .....██.
+        0x06,  // .....██.
+        0x06,  // .....██.
+        0x00   // ........
+    ],
+    'Q': [
+        0x3C,  // ..████..
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x76,  // .███.██.
+        0x3C,  // ..████..
+        0x60,  // .....██.
+        0x00   // ........
+    ],
+    'R': [
+        0x3E,  // .█████..
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x3E,  // .█████..
+        0x36,  // .██.██..
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x00   // ........
+    ],
+    'S': [
+        0x3C,  // ..████..
+        0x66,  // .██..██.
+        0x0C,  // ..██....
+        0x18,  // ...██...
+        0x30,  // ....██..
+        0x66,  // .██..██.
+        0x3C,  // ..████..
+        0x00   // ........
+    ],
+    'T': [
+        0x7E,  // .██████.
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x00   // ........
+    ],
+    'U': [
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x3C,  // ..████..
+        0x00   // ........
+    ],
+    'V': [
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x3C,  // ..████..
+        0x18,  // ...██...
+        0x00   // ........
+    ],
+    'W': [
+        0x63,  // ██...██.
+        0x63,  // ██...██.
+        0x63,  // ██...██.
+        0x6B,  // ██.█.██.
+        0x7F,  // ███████.
+        0x77,  // ███.███.
+        0x63,  // ██...██.
+        0x00   // ........
+    ],
+    'X': [
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x3C,  // ..████..
+        0x18,  // ...██...
+        0x3C,  // ..████..
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x00   // ........
+    ],
+    'Y': [
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x3C,  // ..████..
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x00   // ........
+    ],
+    'Z': [
+        0x7E,  // .██████.
+        0x60,  // .....██.
+        0x30,  // ....██..
+        0x18,  // ...██...
+        0x0C,  // ..██....
+        0x06,  // .....██.
+        0x7E,  // .██████.
+        0x00   // ........
+    ],
+    // Numbers 0-9 (Clean Sans-Serif)
+    '0': [
+        0x3C,  // ..████..
+        0x66,  // .██..██.
+        0x76,  // .███.██.
+        0x6E,  // .███.██.
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x3C,  // ..████..
+        0x00   // ........
+    ],
+    '1': [
+        0x18,  // ...██...
+        0x1C,  // ..███...
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x00   // ........
+    ],
+    '2': [
+        0x3C,  // ..████..
+        0x66,  // .██..██.
+        0x60,  // .....██.
+        0x30,  // ....██..
+        0x18,  // ...██...
+        0x0C,  // ..██....
+        0x7E,  // .██████.
+        0x00   // ........
+    ],
+    '3': [
+        0x3C,  // ..████..
+        0x66,  // .██..██.
+        0x60,  // .....██.
+        0x38,  // ...███..
+        0x60,  // .....██.
+        0x66,  // .██..██.
+        0x3C,  // ..████..
+        0x00   // ........
+    ],
+    '4': [
+        0x30,  // ....██..
+        0x38,  // ...███..
+        0x3C,  // ..████..
+        0x36,  // .██.██..
+        0x7E,  // .██████.
+        0x30,  // ....██..
+        0x30,  // ....██..
+        0x00   // ........
+    ],
+    '5': [
+        0x7E,  // .██████.
+        0x06,  // .....██.
+        0x3E,  // .█████..
+        0x60,  // .....██.
+        0x60,  // .....██.
+        0x66,  // .██..██.
+        0x3C,  // ..████..
+        0x00   // ........
+    ],
+    '6': [
+        0x38,  // ...███..
+        0x0C,  // ..██....
+        0x06,  // .....██.
+        0x3E,  // .█████..
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x3C,  // ..████..
+        0x00   // ........
+    ],
+    '7': [
+        0x7E,  // .██████.
+        0x60,  // .....██.
+        0x30,  // ....██..
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x18,  // ...██...
+        0x00   // ........
+    ],
+    '8': [
+        0x3C,  // ..████..
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x3C,  // ..████..
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x3C,  // ..████..
+        0x00   // ........
+    ],
+    '9': [
+        0x3C,  // ..████..
+        0x66,  // .██..██.
+        0x66,  // .██..██.
+        0x7C,  // ..█████.
+        0x60,  // .....██.
+        0x30,  // ....██..
+        0x1C,  // ..███...
+        0x00   // ........
+    ]
+};
+
+/**
+ * Create a letter shape from font8x8 bitmap data using Manifold box primitives
+ *
+ * Converts the 8x8 bitmap into Manifold boxes, one for each "on" pixel.
+ * The letter is created in the XZ plane (X=width, Z=height) with Y=depth.
+ * Origin is at the center of the bounding box.
+ *
+ * @param {string} char - Single character (A-Z, 0-9)
+ * @param {number} width - Total width of the character bounding box
+ * @param {number} height - Total height of the character bounding box
+ * @param {number} depth - Extrusion depth (Y direction)
+ * @returns {Object|null} Manifold object or null if character not supported
+ */
+function createLetterShapeManifold(char, width, height, depth) {
+    const c = (char || '').toUpperCase();
+
+    // Get the bitmap data for this character
+    const bitmap = FONT8X8_BASIC[c];
+    if (!bitmap) {
+        console.log(`createLetterShapeManifold: Character '${c}' not in font, falling back to rectangle`);
+        return null;
+    }
+
+    // Calculate pixel dimensions
+    // The font is 8x8, but we use 7x8 effective area (rightmost column often empty)
+    const gridCols = 7;  // Effective columns used in font8x8
+    const gridRows = 8;  // Rows in the font
+
+    const pixelW = width / gridCols;   // Width of each pixel box
+    const pixelH = height / gridRows;  // Height of each pixel box
+
+    // Half dimensions for centering
+    const halfW = width / 2;
+    const halfH = height / 2;
+
+    const parts = [];
+
+    try {
+        // Iterate through the bitmap
+        // Row 0 is at the top (highest Z), row 7 is at the bottom (lowest Z)
+        for (let row = 0; row < gridRows; row++) {
+            const rowData = bitmap[row];
+
+            for (let col = 0; col < gridCols; col++) {
+                // Check if this pixel is "on" (bit is set)
+                // Bit 0 is leftmost pixel in the font definition
+                if ((rowData >> col) & 1) {
+                    // Calculate position for this pixel box
+                    // MIRROR horizontally: col 0 at RIGHT (+halfW), col 6 at LEFT (-halfW)
+                    // This is necessary because the letter is viewed from OUTSIDE the cylinder.
+                    // Without mirroring, letters appear reversed (like reading text through glass).
+                    const posX = halfW - (col + 0.5) * pixelW;
+
+                    // Z: row 0 is at top (+halfH), row 7 is at bottom (-halfH)
+                    const posZ = halfH - (row + 0.5) * pixelH;
+
+                    // Create a box for this pixel
+                    const box = Manifold.cube([pixelW, depth, pixelH], true);
+                    const positioned = box.translate([posX, 0, posZ]);
+                    box.delete();
+
+                    parts.push(positioned);
+                }
+            }
+        }
+
+        if (parts.length === 0) {
+            console.warn(`createLetterShapeManifold: No pixels found for character '${c}'`);
+            return null;
+        }
+
+        // Union all pixel boxes into a single manifold
+        const result = Manifold.union(parts);
+        parts.forEach(p => p.delete());
+
+        console.log(`createLetterShapeManifold: Created letter '${c}' from ${parts.length} pixel boxes`);
+        return result;
+
+    } catch (error) {
+        console.error(`createLetterShapeManifold: Error creating letter '${c}':`, error.message);
+        // Clean up any created parts
+        parts.forEach(p => { try { p.delete(); } catch (e) { } });
+        return null;
+    }
+}
+
+/**
  * Create a character marker on cylinder surface using Manifold
- * Creates a distinct character-shaped marker (simplified as a rectangle with a small notch)
+ * Creates actual letter/number shapes using Manifold primitives (boxes combined)
+ *
+ * Character marker dimensions fit within the braille cell boundary:
+ * - Character Width: dot_spacing (horizontal/tangential direction)
+ * - Character Height: 2 × dot_spacing (vertical/cylinder axis direction)
+ * - Recess Depth: 0.5mm (default, matches rectangle marker depth)
+ *
+ * Viewing orientation (from outer cylinder surface, cylinder axis vertical):
+ * - Width = left-right direction = dot_spacing
+ * - Height = top-bottom direction = 2 × dot_spacing
+ *
+ * Falls back to rectangle marker if character rendering fails
  */
 function createCylinderCharacterMarkerManifold(spec) {
     const { x, y, z, theta, radius: cylRadius, char, size, depth, is_recess } = spec;
 
-    console.log(`createCylinderCharacterMarkerManifold: char=${char}, theta=${theta?.toFixed(3)}, cylRadius=${cylRadius}, size=${size}, depth=${depth}, is_recess=${is_recess}, y=${y}`);
+    console.log(`createCylinderCharacterMarkerManifold: char='${char}', theta=${theta?.toFixed(3)}, cylRadius=${cylRadius}, size=${size}, depth=${depth}, is_recess=${is_recess}, y=${y}`);
 
     if (!isFinite(theta) || !isFinite(cylRadius) || cylRadius <= 0) {
         console.warn('createCylinderCharacterMarkerManifold: Invalid parameters');
         return null;
     }
 
-    // Manifold doesn't have font rendering capabilities, so we fall back to rectangle marker
-    // as specified in RECESS_INDICATOR_SPECIFICATIONS.md section 3 (Character Marker Indicator)
-    // "Fallback Behavior: If character rendering fails (no font, non-alphanumeric character,
-    // rendering error): Falls back to rectangle marker with 0.5mm depth"
+    // Calculate dimensions to fit within braille cell boundary
+    // size is dot_spacing * 1.5 (from geometry_spec.py line 837)
+    const dotSpacing = size && size > 0 ? size / 1.5 : 2.5;
 
-    console.log(`createCylinderCharacterMarkerManifold: Falling back to rectangle marker (no font available in Manifold)`);
+    // Character fits within braille cell perimeter:
+    // - Width (tangential): dot_spacing (e.g., 2.5mm)
+    // - Height (axial): 2 × dot_spacing (e.g., 5.0mm)
+    const charWidth = dotSpacing;           // Fits within cell width
+    const charHeight = 2 * dotSpacing;      // Fits within cell height
+    const validDepth = depth > 0 ? depth : 0.5;   // 0.5mm depth (matches rectangle marker)
 
-    // Convert character marker spec to rectangle marker spec
-    // Character dimensions from spec: height = 2 × dot_spacing + 4.375mm, width = dot_spacing × 0.8 + 2.6875mm
-    // Rectangle dimensions: width = dot_spacing, height = 2 × dot_spacing
-    // We'll use the rectangle dimensions for consistency
-    const dot_spacing = size / 1.5; // size is dot_spacing * 1.5 for character markers
-    const rectSpec = {
-        x: x,
-        y: y,
-        z: z,
-        theta: theta,
-        radius: cylRadius,
-        width: dot_spacing,
-        height: 2 * dot_spacing,
-        depth: 0.5, // Fallback rectangle uses 0.5mm depth per spec
-        is_recess: is_recess
-    };
+    console.log(`createCylinderCharacterMarkerManifold: Calculated dimensions - dotSpacing=${dotSpacing.toFixed(2)}, width=${charWidth.toFixed(2)}, height=${charHeight.toFixed(2)}, depth=${validDepth.toFixed(2)}`);
 
-    return createCylinderRectMarkerManifold(rectSpec);
+    // CRITICAL: Negate theta to match Three.js coordinate convention
+    // See BRAILLE_SPACING_SPECIFICATIONS.md Section 10: Coordinate Systems
+    const adjustedTheta = -theta;
+
+    try {
+        // Try to create the actual letter shape
+        let letterShape = createLetterShapeManifold(char, charWidth, charHeight, validDepth);
+
+        if (!letterShape) {
+            // Letter not supported or creation failed - fall back to rectangle
+            console.log(`createCylinderCharacterMarkerManifold: Falling back to rectangle for char '${char}'`);
+
+            // Create simple rectangle as fallback (per spec, uses 0.5mm depth for fallback)
+            const rectSpec = {
+                x: x,
+                y: y,
+                z: z,
+                theta: theta,
+                radius: cylRadius,
+                width: dotSpacing,
+                height: 2 * dotSpacing,
+                depth: 0.5,  // Fallback depth per spec
+                is_recess: is_recess
+            };
+            return createCylinderRectMarkerManifold(rectSpec);
+        }
+
+        // Rotate so depth (Y) points radially outward
+        // After rotation: Y axis points toward radial direction at angle adjustedTheta
+        const thetaDeg = adjustedTheta * 180 / Math.PI;
+        const rotated = letterShape.rotate(0, 0, thetaDeg - 90);
+        letterShape.delete();
+
+        // Position on cylinder surface
+        let radialOffset;
+        if (is_recess) {
+            radialOffset = cylRadius - validDepth / 2;
+        } else {
+            radialOffset = cylRadius + validDepth / 2 + 0.05;
+        }
+
+        const posX = radialOffset * Math.cos(adjustedTheta);
+        const posY = radialOffset * Math.sin(adjustedTheta);
+        const posZ = isFinite(y) ? y : 0;
+
+        console.log(`createCylinderCharacterMarkerManifold: Positioning '${char}' at (${posX.toFixed(2)}, ${posY.toFixed(2)}, ${posZ.toFixed(2)}), radialOffset=${radialOffset.toFixed(2)}`);
+
+        const positioned = rotated.translate([posX, posY, posZ]);
+        rotated.delete();
+
+        return positioned;
+
+    } catch (error) {
+        console.error('createCylinderCharacterMarkerManifold error:', error.message, error.stack);
+
+        // Spec fallback: rectangle marker with 0.5mm depth
+        console.log(`createCylinderCharacterMarkerManifold: Error occurred, falling back to rectangle`);
+        const rectSpec = {
+            x: x,
+            y: y,
+            z: z,
+            theta: theta,
+            radius: cylRadius,
+            width: dotSpacing,
+            height: 2 * dotSpacing,
+            depth: 0.5,
+            is_recess: is_recess
+        };
+
+        return createCylinderRectMarkerManifold(rectSpec);
+    }
 }
 
 /**

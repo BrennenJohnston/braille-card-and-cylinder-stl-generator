@@ -139,6 +139,14 @@ function createCylinderDotManifold(spec) {
         return null;
     }
 
+    // CRITICAL: Negate theta to match Three.js coordinate convention
+    // Three.js (Y-up) after rotateX(π/2) gives: (cos(θ), -sin(θ), height)
+    // Manifold (Z-up) natively gives: (cos(θ), sin(θ), height)
+    // Negating theta makes sin(-θ) = -sin(θ), matching Three.js output
+    // This ensures braille cells are generated in the correct order
+    // See BRAILLE_SPACING_SPECIFICATIONS.md Section 10: Coordinate Systems
+    const adjustedTheta = -theta;
+
     const shape = params.shape || 'standard';
     const isRecess = is_recess || shape === 'hemisphere' || shape === 'bowl';
 
@@ -231,30 +239,31 @@ function createCylinderDotManifold(spec) {
 
         // For Manifold, we work in Z-up coordinate system
         // Cylinder axis is along Z, dots need to point radially outward in XY plane
+        // Using adjustedTheta (negated) to match Three.js coordinate convention
 
         let positionedDot;
         if (isSpherical) {
             // Spherical shapes don't need rotation, just translation
-            const posX = radialOffset * Math.cos(theta);
-            const posY = radialOffset * Math.sin(theta);
+            const posX = radialOffset * Math.cos(adjustedTheta);
+            const posY = radialOffset * Math.sin(adjustedTheta);
             const posZ = isFinite(y) ? y : 0; // Y in spec becomes Z in Manifold coords
             positionedDot = dot.translate([posX, posY, posZ]);
             dot.delete();
         } else {
-            // Non-spherical: rotate so Z-axis points radially outward at angle theta
+            // Non-spherical: rotate so Z-axis points radially outward at angle adjustedTheta
             // Rotate 90° around Y to make dot point along X
             // NOTE: rotate() takes (xDeg, yDeg, zDeg) as separate args, not an array
             const rotatedDot = dot.rotate(0, 90, 0);
             dot.delete();
 
-            // Then rotate around Z by theta to point at correct angle
-            const thetaDeg = theta * 180 / Math.PI;
+            // Then rotate around Z by adjustedTheta to point at correct angle
+            const thetaDeg = adjustedTheta * 180 / Math.PI;
             const rotatedDot2 = rotatedDot.rotate(0, 0, thetaDeg);
             rotatedDot.delete();
 
             // Translate to position
-            const posX = radialOffset * Math.cos(theta);
-            const posY = radialOffset * Math.sin(theta);
+            const posX = radialOffset * Math.cos(adjustedTheta);
+            const posY = radialOffset * Math.sin(adjustedTheta);
             const posZ = isFinite(y) ? y : 0;
             positionedDot = rotatedDot2.translate([posX, posY, posZ]);
             rotatedDot2.delete();
@@ -283,6 +292,19 @@ function createCylinderTriangleMarkerManifold(spec) {
         return null;
     }
 
+    // CRITICAL: Negate theta to match Three.js coordinate convention
+    // See BRAILLE_SPACING_SPECIFICATIONS.md Section 10: Coordinate Systems
+    const adjustedTheta = -theta;
+
+    // CRITICAL: Invert rotate_180 to compensate for theta negation
+    // When theta is negated, the rotation around Z also flips direction,
+    // which would swap the triangle orientation. We invert rotate_180 to
+    // counteract this effect and match the Three.js output.
+    // - Embossing plate (rotate_180=false in spec) → use true here → apex points LEFT after mirroring
+    // - Counter plate (rotate_180=true in spec) → use false here → apex points RIGHT after mirroring
+    // After the adjustedTheta rotation, this produces the correct final orientation.
+    const adjustedRotate180 = !rotate_180;
+
     const validSize = (size > 0) ? size : 2.0;
     const validDepth = (depth > 0) ? depth : 0.6;
     const recessPadding = is_recess ? 0.2 : 0;
@@ -294,8 +316,8 @@ function createCylinderTriangleMarkerManifold(spec) {
         // Triangle: base is vertical (along Z), apex points in X direction
 
         let v1, v2, v3;  // Three vertices of the triangle
-        if (rotate_180) {
-            // Rotated triangle for counter plates - apex points left (-X)
+        if (adjustedRotate180) {
+            // Rotated triangle - apex points left (-X)
             v1 = [validSize / 2, 0, validSize];    // top-right
             v2 = [validSize / 2, 0, -validSize];   // bottom-right
             v3 = [-validSize / 2, 0, 0];           // apex left
@@ -332,9 +354,9 @@ function createCylinderTriangleMarkerManifold(spec) {
         const prism = allSpheres.hull();
         allSpheres.delete();
 
-        // Rotate so Y (depth) points radially outward at angle theta
-        // Rotate around Z axis by (theta - 90°) to make +Y point toward radial direction
-        const thetaDeg = theta * 180 / Math.PI;
+        // Rotate so Y (depth) points radially outward at angle adjustedTheta
+        // Rotate around Z axis by (adjustedTheta - 90°) to make +Y point toward radial direction
+        const thetaDeg = adjustedTheta * 180 / Math.PI;
         const rotated = prism.rotate(0, 0, thetaDeg - 90);
         prism.delete();
 
@@ -346,8 +368,8 @@ function createCylinderTriangleMarkerManifold(spec) {
             radialOffset = cylRadius + validDepth / 2 + 0.05;
         }
 
-        const posX = radialOffset * Math.cos(theta);
-        const posY = radialOffset * Math.sin(theta);
+        const posX = radialOffset * Math.cos(adjustedTheta);
+        const posY = radialOffset * Math.sin(adjustedTheta);
         const posZ = isFinite(y) ? y : 0;
 
         console.log(`createCylinderTriangleMarkerManifold: positioning at (${posX.toFixed(2)}, ${posY.toFixed(2)}, ${posZ.toFixed(2)})`);
@@ -375,6 +397,10 @@ function createCylinderRectMarkerManifold(spec) {
         console.warn('createCylinderRectMarkerManifold: Invalid parameters');
         return null;
     }
+
+    // CRITICAL: Negate theta to match Three.js coordinate convention
+    // See BRAILLE_SPACING_SPECIFICATIONS.md Section 10: Coordinate Systems
+    const adjustedTheta = -theta;
 
     const validWidth = (width > 0) ? width : 2.0;
     const validHeight = (height > 0) ? height : 4.0;
@@ -445,8 +471,8 @@ function createCylinderRectMarkerManifold(spec) {
 
         // Only rotate around Z to point toward the radial direction
         // Since depth is along Y, we need to rotate so Y points radially
-        // rotate(0, 0, theta-90) would rotate Y to point at angle theta
-        const thetaDeg = theta * 180 / Math.PI;
+        // rotate(0, 0, adjustedTheta-90) would rotate Y to point at angle adjustedTheta
+        const thetaDeg = adjustedTheta * 180 / Math.PI;
         const rotated = box.rotate(0, 0, thetaDeg - 90);
         box.delete();
 
@@ -458,8 +484,8 @@ function createCylinderRectMarkerManifold(spec) {
             radialOffset = cylRadius + validDepth / 2 + 0.05;
         }
 
-        const posX = radialOffset * Math.cos(theta);
-        const posY = radialOffset * Math.sin(theta);
+        const posX = radialOffset * Math.cos(adjustedTheta);
+        const posY = radialOffset * Math.sin(adjustedTheta);
         const posZ = isFinite(y) ? y : 0;
 
         console.log(`createCylinderRectMarkerManifold: positioning at (${posX.toFixed(2)}, ${posY.toFixed(2)}, ${posZ.toFixed(2)})`);
@@ -489,60 +515,31 @@ function createCylinderCharacterMarkerManifold(spec) {
         return null;
     }
 
-    const validSize = (size > 0) ? size : 3.0;
-    const baseDepth = (depth > 0) ? depth : 1.0;
-    const recessPadding = is_recess ? 0.1 : 0;
-    const extrudeDepth = baseDepth + recessPadding;
+    // Manifold doesn't have font rendering capabilities, so we fall back to rectangle marker
+    // as specified in RECESS_INDICATOR_SPECIFICATIONS.md section 3 (Character Marker Indicator)
+    // "Fallback Behavior: If character rendering fails (no font, non-alphanumeric character,
+    // rendering error): Falls back to rectangle marker with 0.5mm depth"
 
-    try {
-        // Create a character-like shape using a box with a small identifying feature
-        // This makes it visually distinct from plain rectangles
-        const charWidth = validSize * 0.6;
-        const charHeight = validSize;
+    console.log(`createCylinderCharacterMarkerManifold: Falling back to rectangle marker (no font available in Manifold)`);
 
-        // Main character body
-        const mainBox = Manifold.cube([charWidth, extrudeDepth, charHeight], true);
+    // Convert character marker spec to rectangle marker spec
+    // Character dimensions from spec: height = 2 × dot_spacing + 4.375mm, width = dot_spacing × 0.8 + 2.6875mm
+    // Rectangle dimensions: width = dot_spacing, height = 2 × dot_spacing
+    // We'll use the rectangle dimensions for consistency
+    const dot_spacing = size / 1.5; // size is dot_spacing * 1.5 for character markers
+    const rectSpec = {
+        x: x,
+        y: y,
+        z: z,
+        theta: theta,
+        radius: cylRadius,
+        width: dot_spacing,
+        height: 2 * dot_spacing,
+        depth: 0.5, // Fallback rectangle uses 0.5mm depth per spec
+        is_recess: is_recess
+    };
 
-        // Add a small notch or detail to make it look like a character
-        // Create a small box for the notch
-        const notchSize = charWidth * 0.3;
-        const notch = Manifold.cube([notchSize, extrudeDepth * 1.1, notchSize], true);
-        const notchPositioned = notch.translate([charWidth * 0.2, 0, charHeight * 0.3]);
-        notch.delete();
-
-        // Subtract notch from main box to create character-like appearance
-        const charShape = mainBox.subtract(notchPositioned);
-        mainBox.delete();
-        notchPositioned.delete();
-
-        // Rotate so Y (depth) points radially outward at angle theta
-        const thetaDeg = theta * 180 / Math.PI;
-        const rotated = charShape.rotate(0, 0, thetaDeg - 90);
-        charShape.delete();
-
-        // Position at cylinder surface
-        let radialOffset;
-        if (is_recess) {
-            radialOffset = cylRadius - extrudeDepth / 2;
-        } else {
-            radialOffset = cylRadius + extrudeDepth / 2 + 0.05;
-        }
-
-        const posX = radialOffset * Math.cos(theta);
-        const posY = radialOffset * Math.sin(theta);
-        const posZ = isFinite(y) ? y : 0;
-
-        console.log(`createCylinderCharacterMarkerManifold: positioning at (${posX.toFixed(2)}, ${posY.toFixed(2)}, ${posZ.toFixed(2)})`);
-
-        const positioned = rotated.translate([posX, posY, posZ]);
-        rotated.delete();
-
-        return positioned;
-
-    } catch (error) {
-        console.error('createCylinderCharacterMarkerManifold error:', error.message, error.stack);
-        return null;
-    }
+    return createCylinderRectMarkerManifold(rectSpec);
 }
 
 /**
@@ -745,8 +742,10 @@ function processGeometrySpec(spec) {
                     if (markerSpec.type === 'cylinder_triangle') {
                         markerManifold = createCylinderTriangleMarkerManifold(markerSpec);
                     } else if (markerSpec.type === 'cylinder_rect') {
+                        console.log('Processing cylinder_rect marker:', markerSpec);
                         markerManifold = createCylinderRectMarkerManifold(markerSpec);
                     } else if (markerSpec.type === 'cylinder_character') {
+                        console.log('Processing cylinder_character marker:', markerSpec);
                         markerManifold = createCylinderCharacterMarkerManifold(markerSpec);
                     } else if (markerSpec.type === 'rect') {
                         const { x, y, z, width, height, depth } = markerSpec;

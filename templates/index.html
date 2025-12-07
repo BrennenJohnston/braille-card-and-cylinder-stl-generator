@@ -2060,6 +2060,28 @@
                         </fieldset>
                     </div>
 
+                    <!-- Card Thickness Preset Selection -->
+                    <div class="grade-selection">
+                        <fieldset>
+                            <legend class="grade-label">Card Thickness</legend>
+                            <div class="radio-group thickness-toggle" role="radiogroup" aria-required="true" aria-label="Select card thickness preset">
+                                <label class="radio-option">
+                                    <input type="radio" name="card_thickness_preset" value="0.4" checked aria-describedby="thickness-04-desc">
+                                    <span class="radio-text">0.4mm</span>
+                                </label>
+                                <span id="thickness-04-desc" class="sr-only">Preset settings optimized for 0.4mm layer height printing</span>
+                                <label class="radio-option">
+                                    <input type="radio" name="card_thickness_preset" value="0.3" aria-describedby="thickness-03-desc">
+                                    <span class="radio-text">0.3mm</span>
+                                </label>
+                                <span id="thickness-03-desc" class="sr-only">Preset settings optimized for 0.3mm layer height printing</span>
+                            </div>
+                            <div class="grade-note" style="margin-top: 6px; font-size: 0.85em;">
+                                Selecting a thickness preset will automatically adjust all braille dot and surface parameters to optimal values for that layer height.
+                            </div>
+                        </fieldset>
+                    </div>
+
                     <!-- Plate Type Selection moved here -->
                     <div class="grade-selection">
                         <fieldset>
@@ -3937,6 +3959,12 @@
                         try { localStorage.setItem('braille_prefs_language_table', 'en-ueb-g1.ctb'); } catch (e) {}
                     }
                 } catch (e) {}
+                // Reset thickness preset to default (0.4mm)
+                try {
+                    localStorage.setItem('braille_prefs_thickness_preset', '0.4');
+                    const thicknessRadio = document.querySelector('input[name="card_thickness_preset"][value="0.4"]');
+                    if (thicknessRadio) thicknessRadio.checked = true;
+                } catch (e) {}
                 // Reset radio groups to defaultChecked
                 const radioGroups = new Map();
                 document.querySelectorAll('input[type="radio"]').forEach(r => {
@@ -3973,6 +4001,174 @@
                 } catch (e) { /* ignore */ }
             });
         }
+
+        // ======================================================================
+        // Card Thickness Preset System
+        // ======================================================================
+        // Define presets for each thickness option (0.4mm and 0.3mm layer heights)
+        // These presets set all numeric inputs to optimized values for each thickness.
+        // Note: Text inputs (line1, line2, etc.) are NOT affected by presets.
+        const THICKNESS_PRESETS = {
+            '0.4': {
+                // Braille Spacing
+                grid_columns: 13,
+                grid_rows: 4,
+                cell_spacing: 6.5,
+                line_spacing: 10.0,
+                dot_spacing: 2.5,
+                braille_x_adjust: 0.0,
+                braille_y_adjust: 0.0,
+                // Emboss Dot (Rounded)
+                rounded_dot_base_diameter: 1.5,
+                rounded_dot_base_height: 0.5,
+                rounded_dot_dome_diameter: 1.0,
+                rounded_dot_dome_height: 0.5,
+                // Emboss Dot (Cone)
+                emboss_dot_base_diameter: 1.5,
+                emboss_dot_height: 0.8,
+                emboss_dot_flat_hat: 0.4,
+                // Counter Dot (Bowl/Rounded)
+                bowl_counter_dot_base_diameter: 1.8,
+                counter_dot_depth: 0.8,
+                // Counter Dot (Cone)
+                cone_counter_dot_base_diameter: 1.9,
+                cone_counter_dot_height: 0.7,
+                cone_counter_dot_flat_hat: 1.0,
+                // Cylinder Dimensions
+                cylinder_diameter_mm: 30.8,
+                cylinder_height_mm: 52,
+                cylinder_polygonal_cutout_radius_mm: 13,
+                cylinder_polygonal_cutout_sides: 12,
+                seam_offset_deg: 0,
+                // Card/Plate Dimensions
+                card_width: 90,
+                card_height: 52,
+                card_thickness: 2.0
+            },
+            '0.3': {
+                // Braille Spacing
+                grid_columns: 15,
+                grid_rows: 4,
+                cell_spacing: 6.5,
+                line_spacing: 10.0,
+                dot_spacing: 2.5,
+                braille_x_adjust: 0.0,
+                braille_y_adjust: 0.0,
+                // Emboss Dot (Rounded) - optimized for 0.3mm layer
+                rounded_dot_base_diameter: 1.5,
+                rounded_dot_base_height: 0.5,
+                rounded_dot_dome_diameter: 1.0,
+                rounded_dot_dome_height: 0.5,
+                // Emboss Dot (Cone) - optimized for 0.3mm layer
+                emboss_dot_base_diameter: 1.5,
+                emboss_dot_height: 0.8,
+                emboss_dot_flat_hat: 0.5,
+                // Counter Dot (Bowl/Rounded) - optimized for 0.3mm layer
+                bowl_counter_dot_base_diameter: 1.5,
+                counter_dot_depth: 0.7,
+                // Counter Dot (Cone) - optimized for 0.3mm layer
+                cone_counter_dot_base_diameter: 1.5,
+                cone_counter_dot_height: 0.8,
+                cone_counter_dot_flat_hat: 0.5,
+                // Cylinder Dimensions
+                cylinder_diameter_mm: 30.8,
+                cylinder_height_mm: 52,
+                cylinder_polygonal_cutout_radius_mm: 13,
+                cylinder_polygonal_cutout_sides: 12,
+                seam_offset_deg: 0,
+                // Card/Plate Dimensions
+                card_width: 90,
+                card_height: 52,
+                card_thickness: 2.0
+            }
+        };
+
+        /**
+         * Apply a thickness preset by setting all input values to the preset values.
+         * Does NOT affect text inputs (line1, line2, etc.)
+         * @param {string} presetKey - '0.4' or '0.3'
+         */
+        function applyThicknessPreset(presetKey) {
+            const preset = THICKNESS_PRESETS[presetKey];
+            if (!preset) {
+                log.debug('Unknown thickness preset:', presetKey);
+                return;
+            }
+
+            log.debug('Applying thickness preset:', presetKey);
+
+            // Apply each preset value to the corresponding input
+            Object.entries(preset).forEach(([inputId, value]) => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.value = value;
+                    log.debug(`Set ${inputId} = ${value}`);
+
+                    // Also persist the value to localStorage
+                    const persistKey = `braille_prefs_${inputId}`;
+                    try { localStorage.setItem(persistKey, value); } catch (e) {}
+                }
+            });
+
+            // Persist the selected preset
+            try { localStorage.setItem('braille_prefs_thickness_preset', presetKey); } catch (e) {}
+
+            // Update related UI elements
+            try { updateGridColumnsForPlateType(); } catch (e) {}
+            try { checkCylinderOverflow(); } catch (e) {}
+            try { resetToGenerateState(); } catch (e) {}
+
+            // Show confirmation message
+            try {
+                errorText.textContent = `Card Thickness preset "${presetKey}mm" applied. All parameters updated.`;
+                errorDiv.style.display = 'flex';
+                errorDiv.className = 'error-message info';
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                    errorDiv.className = 'error-message';
+                }, 3000);
+            } catch (e) { /* ignore */ }
+        }
+
+        // Wire up thickness preset radio buttons
+        // Use both 'change' and 'click' events to handle switching and re-applying
+        document.querySelectorAll('input[name="card_thickness_preset"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.checked) {
+                    applyThicknessPreset(this.value);
+                }
+            });
+            // Add click listener to allow re-applying the currently selected preset
+            radio.addEventListener('click', function() {
+                if (this.checked) {
+                    applyThicknessPreset(this.value);
+                }
+            });
+        });
+
+        // Restore persisted thickness preset on load and apply it
+        (function restoreThicknessPreset() {
+            try {
+                const savedPreset = localStorage.getItem('braille_prefs_thickness_preset');
+                const presetToApply = (savedPreset && THICKNESS_PRESETS[savedPreset]) ? savedPreset : '0.4';
+
+                // Set the radio button
+                const radio = document.querySelector(`input[name="card_thickness_preset"][value="${presetToApply}"]`);
+                if (radio) {
+                    radio.checked = true;
+                }
+
+                // Apply the preset to ensure all values are consistent
+                // This fixes the issue where HTML defaults don't match preset values
+                applyThicknessPreset(presetToApply);
+                log.debug('Applied thickness preset on load:', presetToApply);
+            } catch (e) {
+                log.debug('Error restoring thickness preset:', e);
+            }
+        })();
+        // ======================================================================
+        // End Card Thickness Preset System
+        // ======================================================================
 
         // Initialize shape settings to show/hide cylinder parameters correctly
         updateShapeSettings();

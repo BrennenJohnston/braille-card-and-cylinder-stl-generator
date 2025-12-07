@@ -4,8 +4,8 @@
 
 This document serves as the **master index** for all core architecture specifications in the Braille Card and Cylinder STL Generator project. Each specification document provides comprehensive, in-depth technical documentation for a specific subsystem or feature.
 
-**Last Updated:** 2025-12-06
-**Total Specification Documents:** 12
+**Last Updated:** 2025-12-07
+**Total Specification Documents:** 13
 
 ---
 
@@ -28,6 +28,22 @@ This document serves as the **master index** for all core architecture specifica
 - Three-point lighting for high contrast mode
 - OrbitControls configuration
 - Skip link navigation
+
+#### [CARD_THICKNESS_PRESET_SPECIFICATIONS.md](./CARD_THICKNESS_PRESET_SPECIFICATIONS.md)
+**Status:** ✅ Complete (Created 2025-12-07)
+**Covers:**
+- Card Thickness Preset System (0.3mm and 0.4mm layer heights)
+- Preset value definitions and optimization rationale
+- UI controls and user interaction flow
+- LocalStorage persistence and restoration
+- Integration with Expert Mode
+- Preset application logic affecting 26+ parameters
+
+**Key Components:**
+- Dual event strategy (change + click) for re-applying presets
+- Automatic application on page load (fixes HTML default mismatch)
+- Frontend-only convenience layer (backend receives individual values)
+- Graceful degradation and error handling
 
 ---
 
@@ -254,6 +270,25 @@ This document serves as the **master index** for all core architecture specifica
 - Performance characteristics
 - Testing checklist
 
+## Development Process Documentation
+
+### [MAJOR_FEATURE_IMPLEMENTATION_SOP.md](../development/MAJOR_FEATURE_IMPLEMENTATION_SOP.md)
+**Purpose:** Standard Operating Procedure for implementing major features
+**Status:** ✅ Complete (Created 2025-12-07)
+**Covers:**
+- 6-phase implementation workflow (Investigation → Specification → Implementation → Documentation → Verification → Finalization)
+- Comprehensive checklists for each phase
+- Case study: Card Thickness Preset System implementation
+- Common pitfalls and how to avoid them
+- File change impact matrix
+- Specification template and quick-start guide for AI assistants
+
+**Target Audience:**
+- AI coding assistants (Claude, GPT, etc.)
+- Junior developers
+- Senior developers implementing large features
+- Code reviewers
+
 ---
 
 ## Coverage Analysis
@@ -262,7 +297,7 @@ This document serves as the **master index** for all core architecture specifica
 
 | System | Primary Spec | Additional Specs |
 |--------|-------------|------------------|
-| **UI/UX** | UI_INTERFACE_CORE_SPECIFICATIONS | — |
+| **UI/UX** | UI_INTERFACE_CORE_SPECIFICATIONS | CARD_THICKNESS_PRESET_SPECIFICATIONS |
 | **Text Input** | BRAILLE_TEXT_INPUT_AND_LANGUAGE_SPECIFICATIONS | BRAILLE_TRANSLATION_PREVIEW_SPECIFICATIONS |
 | **Translation** | LIBLOUIS_TRANSLATION_CORE_SPECIFICATIONS | — |
 | **Dimensions** | SURFACE_DIMENSIONS_SPECIFICATIONS | — |
@@ -576,6 +611,7 @@ Section Reference: SURFACE_DIMENSIONS_SPECIFICATIONS.md (Section 2.1)
 **Translation process?** → LIBLOUIS_TRANSLATION_CORE_SPECIFICATIONS
 **Button states?** → UI_INTERFACE_CORE_SPECIFICATIONS (Section 6), STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS (Section 8)
 **Theme colors?** → UI_INTERFACE_CORE_SPECIFICATIONS (Section 1.2, 1.3)
+**Card thickness presets?** → CARD_THICKNESS_PRESET_SPECIFICATIONS
 **BANA wrapping?** → BRAILLE_TEXT_INPUT_AND_LANGUAGE_SPECIFICATIONS (Section 9)
 **Cylinder angular calculations?** → BRAILLE_SPACING_SPECIFICATIONS (Section 5)
 **Dot numbering?** → BRAILLE_SPACING_SPECIFICATIONS (Section 1)
@@ -614,6 +650,8 @@ Section Reference: SURFACE_DIMENSIONS_SPECIFICATIONS.md (Section 2.1)
 | 2024-12-06 | Added CACHING_SYSTEM_CORE_SPECIFICATIONS.md to index |
 | 2025-12-06 | Added SETTINGS_SCHEMA_CORE_SPECIFICATIONS.md; updated counts and quick reference |
 | 2025-12-06 | Enhanced SETTINGS_SCHEMA with AI Model Guidelines; added cache_version field; updated .cursorrules with architecture guidance |
+| 2025-12-07 | Added CARD_THICKNESS_PRESET_SPECIFICATIONS.md documenting new Card Thickness Preset System (0.3mm/0.4mm layer height presets); updated UI/UX coverage; incremented total spec count to 13 |
+| 2025-12-07 | Added MAJOR_FEATURE_IMPLEMENTATION_SOP.md - Standard Operating Procedure for implementing major features; documents 6-phase workflow with comprehensive checklists, case study, and development best practices |
 
 ---
 

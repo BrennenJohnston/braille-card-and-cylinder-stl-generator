@@ -226,9 +226,14 @@ Card Thickness preset selector appears **above** the Expert Mode toggle:
                 <span class="radio-text">0.3mm</span>
             </label>
             <span id="thickness-03-desc" class="sr-only">Preset settings optimized for 0.3mm layer height printing</span>
+            <label class="radio-option">
+                <input type="radio" name="card_thickness_preset" value="custom" aria-describedby="thickness-custom-desc">
+                <span class="radio-text">Custom</span>
+            </label>
+            <span id="thickness-custom-desc" class="sr-only">Custom settings - automatically selected when any parameter is modified from preset values</span>
         </div>
         <div class="grade-note" style="margin-top: 6px; font-size: 0.85em;">
-            Selecting a thickness preset will automatically adjust all braille dot and surface parameters to optimal values for that layer height.
+            Selecting a thickness preset will automatically adjust all braille dot and surface parameters to optimal values for that layer height. "Custom" is automatically selected when you modify any parameter.
         </div>
     </fieldset>
 </div>
@@ -242,6 +247,7 @@ Card Thickness preset selector appears **above** the Expert Mode toggle:
 4. **LocalStorage saves selection** (persists across sessions)
 5. **Confirmation message displays** (3-second info banner)
 6. **User can see updated values** by opening Expert Mode
+7. **If user modifies any parameter**, the "Custom" radio button is automatically selected
 
 ### Confirmation Message
 
@@ -316,14 +322,16 @@ function applyThicknessPreset(presetKey) {
 document.querySelectorAll('input[name="card_thickness_preset"]').forEach(radio => {
     // Fires when switching between radio buttons
     radio.addEventListener('change', function() {
-        if (this.checked) {
+        if (this.checked && this.value !== 'custom') {
+            // Only apply preset for 0.4 and 0.3, not for custom
             applyThicknessPreset(this.value);
         }
     });
 
     // Fires when clicking an already-selected radio button (re-apply)
     radio.addEventListener('click', function() {
-        if (this.checked) {
+        if (this.checked && this.value !== 'custom') {
+            // Only apply preset for 0.4 and 0.3, not for custom
             applyThicknessPreset(this.value);
         }
     });
@@ -333,6 +341,91 @@ document.querySelectorAll('input[name="card_thickness_preset"]').forEach(radio =
 **Rationale for Dual Events**:
 - `change`: Handles switching between 0.3mm and 0.4mm
 - `click`: Allows users to re-apply the current preset (resets manually changed values)
+- **Note**: The "Custom" option does not apply any preset; it only serves as an indicator
+
+### Custom Preset Detection System
+
+The system automatically detects when parameter values deviate from any defined preset and switches to "Custom".
+
+#### Function: `checkPresetMatch(presetKey)`
+
+**Purpose**: Compares current input values against a specific preset
+
+```javascript
+function checkPresetMatch(presetKey) {
+    const preset = THICKNESS_PRESETS[presetKey];
+    if (!preset) return false;
+
+    for (const [inputId, expectedValue] of Object.entries(preset)) {
+        const input = document.getElementById(inputId);
+        if (input) {
+            // Compare as numbers to handle floating point formatting differences
+            const currentValue = parseFloat(input.value);
+            const presetValue = parseFloat(expectedValue);
+            if (isNaN(currentValue) || Math.abs(currentValue - presetValue) > 0.0001) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+```
+
+#### Function: `detectCurrentPreset()`
+
+**Purpose**: Determines which preset (if any) matches current values
+
+```javascript
+function detectCurrentPreset() {
+    if (checkPresetMatch('0.4')) return '0.4';
+    if (checkPresetMatch('0.3')) return '0.3';
+    return 'custom';
+}
+```
+
+#### Function: `updatePresetSelection()`
+
+**Purpose**: Updates the radio button selection based on current values
+
+```javascript
+function updatePresetSelection() {
+    const detectedPreset = detectCurrentPreset();
+    const radio = document.querySelector(`input[name="card_thickness_preset"][value="${detectedPreset}"]`);
+    if (radio && !radio.checked) {
+        radio.checked = true;
+        try { localStorage.setItem('braille_prefs_thickness_preset', detectedPreset); } catch (e) {}
+        log.debug('Preset auto-switched to:', detectedPreset);
+    }
+}
+```
+
+#### Change Detection Setup
+
+All 26 preset-controlled inputs have event listeners attached:
+
+```javascript
+(function setupPresetChangeDetection() {
+    const presetParamIds = Object.keys(THICKNESS_PRESETS['0.4']);
+
+    presetParamIds.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.addEventListener('input', updatePresetSelection);  // Real-time
+            input.addEventListener('change', updatePresetSelection); // On blur
+        }
+    });
+})();
+```
+
+#### Behavior Summary
+
+| Action | Result |
+|--------|--------|
+| User selects 0.4mm | All parameters set to 0.4mm preset values |
+| User selects 0.3mm | All parameters set to 0.3mm preset values |
+| User selects Custom | No changes to parameters (indicator only) |
+| User modifies any parameter | "Custom" automatically selected if values differ from all presets |
+| User restores a value to match a preset | Corresponding preset radio is automatically selected |
 
 ---
 
@@ -623,10 +716,11 @@ The preset system is designed to **never fail visibly**:
 | 2025-12-07 | 1.0 | Initial creation. Documented Card Thickness Preset System including preset definitions, UI controls, application logic, localStorage persistence, and default behavior. |
 | 2025-12-07 | 1.1 | Documented critical bug fix: preset now applies on page load to ensure consistency between HTML defaults and preset values. Added dual event listener strategy (change + click). |
 | 2025-12-07 | 1.2 | Updated 0.3mm preset values: All dot dimensions reduced for finer detail (rounded base: 1.5→1.2, heights reduced, emboss cone: 1.5→1.2, counter depths reduced). |
+| 2025-12-07 | 1.3 | Added "Custom" radio button feature. Automatically detects when parameter values deviate from presets and switches to "Custom". Added `checkPresetMatch()`, `detectCurrentPreset()`, and `updatePresetSelection()` functions. Updated HTML structure and event listener documentation. |
 
 ---
 
-**Document Version**: 1.2
+**Document Version**: 1.3
 **Created**: 2025-12-07
 **Purpose**: Specification for Card Thickness Preset System (frontend convenience feature)
 **Status**: ✅ Complete

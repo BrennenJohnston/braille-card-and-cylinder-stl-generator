@@ -2075,9 +2075,14 @@
                                     <span class="radio-text">0.3mm</span>
                                 </label>
                                 <span id="thickness-03-desc" class="sr-only">Preset settings optimized for 0.3mm layer height printing</span>
+                                <label class="radio-option">
+                                    <input type="radio" name="card_thickness_preset" value="custom" aria-describedby="thickness-custom-desc">
+                                    <span class="radio-text">Custom</span>
+                                </label>
+                                <span id="thickness-custom-desc" class="sr-only">Custom settings - automatically selected when any parameter is modified from preset values</span>
                             </div>
                             <div class="grade-note" style="margin-top: 6px; font-size: 0.85em;">
-                                Selecting a thickness preset will automatically adjust all braille dot and surface parameters to optimal values for that layer height.
+                                Selecting a thickness preset will automatically adjust all braille dot and surface parameters to optimal values for that layer height. "Custom" is automatically selected when you modify any parameter.
                             </div>
                         </fieldset>
                     </div>
@@ -4084,6 +4089,54 @@
         };
 
         /**
+         * Check if current input values match a specific preset.
+         * @param {string} presetKey - '0.4' or '0.3'
+         * @returns {boolean} - true if all values match the preset
+         */
+        function checkPresetMatch(presetKey) {
+            const preset = THICKNESS_PRESETS[presetKey];
+            if (!preset) return false;
+
+            for (const [inputId, expectedValue] of Object.entries(preset)) {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    // Compare as numbers to handle floating point formatting differences
+                    const currentValue = parseFloat(input.value);
+                    const presetValue = parseFloat(expectedValue);
+                    if (isNaN(currentValue) || Math.abs(currentValue - presetValue) > 0.0001) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        /**
+         * Determine which preset (if any) matches current values, or 'custom' if none match.
+         * @returns {string} - '0.4', '0.3', or 'custom'
+         */
+        function detectCurrentPreset() {
+            if (checkPresetMatch('0.4')) return '0.4';
+            if (checkPresetMatch('0.3')) return '0.3';
+            return 'custom';
+        }
+
+        /**
+         * Update the preset radio button selection based on current input values.
+         * Called when any preset-controlled input changes.
+         */
+        function updatePresetSelection() {
+            const detectedPreset = detectCurrentPreset();
+            const radio = document.querySelector(`input[name="card_thickness_preset"][value="${detectedPreset}"]`);
+            if (radio && !radio.checked) {
+                radio.checked = true;
+                // Persist the detected preset state
+                try { localStorage.setItem('braille_prefs_thickness_preset', detectedPreset); } catch (e) {}
+                log.debug('Preset auto-switched to:', detectedPreset);
+            }
+        }
+
+        /**
          * Apply a thickness preset by setting all input values to the preset values.
          * Does NOT affect text inputs (line1, line2, etc.)
          * @param {string} presetKey - '0.4' or '0.3'
@@ -4134,22 +4187,54 @@
         // Use both 'change' and 'click' events to handle switching and re-applying
         document.querySelectorAll('input[name="card_thickness_preset"]').forEach(radio => {
             radio.addEventListener('change', function() {
-                if (this.checked) {
+                if (this.checked && this.value !== 'custom') {
+                    // Only apply preset for 0.4 and 0.3, not for custom
                     applyThicknessPreset(this.value);
                 }
             });
             // Add click listener to allow re-applying the currently selected preset
             radio.addEventListener('click', function() {
-                if (this.checked) {
+                if (this.checked && this.value !== 'custom') {
+                    // Only apply preset for 0.4 and 0.3, not for custom
                     applyThicknessPreset(this.value);
                 }
             });
         });
 
+        // Wire up change detection on all preset-controlled inputs
+        // When any of these inputs change, check if we should switch to "Custom"
+        (function setupPresetChangeDetection() {
+            // Get all parameter IDs from both presets (they have the same keys)
+            const presetParamIds = Object.keys(THICKNESS_PRESETS['0.4']);
+
+            presetParamIds.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    // Listen for input events (real-time) and change events (on blur)
+                    input.addEventListener('input', updatePresetSelection);
+                    input.addEventListener('change', updatePresetSelection);
+                }
+            });
+
+            log.debug('Preset change detection set up for', presetParamIds.length, 'inputs');
+        })();
+
         // Restore persisted thickness preset on load and apply it
         (function restoreThicknessPreset() {
             try {
                 const savedPreset = localStorage.getItem('braille_prefs_thickness_preset');
+
+                // If saved preset is 'custom', just set the radio and don't apply any preset values
+                if (savedPreset === 'custom') {
+                    const customRadio = document.querySelector('input[name="card_thickness_preset"][value="custom"]');
+                    if (customRadio) {
+                        customRadio.checked = true;
+                    }
+                    log.debug('Restored custom preset selection (no values applied)');
+                    return;
+                }
+
+                // For 0.4 or 0.3, apply the preset
                 const presetToApply = (savedPreset && THICKNESS_PRESETS[savedPreset]) ? savedPreset : '0.4';
 
                 // Set the radio button

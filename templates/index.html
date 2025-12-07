@@ -12,6 +12,20 @@
     <link rel="alternate icon" href="/favicon.ico" sizes="any">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
+        /* WCAG 1.4.12 Text Spacing Support */
+        * {
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+        }
+
+        .info-panel,
+        .grade-selection,
+        .line-input-group,
+        .expert-settings {
+            min-height: fit-content;
+            height: auto !important;
+        }
+
         /* Theme CSS Variables */
         :root {
             /* Light mode colors */
@@ -115,8 +129,8 @@
             --info-bg: #0000ff;
             --info-border: #0000ff;
             --info-text: #02fe05; /* Green instead of white */
-            --shadow-light: none;
-            --shadow-medium: none;
+            --shadow-light: 0 0 0 transparent;
+            --shadow-medium: 0 0 0 transparent;
             --stl-mesh-color: #00ffff; /* Bright cyan for high contrast */
             --stl-background: #000000; /* Keep black background */
             --stl-ambient-light: #666666; /* Reduced ambient light to prevent washing out */
@@ -632,7 +646,6 @@
             overflow-y: scroll; /* Enable scrolling for right column menu boxes */
             -webkit-overflow-scrolling: touch;
             overflow-x: hidden; /* Prevent horizontal overflow */
-            scrollbar-gutter: stable; /* Reserve space so the scrollbar is always visible */
             scrollbar-width: auto; /* Firefox standard scrollbar */
             scrollbar-color: #3182ce #e2e8f0; /* Firefox: blue thumb on light grey track */
             /* Distinct background for scrollable area */
@@ -1848,7 +1861,7 @@
 
 
 
-    <div class="main-layout" role="main" id="main-content">
+    <main class="main-layout" id="main-content">
         <!-- Title Section at the top -->
         <div class="title-section">
             <h1 id="main-heading">
@@ -1864,7 +1877,7 @@
                         <span aria-hidden="true">A-</span>
                         <span class="sr-only">Decrease font size</span>
                     </button>
-                    <span class="font-size-display" aria-label="Current font size">
+                    <span class="font-size-display" role="status" aria-live="polite" aria-atomic="true">
                         <span id="current-font-size">100</span>%
                     </span>
                     <button id="font-increase" class="font-size-btn" aria-label="Increase font size" title="Increase font size">
@@ -1894,7 +1907,7 @@
         <div class="content-area">
             <!-- Left Column - STL Preview Section (45% width) -->
             <div class="preview-section" role="region" aria-label="3D STL Preview">
-                <div id="viewer" role="img" aria-label="3D preview of braille business card STL file" tabindex="0">
+                <div id="viewer" role="img" aria-label="3D preview of braille embossing plate. Interactive 3D model requires mouse or touch to rotate and zoom. Shows raised braille dots on plate surface." aria-describedby="viewer-instructions" tabindex="0">
                     <div id="error-message" role="alert" aria-live="assertive" aria-atomic="true">
                         <span style="font-weight:bold;" aria-hidden="true">⚠</span>
                         <span id="error-text-container" style="display: flex; flex-direction: column; align-items: center;">
@@ -1902,6 +1915,9 @@
                             <span id="error-subtext" style="display: none; font-size: 0.8em; margin-top: 0.4em; opacity: 0.85;"></span>
                         </span>
                     </div>
+                </div>
+                <div id="viewer-instructions" class="sr-only">
+                    To interact with the 3D preview: Use mouse drag to rotate, mouse wheel to zoom. Touch users: one finger to rotate, pinch to zoom. Keyboard users: the visual preview is supplementary; generated STL files contain the same geometry.
                 </div>
                 <!-- Action Button moved here -->
                 <div class="button-row" style="margin-top: 1em;">
@@ -2002,9 +2018,25 @@
 
                         <p><strong>Acknowledgements:</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li>Powered by <a href="https://liblouis.io/" target="_blank" style="color: #3182ce; text-decoration: none;"><strong>Liblouis</strong></a>, an open-source professional braille translator.</li>
+                            <li>Powered by <a href="https://liblouis.io/" target="_blank" rel="noopener noreferrer" style="color: #3182ce; text-decoration: none;" aria-label="Liblouis website (opens in new window)"><strong>Liblouis</strong></a>, an open-source professional braille translator.</li>
                             <li>Extra thanks to <strong>Tobi Weinberg</strong> for the substantial time and effort he volunteered to help start this project and see it through.</li>
                         </ul>
+
+                        <details style="margin-top: 1em;">
+                            <summary style="cursor: pointer; font-weight: 700; font-size: 1.1em;">Accessibility Statement</summary>
+                            <p style="margin-top: 0.5em;">This application conforms to WCAG 2.1 Level AA.</p>
+                            <p><strong>Features:</strong></p>
+                            <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                                <li>High contrast mode for low vision users</li>
+                                <li>Adjustable font sizes (75% to 200%)</li>
+                                <li>Keyboard navigation support</li>
+                                <li>Screen reader compatible</li>
+                            </ul>
+                            <p><strong>Known Limitations:</strong></p>
+                            <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                                <li>3D preview requires mouse/touch for rotation</li>
+                            </ul>
+                        </details>
                     </div>
                 </div>
 
@@ -2031,7 +2063,7 @@
                             <!-- Auto placement textarea (hidden by default) -->
                             <div id="auto-input-container" style="display: none;">
                                 <label for="auto-text" class="line-label">Auto Placement Text</label>
-                                <textarea id="auto-text" rows="4" placeholder="Type all your text here. It will be translated to braille and auto-wrapped across rows based on available cells." style="width: 100%; resize: vertical;"></textarea>
+                                <textarea id="auto-text" rows="4" placeholder="Type all your text here. It will be translated to braille and auto-wrapped across rows based on available cells." style="width: 100%; resize: vertical;" autocomplete="off"></textarea>
                                 <div id="auto-overflow-warning" class="grade-note" style="margin-top: 0.6em; color: #d73502; display: none;">
                                     <strong>Warning:</strong> <span id="auto-overflow-message"></span>
                                 </div>
@@ -2144,11 +2176,11 @@
 
                         <!-- Submenu: Shape Selection -->
                         <div class="expert-submenu">
-                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false" aria-controls="expert-panel-shapes">
                                 <span class="expert-submenu-title">Shape Selection</span>
                                 <span class="expert-submenu-icon">▼</span>
                             </button>
-                            <div class="expert-submenu-content" style="display: none;">
+                            <div id="expert-panel-shapes" class="expert-submenu-content" style="display: none;">
                                 <!-- Output Shape Selection (moved into Expert Mode) -->
                                 <div class="grade-selection">
                                     <fieldset>
@@ -2219,35 +2251,35 @@
 
                         <!-- Submenu: Braille Spacing -->
                         <div class="expert-submenu">
-                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false" aria-controls="expert-panel-spacing">
                                 <span class="expert-submenu-title">Braille Spacing</span>
                                 <span class="expert-submenu-icon">▼</span>
                             </button>
-                            <div class="expert-submenu-content" style="display: none;">
+                            <div id="expert-panel-spacing" class="expert-submenu-content" style="display: none;">
                                 <div class="grade-selection">
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
                                     <div>
                                         <label for="grid_columns" id="grid_columns_label">Number of Braille Cells (Characters):</label>
-                                        <input type="number" id="grid_columns" name="grid_columns" value="13" style="width: 110px;">
+                                        <input type="number" id="grid_columns" name="grid_columns" value="13" style="width: 110px;" autocomplete="off">
                                         <div id="grid_columns_note" class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                             For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 13 cells available for text.
                                         </div>
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="grid_rows">Number of Braille Lines:</label>
-                                        <input type="number" id="grid_rows" name="grid_rows" value="4" style="width: 110px;">
+                                        <input type="number" id="grid_rows" name="grid_rows" value="4" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cell_spacing">Braille Cell Spacing:</label>
-                                        <input type="number" id="cell_spacing" name="cell_spacing" value="6.5" step="0.1" style="width: 110px;">
+                                        <input type="number" id="cell_spacing" name="cell_spacing" value="6.5" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="line_spacing">Braille Line Spacing:</label>
-                                        <input type="number" id="line_spacing" name="line_spacing" value="10.0" step="0.1" style="width: 110px;">
+                                        <input type="number" id="line_spacing" name="line_spacing" value="10.0" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="dot_spacing">Braille Dot Spacing:</label>
-                                        <input type="number" id="dot_spacing" name="dot_spacing" value="2.5" step="0.1" style="width: 110px;">
+                                        <input type="number" id="dot_spacing" name="dot_spacing" value="2.5" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                 </div>
 
@@ -2255,11 +2287,11 @@
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille / Card Positioning</label>
                                     <div>
                                         <label for="braille_y_adjust">Y Adjust:</label>
-                                        <input type="number" id="braille_y_adjust" name="braille_y_adjust" value="0.0" step="0.1" style="width: 110px;">
+                                        <input type="number" id="braille_y_adjust" name="braille_y_adjust" value="0.0" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="braille_x_adjust">X Adjust:</label>
-                                        <input type="number" id="braille_x_adjust" name="braille_x_adjust" value="0.0" step="0.1" style="width: 110px;">
+                                        <input type="number" id="braille_x_adjust" name="braille_x_adjust" value="0.0" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                 </div>
                             </div>
@@ -2267,28 +2299,28 @@
 
                         <!-- Submenu: Braille Dot Adjustments -->
                         <div class="expert-submenu">
-                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false" aria-controls="expert-panel-dots">
                                 <span class="expert-submenu-title">Braille Dot Adjustments</span>
                                 <span class="expert-submenu-icon">▼</span>
                             </button>
-                            <div class="expert-submenu-content" style="display: none;">
+                            <div id="expert-panel-dots" class="expert-submenu-content" style="display: none;">
                                 <div class="grade-selection" id="rounded_dot_group" style="margin-top: 8px;">
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Embossing Braille Dot Dimensions (Rounded Shape)</label>
                                     <div>
                                         <label for="rounded_dot_base_diameter">Rounded braille dot base diameter (cone base) (mm):</label>
-                                        <input type="number" id="rounded_dot_base_diameter" name="rounded_dot_base_diameter" value="2.0" step="0.1" min="0.5" max="3" style="width: 110px;">
+                                        <input type="number" id="rounded_dot_base_diameter" name="rounded_dot_base_diameter" value="2.0" step="0.1" min="0.5" max="3" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="rounded_dot_base_height">Rounded braille dot base height (cone height) (mm):</label>
-                                        <input type="number" id="rounded_dot_base_height" name="rounded_dot_base_height" value="0.2" step="0.1" min="0" max="2.0" style="width: 110px;">
+                                        <input type="number" id="rounded_dot_base_height" name="rounded_dot_base_height" value="0.2" step="0.1" min="0" max="2.0" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="rounded_dot_dome_diameter">Rounded braille dome diameter (linked to cone flat top) (mm):</label>
-                                        <input type="number" id="rounded_dot_dome_diameter" name="rounded_dot_dome_diameter" value="1.5" step="0.1" min="0.5" max="3.0" style="width: 110px;">
+                                        <input type="number" id="rounded_dot_dome_diameter" name="rounded_dot_dome_diameter" value="1.5" step="0.1" min="0.5" max="3.0" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="rounded_dot_dome_height">Rounded braille dot dome height (mm):</label>
-                                        <input type="number" id="rounded_dot_dome_height" name="rounded_dot_dome_height" value="0.6" step="0.1" min="0.1" max="2.0" style="width: 110px;">
+                                        <input type="number" id="rounded_dot_dome_height" name="rounded_dot_dome_height" value="0.6" step="0.1" min="0.1" max="2.0" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                         The cone base sits on the surface; the dome grows from the cone's flat top. Dome diameter is always equal to the cone flat-top diameter.
@@ -2299,15 +2331,15 @@
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Embossing Braille Dot Dimensions (Cone Shape)</label>
                                     <div>
                                         <label for="emboss_dot_base_diameter">Dot diameter:</label>
-                                        <input type="number" id="emboss_dot_base_diameter" name="emboss_dot_base_diameter" value="1.8" step="0.1" style="width: 110px;">
+                                        <input type="number" id="emboss_dot_base_diameter" name="emboss_dot_base_diameter" value="1.8" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="emboss_dot_height">Dot height:</label>
-                                        <input type="number" id="emboss_dot_height" name="emboss_dot_height" value="1.0" step="0.1" style="width: 110px;">
+                                        <input type="number" id="emboss_dot_height" name="emboss_dot_height" value="1.0" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="emboss_dot_flat_hat">Flat hat diameter:</label>
-                                        <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1" style="width: 110px;">
+                                        <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                 </div>
 
@@ -2317,7 +2349,7 @@
                                     <!-- Hidden hemisphere dial for future use -->
                                     <div style="display: none;">
                                         <label for="hemi_counter_dot_base_diameter">Hemisphere Recess Dot Base Diameter (mm):</label>
-                                        <input type="number" id="hemi_counter_dot_base_diameter" name="hemi_counter_dot_base_diameter" value="1.6" step="0.1" min="0.5" max="5">
+                                        <input type="number" id="hemi_counter_dot_base_diameter" name="hemi_counter_dot_base_diameter" value="1.6" step="0.1" min="0.5" max="5" autocomplete="off">
                                     </div>
                                     <div id="hemisphere_dimensions_group" style="margin-top: 6px; display: none;">
                                         <div class="grade-note" style="font-size: 0.85em;">
@@ -2326,12 +2358,12 @@
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="bowl_counter_dot_base_diameter">Bowl Recess Dot Base Diameter (mm):</label>
-                                        <input type="number" id="bowl_counter_dot_base_diameter" name="bowl_counter_dot_base_diameter" value="1.8" step="0.1" min="0.5" max="5" style="width: 110px;">
+                                        <input type="number" id="bowl_counter_dot_base_diameter" name="bowl_counter_dot_base_diameter" value="1.8" step="0.1" min="0.5" max="5" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div id="bowl_dimensions_group" style="margin-top: 6px;">
                                         <div>
                                             <label for="counter_dot_depth">Bowl Recess Dot Depth (mm):</label>
-                                            <input type="number" id="counter_dot_depth" name="counter_dot_depth" value="0.8" step="0.1" min="0" max="5" style="width: 110px;">
+                                            <input type="number" id="counter_dot_depth" name="counter_dot_depth" value="0.8" step="0.1" min="0" max="5" style="width: 110px;" autocomplete="off">
                                         </div>
                                     </div>
                                 </div>
@@ -2341,15 +2373,15 @@
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Counter Braille Recessed Dot Dimensions (Cone Shape)</label>
                                     <div>
                                         <label for="cone_counter_dot_base_diameter">Dot Base Diameter (mm):</label>
-                                        <input type="number" id="cone_counter_dot_base_diameter" name="cone_counter_dot_base_diameter" value="1.6" step="0.1" min="0.1" max="5" style="width: 110px;">
+                                        <input type="number" id="cone_counter_dot_base_diameter" name="cone_counter_dot_base_diameter" value="1.6" step="0.1" min="0.1" max="5" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cone_counter_dot_height">Dot Height (mm):</label>
-                                        <input type="number" id="cone_counter_dot_height" name="cone_counter_dot_height" value="0.8" step="0.1" min="0" max="5" style="width: 110px;">
+                                        <input type="number" id="cone_counter_dot_height" name="cone_counter_dot_height" value="0.8" step="0.1" min="0" max="5" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cone_counter_dot_flat_hat">Dot Flat Hat Diameter (mm):</label>
-                                        <input type="number" id="cone_counter_dot_flat_hat" name="cone_counter_dot_flat_hat" value="0.4" step="0.1" min="0" max="5" style="width: 110px;">
+                                        <input type="number" id="cone_counter_dot_flat_hat" name="cone_counter_dot_flat_hat" value="0.4" step="0.1" min="0" max="5" style="width: 110px;" autocomplete="off">
                                     </div>
                                 </div>
                             </div>
@@ -2357,38 +2389,38 @@
 
                         <!-- Submenu: Surface Dimensions -->
                         <div class="expert-submenu">
-                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false" aria-controls="expert-panel-dimensions">
                                 <span class="expert-submenu-title">Surface Dimensions</span>
                                 <span class="expert-submenu-icon">▼</span>
                             </button>
-                            <div class="expert-submenu-content" style="display: none;">
+                            <div id="expert-panel-dimensions" class="expert-submenu-content" style="display: none;">
                                 <div class="grade-selection">
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Cylinder Dimensions</label>
                                     <div>
                                         <label for="cylinder_diameter_mm">Cylinder Diameter (mm):</label>
-                                        <input type="number" id="cylinder_diameter_mm" name="cylinder_diameter_mm" value="30.75" step="0.1" min="10" max="200" style="width: 110px;">
+                                        <input type="number" id="cylinder_diameter_mm" name="cylinder_diameter_mm" value="30.75" step="0.1" min="10" max="200" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cylinder_height_mm">Cylinder Height (mm):</label>
-                                        <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200" style="width: 110px;">
+                                        <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cylinder_polygonal_cutout_radius_mm">Polygonal Cutout Circumscribed Radius (mm):</label>
-                                        <input type="number" id="cylinder_polygonal_cutout_radius_mm" name="cylinder_polygonal_cutout_radius_mm" value="13" step="0.1" min="0" max="50" style="width: 110px;">
+                                        <input type="number" id="cylinder_polygonal_cutout_radius_mm" name="cylinder_polygonal_cutout_radius_mm" value="13" step="0.1" min="0" max="50" style="width: 110px;" autocomplete="off">
                                         <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                             Creates a polygonal cutout along the cylinder's length. Set to 0 for no cutout.
                                         </div>
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cylinder_polygonal_cutout_sides">Polygonal Cutout Points:</label>
-                                        <input type="number" id="cylinder_polygonal_cutout_sides" name="cylinder_polygonal_cutout_sides" value="12" step="1" min="3" max="60" style="width: 110px;">
+                                        <input type="number" id="cylinder_polygonal_cutout_sides" name="cylinder_polygonal_cutout_sides" value="12" step="1" min="3" max="60" style="width: 110px;" autocomplete="off">
                                         <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                             Lower values create simpler shapes (e.g., 6); higher values approximate a circle.
                                         </div>
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="seam_offset_deg">Seam Offset (degrees):</label>
-                                        <input type="number" id="seam_offset_deg" name="seam_offset_deg" value="355" step="1" min="0" max="360" style="width: 110px;">
+                                        <input type="number" id="seam_offset_deg" name="seam_offset_deg" value="355" step="1" min="0" max="360" style="width: 110px;" autocomplete="off">
                                         <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                             Rotates the starting position of braille text around the cylinder
                                         </div>
@@ -2402,15 +2434,15 @@
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Plate Dimensions</label>
                                     <div>
                                         <label for="card_width">Plate Width:</label>
-                                        <input type="number" id="card_width" name="card_width" value="90" step="0.1" style="width: 110px;">
+                                        <input type="number" id="card_width" name="card_width" value="90" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="card_height">Plate Height:</label>
-                                        <input type="number" id="card_height" name="card_height" value="52" step="0.1" style="width: 110px;">
+                                        <input type="number" id="card_height" name="card_height" value="52" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="card_thickness">Plate Thickness:</label>
-                                        <input type="number" id="card_thickness" name="card_thickness" value="2.0" step="0.1" style="width: 110px;">
+                                        <input type="number" id="card_thickness" name="card_thickness" value="2.0" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                 </div>
                             </div>
@@ -2423,7 +2455,7 @@
                 </form>
             </div>
         </div>
-    </div>
+    </main>
 
 
 
@@ -3330,7 +3362,7 @@
                     </div>
                     <div class="line-text-row">
                         <label for="line${i}" class="line-label">Line ${i}</label>
-                        <input type="text" id="line${i}" name="line${i}" placeholder="Enter English text here..." maxlength="50" aria-describedby="line${i}-help">
+                        <input type="text" id="line${i}" name="line${i}" placeholder="Enter English text here..." maxlength="50" aria-describedby="line${i}-help" autocomplete="off">
                         <span id="line${i}-help" class="sr-only">Maximum 50 characters for line ${i}</span>
                     </div>
                 `;
@@ -4298,12 +4330,22 @@
             const submenuToggles = Array.from(document.querySelectorAll('.expert-submenu-toggle'));
             submenuToggles.forEach(toggle => {
                 toggle.addEventListener('click', () => {
-                    const content = toggle.parentElement?.querySelector('.expert-submenu-content');
+                    const content = toggle.nextElementSibling;
                     if (!content) return;
-                    const isOpen = content.style.display !== 'none';
-                    content.style.display = isOpen ? 'none' : 'block';
-                    toggle.classList.toggle('active', !isOpen);
+                    const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+
+                    if (isOpen) {
+                        content.style.display = 'none';
+                    } else {
+                        content.style.display = 'block';
+                        // Move focus to first input when opening
+                        const firstFocusable = content.querySelector('input, select, button, textarea, [tabindex]:not([tabindex="-1"])');
+                        if (firstFocusable) {
+                            setTimeout(() => firstFocusable.focus(), 100);
+                        }
+                    }
                     toggle.setAttribute('aria-expanded', String(!isOpen));
+                    toggle.classList.toggle('active', !isOpen);
                     const icon = toggle.querySelector('.expert-submenu-icon');
                     if (icon) icon.textContent = isOpen ? '▼' : '▲';
                 });
@@ -5409,5 +5451,4 @@
 
     </script>
 </body>
-</html>
 </html>

@@ -33,12 +33,19 @@ Development progress tracking:
 - **Session Summaries**: Detailed development session notes
 - **Migration Checkpoints**: Key migration milestones
 
+### [security/](security/)
+Security documentation and audit reports:
+- **Security Audit**: Complete security audit findings and fixes
+- **Environment Variables**: Production configuration guide
+- **Implementation Summary**: Security improvements applied
+
 ## 🚀 Quick Start for Developers
 
 1. **New to the project?** Start with the main [README.md](../README.md)
 2. **Understanding features?** Check [specifications/SPECIFICATIONS_INDEX.md](specifications/SPECIFICATIONS_INDEX.md)
 3. **Deploying?** See [deployment/DEPLOYMENT_CHECKLIST.md](deployment/DEPLOYMENT_CHECKLIST.md)
 4. **Client-side generation?** Read [development/CLIENT_SIDE_CSG_DOCUMENTATION.md](development/CLIENT_SIDE_CSG_DOCUMENTATION.md)
+5. **Security & Configuration?** Review [security/ENVIRONMENT_VARIABLES.md](security/ENVIRONMENT_VARIABLES.md)
 
 ## 📋 Key Documents
 
@@ -48,6 +55,8 @@ Development progress tracking:
 | [VERIFICATION_GUIDE.md](specifications/VERIFICATION_GUIDE.md) | Testing and verification procedures |
 | [CLIENT_SIDE_CSG_DOCUMENTATION.md](development/CLIENT_SIDE_CSG_DOCUMENTATION.md) | Browser-based STL generation architecture |
 | [DEPLOYMENT_CHECKLIST.md](deployment/DEPLOYMENT_CHECKLIST.md) | Pre-release deployment verification |
+| [ENVIRONMENT_VARIABLES.md](security/ENVIRONMENT_VARIABLES.md) | Production environment configuration |
+| [SECURITY_IMPLEMENTATION_SUMMARY.md](security/SECURITY_IMPLEMENTATION_SUMMARY.md) | Security audit and fixes summary |
 
 ## 📝 Documentation Standards
 

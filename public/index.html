@@ -4697,6 +4697,37 @@
             return result;
         }
 
+        // Helper function to create preview line elements safely (XSS prevention)
+        function createPreviewLineElement(isSuccess, label, inputText, outputText, shorthand, errorMsg) {
+            const lineDiv = document.createElement('div');
+            lineDiv.className = isSuccess ? 'preview-line-success' : 'preview-line-error';
+
+            const mainDiv = document.createElement('div');
+            const strong = document.createElement('strong');
+            strong.textContent = label + ': ';
+            mainDiv.appendChild(strong);
+
+            if (isSuccess) {
+                // Safe text content - no innerHTML with user data
+                const textSpan = document.createTextNode(`"${inputText}" → "${outputText}"`);
+                mainDiv.appendChild(textSpan);
+            } else {
+                // Error case - safely escape error message
+                const textSpan = document.createTextNode(`"${inputText}" → Error: ${errorMsg}`);
+                mainDiv.appendChild(textSpan);
+            }
+            lineDiv.appendChild(mainDiv);
+
+            if (isSuccess && shorthand) {
+                const subDiv = document.createElement('div');
+                subDiv.className = 'preview-subline';
+                subDiv.textContent = `Computer shorthand: "${shorthand}"`;
+                lineDiv.appendChild(subDiv);
+            }
+
+            return lineDiv;
+        }
+
         // Preview braille translation using real liblouis (supports manual and auto placement)
         previewBrailleBtn.addEventListener('click', async () => {
             // Reset button state when previewing (user is making changes)
@@ -4707,7 +4738,9 @@
 
             const placementMode = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
             errorDiv.style.display = 'none';
-            let previewHTML = '';
+
+            // Clear previous preview content safely
+            previewContent.innerHTML = '';
 
             if (placementMode === 'manual') {
                 const lines = getDynamicLineValues();
@@ -4722,15 +4755,28 @@
                             const perLineTable = (document.getElementById(`line_lang_${i+1}`)?.value) || tableName;
                             const braille = await translateWithLiblouis(lines[i].trim(), 'g2', perLineTable);
                             const shorthand = brailleToComputerShorthand(braille);
-                            previewHTML += `<div class="preview-line-success">
-                                <div><strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → "${braille}"</div>
-                                <div class="preview-subline">Computer shorthand: "${shorthand}"</div>
-                            </div>`;
+                            // Use safe DOM creation instead of innerHTML
+                            const elem = createPreviewLineElement(
+                                true,
+                                `Line ${i + 1}`,
+                                lines[i].trim(),
+                                braille,
+                                shorthand,
+                                null
+                            );
+                            previewContent.appendChild(elem);
                         } catch (error) {
                             log.error('Translation failed for line', i + 1, ':', error);
-                            previewHTML += `<div class="preview-line-error">
-                                <strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → Error: ${error.message}
-                            </div>`;
+                            // Use safe DOM creation for error messages too
+                            const elem = createPreviewLineElement(
+                                false,
+                                `Line ${i + 1}`,
+                                lines[i].trim(),
+                                null,
+                                null,
+                                error.message
+                            );
+                            previewContent.appendChild(elem);
                         }
                     }
                 }
@@ -4755,10 +4801,24 @@
                     for (let r = 0; r < rows; r++) {
                         const slice = linesForPreview[r] || '';
                         const shorthand = slice ? brailleToComputerShorthand(slice) : '';
-                        previewHTML += `<div class="preview-line-success">
-                            <div><strong>Row ${r + 1}:</strong> "${slice}"</div>
-                            <div class="preview-subline">${shorthand ? `Computer shorthand: "${shorthand}"` : ''}</div>
-                        </div>`;
+                        // Use safe DOM creation for auto mode preview
+                        const lineDiv = document.createElement('div');
+                        lineDiv.className = 'preview-line-success';
+
+                        const mainDiv = document.createElement('div');
+                        const strong = document.createElement('strong');
+                        strong.textContent = `Row ${r + 1}: `;
+                        mainDiv.appendChild(strong);
+                        mainDiv.appendChild(document.createTextNode(`"${slice}"`));
+                        lineDiv.appendChild(mainDiv);
+
+                        if (shorthand) {
+                            const subDiv = document.createElement('div');
+                            subDiv.className = 'preview-subline';
+                            subDiv.textContent = `Computer shorthand: "${shorthand}"`;
+                            lineDiv.appendChild(subDiv);
+                        }
+                        previewContent.appendChild(lineDiv);
                     }
                     if (wrap.warnings && wrap.warnings.length) {
                         errorText.textContent = wrap.warnings.join(' ');
@@ -4767,13 +4827,19 @@
                     }
                 } catch (error) {
                     log.error('BANA wrap failed for auto text:', error);
-                    previewHTML += `<div class="preview-line-error">
-                        <strong>Auto Placement:</strong> Error: ${error.message}
-                    </div>`;
+                    // Use safe DOM creation for auto mode errors
+                    const elem = createPreviewLineElement(
+                        false,
+                        'Auto Placement',
+                        '',
+                        null,
+                        null,
+                        error.message
+                    );
+                    previewContent.appendChild(elem);
                 }
             }
 
-            previewContent.innerHTML = previewHTML;
             braillePreview.style.display = 'block';
         });
 
@@ -4976,18 +5042,26 @@
 
                 // Check if any translation errors occurred
                 if (translationErrors.length > 0) {
-                    let errorMessage = '<strong>Translation failed for the following lines:</strong><br><br>';
-                    translationErrors.forEach(err => {
-                        errorMessage += `Line ${err.line}: "${err.text}"<br>`;
-                    });
-                    errorMessage += '<br><strong>Please check your text and try again.</strong><br><br>';
-                    errorMessage += 'Common issues include:<br>';
-                    errorMessage += '• Special characters that cannot be translated<br>';
-                    errorMessage += '• Text that is incompatible with the selected braille table<br>';
-                    errorMessage += '• System errors during translation<br><br>';
-                    errorMessage += '<em>The STL file was not generated to prevent producing incorrect braille.</em>';
+                    // Build error message safely to prevent XSS
+                    // Use textContent instead of innerHTML for user-provided data
+                    errorText.textContent = ''; // Clear existing content
 
-                    errorText.innerHTML = errorMessage;  // Use innerHTML for HTML formatting
+                    let errorLines = ['Translation failed for the following lines:', ''];
+                    translationErrors.forEach(err => {
+                        // Safely include line number and text (textContent will escape)
+                        errorLines.push(`Line ${err.line}: "${err.text}"`);
+                    });
+                    errorLines.push('');
+                    errorLines.push('Please check your text and try again.');
+                    errorLines.push('');
+                    errorLines.push('Common issues include:');
+                    errorLines.push('• Special characters that cannot be translated');
+                    errorLines.push('• Text that is incompatible with the selected braille table');
+                    errorLines.push('• System errors during translation');
+                    errorLines.push('');
+                    errorLines.push('The STL file was not generated to prevent producing incorrect braille.');
+
+                    errorText.textContent = errorLines.join('\n');
                     errorDiv.style.display = 'flex';
                     errorDiv.className = 'error-message';
 

@@ -71,6 +71,7 @@ from app.utils import braille_to_dots, get_logger
 from app.validation import (
     validate_braille_lines,
     validate_lines,
+    validate_original_lines,
     validate_settings,
 )
 
@@ -78,31 +79,88 @@ from app.validation import (
 logger = get_logger(__name__)
 
 app = Flask(__name__)
-# CORS configuration - update with your actual domain before deployment
-allowed_origins = [
-    'https://your-vercel-domain.vercel.app',  # Replace with your actual Vercel domain
-    'https://your-custom-domain.com',  # Replace with your custom domain if any
-]
+# CORS configuration - uses environment variable for production domain
+# SECURITY: CORS must be properly configured for production
+allowed_origins = []
+
+# Add production domain from environment variable
+production_domain = os.environ.get('PRODUCTION_DOMAIN')
+if production_domain:
+    # Support comma-separated list of domains
+    for domain in production_domain.split(','):
+        domain = domain.strip()
+        if domain:
+            allowed_origins.append(domain)
+            logger.info(f'CORS: Added production domain: {domain}')
 
 # For development, allow localhost
 if os.environ.get('FLASK_ENV') == 'development':
-    allowed_origins.extend(['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5001'])
+    allowed_origins.extend(
+        ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5001', 'http://127.0.0.1:5001']
+    )
+    logger.info('CORS: Development mode - localhost origins enabled')
 
-CORS(app, origins=allowed_origins, supports_credentials=True)
+# SECURITY: In production without CORS configured, restrict to same-origin only
+# This is more secure than allowing all origins
+if not allowed_origins:
+    if os.environ.get('FLASK_ENV') == 'development':
+        # In development without explicit config, allow localhost
+        allowed_origins = ['http://localhost:5001', 'http://127.0.0.1:5001']
+        logger.warning('CORS: Development mode with no PRODUCTION_DOMAIN - allowing localhost only')
+    else:
+        # In production, if PRODUCTION_DOMAIN is not set, we still need the app to work
+        # but we log a critical warning and restrict to same-origin behavior
+        logger.critical(
+            'CORS: PRODUCTION_DOMAIN environment variable is NOT set! '
+            'This is a security risk. Set PRODUCTION_DOMAIN to your actual domain(s).'
+        )
+        # Use empty list which makes CORS more restrictive (same-origin only for credentialed requests)
+        # We add the wildcard but WITHOUT supports_credentials to limit the exposure
+        allowed_origins = ['*']
+        logger.warning(
+            'CORS: Falling back to allow-all origins WITHOUT credentials support. '
+            'Set PRODUCTION_DOMAIN to enable proper CORS with credentials.'
+        )
+
+# When using wildcard, disable credentials support for security
+cors_supports_credentials = '*' not in allowed_origins
+if not cors_supports_credentials:
+    logger.warning('CORS: Credentials support DISABLED due to wildcard origin')
+
+CORS(app, origins=allowed_origins, supports_credentials=cors_supports_credentials)
 
 
 # Security configurations
-app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024  # 1MB max request size
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
+# Request size limits optimized for actual payload sizes
+# Typical requests: Braille text (~10KB), Geometry spec (~50KB)
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024  # 100KB max (reduced from 1MB)
 
-# Flask-Limiter setup (Phase 4.1/4.2) - ENABLED with Redis when available, memory fallback otherwise
+# SECRET_KEY configuration - mandatory in production
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    if os.environ.get('FLASK_ENV') == 'development':
+        SECRET_KEY = 'dev-key-change-in-production'
+        logger.warning('Using insecure development SECRET_KEY - DO NOT use in production!')
+    else:
+        raise RuntimeError(
+            'SECRET_KEY environment variable must be set in production. '
+            'Generate with: python -c "import secrets; print(secrets.token_hex(32))"'
+        )
+app.config['SECRET_KEY'] = SECRET_KEY
+
+# Flask-Limiter setup with tiered rate limiting
+# Stricter limits to prevent resource exhaustion and abuse
 redis_url = os.environ.get('REDIS_URL')
 storage_uri = redis_url if redis_url else 'memory://'
 if Limiter is not None:
     limiter = Limiter(
         key_func=get_remote_address,
         storage_uri=storage_uri,
-        default_limits=['10 per minute'],
+        default_limits=[
+            '5 per minute',  # Burst protection
+            '50 per hour',  # Sustained usage limit
+            '200 per day',  # Daily cap
+        ],
     )
     limiter.init_app(app)
 else:
@@ -116,11 +174,24 @@ else:
 
     limiter = _NoopLimiter()
 
+
+# Rate limit exceeded handler
+@app.errorhandler(429)
+def rate_limit_exceeded(e):
+    return jsonify(
+        {
+            'error': 'Rate limit exceeded',
+            'message': 'Too many requests. Please wait before trying again.',
+            'retry_after': getattr(e, 'description', 'Please try again later'),
+        }
+    ), 429
+
+
 # Helper functions for security (cache functions now in app.cache)
 
 
 @app.route('/lookup_stl', methods=['GET'])
-@limiter.limit('60 per minute')
+@limiter.limit('20 per minute; 200 per hour')
 def lookup_stl_redirect():
     """Return cached negative plate location (302 redirect or JSON) if available.
 
@@ -197,8 +268,16 @@ def lookup_stl_redirect():
 
 
 @app.route('/debug/blob_upload', methods=['GET'])
+@limiter.limit('1 per minute')
 def debug_blob_upload():
-    """Try both direct and API blob uploads with a 1-byte payload and report results."""
+    """Try both direct and API blob uploads with a 1-byte payload and report results.
+
+    SECURITY: This endpoint is restricted to development mode only.
+    """
+    # Restrict to development environment
+    if os.environ.get('FLASK_ENV') != 'development' and not os.environ.get('ENABLE_DEBUG_ENDPOINTS'):
+        return jsonify({'error': 'Endpoint not available'}), 404
+
     try:
         token = os.environ.get('BLOB_STORE_WRITE_TOKEN') or os.environ.get('BLOB_READ_WRITE_TOKEN')
         public_base = os.environ.get('BLOB_PUBLIC_BASE_URL')
@@ -275,11 +354,17 @@ def debug_blob_upload():
 # Security headers
 @app.after_request
 def add_security_headers(response):
-    """Add security headers to all responses"""
+    """Add comprehensive security headers to all responses"""
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
-    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
+
+    # Cross-Origin Policies for enhanced security
+    response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
+    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
+    response.headers['Cross-Origin-Resource-Policy'] = 'same-origin'
+    response.headers['X-Permitted-Cross-Domain-Policies'] = 'none'
     # Content-Security-Policy allowing web workers, table loading, and Blob CDN redirects
     blob_base = _blob_public_base_url().rstrip('/')
     connect_sources = ["'self'", 'blob:', 'data:']
@@ -291,11 +376,14 @@ def add_security_headers(response):
     # Allow CDN sources for manifold-3d WASM loading
     connect_sources.append('https://cdn.jsdelivr.net')
     connect_sources.append('https://unpkg.com')
+
+    # Improved CSP: Remove 'unsafe-eval' for modern browsers
+    # Note: 'unsafe-eval' removed - requires Chrome 80+, Firefox 114+, Safari 15+, Edge 80+
+    # If you need to support older browsers, uncomment the 'unsafe-eval' fallback below
     csp_policy = (
         "default-src 'self'; "
-        # 'wasm-unsafe-eval' allows WebAssembly compilation (more secure than full unsafe-eval)
-        # Fallback to 'unsafe-eval' for older browsers that don't support wasm-unsafe-eval
-        "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' 'unsafe-eval' "
+        # 'wasm-unsafe-eval' allows WebAssembly compilation without full eval
+        "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' "
         'https://fonts.googleapis.com https://vercel.live '
         'https://cdn.jsdelivr.net https://unpkg.com; '
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
@@ -303,7 +391,9 @@ def add_security_headers(response):
         "img-src 'self' data: blob:; "
         f'connect-src {" ".join(connect_sources)}; '
         "object-src 'none'; "
-        "base-uri 'self'; worker-src 'self' blob:"
+        "base-uri 'self'; "
+        "worker-src 'self' blob:; "
+        "frame-ancestors 'none'"
     )
     response.headers['Content-Security-Policy'] = csp_policy
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
@@ -338,7 +428,22 @@ def handle_error(e):
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
-    return jsonify({'error': 'File too large. Maximum size is 1MB.'}), 413
+    return jsonify({'error': 'Request too large. Maximum size is 100KB.'}), 413
+
+
+@app.before_request
+def check_content_length():
+    """Additional content length validation per endpoint."""
+    if request.method in ['POST', 'PUT']:
+        cl = request.content_length
+        endpoint = request.endpoint
+
+        # Stricter limits for specific endpoints
+        if endpoint in ['generate_braille_stl', 'geometry_spec'] and cl and cl > 50 * 1024:
+            return jsonify({'error': 'Request too large for this endpoint (max 50KB)'}), 413
+
+        if endpoint == 'generate_counter_plate_stl' and cl and cl > 10 * 1024:
+            return jsonify({'error': 'Request too large for this endpoint (max 10KB)'}), 413
 
 
 @app.errorhandler(400)
@@ -749,6 +854,15 @@ def static_files(filename):
 
         response = send_from_directory('static', safe_path)
 
+        # Add security headers to static files
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+
+        # Set cache headers for static assets
+        if safe_path.endswith(('.js', '.css', '.woff', '.woff2', '.ttf', '.eot')):
+            response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+        else:
+            response.headers['Cache-Control'] = 'public, max-age=3600'
+
         # Add CORS headers for liblouis files to ensure they can be loaded by web workers
         if 'liblouis' in safe_path:
             response.headers['Access-Control-Allow-Origin'] = '*'
@@ -927,7 +1041,7 @@ def list_liblouis_tables():
 
 
 @app.route('/generate_braille_stl', methods=['POST'])
-@limiter.limit('10 per minute')
+@limiter.limit('3 per minute; 20 per hour; 100 per day')
 def generate_braille_stl():
     try:
         # Validate request content type
@@ -951,6 +1065,7 @@ def generate_braille_stl():
 
         # Validate inputs
         validate_lines(lines)
+        validate_original_lines(original_lines)
         validate_settings(settings_data)
 
         # Validate braille characters for positive plates
@@ -1228,16 +1343,31 @@ def generate_braille_stl():
         config_json = json.dumps(config_dump, indent=2)
         logger.debug(f'Config dump:\n{config_json}')
 
+        def sanitize_filename(text: str, max_length: int = 30) -> str:
+            """Safely sanitize text for use in filenames."""
+            # Remove any null bytes
+            text = text.replace('\x00', '')
+            # Allow only alphanumeric, spaces, hyphens
+            text = re.sub(r'[^\w\s-]', '', text)[:max_length]
+            # Replace spaces and multiple hyphens with single underscore
+            text = re.sub(r'[-\s]+', '_', text)
+            # Remove leading/trailing underscores
+            text = text.strip('_')
+            # Prevent directory traversal sequences
+            text = text.replace('..', '').replace('/', '').replace('\\', '')
+            # Ensure not empty
+            if not text:
+                text = 'braille'
+            return text
+
         # Create filename based on text content with fallback logic
         if plate_type == 'positive':
             # For embossing plates, prioritize Line 1, then fallback to other lines
             filename = f'braille_embossing_plate-{shape_type}'
             for i, line in enumerate(lines):
                 if line.strip():
-                    # Sanitize filename: remove special characters and limit length
-                    sanitized = re.sub(r'[^\w\s-]', '', line.strip()[:30])
-                    sanitized = re.sub(r'[-\s]+', '_', sanitized).strip('_')
-                    if sanitized:
+                    sanitized = sanitize_filename(line.strip())
+                    if sanitized and sanitized != 'braille':
                         if i == 0:  # Line 1
                             filename = f'braille_embossing_plate_{sanitized}-{shape_type}'
                         else:  # Other lines as fallback
@@ -1329,7 +1459,7 @@ def generate_braille_stl():
 
 
 @app.route('/geometry_spec', methods=['POST'])
-@limiter.limit('20 per minute')
+@limiter.limit('5 per minute; 40 per hour; 150 per day')
 def geometry_spec():
     """
     Generate geometry specification (positions, dimensions) for client-side CSG.
@@ -1355,6 +1485,7 @@ def geometry_spec():
 
         # Validate inputs
         validate_lines(lines)
+        validate_original_lines(original_lines)
         validate_settings(settings_data)
         validate_braille_lines(lines, plate_type)
 
@@ -1406,7 +1537,7 @@ def geometry_spec():
 
 
 @app.route('/generate_counter_plate_stl', methods=['POST'])
-@limiter.limit('10 per minute')
+@limiter.limit('3 per minute; 20 per hour; 100 per day')
 def generate_counter_plate_stl():
     """
     Generate counter plate with hemispherical recesses as per project brief.

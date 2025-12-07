@@ -5,9 +5,9 @@ This module provides validation functions for incoming requests,
 ensuring security, correctness, and helpful error messages.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from app.utils import get_logger, is_braille_char
+from app.utils import get_logger
 
 # Configure logging
 logger = get_logger(__name__)
@@ -22,7 +22,7 @@ BRAILLE_UNICODE_END = 0x28FF
 class ValidationError(ValueError):
     """Custom exception for validation errors with structured details."""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message)
         self.details = details or {}
 
@@ -30,13 +30,13 @@ class ValidationError(ValueError):
 def validate_lines(lines: Any) -> bool:
     """
     Validate the lines input for security and correctness.
-    
+
     Args:
         lines: Input lines to validate
-        
+
     Returns:
         True if valid
-        
+
     Raises:
         ValidationError: If validation fails with details
     """
@@ -71,19 +71,19 @@ def validate_lines(lines: Any) -> bool:
     return True
 
 
-def validate_braille_lines(lines: List[str], plate_type: str = 'positive') -> bool:
+def validate_braille_lines(lines: list[str], plate_type: str = 'positive') -> bool:
     """
     Validate that lines contain valid braille Unicode characters.
-    
+
     Only validates non-empty lines for positive plates (counter plates generate all dots).
-    
+
     Args:
         lines: List of text lines
         plate_type: 'positive' or 'negative'
-        
+
     Returns:
         True if valid
-        
+
     Raises:
         ValidationError: If invalid braille characters found
     """
@@ -99,16 +99,18 @@ def validate_braille_lines(lines: List[str], plate_type: str = 'positive') -> bo
                 # Allow standard ASCII space characters which represent blank braille cells
                 if char == ' ':
                     continue
-                    
+
                 char_code = ord(char)
                 if char_code < BRAILLE_UNICODE_START or char_code > BRAILLE_UNICODE_END:
-                    errors.append({
-                        'line': i + 1,
-                        'position': j + 1,
-                        'character': char,
-                        'char_code': f'U+{char_code:04X}',
-                        'expected': f'U+{BRAILLE_UNICODE_START:04X} to U+{BRAILLE_UNICODE_END:04X}',
-                    })
+                    errors.append(
+                        {
+                            'line': i + 1,
+                            'position': j + 1,
+                            'character': char,
+                            'char_code': f'U+{char_code:04X}',
+                            'expected': f'U+{BRAILLE_UNICODE_START:04X} to U+{BRAILLE_UNICODE_END:04X}',
+                        }
+                    )
 
     if errors:
         error_details = []
@@ -134,13 +136,13 @@ def validate_braille_lines(lines: List[str], plate_type: str = 'positive') -> bo
 def validate_settings(settings_data: Any) -> bool:
     """
     Validate settings data for security and correctness.
-    
+
     Args:
         settings_data: Settings dictionary from request
-        
+
     Returns:
         True if valid
-        
+
     Raises:
         ValidationError: If validation fails
     """
@@ -218,13 +220,13 @@ def validate_settings(settings_data: Any) -> bool:
 def validate_shape_type(shape_type: str) -> str:
     """
     Validate and normalize shape_type parameter.
-    
+
     Args:
         shape_type: Shape type string
-        
+
     Returns:
         Normalized shape type
-        
+
     Raises:
         ValidationError: If invalid
     """
@@ -240,13 +242,13 @@ def validate_shape_type(shape_type: str) -> str:
 def validate_plate_type(plate_type: str) -> str:
     """
     Validate and normalize plate_type parameter.
-    
+
     Args:
         plate_type: Plate type string
-        
+
     Returns:
         Normalized plate type
-        
+
     Raises:
         ValidationError: If invalid
     """
@@ -262,13 +264,13 @@ def validate_plate_type(plate_type: str) -> str:
 def validate_grade(grade: str) -> str:
     """
     Validate and normalize braille grade parameter.
-    
+
     Args:
         grade: Grade string
-        
+
     Returns:
         Normalized grade
-        
+
     Raises:
         ValidationError: If invalid
     """
@@ -281,17 +283,17 @@ def validate_grade(grade: str) -> str:
     return normalized
 
 
-def validate_request_has_content(lines: List[str], plate_type: str) -> bool:
+def validate_request_has_content(lines: list[str], plate_type: str) -> bool:
     """
     Validate that positive plates have at least some text content.
-    
+
     Args:
         lines: List of text lines
         plate_type: 'positive' or 'negative'
-        
+
     Returns:
         True if valid
-        
+
     Raises:
         ValidationError: If positive plate has no content
     """
@@ -302,3 +304,40 @@ def validate_request_has_content(lines: List[str], plate_type: str) -> bool:
         )
     return True
 
+
+def validate_original_lines(original_lines: Any) -> bool:
+    """
+    Validate optional original_lines parameter.
+
+    Args:
+        original_lines: Original text lines before braille conversion
+
+    Returns:
+        True if valid
+
+    Raises:
+        ValidationError: If validation fails
+    """
+    if original_lines is None:
+        return True
+
+    if not isinstance(original_lines, list):
+        raise ValidationError('original_lines must be a list', {'type': type(original_lines).__name__})
+
+    if len(original_lines) > MAX_LINES:
+        raise ValidationError(
+            f'Too many original_lines. Maximum is {MAX_LINES}.', {'provided': len(original_lines), 'max': MAX_LINES}
+        )
+
+    for i, line in enumerate(original_lines):
+        if not isinstance(line, str):
+            raise ValidationError(
+                f'original_line {i + 1} must be a string', {'line_number': i + 1, 'type': type(line).__name__}
+            )
+        if len(line) > MAX_LINE_LENGTH * 2:  # More lenient for original text
+            raise ValidationError(
+                f'original_line {i + 1} is too long',
+                {'line_number': i + 1, 'length': len(line), 'max': MAX_LINE_LENGTH * 2},
+            )
+
+    return True

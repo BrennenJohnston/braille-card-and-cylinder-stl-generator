@@ -16,10 +16,11 @@ braille-card-and-cylinder-stl-generator/
 │   ├── utils.py             # Utility functions
 │   └── validation.py        # Input validation
 ├── docs/                     # Documentation (organized by category)
-│   ├── specifications/      # Technical specifications (16 files)
-│   ├── progress/            # Development progress tracking (18 files)
+│   ├── specifications/      # Technical specifications (17 files)
 │   ├── deployment/          # Deployment guides and fixes (13 files)
-│   └── development/         # Development guides and notes (11 files)
+│   ├── development/         # Development guides and notes (13 files)
+│   ├── security/            # Security documentation and audit (6 files)
+│   └── progress/            # Development progress tracking (18 files)
 ├── public/                   # Public static HTML (Vercel deployment)
 ├── scripts/                  # Utility scripts for development and deployment
 ├── static/                   # Static assets (JS, CSS, fonts, liblouis tables)
@@ -127,6 +128,17 @@ Deployment guides and production fixes:
 **Key Files:**
 - `DEPLOYMENT_CHECKLIST.md` - Pre-release verification
 - `VERCEL_DEPLOYMENT.md` - Vercel setup guide
+
+### `docs/security/` (6 files)
+Security documentation and configuration:
+- Security audit reports and findings
+- Environment variable configuration
+- Security implementation summary
+
+**Key Files:**
+- `ENVIRONMENT_VARIABLES.md` - Production configuration guide
+- `SECURITY_IMPLEMENTATION_SUMMARY.md` - Security improvements summary
+- `SECURITY_AUDIT_REPORT.md` - Detailed audit findings
 
 ### `docs/progress/` (18 files)
 Historical development tracking:

@@ -26,7 +26,7 @@ _redis_client_singleton = None
 
 
 def _get_redis_client():
-    """Get or create Redis client singleton."""
+    """Get or create Redis client singleton with TLS validation."""
     global _redis_client_singleton
     if _redis_client_singleton is not None:
         return _redis_client_singleton
@@ -36,10 +36,46 @@ def _get_redis_client():
         redis_url = os.environ.get('REDIS_URL')
         if not redis_url:
             return None
+
+        # Redact password for logging
+        safe_url = redis_url
+        if '@' in redis_url:
+            parts = redis_url.split('@')
+            if ':' in parts[0]:
+                protocol_user = parts[0].rsplit(':', 1)[0]
+                safe_url = f'{protocol_user}:[REDACTED]@{parts[1]}'
+
+        # Enforce TLS for production (non-localhost connections)
+        is_localhost = redis_url.startswith('redis://localhost') or redis_url.startswith('redis://127.0.0.1')
+        is_dev = os.environ.get('FLASK_ENV') == 'development'
+
+        if not is_localhost and not is_dev and not redis_url.startswith('rediss://'):
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error('Redis URL must use TLS (rediss://) for non-localhost connections in production')
+            raise ValueError('Redis TLS required in production')
+
         # from_url handles rediss:// and ssl automatically
-        _redis_client_singleton = _redis_mod.from_url(redis_url, decode_responses=True)
+        # For TLS connections, from_url will use ssl_cert_reqs='required' by default
+        _redis_client_singleton = _redis_mod.from_url(
+            redis_url, decode_responses=True, socket_connect_timeout=5, socket_timeout=5
+        )
+
+        # Test connection
+        _redis_client_singleton.ping()
+
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.info(f'Redis connected: {safe_url}')
         return _redis_client_singleton
     except Exception:
+        import logging
+
+        logger = logging.getLogger(__name__)
+        # Don't log the exception directly (might contain URL with password)
+        logger.error('Redis connection failed - check REDIS_URL environment variable')
         return None
 
 

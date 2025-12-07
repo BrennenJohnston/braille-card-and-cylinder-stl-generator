@@ -1,4 +1,5 @@
 import logging
+import os
 import platform
 import sys
 
@@ -8,14 +9,23 @@ _startup_logger = logging.getLogger('wsgi_startup')
 
 
 def _log_platform_info():
-    """Log platform information to help diagnose binary compatibility issues."""
+    """Log platform information to help diagnose binary compatibility issues.
+
+    SECURITY NOTE: This diagnostic function should only run in development
+    as it reveals system information that could aid attackers.
+    """
+    # Only run diagnostics in development or if explicitly enabled
+    if os.environ.get('FLASK_ENV') != 'development' and not os.environ.get('ENABLE_DIAGNOSTICS'):
+        return
+
     _startup_logger.info(f'Python version: {sys.version}')
     _startup_logger.info(f'Platform: {platform.platform()}')
     _startup_logger.info(f'Machine: {platform.machine()}')
     try:
         import subprocess
 
-        result = subprocess.run(['ldd', '--version'], capture_output=True, text=True)
+        # SECURITY: Hardcoded command - never use user input here
+        result = subprocess.run(['ldd', '--version'], capture_output=True, text=True, timeout=5)
         glibc_info = result.stdout.split('\n')[0] if result.stdout else result.stderr.split('\n')[0]
         _startup_logger.info(f'glibc version: {glibc_info}')
     except Exception as e:

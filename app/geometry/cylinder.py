@@ -34,16 +34,6 @@ def _build_character_polygon_proxy(char_upper: str, target_width: float, target_
     return _build_character_polygon(char_upper, target_width, target_height)
 
 
-def _is_serverless_env() -> bool:
-    """Detect serverless runtimes (e.g., Vercel/Lambda)."""
-    try:
-        return bool(
-            _os.environ.get('VERCEL') or _os.environ.get('AWS_LAMBDA_FUNCTION_NAME') or _os.environ.get('NOW_REGION')
-        )
-    except Exception:
-        return False
-
-
 def _booleans_enabled() -> bool:
     """Feature flag to enable/disable 3D boolean operations at runtime."""
     try:
@@ -1281,9 +1271,6 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         logger.error(f'Cylinder boolean operations failed: {final_error}')
         # Surface the error to the caller (no 2D fallback)
         raise
-
-
-def create_cylinder_counter_plate_2d(settings, cylinder_params=None):
     """
     Create a cylinder counter plate using 2D Shapely operations (serverless-compatible).
 

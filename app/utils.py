@@ -7,7 +7,6 @@ used across the application.
 
 import logging
 import os
-from functools import lru_cache
 from typing import Any
 
 # Constants
@@ -138,32 +137,3 @@ def _truthy(value: str | None) -> bool:
     if value is None:
         return False
     return str(value).strip().lower() in ('1', 'true', 'yes', 'on')
-
-
-@lru_cache(maxsize=1)
-def allow_serverless_booleans() -> bool:
-    """
-    Determine if we can safely execute 3D boolean operations in serverless environments.
-
-    Returns True if either an explicit ALLOW_SERVERLESS_BOOLEANS env flag is set or
-    the manifold3d backend is importable (indicating native binaries are available).
-    """
-    logger = get_logger(__name__)
-
-    env_value = os.environ.get('ALLOW_SERVERLESS_BOOLEANS')
-    if env_value is not None:
-        result = _truthy(env_value)
-        logger.info(f'ALLOW_SERVERLESS_BOOLEANS env var set to {env_value!r} -> {result}')
-        return result
-
-    try:
-        import manifold3d  # noqa: F401
-
-        logger.info('manifold3d imported successfully - serverless booleans available')
-        return True
-    except ImportError as e:
-        logger.warning(f'manifold3d import failed (ImportError): {e}')
-        return False
-    except Exception as e:
-        logger.warning(f'manifold3d import failed (unexpected error): {type(e).__name__}: {e}')
-        return False

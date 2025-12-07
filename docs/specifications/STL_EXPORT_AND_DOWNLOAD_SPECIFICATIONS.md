@@ -718,49 +718,111 @@ if (isCylinder) {
 
 ## 7. File Naming Conventions
 
-### Naming Pattern
+### Embossing Plate Naming Pattern
 
 ```
-braille_[content]_[shape]_[plate].stl
+Embossing_Plate_[first_word].stl
 ```
+
+The embossing plate filename uses the **first word** from the text input field (Line 1 is prioritized, then other lines as fallback).
+
+### Counter Plate Naming Pattern
+
+```
+Universal_Counter_Plate_[counter].stl
+```
+
+Counter plates use a **session-based sequential counter** that increments with each download. The counter resets when the page is refreshed.
+
+### Counter Limits
+
+| Aspect | Value | Rationale |
+|--------|-------|-----------|
+| Initial Value | 1 | First download starts at 1 |
+| Maximum Value | 999 | Reasonable limit for single session |
+| Overflow Behavior | Wraps to 1 | Prevents excessively long filenames |
+| Persistence | Session only | Resets on page refresh |
 
 ### Components
 
-| Component | Values | Example |
-|-----------|--------|---------|
-| `braille` | Fixed prefix | `braille_` |
-| `content` | Sanitized first line | `john_smith` |
-| `shape` | `card` or `cylinder` | `card` |
-| `plate` | `emboss` or `counter` | `emboss` |
+| Plate Type | Component | Description | Example |
+|------------|-----------|-------------|---------|
+| Embossing | `Embossing_Plate_` | Fixed prefix | `Embossing_Plate_` |
+| Embossing | `first_word` | First word from text input, sanitized | `brennen` |
+| Counter | `Universal_Counter_Plate_` | Fixed prefix | `Universal_Counter_Plate_` |
+| Counter | `counter` | Sequential download number (1-999) | `1`, `2`, `42` |
+
+### First Word Extraction
+
+The first word is extracted from the first non-empty line of text input:
+
+```javascript
+function extractFirstWord(text) {
+    // Split by whitespace and get the first word
+    const words = text.trim().split(/\s+/);
+    return words[0] || '';
+}
+```
 
 ### Sanitization Rules
 
 ```javascript
 function sanitizeFilename(text) {
     return text
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '_')  // Replace non-alphanumeric with underscore
+        .replace(/[^\w\s-]/g, '')      // Remove special characters
+        .replace(/[-\s]+/g, '_')       // Replace spaces/hyphens with underscore
         .replace(/^_+|_+$/g, '')       // Trim leading/trailing underscores
         .substring(0, 30);              // Limit length
 }
 
-function generateFilename(lines, shapeType, plateType) {
-    const content = sanitizeFilename(lines[0] || 'untitled');
-    const shape = shapeType === 'cylinder' ? 'cylinder' : 'card';
-    const plate = plateType === 'negative' ? 'counter' : 'emboss';
+function generateEmbossingFilename(lines) {
+    // Find first non-empty line
+    for (const line of lines) {
+        if (line.trim()) {
+            // Extract first word and sanitize
+            const firstWord = line.trim().split(/\s+/)[0];
+            const sanitized = sanitizeFilename(firstWord);
+            if (sanitized) {
+                return `Embossing_Plate_${sanitized}.stl`;
+            }
+        }
+    }
+    // Fallback if no text
+    return 'Embossing_Plate_untitled.stl';
+}
 
-    return `braille_${content}_${shape}_${plate}.stl`;
+// Session-based counter for counter plate downloads
+let counterPlateDownloadCounter = 0;
+const COUNTER_PLATE_MAX = 999;
+
+function generateCounterFilename() {
+    // Increment counter (wraps at max)
+    counterPlateDownloadCounter = (counterPlateDownloadCounter % COUNTER_PLATE_MAX) + 1;
+    return `Universal_Counter_Plate_${counterPlateDownloadCounter}.stl`;
 }
 ```
 
 ### Examples
 
-| First Line | Shape | Plate | Filename |
-|------------|-------|-------|----------|
-| "John Smith" | card | positive | `braille_john_smith_card_emboss.stl` |
-| "Hello World!" | cylinder | positive | `braille_hello_world_cylinder_emboss.stl` |
-| "" (empty) | card | negative | `braille_untitled_card_counter.stl` |
-| "123 Main St." | cylinder | negative | `braille_123_main_st_cylinder_counter.stl` |
+#### Embossing Plates
+
+| Text Input | First Word | Filename |
+|------------|------------|----------|
+| "brennen johnston watap@uw.edu" | brennen | `Embossing_Plate_brennen.stl` |
+| "John Smith" | John | `Embossing_Plate_John.stl` |
+| "Hello World!" | Hello | `Embossing_Plate_Hello.stl` |
+| "" (empty) | — | `Embossing_Plate_untitled.stl` |
+| "123 Main St." | 123 | `Embossing_Plate_123.stl` |
+
+#### Counter Plates
+
+| Download # | Filename |
+|------------|----------|
+| 1st download | `Universal_Counter_Plate_1.stl` |
+| 2nd download | `Universal_Counter_Plate_2.stl` |
+| 42nd download | `Universal_Counter_Plate_42.stl` |
+| 999th download | `Universal_Counter_Plate_999.stl` |
+| 1000th download | `Universal_Counter_Plate_1.stl` (wraps) |
 
 ---
 

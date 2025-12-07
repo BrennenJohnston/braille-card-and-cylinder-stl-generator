@@ -2945,6 +2945,16 @@
         // Store the current plate type for download naming
         let currentPlateType = 'positive';
 
+        // Counter for Universal Counter Plate downloads (session-based, max 999)
+        let counterPlateDownloadCounter = 0;
+        const COUNTER_PLATE_MAX = 999;
+
+        function getNextCounterPlateNumber() {
+            // Increment counter (wraps at max to 1)
+            counterPlateDownloadCounter = (counterPlateDownloadCounter % COUNTER_PLATE_MAX) + 1;
+            return counterPlateDownloadCounter;
+        }
+
         // Add event handler for the action button
         actionBtn.addEventListener('click', () => {
             if (actionBtn.getAttribute('data-state') === 'generate') {
@@ -4983,21 +4993,9 @@
                             // Directly proceed to preview/download using the blob URL
                             if (lastSTLUrl) URL.revokeObjectURL(lastSTLUrl);
                             lastSTLUrl = blobUrl; // external URL; no need to createObjectURL
-                            // Update filename consistent with backend (counter plate)
-                            const isBowlSel = document.querySelector('input[name="use_bowl_recess"]:checked')?.value === '1';
-                            let baseStr = '0';
-                            if (isBowlSel) {
-                                baseStr = document.getElementById('bowl_counter_dot_base_diameter')?.value
-                                    || document.getElementById('counter_dot_base_diameter')?.value
-                                    || '0';
-                            } else {
-                                baseStr = document.getElementById('hemi_counter_dot_base_diameter')?.value
-                                    || document.getElementById('counter_dot_base_diameter')?.value
-                                    || '0';
-                            }
-                            const totalDiameter = parseFloat(baseStr) || 0;
+                            // Update filename with sequential counter (counter plate)
                             lastGeneratedSTLUrl = lastSTLUrl;
-                            lastGeneratedFilename = `braille_counter_plate_${totalDiameter}mm-${shapeType}.stl`;
+                            lastGeneratedFilename = `Universal_Counter_Plate_${getNextCounterPlateNumber()}.stl`;
                             loadSTL(lastSTLUrl);
                             actionBtn.disabled = false;
                             setToDownloadState();
@@ -5058,7 +5056,7 @@
                 // Generate filename on frontend to match backend logic
                 const plateType = document.querySelector('input[name="plate_type"]:checked').value;
                 const shapeType = document.querySelector('input[name="shape_type"]:checked').value;
-                let filename = plateType === 'positive' ? 'braille_embossing_plate' : 'braille_counter_plate';
+                let filename = 'Embossing_Plate_untitled'; // Default, will be updated below
 
                 if (plateType === 'positive') {
                     // Get the current lines from the form
@@ -5074,39 +5072,25 @@
                         lines = [document.getElementById('auto-text')?.value || ''];
                     }
 
-                    // Find first non-empty line (prioritizing Line 1)
+                    // Find first non-empty line and extract the first word
                     for (let i = 0; i < lines.length; i++) {
                         if (lines[i].trim()) {
-                            // Sanitize filename: remove special characters and limit length
-                            let sanitized = lines[i].trim().substring(0, 30);
+                            // Extract the first word
+                            const firstWord = lines[i].trim().split(/\s+/)[0];
+                            // Sanitize: remove special characters and limit length
+                            let sanitized = firstWord.substring(0, 30);
                             sanitized = sanitized.replace(/[^\w\s-]/g, '');
                             sanitized = sanitized.replace(/[-\s]+/g, '_').replace(/^_+|_+$/g, '');
 
                             if (sanitized) {
-                                filename = `braille_embossing_plate_${sanitized}-${shapeType}`;
+                                filename = `Embossing_Plate_${sanitized}`;
                                 break;
                             }
                         }
                     }
-                    // If no text was found, still append shape type
-                    if (!filename.includes(shapeType)) {
-                        filename = `braille_embossing_plate-${shapeType}`;
-                    }
                 } else {
-                    // For counter plates, include actual counter base diameter in filename
-                    const isBowlSel = document.querySelector('input[name="use_bowl_recess"]:checked')?.value === '1';
-                    let baseStr = '0';
-                    if (isBowlSel) {
-                        baseStr = document.getElementById('bowl_counter_dot_base_diameter')?.value
-                            || document.getElementById('counter_dot_base_diameter')?.value
-                            || '0';
-                    } else {
-                        baseStr = document.getElementById('hemi_counter_dot_base_diameter')?.value
-                            || document.getElementById('counter_dot_base_diameter')?.value
-                            || '0';
-                    }
-                    const totalDiameter = parseFloat(baseStr) || 0;
-                    filename = `braille_counter_plate_${totalDiameter}mm-${shapeType}`;
+                    // For counter plates, use sequential counter
+                    filename = `Universal_Counter_Plate_${getNextCounterPlateNumber()}`;
                 }
 
                 // Store the generated STL URL and filename for download

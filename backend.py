@@ -1357,36 +1357,29 @@ def generate_braille_stl():
             text = text.replace('..', '').replace('/', '').replace('\\', '')
             # Ensure not empty
             if not text:
-                text = 'braille'
+                text = 'untitled'
             return text
+
+        def extract_first_word(text: str) -> str:
+            """Extract the first word from a text string."""
+            words = text.strip().split()
+            return words[0] if words else ''
 
         # Create filename based on text content with fallback logic
         if plate_type == 'positive':
-            # For embossing plates, prioritize Line 1, then fallback to other lines
-            filename = f'braille_embossing_plate-{shape_type}'
-            for i, line in enumerate(lines):
+            # For embossing plates, extract first word from first non-empty line
+            filename = 'Embossing_Plate_untitled'
+            for line in lines:
                 if line.strip():
-                    sanitized = sanitize_filename(line.strip())
-                    if sanitized and sanitized != 'braille':
-                        if i == 0:  # Line 1
-                            filename = f'braille_embossing_plate_{sanitized}-{shape_type}'
-                        else:  # Other lines as fallback
-                            filename = f'braille_embossing_plate_{sanitized}-{shape_type}'
+                    first_word = extract_first_word(line.strip())
+                    sanitized = sanitize_filename(first_word)
+                    if sanitized and sanitized != 'untitled':
+                        filename = f'Embossing_Plate_{sanitized}'
                         break
         else:
-            # For counter plates, include actual counter base diameter in filename
-            try:
-                if int(getattr(settings, 'use_bowl_recess', 0)) == 1:
-                    total_diameter = float(
-                        getattr(settings, 'bowl_counter_dot_base_diameter', settings.counter_dot_base_diameter)
-                    )
-                else:
-                    total_diameter = float(
-                        getattr(settings, 'hemi_counter_dot_base_diameter', settings.counter_dot_base_diameter)
-                    )
-            except Exception:
-                total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
-            filename = f'braille_counter_plate_{total_diameter}mm-{shape_type}'
+            # For counter plates, use simple default name
+            # (Frontend handles sequential counter for downloads)
+            filename = 'Universal_Counter_Plate'
 
         # Additional filename sanitization for security
         filename = re.sub(r'[^\w\-_]', '', filename)[:60]  # Allow longer names to accommodate shape type
@@ -1666,23 +1659,9 @@ def generate_counter_plate_stl():
             resp.headers['X-Blob-Cache'] = 'miss'
             return resp
 
-        # Include actual counter base diameter in filename
-        try:
-            if recess_shape == 1:  # Bowl
-                total_diameter = float(
-                    getattr(settings, 'bowl_counter_dot_base_diameter', settings.counter_dot_base_diameter)
-                )
-            elif recess_shape == 2:  # Cone
-                total_diameter = float(
-                    getattr(settings, 'cone_counter_dot_base_diameter', settings.counter_dot_base_diameter)
-                )
-            else:  # Hemisphere (recess_shape == 0)
-                total_diameter = float(
-                    getattr(settings, 'hemi_counter_dot_base_diameter', settings.counter_dot_base_diameter)
-                )
-        except Exception:
-            total_diameter = settings.emboss_dot_base_diameter + settings.counter_plate_dot_size_offset
-        filename = f'braille_counter_plate_{total_diameter}mm'
+        # For counter plates, use simple default name
+        # (Frontend handles sequential counter for downloads)
+        filename = 'Universal_Counter_Plate'
         # Attempt to persist to Blob store and redirect if successful
         public_url = _blob_upload(cache_key, stl_bytes)
         if public_url and _blob_check_exists(public_url):

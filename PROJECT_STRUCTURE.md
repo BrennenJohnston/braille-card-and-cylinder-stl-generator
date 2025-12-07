@@ -139,6 +139,8 @@ Historical development tracking:
 **Active Scripts:**
 - **`smoke_test.py`**: Quick health check of core endpoints
 - **`pregenerate.py`**: Pre-warm cache with common configurations
+- **`git_check.bat`**: Output git status/log to file for debugging
+- **`git_push.ps1`**: Automated git stage, commit, and push workflow
 
 **Archived Scripts** (historical reference):
 - `build_cylinder_module.py`, `extract_cylinder_functions.py`, `remove_cylinder_funcs.py` - Refactoring utilities

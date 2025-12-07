@@ -167,43 +167,7 @@ Engraved rim labels avoid mix-ups: **EMBOSS (RAISED) — MIRRORED** vs **COUNTER
 
 ---
 
-## 11. Acknowledgments
-
-Huge thanks to **Tobi Weinberg** for kick-starting the project and introducing me to Cursor AI.  Without Tobi’s time, effort, and encouragement this program would not exist.
-
-Attribution: This project was originally based on
-[tobiwg/braile-card-generator](https://github.com/tobiwg/braile-card-generator/tree/main) and further evolved from my earlier variant
-[BrennenJohnston/braile-card-generator](https://github.com/BrennenJohnston/braile-card-generator/blob/brennen-dev/README.md) (branch `brennen-dev`).
-
----
-
-## 13. Developer Notes
-
-- Backend: single Flask app in `backend.py` used both locally and on Vercel via `wsgi.py`.
-- Frontend: served from `templates/index.html` with static assets in `static/`.
-- Translation: browser-side Liblouis via web worker `static/liblouis-worker.js` and tables under `static/liblouis/tables/`.
-- Endpoints: `/liblouis/tables`, `/generate_braille_stl`, `/generate_counter_plate_stl`.
-
-### Local development
-```bash
-pip install -r requirements.txt
-python backend.py  # opens http://localhost:5001
-```
-
-### Vercel deployment
-- Project uses `vercel.json` and `wsgi.py` with `@vercel/python`.
-- Install step: `pip install -r requirements_vercel.txt` (minimal set for serverless).
-- Static liblouis tables are bundled and loaded on-demand from `static/liblouis/tables/` in a web worker.
-- Matplotlib is optional at runtime. In serverless, character markers gracefully fall back when matplotlib isn't present.
-
-### Serverless considerations
-- `.vercelignore` excludes heavy directories like `third_party/` and `node_modules/` to keep function size small.
-- `backend.py` defers matplotlib imports inside functions to avoid cold-start bloat and missing dependency failures.
-- Endpoints exposed: `/`, `/health`, `/liblouis/tables`, `/generate_braille_stl`, `/generate_counter_plate_stl`.
-
----
-
-## 12. Architecture: Client-Side CSG
+## 11. Architecture: Client-Side CSG
 
 ### Why Client-Side?
 
@@ -249,7 +213,43 @@ let useClientSideCSG = true; // Set to false to force server-side
 
 ---
 
-## 13. References
+## 12. Acknowledgments
+
+Huge thanks to **Tobi Weinberg** for kick-starting the project and introducing me to Cursor AI.  Without Tobi’s time, effort, and encouragement this program would not exist.
+
+Attribution: This project was originally based on
+[tobiwg/braile-card-generator](https://github.com/tobiwg/braile-card-generator/tree/main) and further evolved from my earlier variant
+[BrennenJohnston/braile-card-generator](https://github.com/BrennenJohnston/braile-card-generator/blob/brennen-dev/README.md) (branch `brennen-dev`).
+
+---
+
+## 13. Developer Notes
+
+- Backend: single Flask app in `backend.py` used both locally and on Vercel via `wsgi.py`.
+- Frontend: served from `templates/index.html` with static assets in `static/`.
+- Translation: browser-side Liblouis via web worker `static/liblouis-worker.js` and tables under `static/liblouis/tables/`.
+- Endpoints: `/liblouis/tables`, `/generate_braille_stl`, `/generate_counter_plate_stl`.
+
+### Local development
+```bash
+pip install -r requirements.txt
+python backend.py  # opens http://localhost:5001
+```
+
+### Vercel deployment
+- Project uses `vercel.json` and `wsgi.py` with `@vercel/python`.
+- Install step: `pip install -r requirements_vercel.txt` (minimal set for serverless).
+- Static liblouis tables are bundled and loaded on-demand from `static/liblouis/tables/` in a web worker.
+- Matplotlib is optional at runtime. In serverless, character markers gracefully fall back when matplotlib isn't present.
+
+### Serverless considerations
+- `.vercelignore` excludes heavy directories like `third_party/` and `node_modules/` to keep function size small.
+- `backend.py` defers matplotlib imports inside functions to avoid cold-start bloat and missing dependency failures.
+- Endpoints exposed: `/`, `/health`, `/liblouis/tables`, `/generate_braille_stl`, `/generate_counter_plate_stl`.
+
+---
+
+## 14. References
 
 [1] BANA — Size & Spacing of Braille Characters: https://brailleauthority.org/size-and-spacing-braille-characters
 [2] NLS Specification 800 (PDF): https://www.loc.gov/nls/wp-content/uploads/2019/09/Spec800.11October2014.final_.pdf
@@ -258,7 +258,7 @@ let useClientSideCSG = true; // Set to false to force server-side
 
 ---
 
-## 14. Programmer Standardization Protocols
+## 15. Programmer Standardization Protocols
 
 - Code style: PEP 8 for Python. Favor explicit, descriptive names; avoid abbreviations.
 - Error handling: Guard clauses and clear messages; never swallow exceptions silently.

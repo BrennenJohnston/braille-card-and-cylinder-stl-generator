@@ -61,3 +61,8 @@ tmp_spec_direct.py
 
 .vercel
 .env*.local
+
+# Temporary reorganization utilities
+reorganize.bat
+reorganize_docs.py
+reorganize_files.py

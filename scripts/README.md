@@ -4,6 +4,39 @@ Utility scripts for development, testing, and maintenance of the Braille Card an
 
 ## 🔧 Active Scripts
 
+### `git_check.bat`
+**Purpose**: Check git status and output to a file for debugging
+
+**Usage**:
+```batch
+scripts\git_check.bat
+```
+
+**What it does**:
+- Outputs git status, recent log, and branch info to `git_results.txt`
+
+**When to use**: Debugging git state when terminal output is unreliable.
+
+---
+
+### `git_push.ps1`
+**Purpose**: Automated git stage, commit, and push workflow
+
+**Usage**:
+```powershell
+.\scripts\git_push.ps1
+```
+
+**What it does**:
+- Shows current git status
+- Stages all changes (`git add -A`)
+- Commits with auto-generated message if there are staged changes
+- Pushes to remote origin
+
+**When to use**: Quick commits during development. Use manual commits for important changes.
+
+---
+
 ### `smoke_test.py`
 **Purpose**: Quick health check of core endpoints
 

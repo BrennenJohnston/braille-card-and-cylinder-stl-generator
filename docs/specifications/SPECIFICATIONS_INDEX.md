@@ -451,6 +451,7 @@ All specifications include sections on known issues, edge cases, and workarounds
 | Card cone recess inverted orientation | BRAILLE_DOT_SHAPE_SPECIFICATIONS (Bug 6) | Known, Low Priority |
 | Manifold theta negation | BRAILLE_SPACING_SPECIFICATIONS (Bug 6) | Fixed (2024-12-06) |
 | Triangle rotate_180 inversion | BRAILLE_SPACING_SPECIFICATIONS (Bug 6) | Fixed (2024-12-06) |
+| Cylinder rounded dot floating | BRAILLE_DOT_SHAPE_SPECIFICATIONS (Bug 7) | Fixed (2024-12-07) |
 | Counter plate uses rectangle only | RECESS_INDICATOR_SPECIFICATIONS | By Design |
 | Seam offset only affects polygon | SURFACE_DIMENSIONS_SPECIFICATIONS (Section 10.2) | By Design |
 | Hemisphere depth equals radius | BRAILLE_DOT_SHAPE_SPECIFICATIONS (Bug 4) | By Design |
@@ -652,6 +653,7 @@ Section Reference: SURFACE_DIMENSIONS_SPECIFICATIONS.md (Section 2.1)
 | 2025-12-06 | Enhanced SETTINGS_SCHEMA with AI Model Guidelines; added cache_version field; updated .cursorrules with architecture guidance |
 | 2025-12-07 | Added CARD_THICKNESS_PRESET_SPECIFICATIONS.md documenting new Card Thickness Preset System (0.3mm/0.4mm layer height presets); updated UI/UX coverage; incremented total spec count to 13 |
 | 2025-12-07 | Added MAJOR_FEATURE_IMPLEMENTATION_SOP.md - Standard Operating Procedure for implementing major features; documents 6-phase workflow with comprehensive checklists, case study, and development best practices |
+| 2024-12-07 | Added Bug 7 (Cylinder rounded dot floating) to Known Issues as FIXED; fix applied in csg-worker-manifold.js |
 
 ---
 

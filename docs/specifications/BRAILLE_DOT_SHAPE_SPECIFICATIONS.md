@@ -159,15 +159,24 @@ Parameters:
 ### Visual Cross-Section
 
 ```
-        .-"""-.
-      .'       '.     ← Spherical cap dome (radius = R)
-     /           \       dome_height = rounded_dot_dome_height
-    ┌─────────────┐  ← Junction (rounded_dot_dome_diameter / 2)
-   /               \
-  └─────────────────┘  ← Base at surface (rounded_dot_base_diameter / 2)
-       │        │
-       └────────┘      ← rounded_dot_base_height
+                     .-"""-.
+                   .'       '.        ← Dome top (outermost point)
+                  /           \
+                 /             \      ↑ dome_height (0.4mm default)
+                /               \     ↓ Distance from junction to dome top
+               ┌─────────────────┐    ← Junction: dome_diameter / 2 (smaller)
+              /                   \
+             /                     \  ↑ base_height (0.4mm default)
+            /                       \ ↓ Distance from surface to junction
+           └─────────────────────────┘← Base at surface: base_diameter / 2 (larger)
+    ════════════════════════════════════  ← CYLINDER SURFACE (radius = cylRadius)
 ```
+
+**Geometry stacks upward from cylinder surface:**
+1. **Base** (widest point) sits flush on cylinder surface
+2. **Frustum** tapers inward as it rises `base_height` mm
+3. **Junction** where frustum meets dome (narrower than base)
+4. **Dome** rises `dome_height` mm from junction to rounded top
 
 ### Critical Formula: Dome Sphere Radius
 
@@ -928,6 +937,104 @@ Either:
 2. Modify CSG workers to swap radii for `type: 'standard'` when plate_type is 'negative'
 3. Use a different `type` value (e.g., `'cone_recess'`) to distinguish from protrusions
 
+### Bug 7: Cylinder Rounded Dot Positioning Inconsistency (FIXED & VERIFIED - Dec 2024)
+
+**Symptom:** Rounded braille dots on cylinders appear to float away from the cylinder surface when the cylinder diameter is adjusted. The dots do not properly follow the radial line and maintain tangency with the cylinder surface.
+
+**Root Cause:** Inconsistent centering behavior between Python backend (`app/geometry/dot_shapes.py`) and CSG worker (`static/workers/csg-worker.js`).
+
+**Technical Details:**
+- **Python Backend** (`dot_shapes.py` lines 65-68): After creating the combined frustum+dome geometry, centers the dot by translating by `[0.0, 0.0, -dome_h / 2.0]`
+- **CSG Worker** (original code): Used `recenterGeometryAlongY()` which computed the bounding box of the combined geometry and centered based on that, potentially producing a different offset
+- **Issue**: The CSG worker's bounding box-based centering could produce a slightly different center point than the Python backend's explicit `-dome_h / 2.0` translation, especially when the CSG union operation between frustum and dome affected the geometry bounds
+
+**Affected Code Path:**
+- `static/workers/csg-worker.js` → `createCylinderDot()` → `shape === 'rounded'` branch → geometry centering
+
+**Fix Applied (December 2024):**
+Modified `csg-worker.js` line 284-285 to use explicit height calculation and centering that matches the Python backend:
+
+```javascript
+// OLD (buggy):
+const roundedHeight = recenterGeometryAlongY(geometry);
+dotHeight = roundedHeight > 0 ? roundedHeight : (validBaseHeight + validDomeHeight);
+
+// NEW (fixed):
+dotHeight = validBaseHeight + validDomeHeight;
+geometry.translate(0, -validDomeHeight / 2, 0);
+```
+
+**Impact:** HIGH - Affects all client-side generated cylinder embossing plates with rounded dots
+
+**Resolution Status:** FIXED
+- Client-side CSG worker now uses identical centering logic to Python backend
+- Dots now properly maintain contact with cylinder surface across all diameter values
+- Coordinate system consistency ensures dots follow radial lines correctly
+
+**Note (December 2024):** This bug existed in TWO separate worker files:
+1. `static/workers/csg-worker.js` - Three.js/three-bvh-csg worker (used for cards)
+2. `static/workers/csg-worker-manifold.js` - Manifold3D worker (used for cylinders)
+
+Both required the same fix: after creating the combined frustum+dome geometry, translate by `-dotHeight/2` along the dot's axis to center it at the origin. This ensures that when positioned at `radialOffset = cylRadius + dotHeight/2`, the inner edge lands exactly at `cylRadius` (flush with the cylinder surface).
+
+**Centering Logic Explanation (December 2024 Clarification):**
+
+The rounded dot geometry (frustum + dome) is constructed as follows:
+1. **Frustum**: Created centered at origin, spans Y from `-base_h/2` to `+base_h/2`
+2. **Dome (spherical cap)**: Positioned so its base is at `Y = base_h/2` (top of frustum)
+3. **Combined geometry**: Spans from `Y = -base_h/2` (frustum bottom) to `Y = base_h/2 + dome_h` (dome top)
+
+The geometric center of this combined shape is at:
+```
+center_Y = (-base_h/2 + base_h/2 + dome_h) / 2 = dome_h / 2
+```
+
+To center the geometry at Y=0, we translate by `-dome_h/2`:
+```
+After translation:
+  - Bottom: -base_h/2 - dome_h/2
+  - Top: base_h/2 + dome_h - dome_h/2 = base_h/2 + dome_h/2
+  - New center: 0
+  - Total height: base_h + dome_h = dotHeight
+```
+
+The centered geometry now spans `[-dotHeight/2, +dotHeight/2]` along the Y-axis.
+
+**Radial Positioning Formula:**
+
+After rotation to orient radially, the dot is translated to:
+```javascript
+radialOffset = cylRadius + dotHeight / 2;
+posX = radialOffset * cos(theta);
+posZ = radialOffset * sin(theta);
+```
+
+This places:
+- **Inner edge (frustum base)** at: `radialOffset - dotHeight/2 = cylRadius` (flush with surface)
+- **Outer edge (dome top)** at: `radialOffset + dotHeight/2 = cylRadius + dotHeight`
+
+**Validation:**
+To validate the fix:
+1. Generate a cylinder with rounded dots using client-side CSG
+2. Adjust cylinder diameter from 30.75mm to various values (20mm, 40mm, 60mm, etc.)
+3. Verify dots remain flush with cylinder outer surface at all diameters
+4. Compare client-side generated STL with server-side generated STL for consistency
+5. Check browser console for debug logs showing `cylRadius`, `dotHeight`, and `radialOffset` values
+
+**Debug Logging (Added December 2024):**
+
+The CSG worker now includes debug logging for rounded dots:
+```javascript
+console.log(`CSG Worker: Rounded dot positioning: cylRadius=${cylRadius}, dotHeight=${dotHeight}, radialOffset=${radialOffset}`);
+console.log(`CSG Worker: Expected dot base at radius ${radialOffset - dotHeight/2}, top at ${radialOffset + dotHeight/2}`);
+```
+
+Use these logs to verify that:
+- `cylRadius` matches the cylinder shell radius
+- `dotHeight = base_height + dome_height`
+- `radialOffset = cylRadius + dotHeight/2`
+- The expected dot base equals `cylRadius` (should be flush with surface)
+
 ---
 
 ## 12. Version History
@@ -936,6 +1043,9 @@ Either:
 |------|---------|---------|
 | 2024-12-06 | 1.0 | Initial specification document |
 | 2024-12-06 | 1.1 | Added Bug 6: Card cone recess inverted orientation (discovered during cross-check) |
+| 2024-12-07 | 1.2 | Extended Bug 7 documentation with detailed centering logic and debug logging information |
+| 2024-12-07 | 1.3 | Fixed Bug 7 in csg-worker-manifold.js (Manifold CSG worker for cylinders) - added centering translation |
+| 2024-12-07 | 1.4 | Bug 7 fix VERIFIED by user testing - rounded dots now correctly positioned flush with cylinder surface |
 
 ---
 

@@ -801,15 +801,78 @@ All implementations use:
 ### Rounded Dot Z-Positioning
 
 ```python
-# Final Z position for rounded dot center
+# Final Z position for rounded dot center (CARD)
 z = settings.card_thickness + settings.active_dot_height / 2
 
 # Where:
 # active_dot_height = rounded_dot_base_height + rounded_dot_dome_height
 
 # The dot mesh is created centered at origin, then:
-#   1. Shifted down by dome_height / 2 (to position base at z=0)
+#   1. Shifted down by dome_height / 2 (to position geometry)
 #   2. Translated to (x, y, z)
+```
+
+### Cylinder Rounded Dot Positioning
+
+For cylinder surfaces, rounded dots must be positioned radially outward from the cylinder center:
+
+```python
+# Python backend (app/geometry/cylinder.py)
+dot_height = settings.active_dot_height  # base_height + dome_height
+center_radial_distance = radius + (dot_height / 2.0)
+center_position = r_hat * center_radial_distance + np.array([0.0, 0.0, y])
+
+# Where:
+# - radius: Cylinder radius (diameter / 2)
+# - r_hat: Radial unit vector at angle theta
+# - y: Vertical position along cylinder axis
+# - Dot base sits at radius, dot center at radius + (dot_height / 2)
+```
+
+**Critical Implementation Note (December 2024 Fix):**
+
+The Python backend (`dot_shapes.py`) and CSG worker (`csg-worker.js`) MUST use identical centering logic for rounded dots:
+
+1. **Python backend** translates combined geometry by `[0, 0, -dome_h / 2.0]`
+2. **CSG worker** must translate by `(0, -dome_height / 2, 0)` (Y-up coordinate system)
+
+**Bug Warning:** Using `recenterGeometryAlongY()` (bounding box-based centering) instead of explicit translation can cause inconsistencies, resulting in dots that float away from the cylinder surface when diameter changes. Always use explicit translation matching the Python backend.
+
+**Mathematical Derivation of Centering Translation:**
+
+The combined rounded dot geometry spans:
+- **Before centering**: Y from `-base_height/2` to `base_height/2 + dome_height`
+- **Geometric center**: `(-base_height/2 + base_height/2 + dome_height) / 2 = dome_height / 2`
+
+To center at Y=0, translate by `-dome_height / 2`:
+- **After centering**: Y from `-(base_height + dome_height)/2` to `+(base_height + dome_height)/2`
+- **Total extent**: `base_height + dome_height = dotHeight`
+
+**Radial Position Calculation:**
+
+```javascript
+// CSG Worker radial positioning for protrusions (embossing plates)
+radialOffset = cylRadius + dotHeight / 2;
+
+// After rotation and translation:
+// - Inner edge (frustum base): radialOffset - dotHeight/2 = cylRadius (flush with surface)
+// - Outer edge (dome top): radialOffset + dotHeight/2 = cylRadius + dotHeight
+```
+
+**Coordinate System Transformation (CSG Worker):**
+
+1. Create frustum + dome at origin (axis along +Y in Three.js Y-up coords)
+2. Center geometry at Y=0 via `translate(0, -dome_height/2, 0)`
+3. Rotate Z by -π/2: Axis moves from +Y to +X
+4. Rotate Y by -θ: Axis rotates to radial direction (cos(θ), 0, sin(θ))
+5. Translate to (radialOffset × cos(θ), y_local, radialOffset × sin(θ))
+
+**Debug Logging (December 2024):**
+
+Console logs are available in the CSG worker for debugging:
+```javascript
+console.log(`CSG Worker: Rounded dot positioning: cylRadius=${cylRadius}, dotHeight=${dotHeight}, radialOffset=${radialOffset}`);
+console.log(`CSG Worker: Expected dot base at radius ${radialOffset - dotHeight/2}, top at ${radialOffset + dotHeight/2}`);
 ```
 
 ### Cone Dot Z-Positioning

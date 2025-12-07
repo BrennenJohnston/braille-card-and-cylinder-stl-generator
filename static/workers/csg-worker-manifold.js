@@ -177,12 +177,23 @@ function createCylinderDotManifold(spec) {
                 dome.delete();
 
                 // Union frustum and dome
-                dot = positionedFrustum.add(positionedDome);
+                const combinedDot = positionedFrustum.add(positionedDome);
                 positionedFrustum.delete();
                 positionedDome.delete();
+
+                // CRITICAL FIX: Center the combined geometry at origin
+                // The combined dot currently spans [0, dotHeight] along Z
+                // For correct radial positioning (like standard cone dots), it must span [-dotHeight/2, +dotHeight/2]
+                // This ensures that when positioned at radialOffset = cylRadius + dotHeight/2,
+                // the inner edge lands exactly at cylRadius (flush with cylinder surface)
+                dot = combinedDot.translate([0, 0, -dotHeight / 2]);
+                combinedDot.delete();
             } else {
-                // Dome only
-                dot = createSphericalCap(domeRadius, domeHeight, 24);
+                // Dome only - also needs centering
+                const unceneredDome = createSphericalCap(domeRadius, domeHeight, 24);
+                // Spherical cap spans [0, domeHeight], center it at origin
+                dot = unceneredDome.translate([0, 0, -domeHeight / 2]);
+                unceneredDome.delete();
             }
 
         } else if (shape === 'hemisphere') {
@@ -223,6 +234,9 @@ function createCylinderDotManifold(spec) {
 
         // Position dot on cylinder surface
         // Dot is created along Z-axis, need to rotate to point radially outward
+        // For non-spherical shapes (cone, rounded), dot is centered at origin with Z extent [-dotHeight/2, +dotHeight/2]
+        // After rotation, this becomes radial extent [-dotHeight/2, +dotHeight/2]
+        // So when positioned at radialOffset, inner edge is at radialOffset - dotHeight/2
 
         const isSpherical = (shape === 'hemisphere' || shape === 'bowl');
 
@@ -234,7 +248,15 @@ function createCylinderDotManifold(spec) {
                 radialOffset = cylRadius;
             }
         } else {
+            // For protrusions, we want inner edge at cylRadius
+            // radialOffset - dotHeight/2 = cylRadius  =>  radialOffset = cylRadius + dotHeight/2
             radialOffset = cylRadius + dotHeight / 2;
+        }
+
+        // Debug logging for rounded dots
+        if (shape === 'rounded') {
+            console.log(`Manifold CSG: Rounded dot - cylRadius=${cylRadius.toFixed(3)}, dotHeight=${dotHeight.toFixed(3)}, radialOffset=${radialOffset.toFixed(3)}`);
+            console.log(`Manifold CSG: Expected inner edge at ${(radialOffset - dotHeight/2).toFixed(3)} (should equal cylRadius=${cylRadius.toFixed(3)})`);
         }
 
         // For Manifold, we work in Z-up coordinate system

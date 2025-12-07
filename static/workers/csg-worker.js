@@ -264,8 +264,15 @@ function createCylinderDot(spec) {
 
         if (validDomeHeight > 0 && validDomeRadius > 0) {
             domeGeometry = createSphericalCap(validDomeRadius, validDomeHeight, 2);
+            // Position dome so its base is at Y = base_height/2 (top of frustum)
+            // Spherical cap with radius R and height h has base at Y = R - h (from sphere center)
+            // We want base at Y = base_height/2, so translate by: base_height/2 - (R - h) = base_height/2 - R + h
             const sphereCenterOffset = (validBaseHeight / 2) + (validDomeHeight - validDomeRadius);
             domeGeometry.translate(0, sphereCenterOffset, 0);
+
+            // Debug: verify dome position
+            console.log(`CSG Worker: Dome positioning: domeRadius=${validDomeRadius.toFixed(3)}, domeHeight=${validDomeHeight.toFixed(3)}, sphereCenterOffset=${sphereCenterOffset.toFixed(3)}`);
+            console.log(`CSG Worker: Expected dome base at Y=${(validBaseHeight/2).toFixed(3)}, dome top at Y=${(validBaseHeight/2 + validDomeHeight).toFixed(3)}`);
         }
 
         if (baseGeometry && domeGeometry) {
@@ -281,8 +288,29 @@ function createCylinderDot(spec) {
             return null;
         }
 
-        const roundedHeight = recenterGeometryAlongY(geometry);
-        dotHeight = roundedHeight > 0 ? roundedHeight : (validBaseHeight + validDomeHeight);
+        // Total dot height = base_height + dome_height
+        // This is used for radial positioning: dot center at cylRadius + dotHeight/2
+        dotHeight = validBaseHeight + validDomeHeight;
+
+        // Debug: compute bounding box BEFORE centering
+        geometry.computeBoundingBox();
+        const bboxBefore = geometry.boundingBox.clone();
+        console.log(`CSG Worker: Rounded dot BEFORE centering: Y bounds [${bboxBefore.min.y.toFixed(3)}, ${bboxBefore.max.y.toFixed(3)}]`);
+        console.log(`CSG Worker: Expected before: [-${(validBaseHeight/2).toFixed(3)}, ${(validBaseHeight/2 + validDomeHeight).toFixed(3)}]`);
+
+        // CRITICAL: Center the geometry along Y to match Python backend behavior
+        // The combined geometry (frustum + dome) spans from Y = -base_h/2 to Y = base_h/2 + dome_h
+        // The geometric center is at Y = dome_h/2 (not at Y = 0)
+        // To center at Y=0, translate by -dome_h/2
+        geometry.translate(0, -validDomeHeight / 2, 0);
+
+        // Debug: compute bounding box AFTER centering
+        geometry.computeBoundingBox();
+        const bboxAfter = geometry.boundingBox;
+        console.log(`CSG Worker: Rounded dot AFTER centering: Y bounds [${bboxAfter.min.y.toFixed(3)}, ${bboxAfter.max.y.toFixed(3)}]`);
+        console.log(`CSG Worker: Expected after: [-${(dotHeight/2).toFixed(3)}, ${(dotHeight/2).toFixed(3)}]`);
+        const actualCenter = (bboxAfter.min.y + bboxAfter.max.y) / 2;
+        console.log(`CSG Worker: Actual center after translation: ${actualCenter.toFixed(3)} (should be 0)`);
     } else if (shape === 'hemisphere') {
         // Hemisphere for counter plate recesses
         const { recess_radius } = params;
@@ -324,6 +352,12 @@ function createCylinderDot(spec) {
         const validHeight = (height && height > 0) ? height : 0.5;
         dotHeight = validHeight;
         geometry = createConeFrustum(validBaseRadius, validTopRadius, validHeight, 16);
+
+        // Debug: verify standard cone dot bounds (should already be centered at Y=0)
+        geometry.computeBoundingBox();
+        const coneBbox = geometry.boundingBox;
+        console.log(`CSG Worker: Standard cone dot Y bounds: [${coneBbox.min.y.toFixed(3)}, ${coneBbox.max.y.toFixed(3)}]`);
+        console.log(`CSG Worker: Expected: [-${(validHeight/2).toFixed(3)}, ${(validHeight/2).toFixed(3)}], dotHeight=${dotHeight.toFixed(3)}`);
     }
 
     // For non-spherical shapes (cones, frustums), apply rotation to orient radially
@@ -346,6 +380,15 @@ function createCylinderDot(spec) {
     // Calculate the radial position
     // For recesses (counter plates): position shape so opening is at surface
     // For protrusions (embossing plates): position dot so base sits on surface and extends outward
+    //
+    // CRITICAL: The dot geometry is now centered at Y=0 with bounds [-dotHeight/2, +dotHeight/2]
+    // After rotations, this becomes centered at the origin with radial extent [-dotHeight/2, +dotHeight/2]
+    // So when we translate by radialOffset, the dot spans from (radialOffset - dotHeight/2) to (radialOffset + dotHeight/2)
+    //
+    // For protrusions: we want the base (inner edge) at cylRadius
+    //   radialOffset - dotHeight/2 = cylRadius
+    //   radialOffset = cylRadius + dotHeight/2
+    //
     const epsilon = 0;
     let radialOffset;
     if (isRecess) {
@@ -361,7 +404,18 @@ function createCylinderDot(spec) {
         }
     } else {
         // For protrusions, position so the dot sits ON the surface and extends outward
+        // After centering, dot spans [-dotHeight/2, +dotHeight/2] along its axis
+        // After rotation and translation:
+        //   Inner edge (dot base) at: radialOffset - dotHeight/2
+        //   Outer edge (dot top) at: radialOffset + dotHeight/2
+        // We want inner edge at cylRadius, so radialOffset = cylRadius + dotHeight/2
         radialOffset = cylRadius + dotHeight / 2 + epsilon;
+    }
+
+    // Debug logging for rounded dots to help diagnose positioning issues
+    if (shape === 'rounded') {
+        console.log(`CSG Worker: Rounded dot positioning: cylRadius=${cylRadius.toFixed(3)}, dotHeight=${dotHeight.toFixed(3)}, radialOffset=${radialOffset.toFixed(3)}`);
+        console.log(`CSG Worker: Expected dot base at radius ${(radialOffset - dotHeight/2).toFixed(3)}, top at ${(radialOffset + dotHeight/2).toFixed(3)}`);
     }
 
     const posX = radialOffset * Math.cos(theta);
@@ -372,6 +426,19 @@ function createCylinderDot(spec) {
     if (!isFinite(posX) || !isFinite(posZ) || !isFinite(posY)) {
         console.warn('createCylinderDot: Invalid position calculated, skipping dot');
         return null;
+    }
+
+    // Debug: Log geometry bounds after rotation (before final translation)
+    if (shape === 'rounded' || shape === 'standard') {
+        geometry.computeBoundingBox();
+        const rotatedBbox = geometry.boundingBox;
+        console.log(`CSG Worker: ${shape} dot AFTER rotation (before translation):`);
+        console.log(`  X bounds: [${rotatedBbox.min.x.toFixed(3)}, ${rotatedBbox.max.x.toFixed(3)}]`);
+        console.log(`  Y bounds: [${rotatedBbox.min.y.toFixed(3)}, ${rotatedBbox.max.y.toFixed(3)}]`);
+        console.log(`  Z bounds: [${rotatedBbox.min.z.toFixed(3)}, ${rotatedBbox.max.z.toFixed(3)}]`);
+        console.log(`  Will translate by: (${posX.toFixed(3)}, ${posY.toFixed(3)}, ${posZ.toFixed(3)})`);
+        console.log(`  Expected inner edge at radius: ${radialOffset.toFixed(3)} - ${(dotHeight/2).toFixed(3)} = ${(radialOffset - dotHeight/2).toFixed(3)}`);
+        console.log(`  Cylinder surface at radius: ${cylRadius.toFixed(3)}`);
     }
 
     // Translate to position on cylinder surface
@@ -676,6 +743,9 @@ function createCylinderShell(spec) {
     // Validate essential parameters (defaults match UI: diameter 30.75mm, height 52mm)
     const validRadius = (radius && radius > 0) ? radius : 15.375;  // 30.75 / 2
     const validHeight = (height && height > 0) ? height : 52;
+
+    // Debug: Log cylinder shell dimensions - this radius MUST match the radius used for dot positioning
+    console.log(`CSG Worker: Creating cylinder shell with radius=${validRadius.toFixed(3)}mm, height=${validHeight.toFixed(3)}mm`);
 
     // Create outer cylinder
     const outerGeom = new THREE.CylinderGeometry(validRadius, validRadius, validHeight, 64);

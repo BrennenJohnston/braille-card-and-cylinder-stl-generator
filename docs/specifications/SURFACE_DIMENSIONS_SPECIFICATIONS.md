@@ -1159,6 +1159,102 @@ This ensures vertical consistency between card and cylinder outputs.
 <input type="number" min="10" max="500" step="0.1" ...>
 ```
 
+### 10.7 Cylinder Diameter and Dot Positioning Coordination (FIXED & VERIFIED - Dec 2024)
+
+**Issue:** When the cylinder diameter was adjusted via the UI radio dial, braille dots (especially rounded shape dots) appeared to float away from the cylinder surface along the radial line instead of maintaining contact.
+
+**Root Cause:** The CSG worker's centering logic for rounded dots used bounding-box-based centering (`recenterGeometryAlongY()`), which could produce different results than the Python backend's explicit translation by `-dome_height / 2`. This inconsistency caused the radial positioning calculation to be off.
+
+**Critical Implementation Requirement:**
+
+The cylinder radius MUST be consistently used across:
+1. **Cylinder shell creation** (`createCylinderShell()` in `csg-worker.js`)
+2. **Dot positioning** (`createCylinderDot()` in `csg-worker.js`)
+3. **Geometry spec generation** (`extract_cylinder_geometry_spec()` in `geometry_spec.py`)
+
+**Parameter Flow for Cylinder Radius:**
+
+```
+UI Input (cylinder_diameter_mm)
+    ↓
+geometry_spec.py: radius = diameter / 2
+    ↓
+spec.cylinder.radius   AND   spec.dots[i].radius  (MUST be identical)
+    ↓
+csg-worker.js: createCylinderShell(spec.cylinder)
+               createCylinderDot(spec.dots[i])
+```
+
+**Formula for Dot Radial Position:**
+
+```javascript
+// For embossing (positive) plates:
+radialOffset = cylRadius + dotHeight / 2 + epsilon
+
+// Where:
+// - cylRadius: Cylinder radius from spec (diameter / 2)
+// - dotHeight: Total dot height (base_height + dome_height for rounded)
+// - epsilon: Small overlap for robust CSG (typically 0)
+```
+
+**Mathematical Proof of Correct Positioning:**
+
+After centering, the dot geometry spans `[-dotHeight/2, +dotHeight/2]` along its axis.
+When positioned at `radialOffset = cylRadius + dotHeight/2`:
+- Inner edge: `radialOffset - dotHeight/2 = cylRadius` (flush with surface) ✓
+- Outer edge: `radialOffset + dotHeight/2 = cylRadius + dotHeight` ✓
+
+**Fix Applied (December 2024):**
+
+Modified `csg-worker.js` to use explicit centering that matches the Python backend:
+- Changed from: `recenterGeometryAlongY(geometry)` (bounding box-based)
+- Changed to: `geometry.translate(0, -validDomeHeight / 2, 0)` (explicit, matching Python)
+
+This ensures that the dot height calculation is consistent and the radial offset formula produces correct results across all cylinder diameter values.
+
+**Debug Logging (Added December 2024):**
+
+The CSG worker now logs critical values for debugging:
+
+```javascript
+// Cylinder shell creation
+console.log(`CSG Worker: Creating cylinder shell with radius=${validRadius}mm, height=${validHeight}mm`);
+
+// Rounded dot positioning
+console.log(`CSG Worker: Rounded dot positioning: cylRadius=${cylRadius}, dotHeight=${dotHeight}, radialOffset=${radialOffset}`);
+console.log(`CSG Worker: Expected dot base at radius ${radialOffset - dotHeight/2}, top at ${radialOffset + dotHeight/2}`);
+```
+
+**Validation:**
+- Test with cylinder diameter = 20mm, 30.75mm (default), 40mm, 60mm, 80mm
+- Verify dots remain flush with cylinder surface (no floating, no sinking)
+- Compare client-side CSG output with Python backend output for consistency
+- Check browser console for debug logs to verify radius values match
+
+**Troubleshooting Checklist:**
+
+If dots are floating away from the surface:
+1. Check console for `CSG Worker: Creating cylinder shell with radius=X` - this is the shell radius
+2. Check console for `CSG Worker: Rounded dot positioning: cylRadius=Y` - this should equal X
+3. Check that `Expected dot base at radius` equals the shell radius
+4. Verify the geometry spec is being regenerated when diameter changes (no caching issues)
+
+**Important Note (December 2024):**
+
+The cylinder CSG generation uses `csg-worker-manifold.js` (Manifold3D), NOT `csg-worker.js` (Three.js/three-bvh-csg). The same centering fix was required in both files:
+
+**Manifold Worker Fix (`csg-worker-manifold.js`):**
+```javascript
+// After creating combined frustum+dome geometry (which spans [0, dotHeight] along Z):
+dot = combinedDot.translate([0, 0, -dotHeight / 2]);
+```
+
+This centers the geometry at the origin so it spans `[-dotHeight/2, +dotHeight/2]`, matching the standard cone frustum behavior.
+
+**Related Specifications:**
+- See `BRAILLE_DOT_SHAPE_SPECIFICATIONS.md` Bug 7 for detailed analysis
+- See `BRAILLE_DOT_ADJUSTMENTS_SPECIFICATIONS.md` for coordinate system details
+
 ---
 
 ## Appendix A: Complete Parameter Cross-Reference
@@ -1219,6 +1315,7 @@ first_row_center_y = height - space_above - dot_spacing
 
 ---
 
-*Document Version: 1.0*
+*Document Version: 1.1*
 *Last Updated: December 2024*
+*Revision Notes: Added detailed debug logging information and troubleshooting checklist for cylinder dot positioning (Section 10.7)*
 *Source Files Referenced: backend.py, wsgi.py, app/models.py, geometry_spec.py, static/workers/csg-worker.js, templates/index.html*

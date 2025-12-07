@@ -147,24 +147,24 @@ const THICKNESS_PRESETS = {
         braille_y_adjust: 0.0,
 
         // Emboss Dot (Rounded) - optimized for 0.3mm layer
-        rounded_dot_base_diameter: 1.5,
-        rounded_dot_base_height: 0.5,
-        rounded_dot_dome_diameter: 1.0,
-        rounded_dot_dome_height: 0.5,
+        rounded_dot_base_diameter: 1.2,
+        rounded_dot_base_height: 0.4,
+        rounded_dot_dome_diameter: 0.8,
+        rounded_dot_dome_height: 0.4,
 
         // Emboss Dot (Cone) - optimized for 0.3mm layer
-        emboss_dot_base_diameter: 1.5,
-        emboss_dot_height: 0.8,
-        emboss_dot_flat_hat: 0.5,  // Slightly larger for 0.3mm
+        emboss_dot_base_diameter: 1.2,
+        emboss_dot_height: 0.6,
+        emboss_dot_flat_hat: 0.2,  // Smaller for finer detail
 
         // Counter Dot (Bowl/Rounded) - optimized for 0.3mm layer
-        bowl_counter_dot_base_diameter: 1.5,  // Smaller for finer detail
-        counter_dot_depth: 0.7,
+        bowl_counter_dot_base_diameter: 1.5,  // Optimized for 0.3mm layer
+        counter_dot_depth: 0.5,
 
         // Counter Dot (Cone) - optimized for 0.3mm layer
         cone_counter_dot_base_diameter: 1.5,
-        cone_counter_dot_height: 0.8,
-        cone_counter_dot_flat_hat: 0.5,
+        cone_counter_dot_height: 0.5,
+        cone_counter_dot_flat_hat: 0.8,
 
         // Cylinder Dimensions (same as 0.4mm)
         cylinder_diameter_mm: 30.8,
@@ -186,11 +186,18 @@ const THICKNESS_PRESETS = {
 | Parameter | 0.4mm | 0.3mm | Rationale |
 |-----------|-------|-------|-----------|
 | `grid_columns` | 13 | 15 | Finer layers allow more characters |
-| `emboss_dot_flat_hat` | 0.4 | 0.5 | Slightly larger for 0.3mm detail |
+| `rounded_dot_base_diameter` | 1.5 | 1.2 | Smaller for finer detail |
+| `rounded_dot_base_height` | 0.5 | 0.4 | Lower profile for 0.3mm layers |
+| `rounded_dot_dome_diameter` | 1.0 | 0.8 | Proportionally smaller |
+| `rounded_dot_dome_height` | 0.5 | 0.4 | Lower profile for finer layers |
+| `emboss_dot_base_diameter` | 1.5 | 1.2 | Smaller for finer detail |
+| `emboss_dot_height` | 0.8 | 0.6 | Lower profile for 0.3mm layers |
+| `emboss_dot_flat_hat` | 0.4 | 0.2 | Smaller for finer detail |
 | `bowl_counter_dot_base_diameter` | 1.8 | 1.5 | Smaller for finer layer control |
+| `counter_dot_depth` | 0.8 | 0.5 | Shallower for fine layers |
 | `cone_counter_dot_base_diameter` | 1.9 | 1.5 | Smaller for finer layer control |
-| `cone_counter_dot_flat_hat` | 1.0 | 0.5 | Adjusted for layer height |
-| `counter_dot_depth` | 0.8 | 0.7 | Slightly shallower for fine layers |
+| `cone_counter_dot_height` | 0.7 | 0.5 | Lower profile for 0.3mm layers |
+| `cone_counter_dot_flat_hat` | 1.0 | 0.8 | Adjusted for layer height |
 
 ---
 
@@ -615,10 +622,11 @@ The preset system is designed to **never fail visibly**:
 |------|---------|---------|
 | 2025-12-07 | 1.0 | Initial creation. Documented Card Thickness Preset System including preset definitions, UI controls, application logic, localStorage persistence, and default behavior. |
 | 2025-12-07 | 1.1 | Documented critical bug fix: preset now applies on page load to ensure consistency between HTML defaults and preset values. Added dual event listener strategy (change + click). |
+| 2025-12-07 | 1.2 | Updated 0.3mm preset values: All dot dimensions reduced for finer detail (rounded base: 1.5→1.2, heights reduced, emboss cone: 1.5→1.2, counter depths reduced). |
 
 ---
 
-**Document Version**: 1.1
+**Document Version**: 1.2
 **Created**: 2025-12-07
 **Purpose**: Specification for Card Thickness Preset System (frontend convenience feature)
 **Status**: ✅ Complete

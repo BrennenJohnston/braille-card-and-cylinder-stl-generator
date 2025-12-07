@@ -1,0 +1,40 @@
+{
+  "description": "Small counter plate with bowl recesses",
+  "fixture_name": "card_counter_small",
+  "request_payload": {
+    "lines": [
+      "\u2801\u2803",
+      "",
+      "",
+      ""
+    ],
+    "plate_type": "negative",
+    "shape_type": "card",
+    "grade": "g1",
+    "settings": {
+      "card_width": 60.0,
+      "card_height": 40.0,
+      "card_thickness": 2.0,
+      "dot_height": 0.5,
+      "dot_base_diameter": 1.5,
+      "recess_shape": 1
+    }
+  },
+  "expected_properties": {
+    "face_count": 21420,
+    "vertex_count": 10712,
+    "is_watertight": true,
+    "bbox_min": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "bbox_max": [
+      60.0,
+      40.0,
+      2.0
+    ],
+    "volume": 4447.197721301095,
+    "surface_area": 5859.525451952261
+  }
+}

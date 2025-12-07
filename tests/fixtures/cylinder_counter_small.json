@@ -1,0 +1,42 @@
+{
+  "description": "Small cylinder counter with bowl recesses",
+  "fixture_name": "cylinder_counter_small",
+  "request_payload": {
+    "lines": [
+      "\u2801\u2803\u2809",
+      "",
+      "",
+      ""
+    ],
+    "plate_type": "negative",
+    "shape_type": "cylinder",
+    "grade": "g1",
+    "settings": {
+      "dot_height": 0.5,
+      "dot_base_diameter": 1.5,
+      "recess_shape": 1
+    },
+    "cylinder_params": {
+      "diameter": 40.0,
+      "wall_thickness": 2.0,
+      "seam_offset_degrees": 0.0
+    }
+  },
+  "expected_properties": {
+    "face_count": 25080,
+    "vertex_count": 12542,
+    "is_watertight": true,
+    "bbox_min": [
+      -15.675000190734863,
+      -15.675000190734863,
+      0.0
+    ],
+    "bbox_max": [
+      15.675000190734863,
+      15.675000190734863,
+      52.0
+    ],
+    "volume": 39762.43476020437,
+    "surface_area": 7230.1024705809505
+  }
+}

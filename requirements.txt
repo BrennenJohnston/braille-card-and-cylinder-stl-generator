@@ -2,10 +2,10 @@ flask
 trimesh
 numpy
 gunicorn
-flask-cors 
-shapely 
+flask-cors
+shapely
 manifold3d
-matplotlib 
+matplotlib
 Flask-Limiter
 redis
 requests

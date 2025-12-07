@@ -1,0 +1,1134 @@
+/**
+ * CSG Worker for client-side braille geometry generation
+ * Uses three-bvh-csg for boolean operations
+ */
+
+let THREE, Brush, Evaluator, SUBTRACTION, ADDITION, STLExporter;
+let FontLoader, TextGeometry, LoadedFont = null;
+let evaluator, stlExporter;
+let initError = null;
+let ManifoldModule = null;
+let manifoldReady = false;
+
+try {
+    // Dynamic imports to catch any loading errors
+    const threeModule = await import('/static/three.module.js');
+    THREE = threeModule;
+
+    const csgModule = await import('/static/vendor/three-bvh-csg/index.module.js');
+    Brush = csgModule.Brush;
+    Evaluator = csgModule.Evaluator;
+    SUBTRACTION = csgModule.SUBTRACTION;
+    ADDITION = csgModule.ADDITION;
+
+    const exporterModule = await import('/static/examples/STLExporter.js');
+    STLExporter = exporterModule.STLExporter;
+
+    // Try to load FontLoader and TextGeometry (local first, then CDN fallback)
+    try {
+        const fontLoaderModule = await import('/static/examples/jsm/loaders/FontLoader.js');
+        FontLoader = fontLoaderModule.FontLoader;
+    } catch (e1) {
+        try {
+            const fontLoaderModule = await import('https://unpkg.com/three@0.152.2/examples/jsm/loaders/FontLoader.js');
+            FontLoader = fontLoaderModule.FontLoader;
+        } catch (e2) {
+            console.warn('CSG Worker: Failed to load FontLoader locally and from CDN');
+        }
+    }
+
+    try {
+        const textGeomModule = await import('/static/examples/jsm/geometries/TextGeometry.js');
+        TextGeometry = textGeomModule.TextGeometry;
+    } catch (e1) {
+        try {
+            const textGeomModule = await import('https://unpkg.com/three@0.152.2/examples/jsm/geometries/TextGeometry.js');
+            TextGeometry = textGeomModule.TextGeometry;
+        } catch (e2) {
+            console.warn('CSG Worker: Failed to load TextGeometry locally and from CDN');
+        }
+    }
+
+    // Attempt to load a default font (local first, then CDN); non-fatal if it fails
+    if (FontLoader) {
+        const fontUrls = [
+            '/static/fonts/helvetiker_regular.typeface.json',
+            'https://unpkg.com/three@0.152.2/examples/fonts/helvetiker_regular.typeface.json',
+        ];
+        for (const url of fontUrls) {
+            try {
+                const resp = await fetch(url, { mode: 'cors' });
+                if (resp && resp.ok) {
+                    const json = await resp.json();
+                    const loader = new FontLoader();
+                    LoadedFont = loader.parse(json);
+                    console.log('CSG Worker: Loaded font from', url);
+                    break;
+                }
+            } catch (e) {
+                // Try next
+            }
+        }
+        if (!LoadedFont) {
+            console.warn('CSG Worker: No font available; character markers will fall back to rectangles');
+        }
+    }
+
+    // Initialize evaluator and exporter
+    evaluator = new Evaluator();
+    stlExporter = new STLExporter();
+
+    // Load manifold3d WASM for mesh repair (optional, non-fatal)
+    try {
+        const manifoldUrls = [
+            'https://cdn.jsdelivr.net/npm/manifold-3d@2.5.1/manifold.js',
+            'https://unpkg.com/manifold-3d@2.5.1/manifold.js'
+        ];
+
+        for (const url of manifoldUrls) {
+            try {
+                ManifoldModule = await import(url);
+                // Initialize WASM
+                await ManifoldModule.default();
+                manifoldReady = true;
+                console.log('CSG Worker: Manifold3D WASM loaded for mesh repair from', url);
+                break;
+            } catch (e) {
+                // Try next URL
+            }
+        }
+
+        if (!manifoldReady) {
+            console.warn('CSG Worker: Manifold3D not available from any CDN, mesh repair disabled');
+        }
+    } catch (e) {
+        console.warn('CSG Worker: Manifold3D not available, mesh repair disabled:', e.message);
+    }
+
+    console.log('CSG Worker: All modules loaded successfully');
+} catch (error) {
+    initError = error;
+    console.error('CSG Worker initialization error:', error.message, error.stack);
+}
+
+/**
+ * Create a cone frustum (truncated cone) for braille dots
+ */
+function createConeFrustum(baseRadius, topRadius, height, segments = 16) {
+    const geometry = new THREE.CylinderGeometry(topRadius, baseRadius, height, segments);
+    return geometry;
+}
+
+/**
+ * Create a spherical cap (dome) for rounded braille dots
+ * Handles edge cases to prevent NaN in geometry
+ */
+function createSphericalCap(radius, height, subdivisions = 3) {
+    // Validate inputs to prevent NaN
+    if (!radius || radius <= 0 || !isFinite(radius)) {
+        console.warn('createSphericalCap: Invalid radius, using fallback sphere');
+        return new THREE.SphereGeometry(1, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+    }
+    if (!height || height <= 0 || !isFinite(height)) {
+        console.warn('createSphericalCap: Invalid height, using fallback sphere');
+        return new THREE.SphereGeometry(radius, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+    }
+
+    // Calculate the ratio for acos - must be in range [-1, 1]
+    const ratio = 1 - height / radius;
+
+    // Clamp ratio to valid acos range to prevent NaN
+    // This handles cases where height > 2*radius (which would give ratio < -1)
+    const clampedRatio = Math.max(-1, Math.min(1, ratio));
+
+    // If height >= 2*radius, we essentially want a full hemisphere or more
+    // In that case, use π/2 for a hemisphere (maximum practical spherical cap)
+    const phiLength = clampedRatio <= -1 ? Math.PI : Math.acos(clampedRatio);
+
+    const geometry = new THREE.SphereGeometry(radius, 16, 16, 0, Math.PI * 2, 0, phiLength);
+    return geometry;
+}
+
+/**
+ * Recenter geometry along the Y axis and return its height.
+ */
+function recenterGeometryAlongY(geometry) {
+    if (!geometry) {
+        return 0;
+    }
+
+    geometry.computeBoundingBox();
+    const bbox = geometry.boundingBox;
+    if (!bbox || !bbox.min || !bbox.max) {
+        return 0;
+    }
+
+    const height = bbox.max.y - bbox.min.y;
+    const centerY = (bbox.max.y + bbox.min.y) / 2;
+    if (isFinite(centerY)) {
+        geometry.translate(0, -centerY, 0);
+    }
+
+    return isFinite(height) ? height : 0;
+}
+
+/**
+ * Create a braille dot mesh at position (x, y, z) for flat card
+ */
+function createBrailleDot(spec) {
+    const { x, y, z, type, params } = spec;
+
+    let geometry;
+
+    if (type === 'rounded') {
+        // Rounded dot: cone frustum base + spherical cap dome
+        const { base_radius, top_radius, base_height, dome_height, dome_radius } = params;
+
+        // Frustum base
+        if (base_height > 0) {
+            const frustum = createConeFrustum(base_radius, top_radius, base_height, 48);
+            const dome_R = dome_radius;
+            const dome_zc = (base_height / 2.0) + (dome_height - dome_R);
+            const dome = createSphericalCap(dome_R, dome_height, 2);
+            dome.translate(0, 0, dome_zc);
+
+            // Use CSG union for rounded dots
+            const frustumBrush = new Brush(frustum);
+            const domeBrush = new Brush(dome);
+            const combinedBrush = evaluator.evaluate(frustumBrush, domeBrush, ADDITION);
+            geometry = combinedBrush.geometry;
+
+            // Recenter and translate to position
+            geometry.translate(0, 0, -dome_height / 2.0);
+            geometry.translate(x, y, z);
+        } else {
+            // Only dome, no frustum
+            const dome_R = dome_radius;
+            const dome = createSphericalCap(dome_R, dome_height, 2);
+            geometry = dome;
+            geometry.translate(0, 0, -dome_height / 2.0);
+            geometry.translate(x, y, z);
+        }
+
+    } else {
+        // Default: simple cone frustum
+        const { base_radius, top_radius, height } = params;
+        geometry = createConeFrustum(base_radius, top_radius, height, 16);
+        geometry.translate(x, y, z);
+    }
+
+    return geometry;
+}
+
+/**
+ * Create a braille dot on a cylinder surface
+ * The dot is positioned at (x, y, z) and oriented radially outward
+ * For counter plates (recesses), the dot overlaps INTO the cylinder for subtraction
+ */
+function createCylinderDot(spec) {
+    const { x, y, z, theta, radius: cylRadius, params, is_recess } = spec;
+
+    // Validate essential parameters
+    if (!isFinite(theta) || !isFinite(cylRadius) || cylRadius <= 0) {
+        console.warn('createCylinderDot: Invalid theta or cylRadius, skipping dot');
+        return null;
+    }
+    if (!params) {
+        console.warn('createCylinderDot: Missing params, skipping dot');
+        return null;
+    }
+
+    const shape = params.shape || 'standard';
+
+    let geometry;
+    let dotHeight = 0;
+    const isRecess = is_recess || shape === 'hemisphere' || shape === 'bowl';
+
+    if (shape === 'rounded') {
+        // Rounded dot for positive plate
+        const { base_radius, top_radius, base_height, dome_height, dome_radius } = params;
+
+        // Validate rounded dot parameters
+        const validBaseRadius = (base_radius && base_radius > 0) ? base_radius : 1.0;
+        const validTopRadius = (top_radius && top_radius > 0) ? top_radius : validBaseRadius;
+        const validBaseHeight = (base_height && base_height >= 0) ? base_height : 0.2;
+        const validDomeHeight = (dome_height && dome_height > 0) ? dome_height : 0.6;
+        const validDomeRadius = (dome_radius && dome_radius > 0) ? dome_radius : Math.max(validTopRadius, 0.5);
+
+        let baseGeometry = null;
+        let domeGeometry = null;
+
+        if (validBaseHeight > 0 && validBaseRadius > 0) {
+            baseGeometry = createConeFrustum(validBaseRadius, validTopRadius, validBaseHeight, 32);
+        }
+
+        if (validDomeHeight > 0 && validDomeRadius > 0) {
+            domeGeometry = createSphericalCap(validDomeRadius, validDomeHeight, 2);
+            // Position dome so its base is at Y = base_height/2 (top of frustum)
+            // Spherical cap with radius R and height h has base at Y = R - h (from sphere center)
+            // We want base at Y = base_height/2, so translate by: base_height/2 - (R - h) = base_height/2 - R + h
+            const sphereCenterOffset = (validBaseHeight / 2) + (validDomeHeight - validDomeRadius);
+            domeGeometry.translate(0, sphereCenterOffset, 0);
+
+            // Debug: verify dome position
+            console.log(`CSG Worker: Dome positioning: domeRadius=${validDomeRadius.toFixed(3)}, domeHeight=${validDomeHeight.toFixed(3)}, sphereCenterOffset=${sphereCenterOffset.toFixed(3)}`);
+            console.log(`CSG Worker: Expected dome base at Y=${(validBaseHeight/2).toFixed(3)}, dome top at Y=${(validBaseHeight/2 + validDomeHeight).toFixed(3)}`);
+        }
+
+        if (baseGeometry && domeGeometry) {
+            const frustumBrush = new Brush(baseGeometry);
+            const domeBrush = new Brush(domeGeometry);
+            const combinedBrush = evaluator.evaluate(frustumBrush, domeBrush, ADDITION);
+            geometry = combinedBrush.geometry;
+        } else if (baseGeometry) {
+            geometry = baseGeometry;
+        } else if (domeGeometry) {
+            geometry = domeGeometry;
+        } else {
+            return null;
+        }
+
+        // Total dot height = base_height + dome_height
+        // This is used for radial positioning: dot center at cylRadius + dotHeight/2
+        dotHeight = validBaseHeight + validDomeHeight;
+
+        // Debug: compute bounding box BEFORE centering
+        geometry.computeBoundingBox();
+        const bboxBefore = geometry.boundingBox.clone();
+        console.log(`CSG Worker: Rounded dot BEFORE centering: Y bounds [${bboxBefore.min.y.toFixed(3)}, ${bboxBefore.max.y.toFixed(3)}]`);
+        console.log(`CSG Worker: Expected before: [-${(validBaseHeight/2).toFixed(3)}, ${(validBaseHeight/2 + validDomeHeight).toFixed(3)}]`);
+
+        // CRITICAL: Center the geometry along Y to match Python backend behavior
+        // The combined geometry (frustum + dome) spans from Y = -base_h/2 to Y = base_h/2 + dome_h
+        // The geometric center is at Y = dome_h/2 (not at Y = 0)
+        // To center at Y=0, translate by -dome_h/2
+        geometry.translate(0, -validDomeHeight / 2, 0);
+
+        // Debug: compute bounding box AFTER centering
+        geometry.computeBoundingBox();
+        const bboxAfter = geometry.boundingBox;
+        console.log(`CSG Worker: Rounded dot AFTER centering: Y bounds [${bboxAfter.min.y.toFixed(3)}, ${bboxAfter.max.y.toFixed(3)}]`);
+        console.log(`CSG Worker: Expected after: [-${(dotHeight/2).toFixed(3)}, ${(dotHeight/2).toFixed(3)}]`);
+        const actualCenter = (bboxAfter.min.y + bboxAfter.max.y) / 2;
+        console.log(`CSG Worker: Actual center after translation: ${actualCenter.toFixed(3)} (should be 0)`);
+    } else if (shape === 'hemisphere') {
+        // Hemisphere for counter plate recesses
+        const { recess_radius } = params;
+        const validRecessRadius = (recess_radius && recess_radius > 0) ? recess_radius : 1.0;
+        dotHeight = validRecessRadius;
+        // Use full sphere for better subtraction overlap (will be positioned to create hemisphere effect)
+        geometry = new THREE.SphereGeometry(validRecessRadius, 16, 16);
+    } else if (shape === 'bowl') {
+        // Bowl (spherical cap) for counter plate
+        const { bowl_radius, bowl_depth } = params;
+
+        // Validate bowl parameters to prevent NaN
+        const validBowlRadius = (bowl_radius && bowl_radius > 0) ? bowl_radius : 1.5;
+        const validBowlDepth = (bowl_depth && bowl_depth > 0) ? bowl_depth : 0.8;
+
+        dotHeight = validBowlDepth;
+        const sphereR = (validBowlRadius * validBowlRadius + validBowlDepth * validBowlDepth) / (2.0 * validBowlDepth);
+
+        // Use full sphere for better subtraction (positioned to create bowl effect)
+        geometry = new THREE.SphereGeometry(sphereR, 16, 16);
+    } else if (shape === 'cone') {
+        // Cone frustum for counter plate recess
+        // For recesses: large opening (base_radius) at the outer surface, small tip (top_radius) pointing inward
+        // After rotateZ(-π/2) and rotateY(-theta), +Y becomes the radial outward direction
+        // So we need to swap the radii so the large base ends up at +Y (outer surface)
+        const { base_radius, top_radius, height } = params;
+        const validBaseRadius = (base_radius && base_radius > 0) ? base_radius : 1.0;
+        const validTopRadius = (top_radius && top_radius >= 0) ? top_radius : 0.25;
+        const validHeight = (height && height > 0) ? height : 1.0;
+        dotHeight = validHeight;
+        // IMPORTANT: Swap base and top radii for recesses so large opening is at outer surface
+        // createConeFrustum puts second param at +Y, which becomes radial outward after rotations
+        geometry = createConeFrustum(validTopRadius, validBaseRadius, validHeight, 16);
+    } else {
+        // Standard cone frustum for positive embossing
+        const { base_radius, top_radius, height } = params;
+        const validBaseRadius = (base_radius && base_radius > 0) ? base_radius : 0.8;
+        const validTopRadius = (top_radius && top_radius >= 0) ? top_radius : 0.25;
+        const validHeight = (height && height > 0) ? height : 0.5;
+        dotHeight = validHeight;
+        geometry = createConeFrustum(validBaseRadius, validTopRadius, validHeight, 16);
+
+        // Debug: verify standard cone dot bounds (should already be centered at Y=0)
+        geometry.computeBoundingBox();
+        const coneBbox = geometry.boundingBox;
+        console.log(`CSG Worker: Standard cone dot Y bounds: [${coneBbox.min.y.toFixed(3)}, ${coneBbox.max.y.toFixed(3)}]`);
+        console.log(`CSG Worker: Expected: [-${(validHeight/2).toFixed(3)}, ${(validHeight/2).toFixed(3)}], dotHeight=${dotHeight.toFixed(3)}`);
+    }
+
+    // For non-spherical shapes (cones, frustums), apply rotation to orient radially
+    // Spheres don't need rotation since they're symmetric
+    const isSpherical = (shape === 'hemisphere' || shape === 'bowl');
+
+    if (!isSpherical) {
+        // Apply rotation to orient dot radially on cylinder surface
+        // Three.js CylinderGeometry creates along Y-axis (height along Y)
+        // We need to rotate so the dot points radially outward at angle theta
+
+        // Step 1: Rotate -90° around Z so dot points along +X instead of +Y
+        geometry.rotateZ(-Math.PI / 2);
+
+        // Step 2: Rotate around Y by -theta to position it at the correct radial angle
+        // (negative because rotateY(θ) gives (cos(θ), 0, -sin(θ)) but radial is (cos(θ), 0, +sin(θ)))
+        geometry.rotateY(-theta);
+    }
+
+    // Calculate the radial position
+    // For recesses (counter plates): position shape so opening is at surface
+    // For protrusions (embossing plates): position dot so base sits on surface and extends outward
+    //
+    // CRITICAL: The dot geometry is now centered at Y=0 with bounds [-dotHeight/2, +dotHeight/2]
+    // After rotations, this becomes centered at the origin with radial extent [-dotHeight/2, +dotHeight/2]
+    // So when we translate by radialOffset, the dot spans from (radialOffset - dotHeight/2) to (radialOffset + dotHeight/2)
+    //
+    // For protrusions: we want the base (inner edge) at cylRadius
+    //   radialOffset - dotHeight/2 = cylRadius
+    //   radialOffset = cylRadius + dotHeight/2
+    //
+    const epsilon = 0;
+    let radialOffset;
+    if (isRecess) {
+        if (shape === 'cone') {
+            // For cone recesses: position so the large opening (base) is exactly at the cylinder surface
+            // After rotations, the cone center is at origin, with base at +height/2 along radial direction
+            // We shift inward by height/2 so the base lands exactly at the surface
+            radialOffset = cylRadius - dotHeight / 2;
+        } else {
+            // For spherical recesses (hemisphere, bowl), center at surface - half will be inside, half outside
+            // The inside half gets subtracted to create the recess
+            radialOffset = cylRadius;
+        }
+    } else {
+        // For protrusions, position so the dot sits ON the surface and extends outward
+        // After centering, dot spans [-dotHeight/2, +dotHeight/2] along its axis
+        // After rotation and translation:
+        //   Inner edge (dot base) at: radialOffset - dotHeight/2
+        //   Outer edge (dot top) at: radialOffset + dotHeight/2
+        // We want inner edge at cylRadius, so radialOffset = cylRadius + dotHeight/2
+        radialOffset = cylRadius + dotHeight / 2 + epsilon;
+    }
+
+    // Debug logging for rounded dots to help diagnose positioning issues
+    if (shape === 'rounded') {
+        console.log(`CSG Worker: Rounded dot positioning: cylRadius=${cylRadius.toFixed(3)}, dotHeight=${dotHeight.toFixed(3)}, radialOffset=${radialOffset.toFixed(3)}`);
+        console.log(`CSG Worker: Expected dot base at radius ${(radialOffset - dotHeight/2).toFixed(3)}, top at ${(radialOffset + dotHeight/2).toFixed(3)}`);
+    }
+
+    const posX = radialOffset * Math.cos(theta);
+    const posZ = radialOffset * Math.sin(theta);
+    const posY = isFinite(y) ? y : 0;
+
+    // Validate final position values
+    if (!isFinite(posX) || !isFinite(posZ) || !isFinite(posY)) {
+        console.warn('createCylinderDot: Invalid position calculated, skipping dot');
+        return null;
+    }
+
+    // Debug: Log geometry bounds after rotation (before final translation)
+    if (shape === 'rounded' || shape === 'standard') {
+        geometry.computeBoundingBox();
+        const rotatedBbox = geometry.boundingBox;
+        console.log(`CSG Worker: ${shape} dot AFTER rotation (before translation):`);
+        console.log(`  X bounds: [${rotatedBbox.min.x.toFixed(3)}, ${rotatedBbox.max.x.toFixed(3)}]`);
+        console.log(`  Y bounds: [${rotatedBbox.min.y.toFixed(3)}, ${rotatedBbox.max.y.toFixed(3)}]`);
+        console.log(`  Z bounds: [${rotatedBbox.min.z.toFixed(3)}, ${rotatedBbox.max.z.toFixed(3)}]`);
+        console.log(`  Will translate by: (${posX.toFixed(3)}, ${posY.toFixed(3)}, ${posZ.toFixed(3)})`);
+        console.log(`  Expected inner edge at radius: ${radialOffset.toFixed(3)} - ${(dotHeight/2).toFixed(3)} = ${(radialOffset - dotHeight/2).toFixed(3)}`);
+        console.log(`  Cylinder surface at radius: ${cylRadius.toFixed(3)}`);
+    }
+
+    // Translate to position on cylinder surface
+    geometry.translate(posX, posY, posZ);
+
+    return geometry;
+}
+
+/**
+ * Create a triangle marker on cylinder surface
+ *
+ * The triangle is positioned with corners at braille dots 1, 3, and 5:
+ * - Dot 1: top-left of braille cell (-dot_spacing/2, +dot_spacing)
+ * - Dot 3: bottom-left of braille cell (-dot_spacing/2, -dot_spacing)
+ * - Dot 5: middle-right of braille cell (+dot_spacing/2, 0) - the apex
+ *
+ * This creates a triangle with:
+ * - Vertical base on the left (height = 2 * dot_spacing)
+ * - Apex pointing right (width = dot_spacing)
+ *
+ * For counter plates (rotate_180=true), the triangle is rotated 180 degrees
+ * from the center of the braille cell bounds to properly align with the
+ * embosser plate when the paper is pressed between them.
+ */
+function createCylinderTriangleMarker(spec) {
+    const { x, y, z, theta, radius: cylRadius, size, depth, is_recess, rotate_180 } = spec;
+
+    // Validate essential parameters
+    if (!isFinite(theta) || !isFinite(cylRadius) || cylRadius <= 0) {
+        console.warn('createCylinderTriangleMarker: Invalid parameters, skipping marker');
+        return null;
+    }
+
+    // Validate Y position specifically
+    if (!isFinite(y)) {
+        console.warn(`createCylinderTriangleMarker: Invalid y value: ${y}, defaulting to 0`);
+    }
+
+    const validSize = (size && size > 0) ? size : 2.0;
+    const validDepth = (depth && depth > 0) ? depth : 0.6;
+
+    // Create triangle shape with vertices at braille dots 1, 3, 5
+    // Using COUNTER-CLOCKWISE winding for correct front-facing normals
+    const triangleShape = new THREE.Shape();
+
+    if (rotate_180) {
+        // 180-degree rotation from center: negate both X and Y coordinates
+        // Used for counter plates to properly align with embosser plate triangles
+        // Original vertices: (-size/2, -size), (-size/2, +size), (+size/2, 0)
+        // After 180° rotation: (+size/2, +size), (+size/2, -size), (-size/2, 0)
+        triangleShape.moveTo(validSize / 2, validSize);    // Rotated Dot 3 (was bottom-left, now top-right)
+        triangleShape.lineTo(validSize / 2, -validSize);   // Rotated Dot 1 (was top-left, now bottom-right)
+        triangleShape.lineTo(-validSize / 2, 0);           // Rotated Dot 5 (apex now on left)
+    } else {
+        // Normal orientation: apex points right
+        // Start at dot 3 (bottom-left), go to dot 1 (top-left), then to dot 5 (apex right)
+        triangleShape.moveTo(-validSize / 2, -validSize);  // Dot 3 - bottom left of cell
+        triangleShape.lineTo(-validSize / 2, validSize);   // Dot 1 - top left of cell
+        triangleShape.lineTo(validSize / 2, 0);            // Dot 5 - apex, middle right of cell
+    }
+    triangleShape.closePath();
+
+    const recessPadding = is_recess ? 0.2 : 0; // Small extension to avoid coplanar booleans
+    const extrudeSettings = {
+        depth: validDepth + recessPadding,
+        bevelEnabled: false
+    };
+
+    const geometry = new THREE.ExtrudeGeometry(triangleShape, extrudeSettings);
+
+    // Center the extrusion along its depth axis (Z)
+    geometry.translate(0, 0, -(validDepth + recessPadding) / 2);
+
+    // Rotate so the depth (Z axis) points radially outward at angle theta
+    // Same rotation approach as createCylinderRectMarker for consistency
+    geometry.rotateY(Math.PI / 2 - theta);
+
+    // Position at cylinder surface - use same logic as rect marker for consistency
+    const epsilon = 0.05;
+    let radialOffset;
+    if (is_recess) {
+        // For recesses, position so marker extends INTO cylinder for subtraction
+        radialOffset = cylRadius - validDepth / 2;
+    } else {
+        // For protrusions, position so marker sits on surface and extends outward
+        radialOffset = cylRadius + validDepth / 2 + epsilon;
+    }
+
+    const posX = radialOffset * Math.cos(theta);
+    const posZ = radialOffset * Math.sin(theta);
+    const posY = isFinite(y) ? y : 0;
+
+    // Validate final position
+    if (!isFinite(posX) || !isFinite(posZ)) {
+        console.warn('createCylinderTriangleMarker: Invalid position, skipping marker');
+        return null;
+    }
+
+    geometry.translate(posX, posY, posZ);
+
+    return geometry;
+}
+
+/**
+ * Create a rectangular marker on cylinder surface
+ */
+function createCylinderRectMarker(spec) {
+    const { x, y, z, theta, radius: cylRadius, width, height, depth, is_recess } = spec;
+
+    // Validate essential parameters
+    if (!isFinite(theta) || !isFinite(cylRadius) || cylRadius <= 0) {
+        console.warn('createCylinderRectMarker: Invalid parameters, skipping marker');
+        return null;
+    }
+
+    const validWidth = (width && width > 0) ? width : 2.0;
+    const validHeight = (height && height > 0) ? height : 4.0;
+    const validDepth = (depth && depth > 0) ? depth : 0.5;
+
+    // BoxGeometry: width (X), height (Y), depth (Z)
+    // We want depth to point radially outward
+    const geometry = new THREE.BoxGeometry(validWidth, validHeight, validDepth);
+
+    // Rotate so depth (Z) points radially outward at angle theta
+    // First rotate π/2 to align Z with +X, then -theta to point toward (cos(θ), 0, sin(θ))
+    geometry.rotateY(Math.PI / 2 - theta);
+
+    // Position at cylinder surface with epsilon to prevent coplanar issues
+    const epsilon = 0.05;
+    let radialOffset;
+    if (is_recess) {
+        // For recesses, position so marker extends INTO cylinder for subtraction
+        radialOffset = cylRadius - validDepth / 2;
+    } else {
+        // For protrusions, position so marker sits on surface and extends outward
+        radialOffset = cylRadius + validDepth / 2 + epsilon;
+    }
+    const posX = radialOffset * Math.cos(theta);
+    const posZ = radialOffset * Math.sin(theta);
+    const posY = isFinite(y) ? y : 0;
+
+    // Validate final position
+    if (!isFinite(posX) || !isFinite(posZ)) {
+        console.warn('createCylinderRectMarker: Invalid position, skipping marker');
+        return null;
+    }
+
+    geometry.translate(posX, posY, posZ);
+
+    return geometry;
+}
+
+/**
+ * Create a character marker on cylinder surface
+ */
+function createCylinderCharacterMarker(spec) {
+    const { x, y, z, theta, radius: cylRadius, char, size, depth, is_recess } = spec;
+
+    // Validate essential parameters
+    if (!isFinite(theta) || !isFinite(cylRadius) || cylRadius <= 0) {
+        console.warn('createCylinderCharacterMarker: Invalid parameters, skipping marker');
+        return null;
+    }
+
+    const validSize = (size && size > 0) ? size : 3.0;
+    const baseDepth = (depth && depth > 0) ? depth : 1.0;
+    const recessPadding = 0.1; // small outward extension to avoid coplanar issues
+    const extrudeDepth = is_recess ? (baseDepth + recessPadding) : baseDepth;
+
+    const charUpper = (char ? String(char) : 'A').toUpperCase();
+
+    let geometry;
+    if (LoadedFont && TextGeometry) {
+        try {
+            geometry = new TextGeometry(charUpper, {
+                font: LoadedFont,
+                size: validSize,
+                height: extrudeDepth,
+                curveSegments: 4,
+                bevelEnabled: false
+            });
+
+            // Center the text geometry around origin in XY for proper placement
+            geometry.computeBoundingBox();
+            const bb = geometry.boundingBox;
+            if (bb && bb.min && bb.max) {
+                const cx = (bb.max.x - bb.min.x) / 2 + bb.min.x;
+                const cy = (bb.max.y - bb.min.y) / 2 + bb.min.y;
+                geometry.translate(-cx, -cy, 0);
+            }
+        } catch (e) {
+            console.warn('createCylinderCharacterMarker: TextGeometry failed, falling back to rectangle:', e?.message);
+            geometry = null;
+        }
+    }
+
+    // Fallback: box approximation if font failed to load
+    if (!geometry) {
+        const charWidth = validSize * 0.6;
+        const charHeight = validSize;
+        geometry = new THREE.BoxGeometry(charWidth, charHeight, extrudeDepth);
+    }
+
+    // Rotate so depth (Z) points radially outward at angle theta
+    // First rotate π/2 to align Z with +X, then -theta to point toward (cos(θ), 0, sin(θ))
+    geometry.rotateY(Math.PI / 2 - theta);
+
+    // Position at cylinder surface
+    const epsilon = 0.05;
+    let radialOffset;
+    if (is_recess) {
+        // Extend into the cylinder for subtraction
+        radialOffset = cylRadius - extrudeDepth / 2;
+    } else {
+        radialOffset = cylRadius + extrudeDepth / 2 + epsilon;
+    }
+
+    const posX = radialOffset * Math.cos(theta);
+    const posZ = radialOffset * Math.sin(theta);
+    const posY = isFinite(y) ? y : 0;
+
+    if (!isFinite(posX) || !isFinite(posZ)) {
+        console.warn('createCylinderCharacterMarker: Invalid position, skipping marker');
+        return null;
+    }
+
+    geometry.translate(posX, posY, posZ);
+
+    return geometry;
+}
+
+/**
+ * Create a rectangular marker for flat card
+ */
+function createRectMarker(spec) {
+    const { x, y, z, width, height, depth } = spec;
+    const geometry = new THREE.BoxGeometry(width, height, depth);
+    geometry.translate(x, y, z);
+    return geometry;
+}
+
+/**
+ * Create a triangular marker for flat card
+ */
+function createTriangleMarker(spec) {
+    const { x, y, z, size, depth } = spec;
+
+    // Create triangle shape with base vertical on the left (aligns with server orientation)
+    const shape = new THREE.Shape();
+    shape.moveTo(-size / 2, -size); // Bottom of base
+    shape.lineTo(-size / 2, size); // Top of base
+    shape.lineTo(size / 2, 0); // Apex pointing right
+    shape.closePath();
+
+    const extrudeSettings = {
+        depth: depth,
+        bevelEnabled: false
+    };
+
+    const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    geometry.translate(x, y, z - depth / 2);
+    return geometry;
+}
+
+/**
+ * Create a character shape marker (alphanumeric) for flat card
+ */
+function createCharacterMarker(spec) {
+    const { x, y, z, char, size, depth } = spec;
+
+    // For simplicity, use a box with approximate character dimensions
+    const width = size * 0.6;
+    const height = size;
+    const geometry = new THREE.BoxGeometry(width, height, depth);
+    geometry.translate(x, y, z);
+    return geometry;
+}
+
+/**
+ * Create cylinder shell with polygonal cutout
+ *
+ * Behavior matches Python server-side code (cylinder.py create_cylinder_shell):
+ * - If a polygonal cutout is specified with valid points: create a ring shape
+ *   (outer circle minus polygon) - the polygon IS the inner boundary
+ * - If no polygonal cutout is specified: return a solid cylinder
+ *
+ * NOTE: The 'thickness' parameter is NOT used when a polygon cutout is specified,
+ * because the polygon defines the inner boundary. This prevents the issue where
+ * increasing the outer diameter causes the inner cylinder (based on fixed wall
+ * thickness) to grow larger than the polygon cutout, making it invisible.
+ */
+function createCylinderShell(spec) {
+    const { radius, height, thickness, polygon_points } = spec;
+
+    // Debug: Log received polygon points with actual values
+    if (polygon_points && polygon_points.length > 0) {
+        const pt0 = polygon_points[0];
+        const angle = Math.atan2(pt0.y, pt0.x) * 180 / Math.PI;
+        console.log(`CSG Worker: polygon_points[0] = (${pt0.x.toFixed(2)}, ${pt0.y.toFixed(2)}) angle=${angle.toFixed(1)}°`);
+    }
+
+    // Validate essential parameters (defaults match UI: diameter 30.75mm, height 52mm)
+    const validRadius = (radius && radius > 0) ? radius : 15.375;  // 30.75 / 2
+    const validHeight = (height && height > 0) ? height : 52;
+
+    // Debug: Log cylinder shell dimensions - this radius MUST match the radius used for dot positioning
+    console.log(`CSG Worker: Creating cylinder shell with radius=${validRadius.toFixed(3)}mm, height=${validHeight.toFixed(3)}mm`);
+
+    // Create outer cylinder
+    const outerGeom = new THREE.CylinderGeometry(validRadius, validRadius, validHeight, 64);
+    const outerBrush = new Brush(outerGeom);
+
+    // Check if polygon cutout is specified with valid points
+    const validPoints = (polygon_points && polygon_points.length > 0)
+        ? polygon_points.filter(pt => pt && isFinite(pt.x) && isFinite(pt.y))
+        : [];
+
+    if (validPoints.length >= 3) {
+        // Polygon cutout specified: use polygon as the inner boundary
+        // This matches Python behavior where the polygon IS the inner shape,
+        // NOT an additional subtraction from a wall-thickness-based inner cylinder
+
+        // Create extruded polygon for the inner cutout
+        const polygonShape = new THREE.Shape();
+        validPoints.forEach((pt, i) => {
+            if (i === 0) {
+                polygonShape.moveTo(pt.x, pt.y);
+            } else {
+                polygonShape.lineTo(pt.x, pt.y);
+            }
+        });
+        polygonShape.closePath();
+
+        const extrudeSettings = {
+            depth: validHeight * 1.5, // Ensure it cuts all the way through
+            bevelEnabled: false
+        };
+
+        const cutoutGeom = new THREE.ExtrudeGeometry(polygonShape, extrudeSettings);
+        // Center the extrusion
+        cutoutGeom.translate(0, 0, -validHeight * 0.75);
+        // Rotate to align with cylinder's Y-axis
+        cutoutGeom.rotateX(Math.PI / 2);
+
+        const cutoutBrush = new Brush(cutoutGeom);
+
+        // Subtract polygon from outer cylinder (no inner cylinder based on thickness)
+        const shellBrush = evaluator.evaluate(outerBrush, cutoutBrush, SUBTRACTION);
+        return shellBrush.geometry;
+    } else {
+        // No polygon cutout: return solid cylinder (matching Python behavior)
+        // The Python code returns a solid cylinder when polygonal_cutout_radius_mm <= 0
+        console.log('CSG Worker: No polygon cutout specified, returning solid cylinder');
+        return outerGeom;
+    }
+}
+
+/**
+ * Batch union geometries for efficiency
+ */
+function batchUnion(geometries, batchSize = 32) {
+    if (geometries.length === 0) return null;
+    if (geometries.length === 1) return geometries[0];
+
+    // Convert to brushes
+    let brushes = geometries.map(g => new Brush(g));
+
+    // Process in batches
+    while (brushes.length > 1) {
+        const nextLevel = [];
+
+        for (let i = 0; i < brushes.length; i += batchSize) {
+            const batch = brushes.slice(i, i + batchSize);
+            let result = batch[0];
+
+            for (let j = 1; j < batch.length; j++) {
+                result = evaluator.evaluate(result, batch[j], ADDITION);
+            }
+
+            nextLevel.push(result);
+        }
+
+        brushes = nextLevel;
+    }
+
+    return brushes[0].geometry;
+}
+
+/**
+ * Process geometry spec and perform CSG operations
+ *
+ * CSG Operation Logic:
+ * - Dots: ADD for positive plates (protrusions), SUBTRACT for negative plates (recesses)
+ * - Markers: ALWAYS SUBTRACT (markers are always recessed on both plate types)
+ */
+function processGeometrySpec(spec) {
+    const { shape_type, plate_type, plate, dots, markers, cylinder } = spec;
+    const isNegative = plate_type === 'negative';
+    const isCylinder = shape_type === 'cylinder';
+
+    console.log(`CSG Worker: Processing ${shape_type} ${plate_type} with ${dots?.length || 0} dots and ${markers?.length || 0} markers`);
+
+    try {
+        // Create base geometry
+        let baseGeometry;
+
+        if (isCylinder && cylinder) {
+            baseGeometry = createCylinderShell(cylinder);
+            console.log('CSG Worker: Created cylinder shell');
+        } else {
+            // Card plate
+            const { width, height, thickness, center_x, center_y, center_z } = plate;
+            baseGeometry = new THREE.BoxGeometry(width, height, thickness);
+            baseGeometry.translate(center_x, center_y, center_z);
+        }
+
+        // Collect dot geometries (separate from markers for different CSG operations)
+        const dotGeometries = [];
+
+        // Process dots
+        if (dots && dots.length > 0) {
+            console.log(`CSG Worker: Creating ${dots.length} dots`);
+            dots.forEach((dotSpec, i) => {
+                try {
+                    let dotGeom;
+
+                    if (dotSpec.type === 'cylinder_dot') {
+                        // Cylinder surface dot
+                        dotGeom = createCylinderDot(dotSpec);
+                    } else {
+                        // Flat card dot
+                        dotGeom = createBrailleDot(dotSpec);
+                    }
+
+                    if (dotGeom) {
+                        dotGeometries.push(dotGeom);
+                    }
+                } catch (err) {
+                    console.warn(`CSG Worker: Failed to create dot ${i}:`, err.message);
+                }
+            });
+        }
+
+        // Collect marker geometries (always subtracted for recesses)
+        const markerGeometries = [];
+
+        // Process markers
+        if (markers && markers.length > 0) {
+            console.log(`CSG Worker: Creating ${markers.length} markers`);
+            markers.forEach((markerSpec, i) => {
+                try {
+                    let markerGeom;
+
+                    if (markerSpec.type === 'cylinder_triangle') {
+                        markerGeom = createCylinderTriangleMarker(markerSpec);
+                    } else if (markerSpec.type === 'cylinder_rect') {
+                        markerGeom = createCylinderRectMarker(markerSpec);
+                    } else if (markerSpec.type === 'cylinder_character') {
+                        markerGeom = createCylinderCharacterMarker(markerSpec);
+                    } else if (markerSpec.type === 'rect') {
+                        markerGeom = createRectMarker(markerSpec);
+                    } else if (markerSpec.type === 'triangle') {
+                        markerGeom = createTriangleMarker(markerSpec);
+                    } else if (markerSpec.type === 'character') {
+                        markerGeom = createCharacterMarker(markerSpec);
+                    }
+
+                    if (markerGeom) {
+                        markerGeometries.push(markerGeom);
+                    }
+                } catch (err) {
+                    console.warn(`CSG Worker: Failed to create marker ${i}:`, err.message);
+                }
+            });
+        }
+
+        // Perform CSG operations
+        let currentBrush = new Brush(baseGeometry);
+
+        // Step 1: Process dots
+        // For negative (counter) plates: subtract dots (create recesses)
+        // For positive (emboss) plates: add dots (create protrusions)
+        if (dotGeometries.length > 0) {
+            console.log(`CSG Worker: Processing ${dotGeometries.length} dots`);
+            const unionedDots = batchUnion(dotGeometries, 32);
+            const dotsBrush = new Brush(unionedDots);
+
+            if (isNegative) {
+                // Counter plate: subtract to create recesses
+                currentBrush = evaluator.evaluate(currentBrush, dotsBrush, SUBTRACTION);
+                console.log('CSG Worker: Subtracted dots for counter plate');
+            } else {
+                // Positive plate: add to create protrusions
+                currentBrush = evaluator.evaluate(currentBrush, dotsBrush, ADDITION);
+                console.log('CSG Worker: Added dots for embossing plate');
+            }
+        }
+
+        // Step 2: Process markers (ALWAYS subtract - markers are always recessed)
+        // This matches the local Python behavior where markers are subtracted
+        // using mesh_difference() regardless of plate type
+        if (markerGeometries.length > 0) {
+            console.log(`CSG Worker: Processing ${markerGeometries.length} markers (subtracting for recesses)`);
+            const unionedMarkers = batchUnion(markerGeometries, 32);
+            const markersBrush = new Brush(unionedMarkers);
+
+            // Always subtract markers to create recesses
+            currentBrush = evaluator.evaluate(currentBrush, markersBrush, SUBTRACTION);
+            console.log('CSG Worker: Subtracted markers to create recesses');
+        }
+
+        let finalGeometry;
+        if (dotGeometries.length > 0 || markerGeometries.length > 0) {
+            // Fix drawRange for export
+            currentBrush.geometry.setDrawRange(0, Infinity);
+            finalGeometry = currentBrush.geometry;
+        } else {
+            console.log('CSG Worker: No features, returning base geometry');
+            // No features, return base as-is
+            baseGeometry.setDrawRange(0, Infinity);
+            finalGeometry = baseGeometry;
+        }
+
+        // For cylinders: rotate from Y-up (Three.js) to Z-up (STL/CAD convention)
+        // Rotate +90° around X-axis so the cylinder stands upright in correct orientation
+        if (isCylinder) {
+            finalGeometry.rotateX(Math.PI / 2);
+            console.log('CSG Worker: Rotated cylinder to Z-up orientation (right-side up)');
+        }
+
+        return finalGeometry;
+
+    } catch (error) {
+        console.error('CSG Worker: Processing failed:', error);
+        throw new Error(`CSG processing failed: ${error.message}`);
+    }
+}
+
+/**
+ * Repair geometry using Manifold3D to fix non-manifold edges
+ */
+function repairGeometryWithManifold(geometry) {
+    if (!manifoldReady || !ManifoldModule) {
+        console.warn('CSG Worker: Manifold not available, skipping repair');
+        return geometry;
+    }
+
+    try {
+        const { Manifold, Mesh } = ManifoldModule;
+
+        // Ensure geometry is non-indexed for Manifold
+        const nonIndexed = geometry.index ? geometry.toNonIndexed() : geometry;
+        const positions = nonIndexed.attributes.position.array;
+
+        // Manifold expects triangles, so positions.length should be divisible by 9 (3 vertices * 3 coords)
+        if (positions.length % 9 !== 0) {
+            console.warn('CSG Worker: Invalid geometry for Manifold repair, skipping');
+            return geometry;
+        }
+
+        // Convert to Manifold mesh format
+        const numVerts = positions.length / 3;
+        const triVerts = new Uint32Array(numVerts);
+        for (let i = 0; i < numVerts; i++) {
+            triVerts[i] = i;
+        }
+
+        const mesh = new Mesh({
+            numProp: 3,
+            vertProperties: new Float32Array(positions),
+            triVerts: triVerts
+        });
+
+        // Create Manifold (automatically repairs non-manifold edges)
+        const manifold = new Manifold(mesh);
+
+        // Export repaired mesh
+        const repairedMesh = manifold.getMesh();
+
+        // Convert back to Three.js BufferGeometry
+        const repairedGeometry = new THREE.BufferGeometry();
+        repairedGeometry.setAttribute('position',
+            new THREE.Float32BufferAttribute(repairedMesh.vertProperties, 3));
+        repairedGeometry.setIndex(Array.from(repairedMesh.triVerts));
+        repairedGeometry.computeVertexNormals();
+
+        // Clean up Manifold objects (manual memory management)
+        manifold.delete();
+        mesh.delete();
+
+        console.log('CSG Worker: Mesh repaired with Manifold3D');
+        return repairedGeometry;
+    } catch (error) {
+        console.error('CSG Worker: Manifold repair failed:', error);
+        console.warn('CSG Worker: Returning unrepaired geometry');
+        return geometry;
+    }
+}
+
+/**
+ * Export geometry to binary STL
+ */
+function exportToSTL(geometry) {
+    // Create a temporary mesh for export
+    const material = new THREE.MeshStandardMaterial({ color: 0x808080 });
+    const mesh = new THREE.Mesh(geometry, material);
+
+    // Export to binary STL
+    const stlData = stlExporter.parse(mesh, { binary: true });
+
+    return stlData;
+}
+
+/**
+ * Message handler
+ */
+self.onmessage = function(event) {
+    const { type, spec, requestId } = event.data;
+
+    // Check if initialization failed
+    if (initError) {
+        self.postMessage({
+            type: 'error',
+            requestId: requestId,
+            error: 'Worker initialization failed: ' + initError.message,
+            stack: initError.stack
+        });
+        return;
+    }
+
+    try {
+        if (type === 'generate') {
+            console.log('CSG Worker: Starting generation for request', requestId);
+
+            // Process geometry
+            let geometry = processGeometrySpec(spec);
+
+            // Repair non-manifold edges before export
+            geometry = repairGeometryWithManifold(geometry);
+
+            // Export to STL
+            const stlData = exportToSTL(geometry);
+
+            // Prepare geometry for rendering (transferable)
+            const positions = geometry.attributes.position.array;
+            const normals = geometry.attributes.normal ? geometry.attributes.normal.array : null;
+            const indices = geometry.index ? geometry.index.array : null;
+
+            // Build transferable array carefully
+            const transferables = [positions.buffer];
+            if (normals) transferables.push(normals.buffer);
+            if (indices) transferables.push(indices.buffer);
+            // stlData is an ArrayBuffer, so add it if valid
+            if (stlData instanceof ArrayBuffer) {
+                transferables.push(stlData);
+            }
+
+            console.log('CSG Worker: Generation complete, sending result');
+
+            // Send results back
+            self.postMessage({
+                type: 'success',
+                requestId: requestId,
+                geometry: {
+                    positions: positions,
+                    normals: normals,
+                    indices: indices
+                },
+                stl: stlData
+            }, transferables);
+
+        } else if (type === 'ping') {
+            // Health check
+            self.postMessage({ type: 'pong', requestId: requestId });
+        }
+
+    } catch (error) {
+        console.error('CSG Worker: Error:', error);
+        self.postMessage({
+            type: 'error',
+            requestId: requestId,
+            error: error.message,
+            stack: error.stack
+        });
+    }
+};
+
+// Signal that worker is ready (or report initialization error)
+if (initError) {
+    self.postMessage({ type: 'init_error', error: initError.message, stack: initError.stack });
+} else {
+    self.postMessage({ type: 'ready' });
+}

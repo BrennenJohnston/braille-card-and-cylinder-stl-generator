@@ -1,33 +1,68 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
 # Virtual environments
 venv/
-.venv/
+ENV/
+env/
 
-# Python cache
-__pycache__/
-*.pyc
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Test files
-test_*.stl
-test_*.py
-tmp_*
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# Build artifacts
-*.tmp
-*.log
+# OS
+.DS_Store
+Thumbs.db
 
-# Dependencies
+# Node
 node_modules/
 
-# IDE files
-.vscode/
+# Testing
+test_output.txt
+test_*.stl
+debug_*.stl
 
-# Environment files (secrets)
+# Local dev
+*.local
 .env
-.env.local
-.env.*.local
-!.env.example
+tmp_geom_spec.py
+tmp_geom_spec_vercel.py
+tmp_spec_direct.py
 
-# Vercel project dir (contains tokens/config)
+# Vercel
 .vercel/
+
 .vercel
 .env*.local
+
+# Temporary reorganization utilities
+reorganize.bat
+reorganize_docs.py
+reorganize_files.py

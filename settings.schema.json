@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://braille-stl/specs/settings.schema.json",
+  "title": "Braille STL Generator Settings Schema",
+  "description": "Canonical schema for all user-provided settings and derived parameters in the Braille Card and Cylinder STL Generator. This is the SINGLE SOURCE OF TRUTH for settings validation.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["shape_type", "plate_type", "text"],
+  "properties": {
+    "schema_version": { "type": "string", "description": "Schema version for compatibility checking" },
+    "cache_version": { "type": "integer", "default": 1, "description": "Increment when geometry algorithm changes to invalidate cache" },
+    "shape_type": { "type": "string", "enum": ["card", "cylinder"], "default": "card" },
+    "plate_type": { "type": "string", "enum": ["positive", "negative"], "default": "positive" },
+    "placement_mode": { "type": "string", "enum": ["auto", "manual"], "default": "manual" },
+
+    "text": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lines"],
+      "properties": {
+        "lines": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[\\u2800-\\u28FF\\s]*$" }
+        },
+        "languages": { "type": "array", "items": { "type": "string" } },
+        "default_language": { "type": "string" },
+        "original_lines": { "type": "array", "items": { "type": "string" } },
+        "auto_wrap": { "type": "boolean" }
+      }
+    },
+
+    "spacing": {
+      "type": "object",
+      "description": "Braille spacing and layout parameters",
+      "additionalProperties": false,
+      "properties": {
+        "dot_spacing_mm": { "type": "number", "minimum": 0, "default": 2.5 },
+        "cell_spacing_mm": { "type": "number", "minimum": 0, "default": 6.5 },
+        "line_spacing_mm": { "type": "number", "minimum": 0, "default": 10.0 },
+        "braille_x_adjust_mm": { "type": "number", "default": 0 },
+        "braille_y_adjust_mm": { "type": "number", "default": 0 }
+      }
+    },
+
+    "card": {
+      "type": "object",
+      "description": "Card (flat plate) surface dimensions",
+      "additionalProperties": false,
+      "properties": {
+        "plate_width_mm": { "type": "number", "exclusiveMinimum": 0, "default": 90 },
+        "plate_height_mm": { "type": "number", "exclusiveMinimum": 0, "default": 52 },
+        "plate_thickness_mm": { "type": "number", "exclusiveMinimum": 0, "default": 2.0 }
+      }
+    },
+
+    "cylinder": {
+      "type": "object",
+      "description": "Cylinder surface dimensions and cutout parameters",
+      "additionalProperties": false,
+      "properties": {
+        "cylinder_diameter_mm": { "type": "number", "exclusiveMinimum": 0, "default": 30.75 },
+        "cylinder_height_mm": { "type": "number", "exclusiveMinimum": 0, "default": 52 },
+        "polygon_cutout_radius_mm": { "type": "number", "minimum": 0, "default": 13 },
+        "polygon_cutout_points": { "type": "integer", "minimum": 3, "default": 12 },
+        "seam_offset_degrees": { "type": "number", "minimum": 0, "exclusiveMaximum": 360, "default": 355 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "polygon_cutout_radius_mm": { "const": 0 } }
+          },
+          "then": {},
+          "else": { "required": ["polygon_cutout_points"] }
+        }
+      ]
+    },
+
+    "dots": {
+      "type": "object",
+      "description": "Braille dot shape parameters for emboss and counter plates",
+      "additionalProperties": true,
+      "properties": {
+        "combined_shape": { "type": "string", "enum": ["rounded", "cone"], "default": "rounded", "description": "Controls both emboss and counter shape families" },
+        "dot_shape": { "type": "string", "enum": ["rounded", "cone"], "description": "Compatibility alias for combined_shape" },
+        "recess_shape": { "type": ["integer", "string"], "enum": [1, 2, "1", "2"], "default": 1, "description": "Counter plate recess type: 1=bowl, 2=cone" },
+
+        "rounded": {
+          "type": "object",
+          "description": "Emboss plate rounded dome parameters",
+          "additionalProperties": false,
+          "properties": {
+            "base_diameter_mm": { "type": "number", "exclusiveMinimum": 0, "default": 2.0 },
+            "base_height_mm": { "type": "number", "minimum": 0, "default": 0.2 },
+            "dome_diameter_mm": { "type": "number", "exclusiveMinimum": 0, "default": 1.5 },
+            "dome_height_mm": { "type": "number", "minimum": 0, "default": 0.6 }
+          }
+        },
+
+        "cone": {
+          "type": "object",
+          "description": "Emboss plate cone (frustum) parameters",
+          "additionalProperties": false,
+          "properties": {
+            "diameter_mm": { "type": "number", "exclusiveMinimum": 0, "default": 1.8 },
+            "height_mm": { "type": "number", "minimum": 0, "default": 1.0 },
+            "flat_hat_diameter_mm": { "type": "number", "minimum": 0, "default": 0.4 }
+          }
+        },
+
+        "bowl": {
+          "type": "object",
+          "description": "Counter plate bowl (spherical cap) recess parameters",
+          "additionalProperties": false,
+          "properties": {
+            "base_diameter_mm": { "type": "number", "exclusiveMinimum": 0, "default": 1.8 },
+            "depth_mm": { "type": "number", "minimum": 0, "default": 0.8 }
+          }
+        },
+
+        "recess_cone": {
+          "type": "object",
+          "description": "Counter plate cone recess parameters",
+          "additionalProperties": false,
+          "properties": {
+            "base_diameter_mm": { "type": "number", "exclusiveMinimum": 0, "default": 1.6 },
+            "height_mm": { "type": "number", "minimum": 0, "default": 0.8 },
+            "flat_hat_diameter_mm": { "type": "number", "minimum": 0, "default": 0.4 }
+          }
+        }
+      }
+    },
+
+    "indicators": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "type": { "type": "string", "enum": ["triangle", "rectangle", "character"] },
+        "depth_mm": { "type": "number", "minimum": 0, "default": 0.6 },
+        "character": { "type": "string", "minLength": 1, "maxLength": 1 },
+        "size_scale": { "type": "number", "minimum": 0 },
+        "rotate_180": { "type": "boolean", "default": false }
+      }
+    },
+
+    "export": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "use_client_side_csg": { "type": "boolean", "default": true },
+        "use_manifold_repair": { "type": "boolean", "default": true },
+        "file_name_prefix": { "type": "string" }
+      }
+    }
+  },
+
+  "allOf": [
+    {
+      "if": { "properties": { "shape_type": { "const": "card" } } },
+      "then": { "required": ["card"] }
+    },
+    {
+      "if": { "properties": { "shape_type": { "const": "cylinder" } } },
+      "then": { "required": ["cylinder"] }
+    }
+  ]
+}

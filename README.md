@@ -1,223 +1,126 @@
-# Braille Business Card & Cylinder STL Generator 🎯
+# Braille STL Generator
 
-**Create professional, tactile braille business cards and 3D objects with 3D-printable embossing plates**
+A web application that generates 3D-printable STL files for braille embossing plates and cylinders. Enter text, translate to braille, and export ready-to-print 3D models.
 
-This web application generates STL files for 3D-printable braille embossing and counter plates. Simply enter your text, and the system automatically translates it to braille and creates the precise 3D models needed for embossing professional business cards or creating cylindrical braille objects.
+## Features
 
----
+- **Automatic Braille Translation** — Powered by liblouis with support for Grade 1 and Grade 2 braille
+- **Multiple Output Shapes** — Business card plates (flat) and cylindrical objects
+- **Client-Side Generation** — STL files generated in-browser for fast iteration
+- **Real-Time Preview** — 3D visualization before download
+- **Configurable Parameters** — Adjust dot dimensions, spacing, and surface settings
 
-## 1. What You'll Make
+## Quick Start
 
-| Shape | Components | Purpose |
-|-------|------------|---------|
-| **Business Cards (Flat)** | Embossing Plate + Counter Plate | Traditional flat business cards with raised braille dots |
-| **Cylinders** | Cylinder Shell + Counter Plate | 3D cylindrical objects with curved braille surface |
+### Local Development
 
-**Business Card Process**: Place paper between plates → Apply pressure → Get professional braille cards!
-**Cylinder Process**: Print cylinder with integrated braille dots for 3D tactile objects!
-
-> Vocabulary for experts: Emboss = male/positive, Counter = female/negative.
-
----
-
-## 2. Things You Need
-
-| Item                         | Notes |
-|------------------------------|-------|
-| Computer (Win/Mac/Linux)     | Install **OpenSCAD** (free) & your favourite slicer (Cura, PrusaSlicer, etc.) |
-| 3-D printer                  | 0.4 mm nozzle, PLA or PETG filament recommended |
-| Clamp / small arbor press    | To squeeze the plates together (even a hand-screw clamp works) |
-| Business-card paper          | Use the exact card stock you plan to distribute |
-| Digital calipers *(optional)*| Helpful for measuring dot size after your first test |
-
----
-
-## 3. 5-Minute Quick-Start
-
-### Web Application (Recommended)
-1. **Local dev**: run `python backend.py` and open `http://localhost:5001`
-2. **Vercel**: connect repo and deploy; serverless entry is `wsgi.py`
-2. **Enter your text** (up to 4 lines)
-3. **Select braille grade** (Grade 2 recommended for most users)
-4. **Choose shape**: Business card (flat) or cylinder
-5. **Click Generate** to create STL files
-6. **Download** and 3D print your files
-7. **Test** with actual card stock and adjust if needed
-
-### For Business Cards:
-- Print both emboss and counter plates
-- Place card stock between plates
-- Apply firm, even pressure
-- Check results and iterate if needed
-
-> **Tip** Always test with the same paper thickness you’ll use later.  Paper controls the final dot height more than the plastic settings do.
-
----
-
-## 4. Video Tutorial
-
-A short screen-recording + live demo will be published here:
-`👉 [YouTube link – coming soon]`
-
-The video covers:
-1. Opening the design & entering text
-2. Selecting Grade 2 vs 1
-3. Exporting STL, slicing, printing
-4. Assembling the full tool
-5. Embossing a card & inspecting results
-
----
-
-## 5. Understanding Grade 1 vs Grade 2
-
-*Regulatory guidance in the US, UK, and elsewhere says use **Grade 2** for English braille by default.*  Grade 1 (uncontracted) is normally reserved for:
-- Education / literacy teaching
-- Short labels where contractions could confuse
-- Situations prescribed by local regulations
-
-Therefore the Customizer defaults to **Grade 2**.
-
----
-
-## 6. Why the Default Sizes?  (Dots, Spacing & Sources)
-
-The design aims to **shape the *paper* dots** so they land near widely-accepted targets for paper embossing.
-
-Recommended on-paper dimensions (Specification 800 §3.2):
-
-| Parameter                                             | Target |
-|-------------------------------------------------------|--------|
-| Dot height                                            | 0.019 in (0.48 mm) |
-| Dot base diameter                                     | 0.057 in (1.44 mm) |
-| Dot-to-dot distance *within a cell* (horiz/vert)      | 0.092 in (2.34 mm) |
-| Cell-to-cell distance (centre-to-centre)               | 0.245 in (6.20 mm) |
-| Line spacing (centre-to-centre of nearest dots)       | 0.400 in (10.16 mm) |
-
-Sources & further reading:
-- Braille Authority of North America — *Size and Spacing of Braille Characters* [1]
-- NLS, Library of Congress — *Specification 800: Braille Books & Pamphlets* [2]
-- ICC/ANSI A117.1-2003 (Accessible & Usable Buildings) pp. 151–163
-- U.S. Access Board — ABA & ADA Accessibility Guidelines (Chapter 7 Signs)
-
-> *Important* Because card stock varies, *your* embossed dots may be slightly larger or smaller.  That’s normal—start with defaults, then adjust.
-
----
-
-## 7. Test → Measure → Adjust (Recommended Workflow)
-
-| Step | What to do |
-|------|------------|
-| 1. Print a **small test plate** | One or two words is enough |
-| 2. **Emboss** a single card | Even, firm pressure |
-| 3. **Inspect** | Feel the dots; use calipers if available |
-| 4. **Adjust parameters** using Expert Mode | See table below |
-| 5. **Re-print & re-test** | One or two iterations usually nails it |
-
-### 🔄 NEW: Cylinder Shape Feature
-
-**Create 3D cylindrical objects with curved braille surfaces:**
-
-| Parameter | Purpose | Typical Range |
-|-----------|---------|---------------|
-| **Diameter** | Cylinder width | 20mm - 50mm |
-| **Height** | Cylinder length | 30mm - 100mm |
-| **Cutout Radius** | Interior polygonal hole | 0mm - 15mm |
-| **Seam Offset** | Rotation adjustment | 0° - 360° |
-
-**Use Cases:** Tactile learning tools, decorative objects, cylindrical labels, educational models
-
-Common tweaks:
-
-| Symptom | Try this |
-|---------|----------|
-| Dots too flat | Increase **Dot Height** or press harder |
-| Dots feel sharp | Increase **Apex Rounding** or lower Dot Height |
-| Cells crowd | Increase **Cell Advance** or reduce **Dot Diameter** |
-| Plates stick together | Increase **Counter Clearance** or add small **Draft** |
-| Cylinder text wraps | Reduce diameter or shorten text |
-
----
-
-## 8. Printing Tips
-
-- **Material** PLA is fine; PETG is tougher.  Use 3–4 perimeters and 40 % infill for stiffness.
-- **Orientation** Print plates *flat* on the bed, embossed surface facing *up*.
-- **Quality** A slower outer-wall speed (≲ 30 mm/s) produces smoother dots.
-
----
-
-## 9. Safety & Handling
-
-- Keep fingers clear of the clamp/press.
-- Emboss with controlled force; over-pressing can tear paper or squash dots.
-
----
-
-## 10. File-Naming & On-Part Labels (Optional but Handy)
-
-Example STL names:
-- `BRL_EmbossPlate_Raised_UEB-G2_88x51mm_Dot0p6.stl`
-- `BRL_CounterPlate_Recessed_Universal_88x51mm.stl`
-
-Engraved rim labels avoid mix-ups: **EMBOSS (RAISED) — MIRRORED** vs **COUNTER (RECESSED)**.
-
----
-
-## 11. Acknowledgments
-
-Huge thanks to **Tobi Weinberg** for kick-starting the project and introducing me to Cursor AI.  Without Tobi’s time, effort, and encouragement this program would not exist.
-
-Attribution: This project was originally based on
-[tobiwg/braile-card-generator](https://github.com/tobiwg/braile-card-generator/tree/main) and further evolved from my earlier variant
-[BrennenJohnston/braile-card-generator](https://github.com/BrennenJohnston/braile-card-generator/blob/brennen-dev/README.md) (branch `brennen-dev`).
-
----
-
-## 13. Developer Notes
-
-- Backend: single Flask app in `backend.py` used both locally and on Vercel via `wsgi.py`.
-- Frontend: served from `templates/index.html` with static assets in `static/`.
-- Translation: browser-side Liblouis via web worker `static/liblouis-worker.js` and tables under `static/liblouis/tables/`.
-- Endpoints: `/liblouis/tables`, `/generate_braille_stl`, `/generate_counter_plate_stl`.
-
-### Local development
 ```bash
+# Install dependencies
 pip install -r requirements.txt
-python backend.py  # opens http://localhost:5001
+
+# Run the application
+python backend.py
 ```
 
-### Vercel deployment
-- Project uses `vercel.json` and `wsgi.py` with `@vercel/python`.
-- Install step: `pip install -r requirements_vercel.txt` (minimal set for serverless).
-- Static liblouis tables are bundled and loaded on-demand from `static/liblouis/tables/` in a web worker.
-- Matplotlib is optional at runtime. In serverless, character markers gracefully fall back when matplotlib isn't present.
+Open http://localhost:5001 in your browser.
 
-### Serverless considerations
-- `.vercelignore` excludes heavy directories like `third_party/` and `node_modules/` to keep function size small.
-- `backend.py` defers matplotlib imports inside functions to avoid cold-start bloat and missing dependency failures.
-- Endpoints exposed: `/`, `/health`, `/liblouis/tables`, `/generate_braille_stl`, `/generate_counter_plate_stl`.
+### Production Deployment (Vercel)
 
----
+1. Connect repository to Vercel
+2. Configure required environment variables (see [Environment Variables](docs/security/ENVIRONMENT_VARIABLES.md))
+3. Deploy
 
-## 12. References
+## Usage
 
-[1] BANA — Size & Spacing of Braille Characters: https://brailleauthority.org/size-and-spacing-braille-characters  
-[2] NLS Specification 800 (PDF): https://www.loc.gov/nls/wp-content/uploads/2019/09/Spec800.11October2014.final_.pdf  
-[3] U.S. Access Board — 2010 ADA Standards: https://www.access-board.gov/aba/guides/chapter-7-signs/  
-[4] ICC/ANSI A117.1-2003 — Accessible & Usable Buildings & Facilities
+1. Enter text (up to 4 lines)
+2. Select braille translation table and grade
+3. Choose shape type (card or cylinder)
+4. Configure dimensions and dot parameters as needed
+5. Click Generate to create STL files
+6. Download and 3D print
 
----
+## Project Structure
 
-## 14. Programmer Standardization Protocols
+```
+├── app/                  # Application package
+│   ├── geometry/         # 3D geometry generation
+│   ├── models.py         # Data models (Pydantic)
+│   ├── validation.py     # Input validation
+│   └── cache.py          # Caching system
+├── docs/                 # Documentation
+│   ├── specifications/   # Technical specifications
+│   ├── deployment/       # Deployment guides
+│   ├── development/      # Development guides
+│   └── security/         # Security documentation
+├── static/               # Frontend assets
+├── tests/                # Test suite
+├── backend.py            # Flask application
+└── wsgi.py               # Vercel entry point
+```
 
-- Code style: PEP 8 for Python. Favor explicit, descriptive names; avoid abbreviations.
-- Error handling: Guard clauses and clear messages; never swallow exceptions silently.
-- Imports: Standard lib, third-party, local; prefer lazy imports for optional/deployment-heavy deps.
-- Logging: Use `print` only for debug during development; convert persistent logs to a proper logger if needed.
-- Security: Validate inputs, apply CORS and security headers (see `backend.py`). Limit request sizes.
-- API: Return JSON with consistent error formats `{ error: string }` and appropriate HTTP status codes.
-- Performance: Prefer vectorized NumPy operations, avoid deep nesting, early returns where possible.
-- Dependencies: Keep `requirements_vercel.txt` minimal; add heavier packages only to `requirements.txt` when required locally.
-- Assets: Serve static assets from `static/`; avoid runtime reads from `node_modules/` on Vercel.
-- Releases: Test `/health` and `/liblouis/tables` after deploy; smoke-test STL generation for both card and cylinder.
+See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for detailed architecture.
 
+## API Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/` | GET | Serve main UI |
+| `/health` | GET | Health check |
+| `/liblouis/tables` | GET | List braille translation tables |
+| `/geometry_spec` | POST | Get geometry specification (for client-side CSG) |
+| `/generate_braille_stl` | POST | Generate embossing plate (server fallback) |
+| `/generate_counter_plate_stl` | POST | Generate counter plate (server fallback) |
+
+## Development
+
+### Requirements
+
+- Python 3.12+
+- Node.js (for frontend dependencies)
+
+### Running Tests
+
+```bash
+pytest
+```
+
+### Code Quality
+
+```bash
+# Linting and formatting
+ruff check .
+ruff format .
+```
+
+The project uses pre-commit hooks for consistent code quality.
+
+## Documentation
+
+- [Project Structure](PROJECT_STRUCTURE.md) — Architecture overview
+- [Specifications Index](docs/specifications/SPECIFICATIONS_INDEX.md) — Technical specifications
+- [Deployment Checklist](docs/deployment/DEPLOYMENT_CHECKLIST.md) — Production deployment guide
+- [Environment Variables](docs/security/ENVIRONMENT_VARIABLES.md) — Configuration reference
+- [Client-Side CSG](docs/development/CLIENT_SIDE_CSG_DOCUMENTATION.md) — Browser-based generation
+
+## Technology Stack
+
+**Backend:**
+- Flask — Web framework
+- Trimesh — 3D mesh operations
+- NumPy/SciPy — Numerical computing
+- Shapely — 2D geometry
+
+**Frontend:**
+- Three.js — 3D rendering
+- three-bvh-csg — Client-side boolean operations
+- liblouis — Braille translation (WebAssembly)
+
+## Acknowledgments
+
+Thanks to **Tobi Weinberg** for kick-starting the project.
+
+Originally based on [tobiwg/braile-card-generator](https://github.com/tobiwg/braile-card-generator).
+
+## License
+
+See repository for license information.

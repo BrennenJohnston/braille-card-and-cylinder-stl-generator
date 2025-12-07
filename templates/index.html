@@ -12,6 +12,20 @@
     <link rel="alternate icon" href="/favicon.ico" sizes="any">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
+        /* WCAG 1.4.12 Text Spacing Support */
+        * {
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+        }
+
+        .info-panel,
+        .grade-selection,
+        .line-input-group,
+        .expert-settings {
+            min-height: fit-content;
+            height: auto !important;
+        }
+
         /* Theme CSS Variables */
         :root {
             /* Light mode colors */
@@ -115,8 +129,8 @@
             --info-bg: #0000ff;
             --info-border: #0000ff;
             --info-text: #02fe05; /* Green instead of white */
-            --shadow-light: none;
-            --shadow-medium: none;
+            --shadow-light: 0 0 0 transparent;
+            --shadow-medium: 0 0 0 transparent;
             --stl-mesh-color: #00ffff; /* Bright cyan for high contrast */
             --stl-background: #000000; /* Keep black background */
             --stl-ambient-light: #666666; /* Reduced ambient light to prevent washing out */
@@ -138,33 +152,33 @@
             color: #000000 !important; /* Black text */
             border: 2px solid #ffff00 !important; /* Yellow border on hover */
         }
-        
+
         /* High contrast mode - Generate STL button state (blue) */
         [data-theme="high-contrast"] #action-btn.generate-state {
             background: #0201fe !important; /* Blue background for generate */
             color: #fdfe00 !important; /* Yellow text */
             border: 2px solid #fdfe00 !important; /* Yellow border */
         }
-        
+
         [data-theme="high-contrast"] #action-btn.generate-state:hover {
             background: #0201fe !important; /* Blue background */
             color: #fdfe00 !important; /* Yellow text */
             border: 2px solid #02fe05 !important; /* Green border on hover */
         }
-        
+
         /* High contrast mode - Download STL button state (green) */
         [data-theme="high-contrast"] #action-btn.download-state {
             background: #02fe05 !important; /* Green background for download */
             color: #000000 !important; /* Black text */
             border: 2px solid #000000 !important; /* Black border */
         }
-        
+
         [data-theme="high-contrast"] #action-btn.download-state:hover {
             background: #02fe05 !important; /* Green background */
             color: #000000 !important; /* Black text */
             border: 2px solid #ffff00 !important; /* Yellow border on hover */
         }
-        
+
         /* High contrast mode - Disabled/Loading state */
         [data-theme="high-contrast"] #action-btn:disabled {
             background: #666666 !important; /* Gray background for disabled */
@@ -351,7 +365,7 @@
             .main-layout {
                 overflow-y: auto; /* Allow main scroll on mobile if needed */
             }
-            
+
             /* Sticky generate button on mobile */
             .button-row {
                 position: sticky;
@@ -491,7 +505,7 @@
             overflow-y: auto; /* Allow scrolling if content overflows */
             overscroll-behavior: none;
         }
-        
+
         /* Mobile-specific body adjustments */
         @media (max-width: 768px) {
             body {
@@ -502,7 +516,7 @@
                 align-items: flex-start; /* Align to top on mobile */
             }
         }
-        
+
         .main-layout {
             display: flex;
             flex-direction: column;
@@ -518,7 +532,7 @@
             overflow-x: hidden;
             box-sizing: border-box;
         }
-        
+
         /* Mobile layout optimization */
         @media (max-width: 768px) {
             .main-layout {
@@ -531,7 +545,7 @@
                 overflow-x: hidden;
             }
         }
-        
+
         @media (max-width: 480px) {
             .main-layout {
                 padding: 1em;
@@ -539,7 +553,7 @@
                 gap: 1em;
             }
         }
-        
+
         /* Title Section - Full Width at Top */
         .title-section {
             display: flex;
@@ -548,7 +562,7 @@
             margin-bottom: 1.5em;
             width: 100%;
         }
-        
+
         .title-section h1 {
             margin: 0;
             display: flex;
@@ -558,26 +572,26 @@
             line-height: 1.1;
             white-space: nowrap;
         }
-        
+
         .title-line-1 {
             font-size: 19.6pt;
             font-weight: 700;
             color: var(--text-primary); /* Default theme color */
         }
-        
+
         .title-line-2 {
             font-size: 19.6pt;
             font-weight: 600;
             color: var(--text-secondary); /* Default theme color */
             margin: 0;
         }
-        
+
         /* High contrast mode - bright violet title */
         [data-theme="high-contrast"] .title-line-1,
         [data-theme="high-contrast"] .title-line-2 {
             color: #fd01fc !important; /* Bright violet for high contrast mode */
         }
-        
+
         /* Top Accessibility Controls */
         .accessibility-controls-top {
             display: flex;
@@ -591,7 +605,7 @@
         /* Ensure theme toggle appears before font-size controls (to the left) */
         .accessibility-controls-top .theme-toggle-section { order: 0; }
         .accessibility-controls-top .font-size-controls { order: 1; }
-        
+
         /* Content Area - Two Column Layout */
         .content-area {
             display: flex;
@@ -601,7 +615,7 @@
             min-height: 0; /* Allow shrinking for scrolling to work */
             overflow: visible; /* Allow content to be visible */
         }
-        
+
         /* Left Column - Preview Section (45% width) */
         .preview-section {
             flex: 0 0 45%;
@@ -617,7 +631,7 @@
             overflow-x: hidden;
             padding-right: 1em; /* Add padding to prevent cutoff */
         }
-        
+
         /* Right Column - Form Section (55% width) */
         .form-section {
             flex: 0 0 calc(55% - 2em); /* Subtract padding to prevent overflow */
@@ -632,7 +646,6 @@
             overflow-y: scroll; /* Enable scrolling for right column menu boxes */
             -webkit-overflow-scrolling: touch;
             overflow-x: hidden; /* Prevent horizontal overflow */
-            scrollbar-gutter: stable; /* Reserve space so the scrollbar is always visible */
             scrollbar-width: auto; /* Firefox standard scrollbar */
             scrollbar-color: #3182ce #e2e8f0; /* Firefox: blue thumb on light grey track */
             /* Distinct background for scrollable area */
@@ -754,7 +767,7 @@
             border-radius: 10px !important;
             box-shadow: none !important;
         }
-        
+
         /* Mobile layout - stack columns */
         @media (max-width: 768px) {
             .content-area {
@@ -762,7 +775,7 @@
                 gap: 1.5em;
                 overflow: visible; /* Allow content to be visible on mobile */
             }
-            
+
             .preview-section {
                 flex: none;
                 width: 100%;
@@ -770,7 +783,7 @@
                 max-height: none;
                 overflow: visible;
             }
-            
+
             .form-section {
                 flex: 1; /* Take remaining space */
                 width: 100%;
@@ -785,7 +798,7 @@
                 box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
             }
         }
-        
+
         /* Desktop layout - sticky left preview, separate right column scrolling */
         @media (min-width: 769px) {
             .preview-section {
@@ -793,14 +806,14 @@
                 top: 0;
                 align-self: flex-start; /* ensure sticky positions relative to content area */
             }
-            
+
             /* Ensure right column scrolling is properly configured for desktop */
             .form-section {
                 max-height: calc(100vh - 10em); /* Account for main-layout padding and title section */
                 overflow-y: scroll;
                 position: relative; /* For scroll indicator positioning */
             }
-            
+
             /* Visual scroll indicator - shadow at bottom when scrollable */
             .form-section::after {
                 content: '';
@@ -845,7 +858,7 @@
             width: 100%;
             height: 100%;
         }
-        
+
         /* Mobile viewer optimizations */
         @media (max-width: 768px) {
             #viewer {
@@ -857,11 +870,11 @@
                 margin: 0 0 1em 0;
             }
         }
-        
+
         @media (max-width: 480px) {
-            #viewer { 
+            #viewer {
                 height: calc(35vh - 1em); /* Responsive height for phones - more compact */
-                border-radius: 12px; 
+                border-radius: 12px;
             }
         }
         #viewer:focus-within, #viewer:active {
@@ -875,7 +888,7 @@
             color: var(--text-primary);
             text-align: left;
         }
-        
+
         /* Mobile heading optimization */
         @media (max-width: 768px) {
             h1 {
@@ -884,7 +897,7 @@
                 text-align: center;
             }
         }
-        
+
         @media (max-width: 480px) {
             h1 {
                 font-size: 1.5em;
@@ -910,7 +923,7 @@
             padding: 1em;
             margin-bottom: 1.5em;
         }
-        
+
         /* Mobile grade selection optimization */
         @media (max-width: 768px) {
             .grade-selection {
@@ -933,7 +946,7 @@
             padding: 0.5em 0;
             margin: -0.5em 0;
         }
-        
+
         /* Mobile radio option optimization */
         @media (max-width: 768px) {
             .radio-option {
@@ -941,7 +954,7 @@
                 font-size: 1em;
                 gap: 0.8em;
             }
-            
+
             .radio-option input[type="radio"] {
                 width: 20px;
                 height: 20px;
@@ -993,7 +1006,7 @@
         .line-text-row .line-label {
             margin: 0;
         }
-        
+
         /* Mobile line input optimization */
         @media (max-width: 768px) {
             .line-input {
@@ -1001,7 +1014,7 @@
                 align-items: stretch;
                 gap: 0.5em;
             }
-            
+
             .line-label {
                 font-size: 0.95em;
                 font-weight: 600;
@@ -1048,7 +1061,7 @@
             -webkit-appearance: none;
             appearance: none;
         }
-        
+
         /* Mobile-friendly input styles */
         @media (max-width: 768px) {
             input[type="text"] {
@@ -1062,7 +1075,7 @@
             outline: none;
             background: var(--bg-primary);
         }
-        
+
         /* Ensure number inputs are properly styled and functional */
         input[type="number"] {
             flex: 1;
@@ -1079,14 +1092,14 @@
             -moz-appearance: textfield;
             appearance: none;
         }
-        
+
         /* Remove spinner buttons */
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button {
             -webkit-appearance: none;
             margin: 0;
         }
-        
+
         /* Mobile-friendly number input styles */
         @media (max-width: 768px) {
             input[type="number"] {
@@ -1097,17 +1110,17 @@
                 min-width: unset;
             }
         }
-        
+
         input[type="number"]:focus {
             border: 1.5px solid var(--border-focus);
             outline: none;
             background: var(--bg-primary);
         }
-        
+
         input[type="number"]:hover {
             border-color: var(--border-primary);
         }
-        
+
         /* Language select dropdown styling */
         .language-select {
             width: 100%;
@@ -1128,7 +1141,7 @@
             background-size: 12px;
             padding-right: 2.5em;
         }
-        
+
         /* Mobile select optimization */
         @media (max-width: 768px) {
             .language-select {
@@ -1138,35 +1151,35 @@
                 min-height: 48px;
             }
         }
-        
+
         .language-select:focus {
             border: 1.5px solid var(--border-focus);
             outline: none;
             background: var(--bg-primary);
         }
-        
+
         .language-select:hover {
             border-color: var(--border-primary);
         }
-        
+
         /* High contrast mode select styling */
         [data-theme="high-contrast"] .language-select {
             background: #1a1a1a !important;
             color: #ffffff !important;
             border: 2px solid #ffff00 !important;
         }
-        
+
         [data-theme="high-contrast"] .language-select:focus {
             background: #2a2a2a !important;
             color: #ffffff !important;
             border: 2px solid #ff00ff !important;
         }
-        
+
         [data-theme="high-contrast"] .language-select option {
             background: #1a1a1a !important;
             color: #ffffff !important;
         }
-        
+
         [data-theme="high-contrast"] .language-select optgroup {
             background: #2a2a2a !important;
             color: #ffff00 !important;
@@ -1193,7 +1206,7 @@
             user-select: none;
             touch-action: manipulation;
         }
-        
+
         /* Mobile-friendly button styles */
         @media (max-width: 768px) {
             button {
@@ -1213,7 +1226,7 @@
             background: var(--btn-primary-hover-bg);
             transform: translateY(-2px) scale(1.03);
         }
-        
+
         /* Action button state styles */
         #action-btn {
             transition: all 0.3s ease;
@@ -1221,29 +1234,29 @@
             text-align: center;
             font-size: 0.95em;
         }
-        
+
         #action-btn.generate-state {
             background: var(--btn-primary-bg);
             color: #fff;
             box-shadow: 0 2px 8px var(--shadow-light);
         }
-        
+
         #action-btn.generate-state:hover {
             background: var(--btn-primary-hover-bg);
             transform: translateY(-2px) scale(1.03);
         }
-        
+
         #action-btn.download-state {
             background: var(--btn-success-bg);
             color: #fff;
             box-shadow: 0 2px 8px var(--shadow-light);
         }
-        
+
         #action-btn.download-state:hover {
             background: var(--btn-success-hover-bg);
             transform: translateY(-2px) scale(1.03);
         }
-        
+
         .button-row {
             display: flex;
             gap: 1em;
@@ -1251,26 +1264,26 @@
             margin-bottom: 1em;
             flex-wrap: wrap;
         }
-        
+
         /* Mobile button row optimization */
         @media (max-width: 768px) {
             .button-row {
                 gap: 0.8em;
                 justify-content: stretch;
             }
-            
+
             .button-row button {
                 flex: 1;
                 min-width: 140px;
             }
         }
-        
+
         @media (max-width: 480px) {
             .button-row {
                 flex-direction: column;
                 gap: 0.8em;
             }
-            
+
             .button-row button {
                 width: 100%;
                 min-width: unset;
@@ -1311,18 +1324,18 @@
             box-shadow: 0 6px 20px var(--shadow-light);
             box-sizing: border-box;
         }
-        
+
         #error-message.info {
             color: var(--info-text);
             background: var(--info-bg);
             border: 1px solid var(--info-border);
         }
-        
+
         .expert-mode-toggle {
             margin-top: 1em;
             text-align: center;
         }
-        
+
         .expert-toggle-btn {
             background: var(--bg-secondary);
             border: 1px solid var(--border-secondary);
@@ -1339,26 +1352,26 @@
             transition: background 0.2s, border-color 0.2s;
             width: 100%;
         }
-        
+
         .expert-toggle-btn:hover {
             background: var(--bg-tertiary);
             border-color: var(--border-primary);
         }
-        
+
         .expert-toggle-btn.active {
             background: var(--border-focus);
             color: #fff;
             border-color: var(--border-focus);
         }
-        
+
         .expert-toggle-btn.active #expert-toggle-text {
             color: #fff;
         }
-        
+
         .expert-toggle-btn.active #expert-toggle-icon {
             transform: rotate(180deg);
         }
-        
+
         /* Reset to Defaults button styling */
         .reset-container {
             margin-top: 0.6em;
@@ -1394,17 +1407,17 @@
             padding-top: 1.5em;
             border-top: 1px solid var(--border-primary);
         }
-        
+
         /* Ensure Expert Mode inputs are properly spaced and visible */
         .expert-settings .grade-selection {
             margin-bottom: 1em;
         }
-        
+
         .expert-settings input[type="number"] {
             margin-top: 0.3em;
             margin-bottom: 0.5em;
         }
-        
+
         .expert-settings label {
             display: block;
             margin-bottom: 0.3em;
@@ -1420,11 +1433,11 @@
             padding-top: 1.5em;
             border-top: 1px solid var(--border-primary);
         }
-        
+
         .info-dropdown {
             margin-bottom: 1.5em;
         }
-        
+
         .info-toggle-btn {
             background: var(--bg-secondary);
             border: 1px solid var(--border-primary);
@@ -1440,26 +1453,26 @@
             width: 100%;
             transition: background 0.2s, border-color 0.2s;
         }
-        
+
         .info-toggle-btn:hover {
             background: var(--bg-tertiary);
             border-color: var(--border-secondary);
         }
-        
+
         .info-toggle-btn.active {
             background: var(--border-focus);
             color: #fff;
             border-color: var(--border-focus);
         }
-        
+
         .info-toggle-btn.active #info-toggle-text {
             color: #fff;
         }
-        
+
         .info-toggle-btn.active #info-toggle-icon {
             transform: rotate(180deg);
         }
-        
+
         .info-content {
             background: var(--bg-secondary);
             border: 1px solid var(--border-primary);
@@ -1469,7 +1482,7 @@
             font-size: 0.9em;
             color: var(--text-secondary);
         }
-        
+
         /* Expert submenus */
         .expert-submenu {
             margin-top: 0.8em;
@@ -1508,59 +1521,59 @@
             padding: 1em;
             margin-top: 0.5em;
         }
-        
+
         .info-content p {
             margin: 0.3em 0;
         }
-        
+
         /* Additional mobile optimizations */
         @media (max-width: 768px) {
             .viewer-section, .form-section {
                 max-width: 100%;
                 min-width: unset;
             }
-            
+
             .info-panel, .info-content {
                 padding: 1.2em;
                 font-size: 0.95em;
             }
-            
+
             .info-toggle-btn, .expert-toggle-btn {
                 padding: 1em;
                 font-size: 1em;
                 min-height: 48px;
             }
-            
+
             #error-message {
                 padding: 1em;
                 font-size: 0.95em;
                 margin: 0.8em 0;
             }
-            
+
             .button-group {
                 gap: 0.8em;
             }
-            
+
             /* Mobile optimizations */
             html {
                 scroll-behavior: smooth;
             }
         }
-        
+
         /* Extra small devices */
         @media (max-width: 480px) {
             .expert-settings input[type="number"] {
                 width: 100%;
             }
-            
+
             .font-size-controls {
                 transform: scale(0.9);
                 transform-origin: top right;
             }
         }
-        
 
-        
+
+
         /* Plate Selection Row Layout */
         .plate-selection-row {
             display: flex;
@@ -1568,48 +1581,48 @@
             gap: 1.5em;
             margin-top: 1em;
         }
-        
+
         .plate-type-selection {
             flex: 1;
             min-width: 250px;
         }
-        
+
         .button-row {
             display: flex;
             gap: 1em;
             align-items: center;
             flex-shrink: 0;
         }
-        
+
         /* Mobile plate selection row optimization */
         @media (max-width: 768px) {
             .plate-selection-row {
                 flex-direction: column;
                 gap: 1em;
             }
-            
+
             .plate-type-selection {
                 min-width: unset;
                 width: 100%;
             }
-            
+
             .button-row {
                 width: 100%;
                 justify-content: stretch;
             }
-            
+
             .button-row button {
                 flex: 1;
                 min-width: 140px;
             }
         }
-        
+
         @media (max-width: 480px) {
             .button-row {
                 flex-direction: column;
                 gap: 0.8em;
             }
-            
+
             .button-row button {
                 width: 100%;
                 min-width: unset;
@@ -1685,61 +1698,61 @@
                 gap: 1rem;
                 margin-bottom: 1em;
             }
-            
+
             .title-section h1 {
                 text-align: center;
                 white-space: normal; /* Allow multi-line title on small screens */
                 word-break: break-word;
             }
-            
+
             .title-line-1 {
                 font-size: 16pt;
             }
-            
+
             .title-line-2 {
                 font-size: 16pt;
             }
-            
+
             .accessibility-controls-top {
                 margin-left: 0;
                 align-items: center;
                 flex-wrap: wrap; /* Prevent controls from overflowing horizontally */
                 justify-content: center;
             }
-            
+
             .theme-toggle-section {
                 flex-direction: column;
                 align-items: center;
                 gap: 0.5em;
                 margin-left: 0;
             }
-            
+
             .theme-label-box {
                 font-size: 0.85em;
                 min-height: 2.2em;
             }
         }
-        
+
         @media (max-width: 480px) {
             .title-line-1 {
                 font-size: 13.6pt;
             }
-            
+
             .title-line-2 {
                 font-size: 13.6pt;
             }
         }
-        
+
         /* Form Section Accessibility Controls */
         [data-theme="high-contrast"] .theme-label-box {
             background: #1a1a1a !important; /* Dark background for high contrast */
             border: 2px solid #ffff00 !important; /* Yellow border for high contrast */
         }
-        
+
         [data-theme="high-contrast"] .theme-label-text {
             color: #02fe05 !important; /* Green text for high contrast */
         }
-        
+
         [data-theme="high-contrast"] .theme-toggle-btn:hover {
             background: #ffff00 !important; /* Yellow instead of yellow */
             color: #0201fe !important; /* Blue instead of black */
@@ -1799,12 +1812,12 @@
             font-size: 1.3em !important;
             font-weight: 700 !important;
         }
-        
+
         #info-toggle-text {
             font-size: 1.2em !important;
             font-weight: 600 !important;
         }
-        
+
         .grade-label {
             font-weight: 600;
             color: var(--text-primary);
@@ -1812,7 +1825,7 @@
             margin-bottom: 0.8em;
             font-size: 1.2em !important; /* Increased from 0.9em */
         }
-        
+
         .expert-toggle-btn #expert-toggle-text {
             font-size: 1.2em !important;
             font-weight: 600 !important;
@@ -1845,17 +1858,17 @@
 <body>
     <!-- Skip Navigation Link for Keyboard Users -->
     <a href="#main-content" class="skip-link" tabindex="0">Skip to main content</a>
-    
 
-    
-    <div class="main-layout" role="main" id="main-content">
+
+
+    <main class="main-layout" id="main-content">
         <!-- Title Section at the top -->
         <div class="title-section">
             <h1 id="main-heading">
                 <span class="title-line-1">Custom Braille</span>
                 <span class="title-line-2">STL Generator</span>
             </h1>
-            
+
             <!-- Accessibility Controls in top right -->
             <div class="accessibility-controls-top" role="group" aria-label="Accessibility controls">
                 <!-- Font Size Controls -->
@@ -1864,7 +1877,7 @@
                         <span aria-hidden="true">A-</span>
                         <span class="sr-only">Decrease font size</span>
                     </button>
-                    <span class="font-size-display" aria-label="Current font size">
+                    <span class="font-size-display" role="status" aria-live="polite" aria-atomic="true">
                         <span id="current-font-size">100</span>%
                     </span>
                     <button id="font-increase" class="font-size-btn" aria-label="Increase font size" title="Increase font size">
@@ -1876,7 +1889,7 @@
                         <span class="sr-only">Reset font size</span>
                     </button>
                 </div>
-                
+
                 <!-- Theme Toggle Section -->
                 <div class="theme-toggle-section" role="group" aria-labelledby="theme-label">
                     <div id="theme-label" class="theme-label-box">
@@ -1889,23 +1902,29 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Main Content Area - Two Column Layout -->
         <div class="content-area">
             <!-- Left Column - STL Preview Section (45% width) -->
             <div class="preview-section" role="region" aria-label="3D STL Preview">
-                <div id="viewer" role="img" aria-label="3D preview of braille business card STL file" tabindex="0">
+                <div id="viewer" role="img" aria-label="3D preview of braille embossing plate. Interactive 3D model requires mouse or touch to rotate and zoom. Shows raised braille dots on plate surface." aria-describedby="viewer-instructions" tabindex="0">
                     <div id="error-message" role="alert" aria-live="assertive" aria-atomic="true">
-                        <span style="font-weight:bold;" aria-hidden="true">⚠</span> 
-                        <span id="error-text"></span>
+                        <span style="font-weight:bold;" aria-hidden="true">⚠</span>
+                        <span id="error-text-container" style="display: flex; flex-direction: column; align-items: center;">
+                            <span id="error-text"></span>
+                            <span id="error-subtext" style="display: none; font-size: 0.8em; margin-top: 0.4em; opacity: 0.85;"></span>
+                        </span>
                     </div>
+                </div>
+                <div id="viewer-instructions" class="sr-only">
+                    To interact with the 3D preview: Use mouse drag to rotate, mouse wheel to zoom. Touch users: one finger to rotate, pinch to zoom. Keyboard users: the visual preview is supplementary; generated STL files contain the same geometry.
                 </div>
                 <!-- Action Button moved here -->
                 <div class="button-row" style="margin-top: 1em;">
                     <button type="button" id="action-btn" class="generate-state" aria-label="Generate STL file from entered text" data-state="generate">Generate STL</button>
                 </div>
             </div>
-            
+
             <!-- Right Column - Form Controls Section (55% width) -->
             <div class="form-section" role="region" aria-label="Braille Card Configuration">
                 <div class="info-panel">
@@ -1914,7 +1933,7 @@
                     <p><strong>Where Do I Start?:</strong></p>
                     <p>Read the directions in the "More Info" dropdown menu below:</p>
                 </div>
-                
+
                 <div class="info-dropdown">
                     <button type="button" id="info-toggle" class="info-toggle-btn">
                         <span id="info-toggle-text">Directions:</span>
@@ -1930,7 +1949,7 @@
                             <li>Click <strong>Generate STL</strong>, review the 3D preview, then <strong>Download STL</strong>.</li>
                             <li>Switch <strong>Select Plate to Generate</strong> to <strong>Universal Counter Plate</strong> and <strong>Download STL</strong> again.</li>
                         </ol>
-                        
+
                         <p><strong>What to include (tiny space = tough choices)</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">
                             <li>Aim for <strong>4 short lines</strong>, about <strong>13 braille cells per line</strong>.</li>
@@ -1944,7 +1963,7 @@
                             </li>
                             <li>If space runs out: shorten organization words (e.g., “Amer” for “American”), drop job title, or use lowercase to remove braille capitalization markers.</li>
                         </ul>
-                        
+
                         <p><strong>Smart formatting for tight space (BANA‑aligned)</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">
                             <li><strong>Phone:</strong> Enter like <em>123.456.7890</em> (use periods; no parentheses) to minimize numeric markers.</li>
@@ -1953,10 +1972,10 @@
                             <li><strong>Names:</strong> If a long name won’t fit, remove capitals (type lowercase), remove middle initial, or use a first initial plus surname.</li>
                             <li><strong>Grade choice:</strong> Keep <em>English (UEB) — uncontracted (grade 1)</em> for clarity. Use contracted (grade 2) only if you absolutely need to save space.</li>
                         </ul>
-                        
+
                         <p><strong>Using the controls (match these labels in the app)</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li><strong>Placement Mode:</strong> 
+                            <li><strong>Placement Mode:</strong>
                                 <em>Auto Placement</em> wraps text to fit cells with BANA‑aware warnings; <em>Manual Placement</em> lets you set each line yourself.
                             </li>
                             <li><strong>Select Language:</strong> Use <em>English (UEB) — uncontracted (grade 1)</em> unless you know you need something else.</li>
@@ -1973,14 +1992,14 @@
                             </li>
                             <li><strong>Reset Settings:</strong> Restores sensible defaults.</li>
                         </ul>
-                        
+
                         <p><strong>Fitting within limits</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">
                             <li>A “cell” is one braille character space. Your per‑row limit is shown in <em>Number of Braille Cells (Characters)</em>.</li>
                             <li>With indicators On, standard cards typically fit <strong>13 cells × 4 lines</strong>.</li>
                             <li>If you see an unsplittable word warning, shorten the word, switch to Manual Placement, or trim other content.</li>
                         </ul>
-                        
+
                         <p><strong>Generating and printing</strong></p>
                         <ol style="margin: 0.3em 0; padding-left: 1.5em;">
                             <li><strong>Generate STL</strong> for the selected plate and review the 3D preview.</li>
@@ -1988,7 +2007,7 @@
                             <li>Print both plates. Reuse the counter plate; you only need to print it once.</li>
                             <li>Embossing tip: Press firmly and evenly with the card centered. Test on a spare card first.</li>
                         </ol>
-                        
+
                         <p><strong>Common fixes if text won’t fit</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">
                             <li>Use lowercase to remove capitalization indicators.</li>
@@ -1996,15 +2015,31 @@
                             <li>Stick with Grade 1 (uncontracted) unless you must switch to Grade 2 (contracted) to save space.</li>
                             <li>Prioritize the essentials: name + one contact (phone or email).</li>
                         </ul>
-                        
+
                         <p><strong>Acknowledgements:</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li>Powered by <a href="https://liblouis.io/" target="_blank" style="color: #3182ce; text-decoration: none;"><strong>Liblouis</strong></a>, an open-source professional braille translator.</li>
+                            <li>Powered by <a href="https://liblouis.io/" target="_blank" rel="noopener noreferrer" style="color: #3182ce; text-decoration: none;" aria-label="Liblouis website (opens in new window)"><strong>Liblouis</strong></a>, an open-source professional braille translator.</li>
                             <li>Extra thanks to <strong>Tobi Weinberg</strong> for the substantial time and effort he volunteered to help start this project and see it through.</li>
                         </ul>
+
+                        <details style="margin-top: 1em;">
+                            <summary style="cursor: pointer; font-weight: 700; font-size: 1.1em;">Accessibility Statement</summary>
+                            <p style="margin-top: 0.5em;">This application conforms to WCAG 2.1 Level AA.</p>
+                            <p><strong>Features:</strong></p>
+                            <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                                <li>High contrast mode for low vision users</li>
+                                <li>Adjustable font sizes (75% to 200%)</li>
+                                <li>Keyboard navigation support</li>
+                                <li>Screen reader compatible</li>
+                            </ul>
+                            <p><strong>Known Limitations:</strong></p>
+                            <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                                <li>3D preview requires mouse/touch for rotation</li>
+                            </ul>
+                        </details>
                     </div>
                 </div>
-                
+
                 <form id="braille-form" aria-labelledby="main-heading">
                     <!-- Text Input Section moved into form (separate scrollable pane) -->
                     <div class="line-input-group">
@@ -2028,7 +2063,7 @@
                             <!-- Auto placement textarea (hidden by default) -->
                             <div id="auto-input-container" style="display: none;">
                                 <label for="auto-text" class="line-label">Auto Placement Text</label>
-                                <textarea id="auto-text" rows="4" placeholder="Type all your text here. It will be translated to braille and auto-wrapped across rows based on available cells." style="width: 100%; resize: vertical;"></textarea>
+                                <textarea id="auto-text" rows="4" placeholder="Type all your text here. It will be translated to braille and auto-wrapped across rows based on available cells." style="width: 100%; resize: vertical;" autocomplete="off"></textarea>
                                 <div id="auto-overflow-warning" class="grade-note" style="margin-top: 0.6em; color: #d73502; display: none;">
                                     <strong>Warning:</strong> <span id="auto-overflow-message"></span>
                                 </div>
@@ -2056,7 +2091,34 @@
                             </div>
                         </fieldset>
                     </div>
-                    
+
+                    <!-- Card Thickness Preset Selection -->
+                    <div class="grade-selection">
+                        <fieldset>
+                            <legend class="grade-label">Card Thickness</legend>
+                            <div class="radio-group thickness-toggle" role="radiogroup" aria-required="true" aria-label="Select card thickness preset">
+                                <label class="radio-option">
+                                    <input type="radio" name="card_thickness_preset" value="0.4" checked aria-describedby="thickness-04-desc">
+                                    <span class="radio-text">0.4mm</span>
+                                </label>
+                                <span id="thickness-04-desc" class="sr-only">Preset settings optimized for 0.4mm layer height printing</span>
+                                <label class="radio-option">
+                                    <input type="radio" name="card_thickness_preset" value="0.3" aria-describedby="thickness-03-desc">
+                                    <span class="radio-text">0.3mm</span>
+                                </label>
+                                <span id="thickness-03-desc" class="sr-only">Preset settings optimized for 0.3mm layer height printing</span>
+                                <label class="radio-option">
+                                    <input type="radio" name="card_thickness_preset" value="custom" aria-describedby="thickness-custom-desc">
+                                    <span class="radio-text">Custom</span>
+                                </label>
+                                <span id="thickness-custom-desc" class="sr-only">Custom settings - automatically selected when any parameter is modified from preset values</span>
+                            </div>
+                            <div class="grade-note" style="margin-top: 6px; font-size: 0.85em;">
+                                Selecting a thickness preset will automatically adjust all braille dot and surface parameters to optimal values for that layer height. "Custom" is automatically selected when you modify any parameter.
+                            </div>
+                        </fieldset>
+                    </div>
+
                     <!-- Plate Type Selection moved here -->
                     <div class="grade-selection">
                         <fieldset>
@@ -2085,9 +2147,9 @@
                             </div>
                         </fieldset>
                     </div>
-                    
-                    
-                    
+
+
+
 
 
                     <div class="expert-mode-toggle">
@@ -2114,11 +2176,11 @@
 
                         <!-- Submenu: Shape Selection -->
                         <div class="expert-submenu">
-                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false" aria-controls="expert-panel-shapes">
                                 <span class="expert-submenu-title">Shape Selection</span>
                                 <span class="expert-submenu-icon">▼</span>
                             </button>
-                            <div class="expert-submenu-content" style="display: none;">
+                            <div id="expert-panel-shapes" class="expert-submenu-content" style="display: none;">
                                 <!-- Output Shape Selection (moved into Expert Mode) -->
                                 <div class="grade-selection">
                                     <fieldset>
@@ -2129,11 +2191,11 @@
                                                 <span class="radio-text">Cylinder</span>
                                             </label>
                                             <span id="cylinder-shape-desc" class="sr-only">Creates a cylindrical braille surface</span>
-                                            <label class="radio-option">
-                                                <input type="radio" name="shape_type" value="card" aria-describedby="card-shape-desc">
-                                                <span class="radio-text">Flat Card</span>
+                                            <label class="radio-option" style="opacity: 0.5; cursor: not-allowed;">
+                                                <input type="radio" name="shape_type" value="card" disabled aria-describedby="card-shape-desc">
+                                                <span class="radio-text">Flat Card <em style="font-size: 0.85em; color: var(--warning-color, #f39c12);">(temporarily disabled)</em></span>
                                             </label>
-                                            <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card</span>
+                                            <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card - temporarily disabled</span>
                                         </div>
                                     </fieldset>
                                 </div>
@@ -2189,35 +2251,35 @@
 
                         <!-- Submenu: Braille Spacing -->
                         <div class="expert-submenu">
-                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false" aria-controls="expert-panel-spacing">
                                 <span class="expert-submenu-title">Braille Spacing</span>
                                 <span class="expert-submenu-icon">▼</span>
                             </button>
-                            <div class="expert-submenu-content" style="display: none;">
+                            <div id="expert-panel-spacing" class="expert-submenu-content" style="display: none;">
                                 <div class="grade-selection">
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
                                     <div>
                                         <label for="grid_columns" id="grid_columns_label">Number of Braille Cells (Characters):</label>
-                                        <input type="number" id="grid_columns" name="grid_columns" value="13" style="width: 110px;">
+                                        <input type="number" id="grid_columns" name="grid_columns" value="13" style="width: 110px;" autocomplete="off">
                                         <div id="grid_columns_note" class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                             For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 13 cells available for text.
                                         </div>
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="grid_rows">Number of Braille Lines:</label>
-                                        <input type="number" id="grid_rows" name="grid_rows" value="4" style="width: 110px;">
+                                        <input type="number" id="grid_rows" name="grid_rows" value="4" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cell_spacing">Braille Cell Spacing:</label>
-                                        <input type="number" id="cell_spacing" name="cell_spacing" value="6.5" step="0.1" style="width: 110px;">
+                                        <input type="number" id="cell_spacing" name="cell_spacing" value="6.5" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="line_spacing">Braille Line Spacing:</label>
-                                        <input type="number" id="line_spacing" name="line_spacing" value="10.0" step="0.1" style="width: 110px;">
+                                        <input type="number" id="line_spacing" name="line_spacing" value="10.0" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="dot_spacing">Braille Dot Spacing:</label>
-                                        <input type="number" id="dot_spacing" name="dot_spacing" value="2.5" step="0.1" style="width: 110px;">
+                                        <input type="number" id="dot_spacing" name="dot_spacing" value="2.5" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                 </div>
 
@@ -2225,11 +2287,11 @@
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille / Card Positioning</label>
                                     <div>
                                         <label for="braille_y_adjust">Y Adjust:</label>
-                                        <input type="number" id="braille_y_adjust" name="braille_y_adjust" value="0.0" step="0.1" style="width: 110px;">
+                                        <input type="number" id="braille_y_adjust" name="braille_y_adjust" value="0.0" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="braille_x_adjust">X Adjust:</label>
-                                        <input type="number" id="braille_x_adjust" name="braille_x_adjust" value="0.0" step="0.1" style="width: 110px;">
+                                        <input type="number" id="braille_x_adjust" name="braille_x_adjust" value="0.0" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                 </div>
                             </div>
@@ -2237,28 +2299,28 @@
 
                         <!-- Submenu: Braille Dot Adjustments -->
                         <div class="expert-submenu">
-                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false" aria-controls="expert-panel-dots">
                                 <span class="expert-submenu-title">Braille Dot Adjustments</span>
                                 <span class="expert-submenu-icon">▼</span>
                             </button>
-                            <div class="expert-submenu-content" style="display: none;">
+                            <div id="expert-panel-dots" class="expert-submenu-content" style="display: none;">
                                 <div class="grade-selection" id="rounded_dot_group" style="margin-top: 8px;">
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Embossing Braille Dot Dimensions (Rounded Shape)</label>
                                     <div>
                                         <label for="rounded_dot_base_diameter">Rounded braille dot base diameter (cone base) (mm):</label>
-                                        <input type="number" id="rounded_dot_base_diameter" name="rounded_dot_base_diameter" value="2.0" step="0.1" min="0.5" max="3" style="width: 110px;">
+                                        <input type="number" id="rounded_dot_base_diameter" name="rounded_dot_base_diameter" value="2.0" step="0.1" min="0.5" max="3" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="rounded_dot_base_height">Rounded braille dot base height (cone height) (mm):</label>
-                                        <input type="number" id="rounded_dot_base_height" name="rounded_dot_base_height" value="0.2" step="0.1" min="0" max="2.0" style="width: 110px;">
+                                        <input type="number" id="rounded_dot_base_height" name="rounded_dot_base_height" value="0.2" step="0.1" min="0" max="2.0" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="rounded_dot_dome_diameter">Rounded braille dome diameter (linked to cone flat top) (mm):</label>
-                                        <input type="number" id="rounded_dot_dome_diameter" name="rounded_dot_dome_diameter" value="1.5" step="0.1" min="0.5" max="3.0" style="width: 110px;">
+                                        <input type="number" id="rounded_dot_dome_diameter" name="rounded_dot_dome_diameter" value="1.5" step="0.1" min="0.5" max="3.0" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="rounded_dot_dome_height">Rounded braille dot dome height (mm):</label>
-                                        <input type="number" id="rounded_dot_dome_height" name="rounded_dot_dome_height" value="0.6" step="0.1" min="0.1" max="2.0" style="width: 110px;">
+                                        <input type="number" id="rounded_dot_dome_height" name="rounded_dot_dome_height" value="0.6" step="0.1" min="0.1" max="2.0" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                         The cone base sits on the surface; the dome grows from the cone's flat top. Dome diameter is always equal to the cone flat-top diameter.
@@ -2269,15 +2331,15 @@
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Embossing Braille Dot Dimensions (Cone Shape)</label>
                                     <div>
                                         <label for="emboss_dot_base_diameter">Dot diameter:</label>
-                                        <input type="number" id="emboss_dot_base_diameter" name="emboss_dot_base_diameter" value="1.8" step="0.1" style="width: 110px;">
+                                        <input type="number" id="emboss_dot_base_diameter" name="emboss_dot_base_diameter" value="1.8" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="emboss_dot_height">Dot height:</label>
-                                        <input type="number" id="emboss_dot_height" name="emboss_dot_height" value="1.0" step="0.1" style="width: 110px;">
+                                        <input type="number" id="emboss_dot_height" name="emboss_dot_height" value="1.0" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="emboss_dot_flat_hat">Flat hat diameter:</label>
-                                        <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1" style="width: 110px;">
+                                        <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                 </div>
 
@@ -2287,7 +2349,7 @@
                                     <!-- Hidden hemisphere dial for future use -->
                                     <div style="display: none;">
                                         <label for="hemi_counter_dot_base_diameter">Hemisphere Recess Dot Base Diameter (mm):</label>
-                                        <input type="number" id="hemi_counter_dot_base_diameter" name="hemi_counter_dot_base_diameter" value="1.6" step="0.1" min="0.5" max="5">
+                                        <input type="number" id="hemi_counter_dot_base_diameter" name="hemi_counter_dot_base_diameter" value="1.6" step="0.1" min="0.5" max="5" autocomplete="off">
                                     </div>
                                     <div id="hemisphere_dimensions_group" style="margin-top: 6px; display: none;">
                                         <div class="grade-note" style="font-size: 0.85em;">
@@ -2296,12 +2358,12 @@
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="bowl_counter_dot_base_diameter">Bowl Recess Dot Base Diameter (mm):</label>
-                                        <input type="number" id="bowl_counter_dot_base_diameter" name="bowl_counter_dot_base_diameter" value="1.8" step="0.1" min="0.5" max="5" style="width: 110px;">
+                                        <input type="number" id="bowl_counter_dot_base_diameter" name="bowl_counter_dot_base_diameter" value="1.8" step="0.1" min="0.5" max="5" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div id="bowl_dimensions_group" style="margin-top: 6px;">
                                         <div>
                                             <label for="counter_dot_depth">Bowl Recess Dot Depth (mm):</label>
-                                            <input type="number" id="counter_dot_depth" name="counter_dot_depth" value="0.8" step="0.1" min="0" max="5" style="width: 110px;">
+                                            <input type="number" id="counter_dot_depth" name="counter_dot_depth" value="0.8" step="0.1" min="0" max="5" style="width: 110px;" autocomplete="off">
                                         </div>
                                     </div>
                                 </div>
@@ -2311,15 +2373,15 @@
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Counter Braille Recessed Dot Dimensions (Cone Shape)</label>
                                     <div>
                                         <label for="cone_counter_dot_base_diameter">Dot Base Diameter (mm):</label>
-                                        <input type="number" id="cone_counter_dot_base_diameter" name="cone_counter_dot_base_diameter" value="1.6" step="0.1" min="0.1" max="5" style="width: 110px;">
+                                        <input type="number" id="cone_counter_dot_base_diameter" name="cone_counter_dot_base_diameter" value="1.6" step="0.1" min="0.1" max="5" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cone_counter_dot_height">Dot Height (mm):</label>
-                                        <input type="number" id="cone_counter_dot_height" name="cone_counter_dot_height" value="0.8" step="0.1" min="0" max="5" style="width: 110px;">
+                                        <input type="number" id="cone_counter_dot_height" name="cone_counter_dot_height" value="0.8" step="0.1" min="0" max="5" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cone_counter_dot_flat_hat">Dot Flat Hat Diameter (mm):</label>
-                                        <input type="number" id="cone_counter_dot_flat_hat" name="cone_counter_dot_flat_hat" value="0.4" step="0.1" min="0" max="5" style="width: 110px;">
+                                        <input type="number" id="cone_counter_dot_flat_hat" name="cone_counter_dot_flat_hat" value="0.4" step="0.1" min="0" max="5" style="width: 110px;" autocomplete="off">
                                     </div>
                                 </div>
                             </div>
@@ -2327,38 +2389,38 @@
 
                         <!-- Submenu: Surface Dimensions -->
                         <div class="expert-submenu">
-                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false" aria-controls="expert-panel-dimensions">
                                 <span class="expert-submenu-title">Surface Dimensions</span>
                                 <span class="expert-submenu-icon">▼</span>
                             </button>
-                            <div class="expert-submenu-content" style="display: none;">
+                            <div id="expert-panel-dimensions" class="expert-submenu-content" style="display: none;">
                                 <div class="grade-selection">
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Cylinder Dimensions</label>
                                     <div>
                                         <label for="cylinder_diameter_mm">Cylinder Diameter (mm):</label>
-                                        <input type="number" id="cylinder_diameter_mm" name="cylinder_diameter_mm" value="30.75" step="0.1" min="10" max="200" style="width: 110px;">
+                                        <input type="number" id="cylinder_diameter_mm" name="cylinder_diameter_mm" value="30.75" step="0.1" min="10" max="200" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cylinder_height_mm">Cylinder Height (mm):</label>
-                                        <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200" style="width: 110px;">
+                                        <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cylinder_polygonal_cutout_radius_mm">Polygonal Cutout Circumscribed Radius (mm):</label>
-                                        <input type="number" id="cylinder_polygonal_cutout_radius_mm" name="cylinder_polygonal_cutout_radius_mm" value="13" step="0.1" min="0" max="50" style="width: 110px;">
+                                        <input type="number" id="cylinder_polygonal_cutout_radius_mm" name="cylinder_polygonal_cutout_radius_mm" value="13" step="0.1" min="0" max="50" style="width: 110px;" autocomplete="off">
                                         <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                             Creates a polygonal cutout along the cylinder's length. Set to 0 for no cutout.
                                         </div>
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cylinder_polygonal_cutout_sides">Polygonal Cutout Points:</label>
-                                        <input type="number" id="cylinder_polygonal_cutout_sides" name="cylinder_polygonal_cutout_sides" value="12" step="1" min="3" max="60" style="width: 110px;">
+                                        <input type="number" id="cylinder_polygonal_cutout_sides" name="cylinder_polygonal_cutout_sides" value="12" step="1" min="3" max="60" style="width: 110px;" autocomplete="off">
                                         <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                             Lower values create simpler shapes (e.g., 6); higher values approximate a circle.
                                         </div>
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="seam_offset_deg">Seam Offset (degrees):</label>
-                                        <input type="number" id="seam_offset_deg" name="seam_offset_deg" value="355" step="1" min="0" max="360" style="width: 110px;">
+                                        <input type="number" id="seam_offset_deg" name="seam_offset_deg" value="355" step="1" min="0" max="360" style="width: 110px;" autocomplete="off">
                                         <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                             Rotates the starting position of braille text around the cylinder
                                         </div>
@@ -2372,15 +2434,15 @@
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Plate Dimensions</label>
                                     <div>
                                         <label for="card_width">Plate Width:</label>
-                                        <input type="number" id="card_width" name="card_width" value="90" step="0.1" style="width: 110px;">
+                                        <input type="number" id="card_width" name="card_width" value="90" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="card_height">Plate Height:</label>
-                                        <input type="number" id="card_height" name="card_height" value="52" step="0.1" style="width: 110px;">
+                                        <input type="number" id="card_height" name="card_height" value="52" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="card_thickness">Plate Thickness:</label>
-                                        <input type="number" id="card_thickness" name="card_thickness" value="2.0" step="0.1" style="width: 110px;">
+                                        <input type="number" id="card_thickness" name="card_thickness" value="2.0" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                 </div>
                             </div>
@@ -2393,14 +2455,14 @@
                 </form>
             </div>
         </div>
-    </div>
-    
+    </main>
 
-    
+
+
     <!-- Load the real liblouis JavaScript implementation from static files -->
     <script src="/static/liblouis/build-no-tables-utf16.js"></script>
     <script src="/static/liblouis/easy-api.js"></script>
-    
+
     <script type="module">
         import * as THREE from '/static/three.module.js';
         import { STLLoader } from '/static/STLLoader.js';
@@ -2509,10 +2571,10 @@
 
                 // Get base language name
                 let baseName = getDisplayName(t);
-                
+
                 // Build description parts
                 const parts = [];
-                
+
                 // Grade/contraction info
                 if (t.grade === '2') {
                     parts.push('contracted');
@@ -2521,7 +2583,7 @@
                 } else if (t.grade === '0') {
                     parts.push('computer');
                 }
-                
+
                 // Type info
                 if (t.type === 'computer' && !parts.includes('computer')) {
                     if (t.dots === 8) {
@@ -2534,12 +2596,12 @@
                         parts.push('literary');
                     }
                 }
-                
+
                 // Variant info (UEB, EBAE, etc)
                 if (t.variant) {
                     parts.push(t.variant);
                 }
-                
+
                 // Special naming for specific files
                 if (file === 'en-ueb-g2.ctb') {
                     baseName = 'English (UEB), United States';
@@ -2562,7 +2624,7 @@
                         parts.push('computer braille');
                     }
                 }
-                
+
                 // Build final label
                 let label = baseName;
                 if (parts.length > 0) {
@@ -2589,7 +2651,7 @@
             }
 
             select.appendChild(otherGroup);
-            
+
             // Default to UEB grade 1 unless user has a saved preference (business card-friendly)
             try {
                 const saved = localStorage.getItem('braille_prefs_language_table');
@@ -2619,12 +2681,12 @@
                 try { syncLineLanguageSelects(); } catch (e) {}
             } catch (e) {}
         });
-        
+
 
         // Declare 3D scene variables at module scope
         let renderer, scene, camera, mesh, controls;
         let lastSTLUrl = null;
-        
+
         // Production logging - only log errors in production
         const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
         const log = {
@@ -2632,6 +2694,29 @@
             info: isProduction ? () => {} : console.log,
             error: console.error // Always log errors
         };
+
+        // Helper function to sync emboss cone params to counter cone params (module scope)
+        function syncEmbossToCounterConeParams() {
+            const embossBase = document.getElementById('emboss_dot_base_diameter');
+            const embossHeight = document.getElementById('emboss_dot_height');
+            const embossFlatHat = document.getElementById('emboss_dot_flat_hat');
+            const counterBase = document.getElementById('cone_counter_dot_base_diameter');
+            const counterHeight = document.getElementById('cone_counter_dot_height');
+            const counterFlatHat = document.getElementById('cone_counter_dot_flat_hat');
+
+            if (embossBase && counterBase) {
+                counterBase.value = embossBase.value;
+                log.debug('Synced cone_counter_dot_base_diameter to:', embossBase.value);
+            }
+            if (embossHeight && counterHeight) {
+                counterHeight.value = embossHeight.value;
+                log.debug('Synced cone_counter_dot_height to:', embossHeight.value);
+            }
+            if (embossFlatHat && counterFlatHat) {
+                counterFlatHat.value = embossFlatHat.value;
+                log.debug('Synced cone_counter_dot_flat_hat to:', embossFlatHat.value);
+            }
+        }
 
         // Theme switching functionality
         const themes = ['dark', 'high-contrast', 'light'];
@@ -2645,30 +2730,70 @@
             'high-contrast': 'High Contrast',
             'light': 'Light'
         };
-        
+
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // CAMERA SETTINGS - Central configuration for STL preview camera positions
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // These settings control the initial camera position when STL models are generated.
+        // Adjust these values to change the default viewing angle for each shape type.
+        //
+        // Coordinate System:
+        //   - Cards: Y-axis is up, camera looks from +Z axis toward origin
+        //   - Cylinders: Z-axis is up (cylinder axis), camera looks from XY plane toward origin
+        //
+        // To rotate the initial view:
+        //   - For cylinders: Adjust CYLINDER.position.x and .y to rotate around the Z-axis
+        //     Example: { x: -120, y: 0 } views from -X axis (opposite side)
+        //     Example: { x: 0, y: 120 } views from +Y axis (90° rotation)
+        //   - For cards: Adjust CARD.position values as needed
+        //
+        // Distance from origin determines zoom level (larger = more zoomed out)
+        // ═══════════════════════════════════════════════════════════════════════════════
+        const CAMERA_SETTINGS = {
+            // Card shape camera settings (standard flat plate)
+            CARD: {
+                position: { x: 0, y: 0, z: 120 },   // Camera on +Z axis, looking at origin
+                up: { x: 0, y: 1, z: 0 },           // Y-axis is up
+                target: { x: 0, y: 0, z: 0 },       // Look at origin
+                fov: 45,                            // Field of view in degrees
+                near: 0.1,                          // Near clipping plane
+                far: 1000                           // Far clipping plane
+            },
+            // Cylinder shape camera settings (cylindrical surface)
+            // Camera positioned to view the indicator shapes (triangle/rectangle) side
+            CYLINDER: {
+                position: { x: -120, y: 0, z: 0 },  // Camera on -X axis (views indicator side)
+                up: { x: 0, y: 0, z: 1 },           // Z-axis is up (cylinder axis)
+                target: { x: 0, y: 0, z: 0 },       // Look at origin
+                fov: 45,                            // Field of view in degrees
+                near: 0.1,                          // Near clipping plane
+                far: 1000                           // Far clipping plane
+            }
+        };
+
         let currentThemeIndex = 0;
         // Always start in dark mode; do not persist theme
         applyTheme('dark');
 
         function applyTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
-            
+
             const themeToggle = document.getElementById('theme-toggle');
             const themeIcon = themeToggle.querySelector('.theme-icon');
             const themeText = themeToggle.querySelector('.theme-text');
-            
+
             // Find the next theme in the cycle
             const currentIndex = themes.indexOf(theme);
             const nextIndex = (currentIndex + 1) % themes.length;
             const nextTheme = themes[nextIndex];
-            
+
             // Show the next theme that will be applied when clicked
             themeIcon.textContent = themeIcons[nextTheme];
             themeText.textContent = themeNames[nextTheme];
-            
+
             // Update aria-label to show current theme and what will happen next
             themeToggle.setAttribute('aria-label', `Current theme: ${themeNames[theme]}. Click to switch to ${themeNames[nextTheme]} theme`);
-            
+
             // Announce theme change to screen readers
             const announcement = document.createElement('div');
             announcement.className = 'sr-only';
@@ -2677,7 +2802,7 @@
             announcement.textContent = `Theme changed to ${themeNames[theme]}`;
             document.body.appendChild(announcement);
             setTimeout(() => announcement.remove(), 1000);
-            
+
             // Update 3D scene colors for new theme
             update3DSceneColors();
         }
@@ -2697,37 +2822,37 @@
                 const stlMeshColor = styles.getPropertyValue('--stl-mesh-color').trim() || '#6699cc';
                 const stlAmbientIntensity = parseFloat(styles.getPropertyValue('--stl-ambient-intensity').trim()) || 0.5;
                 const stlDirectionalIntensity = parseFloat(styles.getPropertyValue('--stl-directional-intensity').trim()) || 1.0;
-                
+
                 // Update scene background
                 scene.background = new THREE.Color(stlBackground);
-                
+
                 // Remove existing lights to rebuild them with proper configuration
-                const sceneLightsToRemove = scene.children.filter(child => 
+                const sceneLightsToRemove = scene.children.filter(child =>
                     child instanceof THREE.DirectionalLight || child instanceof THREE.AmbientLight
                 );
                 sceneLightsToRemove.forEach(light => scene.remove(light));
-                
+
                 // Also remove camera-attached directional lights
-                const cameraLightsToRemove = camera.children.filter(child => 
+                const cameraLightsToRemove = camera.children.filter(child =>
                     child instanceof THREE.DirectionalLight
                 );
                 cameraLightsToRemove.forEach(light => camera.remove(light));
-                
+
                 // Rebuild lighting based on current theme
                 const currentTheme = document.documentElement.getAttribute('data-theme');
                 const directionalLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity);
-                
+
                 if (currentTheme === 'high-contrast') {
                     // High contrast mode: conventional three-point lighting for better detail visibility
                     // Key light: 45° horizontal, 30° vertical (right side) - camera-relative
                     directionalLight.position.set(0.707, 0.5, 0.612).normalize();
                     camera.add(directionalLight);
-                    
+
                     // Fill light: 45° horizontal, 15° vertical (left side) for shadow softening - camera-relative
                     const fillLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity * 0.4);
                     fillLight.position.set(-0.707, 0.259, 0.659).normalize();
                     camera.add(fillLight);
-                    
+
                     // Subtle back light for edge definition - camera-relative
                     const backLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity * 0.2);
                     backLight.position.set(0, 0.5, -0.866).normalize();
@@ -2737,21 +2862,21 @@
                     // Key light: 45° horizontal, 30° vertical - camera-relative
                     directionalLight.position.set(0.707, 0.5, 0.612).normalize();
                     camera.add(directionalLight);
-                    
+
                     // Add subtle fill light for standard modes too - camera-relative
                     const fillLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity * 0.3);
                     fillLight.position.set(-0.5, 0.259, 0.659).normalize();
                     camera.add(fillLight);
                 }
-                
+
                 // Add ambient light
                 scene.add(new THREE.AmbientLight(new THREE.Color(stlAmbientLight), stlAmbientIntensity));
-                
+
                 // Update mesh color and material properties if mesh exists
                 if (mesh && mesh.material) {
                     const currentTheme = document.documentElement.getAttribute('data-theme');
                     mesh.material.color = new THREE.Color(stlMeshColor);
-                    
+
                     // Update specular properties for high contrast mode
                     if (currentTheme === 'high-contrast') {
                         mesh.material.specular = new THREE.Color(0xffffff); // White specular highlights
@@ -2760,10 +2885,10 @@
                         mesh.material.specular = new THREE.Color(0x111111); // Standard specular
                         mesh.material.shininess = 200; // Standard shininess
                     }
-                    
+
                     mesh.material.needsUpdate = true;
                 }
-                
+
                 // Force a re-render
                 if (renderer && scene && camera) {
                     renderer.render(scene, camera);
@@ -2776,19 +2901,19 @@
         // Font size adjustment functionality
         const fontSizes = [75, 87.5, 100, 112.5, 125, 150, 175, 200];
         let currentFontSizeIndex = 2; // Start at 100%
-        
+
         // Check if mobile device
         const isMobile = window.innerWidth <= 768;
-        
+
         // Always start at default 100%; do not persist font size
         currentFontSizeIndex = 2;
-        
+
         function applyFontSize(sizeIndex) {
             const size = fontSizes[sizeIndex];
             document.documentElement.style.fontSize = size + '%';
             document.getElementById('current-font-size').textContent = size;
             currentFontSizeIndex = sizeIndex;
-            
+
             // Announce font size change to screen readers
             const announcement = document.createElement('div');
             announcement.className = 'sr-only';
@@ -2798,23 +2923,23 @@
             document.body.appendChild(announcement);
             setTimeout(() => announcement.remove(), 1000);
         }
-        
+
         // Initialize font size
         applyFontSize(currentFontSizeIndex);
-        
+
         // Font size control event listeners
         document.getElementById('font-decrease').addEventListener('click', () => {
             if (currentFontSizeIndex > 0) {
                 applyFontSize(currentFontSizeIndex - 1);
             }
         });
-        
+
         document.getElementById('font-increase').addEventListener('click', () => {
             if (currentFontSizeIndex < fontSizes.length - 1) {
                 applyFontSize(currentFontSizeIndex + 1);
             }
         });
-        
+
         document.getElementById('font-reset').addEventListener('click', () => {
             applyFontSize(2); // Reset to 100%
         });
@@ -2828,7 +2953,7 @@
         const previewBrailleBtn = document.getElementById('preview-braille-btn');
         const errorDiv = document.getElementById('error-message');
         const errorText = document.getElementById('error-text');
-        
+
         // Function to reset button to generate state
         function resetToGenerateState() {
             actionBtn.textContent = 'Generate STL';
@@ -2838,7 +2963,7 @@
             actionBtn.style.opacity = '1';
             actionBtn.disabled = false;
         }
-        
+
         // Function to set button to download state
         function setToDownloadState() {
             actionBtn.textContent = 'Download STL';
@@ -2848,10 +2973,20 @@
             actionBtn.style.opacity = '1';
             actionBtn.disabled = false;
         }
-        
+
         // Store the current plate type for download naming
         let currentPlateType = 'positive';
-        
+
+        // Counter for Universal Counter Plate downloads (session-based, max 999)
+        let counterPlateDownloadCounter = 0;
+        const COUNTER_PLATE_MAX = 999;
+
+        function getNextCounterPlateNumber() {
+            // Increment counter (wraps at max to 1)
+            counterPlateDownloadCounter = (counterPlateDownloadCounter % COUNTER_PLATE_MAX) + 1;
+            return counterPlateDownloadCounter;
+        }
+
         // Add event handler for the action button
         actionBtn.addEventListener('click', () => {
             if (actionBtn.getAttribute('data-state') === 'generate') {
@@ -2896,7 +3031,7 @@
                     input.addEventListener('input', resetToGenerateState);
                 }
             }
-            
+
             // Language selection
             const languageSelect = document.getElementById('language-table');
             if (languageSelect) {
@@ -2904,7 +3039,7 @@
                     resetToGenerateState();
                 });
             }
-            
+
             // Function to update grid columns based on plate type (promoted to top-level scope below)
             function updateGridColumnsForPlateType(preserveValue = false) {
                 const plateType = document.querySelector('input[name="plate_type"]:checked').value;
@@ -2912,10 +3047,10 @@
                 const gridColumnsLabel = document.getElementById('grid_columns_label');
                 const gridColumnsNote = document.getElementById('grid_columns_note');
                 const indicatorOn = document.querySelector('input[name="indicator_shapes"]:checked')?.value === '1';
-                
+
                 // Store current value before update
                 const currentValue = parseInt(gridColumnsInput.value);
-                
+
                 if (plateType === 'positive') {
                     // Embossing plate - available cells depend on indicator toggle
                     gridColumnsLabel.textContent = 'Number of Available Braille Cells:';
@@ -2938,7 +3073,7 @@
             }
             // Expose for other handlers safely
             try { window.updateGridColumnsForPlateType = updateGridColumnsForPlateType; } catch (e) {}
-            
+
             // Plate type radio buttons
             document.querySelectorAll('input[name="plate_type"]').forEach(radio => {
                 radio.addEventListener('change', function() {
@@ -2953,7 +3088,7 @@
                     }
                 });
             });
-            
+
             // Initialize grid columns on page load
             updateGridColumnsForPlateType();
             // Wire indicator toggle listeners
@@ -2966,7 +3101,7 @@
                     }
                 });
             });
-            
+
             // Shape type radio buttons
             document.querySelectorAll('input[name="shape_type"]').forEach(radio => {
                 radio.addEventListener('change', function() {
@@ -2985,7 +3120,7 @@
                     updateShapeSettings();
                 });
             });
-            
+
             // Counter plate controls
             const hemiCounterBase = document.getElementById('hemi_counter_dot_base_diameter');
             const bowlCounterBase = document.getElementById('bowl_counter_dot_base_diameter');
@@ -3007,9 +3142,9 @@
                     const combinedVal = document.querySelector('input[name="combined_shape"]:checked')?.value || 'rounded';
                     const isRounded = combinedVal === 'rounded';
                     const isCone = combinedVal === 'cone';
-                    
+
                     console.log('Combined shape changed to:', combinedVal, 'isRounded:', isRounded, 'isCone:', isCone);
-                    
+
                     // Set emboss plate shape (dot_shape)
                     const dotShapeRadios = document.querySelectorAll('input[name="dot_shape"]');
                     dotShapeRadios.forEach(radio => {
@@ -3022,7 +3157,7 @@
                             console.log('Set dot_shape to cone');
                         }
                     });
-                    
+
                     // Set counter plate shape (recess_shape)
                     const recessShapeRadios = document.querySelectorAll('input[name="recess_shape"]');
                     recessShapeRadios.forEach(radio => {
@@ -3035,24 +3170,43 @@
                             console.log('Set recess_shape to 2 (cone)');
                         }
                     });
-                    
+
+                    // Sync emboss cone parameters to counter cone parameters when cone is selected
+                    if (isCone) {
+                        syncEmbossToCounterConeParams();
+                    }
+
                     // Update dimension groups visibility
                     const bowlGroup = document.getElementById('bowl_dimensions_group');
                     const coneGroup = document.getElementById('cone_dimensions_group');
                     if (bowlGroup) bowlGroup.style.display = '';
                     if (coneGroup) coneGroup.style.display = '';
-                    
+
                     // Debug: Log current values
                     const currentDotShape = document.querySelector('input[name="dot_shape"]:checked')?.value;
                     const currentRecessShape = document.querySelector('input[name="recess_shape"]:checked')?.value;
                     console.log('After sync - dot_shape:', currentDotShape, 'recess_shape:', currentRecessShape);
                 });
             });
-            
+
+            // Add listeners to sync emboss cone params to counter cone params when changed
+            ['emboss_dot_base_diameter', 'emboss_dot_height', 'emboss_dot_flat_hat'].forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.addEventListener('input', function() {
+                        // Only sync if cone shape is selected
+                        const isCone = document.querySelector('input[name="combined_shape"]:checked')?.value === 'cone';
+                        if (isCone) {
+                            syncEmbossToCounterConeParams();
+                        }
+                    });
+                }
+            });
+
             // Expert mode parametric dials
             const expertInputs = [
                 'emboss_dot_base_diameter',
-                'emboss_dot_height', 
+                'emboss_dot_height',
                 'emboss_dot_flat_hat',
                 'hemi_counter_dot_base_diameter',
                 'bowl_counter_dot_base_diameter',
@@ -3079,7 +3233,7 @@
                 // Custom: indicator shapes toggle changes available cells view
                 'indicator_shapes'
             ];
-            
+
             expertInputs.forEach(inputId => {
                 const input = document.getElementById(inputId);
                 if (input) {
@@ -3091,7 +3245,7 @@
                     });
                 }
             });
-            
+
             // Cylinder parameter inputs
             const cylinderInputs = [
                 'cylinder_diameter_mm',
@@ -3100,7 +3254,7 @@
                 'cylinder_polygonal_cutout_sides',
                 'seam_offset_deg'
             ];
-            
+
             cylinderInputs.forEach(inputId => {
                 const input = document.getElementById(inputId);
                 if (input) {
@@ -3111,7 +3265,7 @@
                 }
             });
         }
-        
+
         // Function to show/hide cylinder settings based on shape selection
         function updateShapeSettings() {
             const shapeTypeElement = document.querySelector('input[name="shape_type"]:checked');
@@ -3121,7 +3275,7 @@
             }
             const shapeType = shapeTypeElement.value;
             const cylinderSettings = document.querySelector('.grade-selection:has(#cylinder_diameter_mm)');
-            
+
             // Always show cylinder dimensions in expert mode
             if (cylinderSettings) {
                 cylinderSettings.style.display = 'block';
@@ -3138,7 +3292,7 @@
             if (bowlGroup) bowlGroup.style.display = '';
             if (hemiGroup) hemiGroup.style.display = 'none';
             if (coneGroup) coneGroup.style.display = '';
-            
+
             // Initialize cylinder height with current card height when cylinder is selected
             if (shapeType === 'cylinder') {
                 const cardHeight = document.getElementById('card_height').value;
@@ -3149,27 +3303,27 @@
                 checkCylinderOverflow();
             }
         }
-        
+
         // Function to check cylinder text overflow
         function checkCylinderOverflow() {
             const shapeTypeElement = document.querySelector('input[name="shape_type"]:checked');
             if (!shapeTypeElement || shapeTypeElement.value !== 'cylinder') return;
             const shapeType = shapeTypeElement.value;
-            
+
             const diameter = parseFloat(document.getElementById('cylinder_diameter_mm').value) || 30.75;
             const height = parseFloat(document.getElementById('cylinder_height_mm').value) || 52;
             const cellSpacing = parseFloat(document.getElementById('cell_spacing').value) || 6.5;
             const dotSpacing = parseFloat(document.getElementById('dot_spacing').value) || 2.5;
             const lineSpacing = parseFloat(document.getElementById('line_spacing').value) || 10;
-            
+
             // Calculate how many cells fit around circumference
             // cellSpacing is the center-to-center distance between cells
             const circumference = Math.PI * diameter;
             const cellsPerRow = Math.floor(circumference / cellSpacing);
-            
+
             // Calculate how many rows fit on cylinder
             const rowsOnCylinder = Math.floor(height / lineSpacing);
-            
+
             // Get total cells needed from text
             const lines = getDynamicLineValues();
             let totalCellsNeeded = 0;
@@ -3178,12 +3332,12 @@
                     totalCellsNeeded += line.trim().length;
                 }
             });
-            
+
             const totalCellsAvailable = cellsPerRow * rowsOnCylinder;
-            
+
             const warningDiv = document.getElementById('cylinder-overflow-warning');
             const warningMessage = document.getElementById('cylinder-overflow-message');
-            
+
             if (totalCellsNeeded > totalCellsAvailable) {
                 warningMessage.textContent = `Text requires ${totalCellsNeeded} cells but cylinder can fit ${totalCellsAvailable} cells. Some text may be cut off.`;
                 warningDiv.style.display = 'block';
@@ -3196,7 +3350,7 @@
         function createDynamicLineInputs(numLines) {
             const container = document.getElementById('dynamic-line-inputs');
             container.innerHTML = ''; // Clear existing inputs
-            
+
             for (let i = 1; i <= numLines; i++) {
                 const lineDiv = document.createElement('div');
                 lineDiv.className = 'line-input';
@@ -3208,16 +3362,16 @@
                     </div>
                     <div class="line-text-row">
                         <label for="line${i}" class="line-label">Line ${i}</label>
-                        <input type="text" id="line${i}" name="line${i}" placeholder="Enter English text here..." maxlength="50" aria-describedby="line${i}-help">
+                        <input type="text" id="line${i}" name="line${i}" placeholder="Enter English text here..." maxlength="50" aria-describedby="line${i}-help" autocomplete="off">
                         <span id="line${i}-help" class="sr-only">Maximum 50 characters for line ${i}</span>
                     </div>
                 `;
                 container.appendChild(lineDiv);
             }
-            
+
             // Populate per-line language selects with available options
             syncLineLanguageSelects();
-            
+
             // Re-add event listeners for the new inputs
             addInputChangeListeners();
         }
@@ -3305,7 +3459,7 @@
                 });
             }
         }
-        
+
         // Initialize dynamic line inputs and listeners (force default 4 on first load)
         const gridRowsEl = document.getElementById('grid_rows');
         if (gridRowsEl) gridRowsEl.value = '4';
@@ -3569,7 +3723,7 @@
 
         // Initialize placement UI
         updatePlacementUI();
-        
+
         // Persistence: save and restore user settings
         function persistValue(key, value) {
             try { localStorage.setItem(key, value); } catch (e) {}
@@ -3583,6 +3737,9 @@
                 'braille_prefs_plate_type',
                 'braille_prefs_shape_type',
                 'braille_prefs_dot_shape',
+                'braille_prefs_combined_shape',
+                'braille_prefs_placement_mode',
+                'braille_prefs_indicator_shapes',
                 'braille_prefs_expert_visible',
                 'braille_prefs_grid_columns',
                 'braille_prefs_grid_rows',
@@ -3617,12 +3774,24 @@
             ];
             keys.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
         }
-        
+
         function applyPersistedSettings() {
+            // Placement mode (auto/manual)
+            const savedPlacement = readPersisted('braille_prefs_placement_mode');
+            if (savedPlacement === 'auto' || savedPlacement === 'manual') {
+                const radio = document.querySelector(`input[name="placement_mode"][value="${savedPlacement}"]`);
+                if (radio) radio.checked = true;
+            }
             // Plate type
             const savedPlate = readPersisted('braille_prefs_plate_type');
             if (savedPlate === 'positive' || savedPlate === 'negative') {
                 const radio = document.querySelector(`input[name="plate_type"][value="${savedPlate}"]`);
+                if (radio) radio.checked = true;
+            }
+            // Indicator shapes (on/off)
+            const savedIndicator = readPersisted('braille_prefs_indicator_shapes');
+            if (savedIndicator === '1' || savedIndicator === '0') {
+                const radio = document.querySelector(`input[name="indicator_shapes"][value="${savedIndicator}"]`);
                 if (radio) radio.checked = true;
             }
             // Shape type
@@ -3642,13 +3811,13 @@
             if (savedCombined === 'cone' || savedCombined === 'rounded') {
                 const radio = document.querySelector(`input[name="combined_shape"][value="${savedCombined}"]`);
                 if (radio) radio.checked = true;
-                
+
                 console.log('Initializing combined shape to:', savedCombined);
-                
+
                 // Sync individual values for backend compatibility
                 const dotShapeRadios = document.querySelectorAll('input[name="dot_shape"]');
                 const recessShapeRadios = document.querySelectorAll('input[name="recess_shape"]');
-                
+
                 if (savedCombined === 'rounded') {
                     dotShapeRadios.forEach(r => { if (r.value === 'rounded') r.checked = true; });
                     recessShapeRadios.forEach(r => { if (r.value === '1') r.checked = true; }); // Bowl
@@ -3656,6 +3825,8 @@
                 } else if (savedCombined === 'cone') {
                     dotShapeRadios.forEach(r => { if (r.value === 'cone') r.checked = true; });
                     recessShapeRadios.forEach(r => { if (r.value === '2') r.checked = true; }); // Cone
+                    // Sync emboss cone params to counter cone params on initialization
+                    syncEmbossToCounterConeParams();
                     console.log('Initialized to cone - dot_shape: cone, recess_shape: 2');
                 }
             }
@@ -3670,6 +3841,7 @@
             }
             // Numeric/text inputs
             const map = [
+                ['grid_rows','braille_prefs_grid_rows'],
                 ['cell_spacing','braille_prefs_cell_spacing'],
                 ['line_spacing','braille_prefs_line_spacing'],
                 ['dot_spacing','braille_prefs_dot_spacing'],
@@ -3726,11 +3898,19 @@
             const numLines = parseInt(document.getElementById('grid_rows').value) || 4;
             createDynamicLineInputs(numLines);
         }
-        
+
         function wirePersistenceListeners() {
+            // Placement mode (auto/manual)
+            document.querySelectorAll('input[name="placement_mode"]').forEach(r => {
+                r.addEventListener('change', () => persistValue('braille_prefs_placement_mode', document.querySelector('input[name="placement_mode"]:checked').value));
+            });
             // Plate type
             document.querySelectorAll('input[name="plate_type"]').forEach(r => {
                 r.addEventListener('change', () => persistValue('braille_prefs_plate_type', document.querySelector('input[name="plate_type"]:checked').value));
+            });
+            // Indicator shapes (on/off)
+            document.querySelectorAll('input[name="indicator_shapes"]').forEach(r => {
+                r.addEventListener('change', () => persistValue('braille_prefs_indicator_shapes', document.querySelector('input[name="indicator_shapes"]:checked').value));
             });
             // Shape type
             document.querySelectorAll('input[name="shape_type"]').forEach(r => {
@@ -3760,6 +3940,7 @@
             // Numeric/text inputs
             const map = [
                 ['grid_columns','braille_prefs_grid_columns'],
+                ['grid_rows','braille_prefs_grid_rows'],
                 ['cell_spacing','braille_prefs_cell_spacing'],
                 ['line_spacing','braille_prefs_line_spacing'],
                 ['dot_spacing','braille_prefs_dot_spacing'],
@@ -3802,10 +3983,12 @@
                 });
             });
         }
-        
+
         // On load, restore persisted settings, then wire listeners
         try { applyPersistedSettings(); } catch (e) {}
         try { wirePersistenceListeners(); } catch (e) {}
+        // After restoring persisted settings, update placement UI to reflect restored mode
+        try { updatePlacementUI(); } catch (e) {}
 
         // Reset to defaults button
         const resetBtn = document.getElementById('reset-defaults-btn');
@@ -3822,6 +4005,12 @@
                         langSelect.value = 'en-ueb-g1.ctb';
                         try { localStorage.setItem('braille_prefs_language_table', 'en-ueb-g1.ctb'); } catch (e) {}
                     }
+                } catch (e) {}
+                // Reset thickness preset to default (0.4mm)
+                try {
+                    localStorage.setItem('braille_prefs_thickness_preset', '0.4');
+                    const thicknessRadio = document.querySelector('input[name="card_thickness_preset"][value="0.4"]');
+                    if (thicknessRadio) thicknessRadio.checked = true;
                 } catch (e) {}
                 // Reset radio groups to defaultChecked
                 const radioGroups = new Map();
@@ -3859,7 +4048,255 @@
                 } catch (e) { /* ignore */ }
             });
         }
-        
+
+        // ======================================================================
+        // Card Thickness Preset System
+        // ======================================================================
+        // Define presets for each thickness option (0.4mm and 0.3mm layer heights)
+        // These presets set all numeric inputs to optimized values for each thickness.
+        // Note: Text inputs (line1, line2, etc.) are NOT affected by presets.
+        const THICKNESS_PRESETS = {
+            '0.4': {
+                // Braille Spacing
+                grid_columns: 13,
+                grid_rows: 4,
+                cell_spacing: 6.5,
+                line_spacing: 10.0,
+                dot_spacing: 2.5,
+                braille_x_adjust: 0.0,
+                braille_y_adjust: 0.0,
+                // Emboss Dot (Rounded)
+                rounded_dot_base_diameter: 1.5,
+                rounded_dot_base_height: 0.5,
+                rounded_dot_dome_diameter: 1.0,
+                rounded_dot_dome_height: 0.5,
+                // Emboss Dot (Cone)
+                emboss_dot_base_diameter: 1.5,
+                emboss_dot_height: 0.8,
+                emboss_dot_flat_hat: 0.4,
+                // Counter Dot (Bowl/Rounded)
+                bowl_counter_dot_base_diameter: 1.8,
+                counter_dot_depth: 0.8,
+                // Counter Dot (Cone)
+                cone_counter_dot_base_diameter: 1.9,
+                cone_counter_dot_height: 0.7,
+                cone_counter_dot_flat_hat: 1.0,
+                // Cylinder Dimensions
+                cylinder_diameter_mm: 30.8,
+                cylinder_height_mm: 52,
+                cylinder_polygonal_cutout_radius_mm: 13,
+                cylinder_polygonal_cutout_sides: 12,
+                seam_offset_deg: 0,
+                // Card/Plate Dimensions
+                card_width: 90,
+                card_height: 52,
+                card_thickness: 2.0
+            },
+            '0.3': {
+                // Braille Spacing
+                grid_columns: 15,
+                grid_rows: 4,
+                cell_spacing: 6.5,
+                line_spacing: 10.0,
+                dot_spacing: 2.5,
+                braille_x_adjust: 0.0,
+                braille_y_adjust: 0.0,
+                // Emboss Dot (Rounded) - optimized for 0.3mm layer
+                rounded_dot_base_diameter: 1.2,
+                rounded_dot_base_height: 0.4,
+                rounded_dot_dome_diameter: 0.8,
+                rounded_dot_dome_height: 0.4,
+                // Emboss Dot (Cone) - optimized for 0.3mm layer
+                emboss_dot_base_diameter: 1.2,
+                emboss_dot_height: 0.6,
+                emboss_dot_flat_hat: 0.2,
+                // Counter Dot (Bowl/Rounded) - optimized for 0.3mm layer
+                bowl_counter_dot_base_diameter: 1.5,
+                counter_dot_depth: 0.5,
+                // Counter Dot (Cone) - optimized for 0.3mm layer
+                cone_counter_dot_base_diameter: 1.5,
+                cone_counter_dot_height: 0.5,
+                cone_counter_dot_flat_hat: 0.8,
+                // Cylinder Dimensions
+                cylinder_diameter_mm: 30.8,
+                cylinder_height_mm: 52,
+                cylinder_polygonal_cutout_radius_mm: 13,
+                cylinder_polygonal_cutout_sides: 12,
+                seam_offset_deg: 0,
+                // Card/Plate Dimensions
+                card_width: 90,
+                card_height: 52,
+                card_thickness: 2.0
+            }
+        };
+
+        /**
+         * Check if current input values match a specific preset.
+         * @param {string} presetKey - '0.4' or '0.3'
+         * @returns {boolean} - true if all values match the preset
+         */
+        function checkPresetMatch(presetKey) {
+            const preset = THICKNESS_PRESETS[presetKey];
+            if (!preset) return false;
+
+            for (const [inputId, expectedValue] of Object.entries(preset)) {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    // Compare as numbers to handle floating point formatting differences
+                    const currentValue = parseFloat(input.value);
+                    const presetValue = parseFloat(expectedValue);
+                    if (isNaN(currentValue) || Math.abs(currentValue - presetValue) > 0.0001) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        /**
+         * Determine which preset (if any) matches current values, or 'custom' if none match.
+         * @returns {string} - '0.4', '0.3', or 'custom'
+         */
+        function detectCurrentPreset() {
+            if (checkPresetMatch('0.4')) return '0.4';
+            if (checkPresetMatch('0.3')) return '0.3';
+            return 'custom';
+        }
+
+        /**
+         * Update the preset radio button selection based on current input values.
+         * Called when any preset-controlled input changes.
+         */
+        function updatePresetSelection() {
+            const detectedPreset = detectCurrentPreset();
+            const radio = document.querySelector(`input[name="card_thickness_preset"][value="${detectedPreset}"]`);
+            if (radio && !radio.checked) {
+                radio.checked = true;
+                // Persist the detected preset state
+                try { localStorage.setItem('braille_prefs_thickness_preset', detectedPreset); } catch (e) {}
+                log.debug('Preset auto-switched to:', detectedPreset);
+            }
+        }
+
+        /**
+         * Apply a thickness preset by setting all input values to the preset values.
+         * Does NOT affect text inputs (line1, line2, etc.)
+         * @param {string} presetKey - '0.4' or '0.3'
+         */
+        function applyThicknessPreset(presetKey) {
+            const preset = THICKNESS_PRESETS[presetKey];
+            if (!preset) {
+                log.debug('Unknown thickness preset:', presetKey);
+                return;
+            }
+
+            log.debug('Applying thickness preset:', presetKey);
+
+            // Apply each preset value to the corresponding input
+            Object.entries(preset).forEach(([inputId, value]) => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.value = value;
+                    log.debug(`Set ${inputId} = ${value}`);
+
+                    // Also persist the value to localStorage
+                    const persistKey = `braille_prefs_${inputId}`;
+                    try { localStorage.setItem(persistKey, value); } catch (e) {}
+                }
+            });
+
+            // Persist the selected preset
+            try { localStorage.setItem('braille_prefs_thickness_preset', presetKey); } catch (e) {}
+
+            // Update related UI elements
+            try { updateGridColumnsForPlateType(); } catch (e) {}
+            try { checkCylinderOverflow(); } catch (e) {}
+            try { resetToGenerateState(); } catch (e) {}
+
+            // Show confirmation message
+            try {
+                errorText.textContent = `Card Thickness preset "${presetKey}mm" applied. All parameters updated.`;
+                errorDiv.style.display = 'flex';
+                errorDiv.className = 'error-message info';
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                    errorDiv.className = 'error-message';
+                }, 3000);
+            } catch (e) { /* ignore */ }
+        }
+
+        // Wire up thickness preset radio buttons
+        // Use both 'change' and 'click' events to handle switching and re-applying
+        document.querySelectorAll('input[name="card_thickness_preset"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.checked && this.value !== 'custom') {
+                    // Only apply preset for 0.4 and 0.3, not for custom
+                    applyThicknessPreset(this.value);
+                }
+            });
+            // Add click listener to allow re-applying the currently selected preset
+            radio.addEventListener('click', function() {
+                if (this.checked && this.value !== 'custom') {
+                    // Only apply preset for 0.4 and 0.3, not for custom
+                    applyThicknessPreset(this.value);
+                }
+            });
+        });
+
+        // Wire up change detection on all preset-controlled inputs
+        // When any of these inputs change, check if we should switch to "Custom"
+        (function setupPresetChangeDetection() {
+            // Get all parameter IDs from both presets (they have the same keys)
+            const presetParamIds = Object.keys(THICKNESS_PRESETS['0.4']);
+
+            presetParamIds.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    // Listen for input events (real-time) and change events (on blur)
+                    input.addEventListener('input', updatePresetSelection);
+                    input.addEventListener('change', updatePresetSelection);
+                }
+            });
+
+            log.debug('Preset change detection set up for', presetParamIds.length, 'inputs');
+        })();
+
+        // Restore persisted thickness preset on load and apply it
+        (function restoreThicknessPreset() {
+            try {
+                const savedPreset = localStorage.getItem('braille_prefs_thickness_preset');
+
+                // If saved preset is 'custom', just set the radio and don't apply any preset values
+                if (savedPreset === 'custom') {
+                    const customRadio = document.querySelector('input[name="card_thickness_preset"][value="custom"]');
+                    if (customRadio) {
+                        customRadio.checked = true;
+                    }
+                    log.debug('Restored custom preset selection (no values applied)');
+                    return;
+                }
+
+                // For 0.4 or 0.3, apply the preset
+                const presetToApply = (savedPreset && THICKNESS_PRESETS[savedPreset]) ? savedPreset : '0.4';
+
+                // Set the radio button
+                const radio = document.querySelector(`input[name="card_thickness_preset"][value="${presetToApply}"]`);
+                if (radio) {
+                    radio.checked = true;
+                }
+
+                // Apply the preset to ensure all values are consistent
+                // This fixes the issue where HTML defaults don't match preset values
+                applyThicknessPreset(presetToApply);
+                log.debug('Applied thickness preset on load:', presetToApply);
+            } catch (e) {
+                log.debug('Error restoring thickness preset:', e);
+            }
+        })();
+        // ======================================================================
+        // End Card Thickness Preset System
+        // ======================================================================
+
         // Initialize shape settings to show/hide cylinder parameters correctly
         updateShapeSettings();
 
@@ -3893,12 +4330,22 @@
             const submenuToggles = Array.from(document.querySelectorAll('.expert-submenu-toggle'));
             submenuToggles.forEach(toggle => {
                 toggle.addEventListener('click', () => {
-                    const content = toggle.parentElement?.querySelector('.expert-submenu-content');
+                    const content = toggle.nextElementSibling;
                     if (!content) return;
-                    const isOpen = content.style.display !== 'none';
-                    content.style.display = isOpen ? 'none' : 'block';
-                    toggle.classList.toggle('active', !isOpen);
+                    const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+
+                    if (isOpen) {
+                        content.style.display = 'none';
+                    } else {
+                        content.style.display = 'block';
+                        // Move focus to first input when opening
+                        const firstFocusable = content.querySelector('input, select, button, textarea, [tabindex]:not([tabindex="-1"])');
+                        if (firstFocusable) {
+                            setTimeout(() => firstFocusable.focus(), 100);
+                        }
+                    }
                     toggle.setAttribute('aria-expanded', String(!isOpen));
+                    toggle.classList.toggle('active', !isOpen);
                     const icon = toggle.querySelector('.expert-submenu-icon');
                     if (icon) icon.textContent = isOpen ? '▼' : '▲';
                 });
@@ -3908,7 +4355,7 @@
         // Add real-time debugging for Expert Mode parametric dials
         const expertInputs = [
             'emboss_dot_base_diameter',
-            'emboss_dot_height', 
+            'emboss_dot_height',
             'emboss_dot_flat_hat',
             'hemi_counter_dot_base_diameter',
             'bowl_counter_dot_base_diameter',
@@ -3929,19 +4376,19 @@
             'cylinder_polygonal_cutout_sides',
             'seam_offset_deg'
         ];
-        
+
         expertInputs.forEach(inputId => {
             const input = document.getElementById(inputId);
             if (input) {
                 input.addEventListener('input', (e) => {
                     log.debug(`Expert Mode Input Changed: ${inputId} = ${e.target.value}`);
-                    
+
                     // If grid_columns changed, update the label/note but preserve the value
                     if (inputId === 'grid_columns') {
                         updateGridColumnsForPlateType(true);
                     }
                 });
-                
+
                 // Also log the initial values
                 log.debug(`Initial value for ${inputId}: ${input.value}`);
             }
@@ -3953,7 +4400,7 @@
                 log.debug('Initial value for use_bowl_recess:', v);
             }
         })();
-        
+
         // Function to get current Expert Mode values
         window.getCurrentExpertModeValues = function() {
             const values = {};
@@ -4178,7 +4625,7 @@
         function init3D() {
             // Mobile-optimized renderer settings
             const isMobile = window.innerWidth <= 768;
-            renderer = new THREE.WebGLRenderer({ 
+            renderer = new THREE.WebGLRenderer({
                 antialias: !isMobile, // Disable antialiasing on mobile for performance
                 powerPreference: isMobile ? "low-power" : "high-performance"
             });
@@ -4190,7 +4637,7 @@
             const existingCanvas = viewer.querySelector('canvas');
             if (existingCanvas) viewer.removeChild(existingCanvas);
             viewer.appendChild(renderer.domElement);
-            
+
             // Get theme-appropriate colors with proper fallbacks
             const styles = getComputedStyle(document.documentElement);
             const stlBackground = styles.getPropertyValue('--stl-background').trim() || '#f1f5f9';
@@ -4198,38 +4645,40 @@
             const stlDirectionalLight = styles.getPropertyValue('--stl-directional-light').trim() || '#ffffff';
             const stlAmbientIntensity = parseFloat(styles.getPropertyValue('--stl-ambient-intensity').trim()) || 0.5;
             const stlDirectionalIntensity = parseFloat(styles.getPropertyValue('--stl-directional-intensity').trim()) || 1.0;
-            
+
             scene = new THREE.Scene();
             scene.background = new THREE.Color(stlBackground);
-            
-            camera = new THREE.PerspectiveCamera(45, initW / initH, 0.1, 1000);
-            camera.position.set(0, 0, 120);
-            camera.up.set(0, 1, 0); // Default Y-up
-            camera.lookAt(0, 0, 0);
-            
+
+            // Initialize camera using CAMERA_SETTINGS.CARD as default (cards are default shape)
+            const defaultCam = CAMERA_SETTINGS.CARD;
+            camera = new THREE.PerspectiveCamera(defaultCam.fov, initW / initH, defaultCam.near, defaultCam.far);
+            camera.position.set(defaultCam.position.x, defaultCam.position.y, defaultCam.position.z);
+            camera.up.set(defaultCam.up.x, defaultCam.up.y, defaultCam.up.z);
+            camera.lookAt(defaultCam.target.x, defaultCam.target.y, defaultCam.target.z);
+
             // Add camera to scene so attached lights will work
             scene.add(camera);
             controls = new OrbitControls(camera, renderer.domElement);
-            controls.target.set(0, 0, 0);
-            
+            controls.target.set(defaultCam.target.x, defaultCam.target.y, defaultCam.target.z);
+
             // Mobile-optimized controls
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
             controls.rotateSpeed = isMobile ? 0.5 : 1.0;
             controls.zoomSpeed = isMobile ? 0.8 : 1.2;
             controls.panSpeed = isMobile ? 0.5 : 0.8;
-            
+
             // Touch-specific settings
             controls.touches = {
                 ONE: THREE.TOUCH.ROTATE,
                 TWO: THREE.TOUCH.DOLLY_PAN
             };
-            
+
             controls.update();
-            
+
             // Theme-appropriate lighting with intensity control
             const directionalLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity);
-            
+
             // Position the directional light for optimal detail visibility
             // Use conventional 3D modeling lighting angles
             const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -4238,12 +4687,12 @@
                 // Key light: 45° horizontal, 30° vertical (right side) - camera-relative
                 directionalLight.position.set(0.707, 0.5, 0.612).normalize();
                 camera.add(directionalLight);
-                
+
                 // Fill light: 45° horizontal, 15° vertical (left side) for shadow softening - camera-relative
                 const fillLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity * 0.4);
                 fillLight.position.set(-0.707, 0.259, 0.659).normalize();
                 camera.add(fillLight);
-                
+
                 // Subtle back light for edge definition - camera-relative
                 const backLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity * 0.2);
                 backLight.position.set(0, 0.5, -0.866).normalize();
@@ -4253,19 +4702,19 @@
                 // Key light: 45° horizontal, 30° vertical - camera-relative
                 directionalLight.position.set(0.707, 0.5, 0.612).normalize();
                 camera.add(directionalLight);
-                
+
                 // Add subtle fill light for standard modes too - camera-relative
                 const fillLight = new THREE.DirectionalLight(new THREE.Color(stlDirectionalLight), stlDirectionalIntensity * 0.3);
                 fillLight.position.set(-0.5, 0.259, 0.659).normalize();
                 camera.add(fillLight);
             }
-            
+
             scene.add(new THREE.AmbientLight(new THREE.Color(stlAmbientLight), stlAmbientIntensity));
-            
+
             // Handle window resize for mobile orientation changes
             window.addEventListener('resize', onWindowResize, false);
         }
-        
+
         function onWindowResize() {
             const targetW = viewer.clientWidth;
             const targetH = viewer.clientHeight || 420;
@@ -4283,7 +4732,12 @@
             e.preventDefault();
             errorDiv.style.display = 'none';
             errorText.textContent = '';
-            
+            const errorSubtext = document.getElementById('error-subtext');
+            if (errorSubtext) {
+                errorSubtext.textContent = '';
+                errorSubtext.style.display = 'none';
+            }
+
             // Collect input depending on placement mode
             const placementMode = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
             let lines = [];
@@ -4296,12 +4750,12 @@
                 originalLines = [src];
                 // We'll translate the whole text, then wrap to rows based on available cells
             }
-            
+
             const plateTypeEl = document.querySelector('input[name="plate_type"]:checked');
             const plateType = plateTypeEl ? plateTypeEl.value : 'positive';
             const languageSelect = document.getElementById('language-table');
             const tableName = languageSelect?.value || 'en-ueb-g1.ctb';
-            
+
             // Translate text to braille only for positive plates
             let translatedLines = [];
             let perLineLanguageTables = [];
@@ -4369,7 +4823,7 @@
                 }
                 log.debug('Original lines:', lines);
                 log.debug('Translated lines:', translatedLines);
-                
+
                 // Check if any translation errors occurred
                 if (translationErrors.length > 0) {
                     let errorMessage = '<strong>Translation failed for the following lines:</strong><br><br>';
@@ -4382,11 +4836,11 @@
                     errorMessage += '• Text that is incompatible with the selected braille table<br>';
                     errorMessage += '• System errors during translation<br><br>';
                     errorMessage += '<em>The STL file was not generated to prevent producing incorrect braille.</em>';
-                    
+
                     errorText.innerHTML = errorMessage;  // Use innerHTML for HTML formatting
                     errorDiv.style.display = 'flex';
                     errorDiv.className = 'error-message';
-                    
+
                     // Re-enable button and reset to generate state
                     resetToGenerateState();
                     return;
@@ -4447,19 +4901,19 @@
                 // New: indicator shapes toggle
                 indicator_shapes: (document.querySelector('input[name="indicator_shapes"]:checked')?.value === '1') ? 1 : 0
             };
-            
+
             // Debug: Log the settings being sent
             log.debug('Expert Mode Settings:', settings);
             log.debug('Settings object keys:', Object.keys(settings));
             log.debug('Settings object values:', Object.values(settings));
-            
+
             // Debug shape values specifically
             const currentDotShape = document.querySelector('input[name="dot_shape"]:checked')?.value;
             const currentRecessShape = document.querySelector('input[name="recess_shape"]:checked')?.value;
             const currentCombinedShape = document.querySelector('input[name="combined_shape"]:checked')?.value;
             log.debug('Shape values - combined:', currentCombinedShape, 'dot_shape:', currentDotShape, 'recess_shape:', currentRecessShape, 'use_rounded_dots:', settings.use_rounded_dots);
             // Rounded-dome inputs are always visible for embossing plate; no dynamic toggle
-            
+
             // Check if at least one line has content (only for positive plates)
             const hasContent = placementMode === 'manual' ? lines.some(l => l && l.trim()) : ((originalLines[0] || '').trim().length > 0);
             if (plateType === 'positive' && !hasContent) {
@@ -4467,7 +4921,7 @@
                 errorDiv.style.display = 'flex';
                 return;
             }
-            
+
             // Validate braille character limits AFTER translation
             const gridColumnsValue = parseInt(document.getElementById('grid_columns').value);
             const indicatorsOn = document.querySelector('input[name="indicator_shapes"]:checked')?.value === '1';
@@ -4499,22 +4953,34 @@
                     }
                 }
             }
-            
+
             // Show loading message
             errorText.textContent = plateType === 'positive' ? 'Translating text to braille...' : 'Generating counter plate...';
             errorDiv.style.display = 'flex';
             errorDiv.className = 'error-message info';
-            
+
+            // Get shape type and recess shape to determine if we need the long-wait warning
+            const shapeTypeElGen = document.querySelector('input[name="shape_type"]:checked');
+            const shapeType = shapeTypeElGen ? shapeTypeElGen.value : 'card';
+            const recessShapeEl = document.querySelector('input[name="recess_shape"]:checked');
+            const recessShape = recessShapeEl ? recessShapeEl.value : '1';
+            const isConeRecess = recessShape === '2';
+
+            // Show special warning for counter plate + cone recess (takes 1-2 minutes)
+            if (plateType === 'negative' && isConeRecess) {
+                errorSubtext.textContent = 'This may take 1–2 minutes. Leaving or refreshing this page will cancel the process.';
+                errorSubtext.style.display = 'block';
+            } else {
+                errorSubtext.textContent = '';
+                errorSubtext.style.display = 'none';
+            }
+
             // Update button to show loading state
             actionBtn.disabled = true;
             actionBtn.textContent = 'Generating...';
             actionBtn.style.opacity = '0.7';
-            
-            // Get shape type and cylinder params
-            const shapeTypeElGen = document.querySelector('input[name="shape_type"]:checked');
-            const shapeType = shapeTypeElGen ? shapeTypeElGen.value : 'card';
             let cylinderParams = {};
-            
+
             if (shapeType === 'cylinder') {
                 cylinderParams = {
                     diameter_mm: document.getElementById('cylinder_diameter_mm')?.value || '30.75',
@@ -4524,12 +4990,12 @@
                     seam_offset_deg: document.getElementById('seam_offset_deg')?.value || '355'
                 };
             }
-            
+
             // Debug: Log the settings being sent
             log.debug('Expert Mode Settings:', settings);
             log.debug('Shape Type:', shapeType);
             log.debug('Cylinder Params:', cylinderParams);
-            
+
             // Build original_lines for indicators
             let originalForIndicators = null;
             if (placementMode === 'manual') {
@@ -4569,21 +5035,9 @@
                             // Directly proceed to preview/download using the blob URL
                             if (lastSTLUrl) URL.revokeObjectURL(lastSTLUrl);
                             lastSTLUrl = blobUrl; // external URL; no need to createObjectURL
-                            // Update filename consistent with backend (counter plate)
-                            const isBowlSel = document.querySelector('input[name="use_bowl_recess"]:checked')?.value === '1';
-                            let baseStr = '0';
-                            if (isBowlSel) {
-                                baseStr = document.getElementById('bowl_counter_dot_base_diameter')?.value
-                                    || document.getElementById('counter_dot_base_diameter')?.value
-                                    || '0';
-                            } else {
-                                baseStr = document.getElementById('hemi_counter_dot_base_diameter')?.value
-                                    || document.getElementById('counter_dot_base_diameter')?.value
-                                    || '0';
-                            }
-                            const totalDiameter = parseFloat(baseStr) || 0;
+                            // Update filename with sequential counter (counter plate)
                             lastGeneratedSTLUrl = lastSTLUrl;
-                            lastGeneratedFilename = `braille_counter_plate_${totalDiameter}mm-${shapeType}.stl`;
+                            lastGeneratedFilename = `Universal_Counter_Plate_${getNextCounterPlateNumber()}.stl`;
                             loadSTL(lastSTLUrl);
                             actionBtn.disabled = false;
                             setToDownloadState();
@@ -4598,22 +5052,26 @@
             const res = await fetch('/generate_braille_stl', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     lines: translatedLines,
                     original_lines: originalForIndicators,
                     placement_mode: placementMode,
-                    grade: 'g2', 
-                    plate_type: plateType, 
+                    grade: 'g2',
+                    plate_type: plateType,
                     shape_type: shapeType,
                     cylinder_params: cylinderParams,
                     per_line_language_tables: perLineLanguageTables,
-                    settings: settings 
+                    settings: settings
                 })
             });
-            
+
             // Hide loading message
             errorDiv.style.display = 'none';
-            
+            if (errorSubtext) {
+                errorSubtext.textContent = '';
+                errorSubtext.style.display = 'none';
+            }
+
             if (!res.ok) {
                 let msg = 'Error generating STL';
                 try {
@@ -4629,19 +5087,19 @@
                 resetToGenerateState();
                 return;
             }
-            
-            
+
+
             try {
                 // Create blob and URL for 3D preview
                 const blob = await res.blob();
                 if (lastSTLUrl) URL.revokeObjectURL(lastSTLUrl);
                 lastSTLUrl = URL.createObjectURL(blob);
-                
+
                 // Generate filename on frontend to match backend logic
                 const plateType = document.querySelector('input[name="plate_type"]:checked').value;
                 const shapeType = document.querySelector('input[name="shape_type"]:checked').value;
-                let filename = plateType === 'positive' ? 'braille_embossing_plate' : 'braille_counter_plate';
-                
+                let filename = 'Embossing_Plate_untitled'; // Default, will be updated below
+
                 if (plateType === 'positive') {
                     // Get the current lines from the form
                     const placementModeNow = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
@@ -4655,47 +5113,33 @@
                     } else {
                         lines = [document.getElementById('auto-text')?.value || ''];
                     }
-                    
-                    // Find first non-empty line (prioritizing Line 1)
+
+                    // Find first non-empty line and extract the first word
                     for (let i = 0; i < lines.length; i++) {
                         if (lines[i].trim()) {
-                            // Sanitize filename: remove special characters and limit length
-                            let sanitized = lines[i].trim().substring(0, 30);
+                            // Extract the first word
+                            const firstWord = lines[i].trim().split(/\s+/)[0];
+                            // Sanitize: remove special characters and limit length
+                            let sanitized = firstWord.substring(0, 30);
                             sanitized = sanitized.replace(/[^\w\s-]/g, '');
                             sanitized = sanitized.replace(/[-\s]+/g, '_').replace(/^_+|_+$/g, '');
-                            
+
                             if (sanitized) {
-                                filename = `braille_embossing_plate_${sanitized}-${shapeType}`;
+                                filename = `Embossing_Plate_${sanitized}`;
                                 break;
                             }
                         }
                     }
-                    // If no text was found, still append shape type
-                    if (!filename.includes(shapeType)) {
-                        filename = `braille_embossing_plate-${shapeType}`;
-                    }
                 } else {
-                    // For counter plates, include actual counter base diameter in filename
-                    const isBowlSel = document.querySelector('input[name="use_bowl_recess"]:checked')?.value === '1';
-                    let baseStr = '0';
-                    if (isBowlSel) {
-                        baseStr = document.getElementById('bowl_counter_dot_base_diameter')?.value
-                            || document.getElementById('counter_dot_base_diameter')?.value
-                            || '0';
-                    } else {
-                        baseStr = document.getElementById('hemi_counter_dot_base_diameter')?.value
-                            || document.getElementById('counter_dot_base_diameter')?.value
-                            || '0';
-                    }
-                    const totalDiameter = parseFloat(baseStr) || 0;
-                    filename = `braille_counter_plate_${totalDiameter}mm-${shapeType}`;
+                    // For counter plates, use sequential counter
+                    filename = `Universal_Counter_Plate_${getNextCounterPlateNumber()}`;
                 }
-                
+
                 // Store the generated STL URL and filename for download
                 lastGeneratedSTLUrl = lastSTLUrl;
                 lastGeneratedFilename = `${filename}.stl`;
                 loadSTL(lastSTLUrl);
-                
+
                 // Change button to download state after successful generation
                 actionBtn.disabled = false;
                 setToDownloadState();
@@ -4715,21 +5159,21 @@
             const loader = new STLLoader();
             loader.load(url, function (geometry) {
                 if (mesh) scene.remove(mesh);
-                
+
                 // Center the geometry first
                 geometry.center();
-                
+
                 // Compute bounding box after centering to detect object type
                 geometry.computeBoundingBox();
                 const bbox = geometry.boundingBox;
                 const width = bbox.max.x - bbox.min.x;
-                const height = bbox.max.y - bbox.min.y; 
+                const height = bbox.max.y - bbox.min.y;
                 const depth = bbox.max.z - bbox.min.z;
-                
+
                 // Check if this is a cylinder
                 const shapeType = document.querySelector('input[name="shape_type"]:checked')?.value;
                 const isCylinder = shapeType === 'cylinder' || height > Math.max(width, depth) * 1.5;
-                
+
                 // Get theme-appropriate mesh color with proper fallback
                 const styles = getComputedStyle(document.documentElement);
                 const meshColorVar = styles.getPropertyValue('--stl-mesh-color').trim();
@@ -4737,11 +5181,11 @@
                 // Enhanced material for high contrast mode
                 const currentTheme = document.documentElement.getAttribute('data-theme');
                 let material;
-                
+
                 if (currentTheme === 'high-contrast') {
                     // High contrast material with enhanced specular highlights
-                    material = new THREE.MeshPhongMaterial({ 
-                        color: new THREE.Color(meshColor), 
+                    material = new THREE.MeshPhongMaterial({
+                        color: new THREE.Color(meshColor),
                         specular: 0xffffff, // White specular highlights for maximum contrast
                         shininess: 300, // Higher shininess for sharper highlights
                         flatShading: true,
@@ -4749,9 +5193,9 @@
                     });
                 } else {
                     // Standard material for other themes
-                    material = new THREE.MeshPhongMaterial({ 
-                        color: new THREE.Color(meshColor), 
-                        specular: 0x111111, 
+                    material = new THREE.MeshPhongMaterial({
+                        color: new THREE.Color(meshColor),
+                        specular: 0x111111,
                         shininess: 200,
                         flatShading: true,
                         side: THREE.DoubleSide
@@ -4760,26 +5204,25 @@
                 mesh = new THREE.Mesh(geometry, material);
                 mesh.rotation.x = 0;
                 scene.add(mesh);
-                
-                // Adjust camera position based on object type
+
+                // Adjust camera position based on object type using CAMERA_SETTINGS
                 if (isCylinder) {
-                    // For cylinders: view from the side
-                    // After centering, the cylinder is at origin (0,0,0)
-                    // The cylinder's axis is along the Z-direction
+                    // For cylinders: use CAMERA_SETTINGS.CYLINDER configuration
+                    // The cylinder's axis is along the Z-direction, centered at origin
+                    const cylCam = CAMERA_SETTINGS.CYLINDER;
 
                     // Ensure camera up vector is correct for upright viewing BEFORE lookAt
-                    camera.up.set(0, 0, 1); // Z-axis is up for the cylinder
+                    camera.up.set(cylCam.up.x, cylCam.up.y, cylCam.up.z);
 
-                    // Position camera to view cylinder upright from the side
-                    // Set camera on the +X axis looking toward origin
-                    camera.position.set(120, 0, 0);
-                    controls.target.set(0, 0, 0);
-                    camera.lookAt(0, 0, 0);
+                    // Position camera using CAMERA_SETTINGS (views indicator shapes side)
+                    camera.position.set(cylCam.position.x, cylCam.position.y, cylCam.position.z);
+                    controls.target.set(cylCam.target.x, cylCam.target.y, cylCam.target.z);
+                    camera.lookAt(cylCam.target.x, cylCam.target.y, cylCam.target.z);
 
                     // Recreate controls so internal up-vector transform matches camera.up
                     if (controls) controls.dispose();
                     controls = new OrbitControls(camera, renderer.domElement);
-                    controls.target.set(0, 0, 0);
+                    controls.target.set(cylCam.target.x, cylCam.target.y, cylCam.target.z);
                     // Reapply standard control settings
                     {   const isMobile = window.innerWidth <= 768;
                         controls.enableDamping = true;
@@ -4794,14 +5237,16 @@
 
                     camera.updateProjectionMatrix();
                 } else {
-                    // For cards: keep default front view with Y-up
-                    camera.position.set(0, 0, 120);
-                    camera.up.set(0, 1, 0); // Y-axis is up for cards (default)
-                    camera.lookAt(0, 0, 0);
+                    // For cards: use CAMERA_SETTINGS.CARD configuration
+                    const cardCam = CAMERA_SETTINGS.CARD;
+
+                    camera.position.set(cardCam.position.x, cardCam.position.y, cardCam.position.z);
+                    camera.up.set(cardCam.up.x, cardCam.up.y, cardCam.up.z);
+                    camera.lookAt(cardCam.target.x, cardCam.target.y, cardCam.target.z);
                     // Recreate controls to ensure correct up-vector mapping when switching back to Y-up
                     if (controls) controls.dispose();
                     controls = new OrbitControls(camera, renderer.domElement);
-                    controls.target.set(0, 0, 0);
+                    controls.target.set(cardCam.target.x, cardCam.target.y, cardCam.target.z);
                     {   const isMobile = window.innerWidth <= 768;
                         controls.enableDamping = true;
                         controls.dampingFactor = 0.05;
@@ -4813,11 +5258,11 @@
                     controls.screenSpacePanning = true;
                     camera.updateProjectionMatrix();
                 }
-                
+
                 // Force controls to update with new camera settings
                 controls.update();
                 controls.saveState(); // Save the new camera state as default
-                
+
                 animate();
             }, undefined, function (error) {
                 errorText.textContent = 'Failed to load STL: ' + error;
@@ -4831,13 +5276,13 @@
             controls && controls.update();
             render();
         }
-        
+
         // Initialize liblouis web worker and 3D viewer on page load
         let liblouisWorker = null;
         let liblouisReady = false;
         let workerMessageId = 0;
         let pendingWorkerMessages = new Map();
-        
+
         // Function to send message to worker and get response
         function sendWorkerMessage(type, data = {}) {
             return new Promise((resolve, reject) => {
@@ -4845,12 +5290,12 @@
                     reject(new Error('Worker not initialized'));
                     return;
                 }
-                
+
                 const id = ++workerMessageId;
                 pendingWorkerMessages.set(id, { resolve, reject });
-                
+
                 liblouisWorker.postMessage({ id, type, data });
-                
+
                 // Timeout after 10 seconds
                 setTimeout(() => {
                     if (pendingWorkerMessages.has(id)) {
@@ -4860,12 +5305,12 @@
                 }, 10000);
             });
         }
-        
+
         // Mobile-specific utilities
         function isMobileDevice() {
             return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         }
-        
+
         // Prevent double-tap zoom on mobile
         let lastTouchEnd = 0;
         document.addEventListener('touchend', (event) => {
@@ -4875,7 +5320,7 @@
             }
             lastTouchEnd = now;
         }, { passive: false });
-        
+
         // Handle mobile keyboard visibility and orientation changes
         if (isMobileDevice()) {
             const inputs = document.querySelectorAll('input[type="text"], input[type="number"], select');
@@ -4895,7 +5340,7 @@
                     }, 300);
                 });
             });
-            
+
             // Handle orientation changes to maintain 200% zoom
             window.addEventListener('orientationchange', () => {
                 setTimeout(() => {
@@ -4905,12 +5350,12 @@
                 }, 100);
             });
         }
-        
+
         window.addEventListener('load', async () => {
             try {
                 // Initialize liblouis web worker
                 log.debug('Initializing liblouis web worker...');
-                
+
                 // Test if worker file is accessible first
                 try {
                     const workerResponse = await fetch('/static/liblouis-worker.js');
@@ -4922,17 +5367,17 @@
                     log.error('Worker file test failed:', fetchError);
                     throw new Error('Cannot access worker file: ' + fetchError.message);
                 }
-                
+
                 liblouisWorker = new Worker('/static/liblouis-worker.js');
-                
+
                 // Handle worker messages
                 liblouisWorker.onmessage = function(e) {
                     const { id, type, result } = e.data;
-                    
+
                     if (pendingWorkerMessages.has(id)) {
                         const { resolve, reject } = pendingWorkerMessages.get(id);
                         pendingWorkerMessages.delete(id);
-                        
+
                         if (result.success) {
                             resolve(result);
                         } else {
@@ -4940,11 +5385,11 @@
                         }
                     }
                 };
-                
+
                 liblouisWorker.onerror = function(error) {
                     log.error('Worker error:', error);
                 };
-                
+
                 // Initialize liblouis in the worker
                 const initResult = await sendWorkerMessage('init');
                 if (initResult.success) {
@@ -4953,15 +5398,15 @@
                 } else {
                     throw new Error('Failed to initialize liblouis worker: ' + initResult.error);
                 }
-                
+
             } catch (error) {
                 log.error('Failed to initialize liblouis worker:', error);
-                
+
                 // Fallback: disable liblouis and show error message
                 log.debug('Web worker failed - disabling liblouis translation');
                 liblouisReady = false;
                 liblouisWorker = null;
-                
+
                 // Show user that translation is disabled
                 const errorDiv = document.getElementById('error-message');
                 const errorText = document.getElementById('error-text');
@@ -4970,11 +5415,11 @@
                     errorDiv.style.display = 'flex';
                 }
             }
-            
-            // Always default to cylinder on load; do not restore from storage
-            const cyl = document.querySelector('input[name="shape_type"][value="cylinder"]');
-            if (cyl) cyl.checked = true;
-            
+
+            // Always default to card on load; do not restore from storage
+            const card = document.querySelector('input[name="shape_type"][value="card"]');
+            if (card) card.checked = true;
+
             init3D();
             animate();
         });
@@ -4984,11 +5429,11 @@
             if (!liblouisReady || !liblouisWorker) {
                 throw new Error('Liblouis worker not initialized - translation preview unavailable on this deployment');
             }
-            
+
             try {
                 log.debug('Sending translation request to worker:', text, 'grade:', grade, 'table:', tableName);
                 const result = await sendWorkerMessage('translate', { text, grade, tableName });
-                
+
                 if (result.success && result.translation) {
                     log.debug('Translation successful:', result.translation);
                     return result.translation;
@@ -5006,5 +5451,4 @@
 
     </script>
 </body>
-</html> 
-</html> 
+</html>

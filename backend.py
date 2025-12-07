@@ -15,7 +15,7 @@ from shapely.ops import unary_union
 from werkzeug.exceptions import HTTPException
 
 from app.geometry.booleans import mesh_difference, mesh_union
-from geometry_spec import extract_card_geometry_spec, extract_cylinder_geometry_spec
+from app.geometry_spec import extract_card_geometry_spec, extract_cylinder_geometry_spec
 
 try:
     import requests  # Optional, used for Vercel Blob REST API

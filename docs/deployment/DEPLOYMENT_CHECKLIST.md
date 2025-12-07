@@ -89,7 +89,7 @@ Review and update Content Security Policy in `backend.py` if needed:
 
 #### Functionality Tests:
 - [ ] Generate embossing plate STL
-- [ ] Generate counter plate STL  
+- [ ] Generate counter plate STL
 - [ ] Test with various languages
 - [ ] Verify braille translation works
 - [ ] Test expert mode parameters

@@ -16,8 +16,8 @@
 | 6 | layout_cylindrical_cells | ~76 | `app/geometry/cylinder.py` | ✅ 00fc8a6 |
 | 7 | create_braille_dot | ~72 | `app/geometry/dot_shapes.py` | ✅ 0511e23 |
 
-**Total Lines Migrated:** ~770 lines (17.3%)  
-**backend.py:** 4455 → ~3685 lines  
+**Total Lines Migrated:** ~770 lines (17.3%)
+**backend.py:** 4455 → ~3685 lines
 **All 13 tests passing** ✓ after every batch
 
 ---
@@ -28,7 +28,7 @@
 - 12 functions for blob storage, Redis caching, key generation
 - 200+ lines of production-ready cache infrastructure
 
-### `app/models.py` ✅ COMPLETE  
+### `app/models.py` ✅ COMPLETE
 - CardSettings class with full validation
 - Enums for future use (ShapeType, PlateType, etc.)
 - 318+ lines
@@ -112,7 +112,7 @@
 
 ✅ **Core Infrastructure Migrated:**
 - Caching system complete
-- Settings/models complete  
+- Settings/models complete
 - Key utilities complete
 - Cylinder basics started
 - Dot building started
@@ -165,4 +165,3 @@ Migrate all cylinder geometry functions together (~800 lines) as one batch:
 5. You can test the application thoroughly at this checkpoint
 
 **What would you like to do?**
-

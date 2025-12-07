@@ -8,7 +8,7 @@
 
 ### Utility Routes
 3. `/lookup_stl` (GET) - Cache lookup (~70 lines)
-4. `/liblouis/tables` (GET) - Table listing (~170 lines)  
+4. `/liblouis/tables` (GET) - Table listing (~170 lines)
 5. `/health` (GET) - Health check (~4 lines)
 6. `/` (GET) - Index page (~9 lines)
 
@@ -45,4 +45,3 @@ Current state:
 - Could be moved to `app/exporters.py`
 
 Let's focus on this instead!
-

@@ -46,7 +46,7 @@ This web application generates STL files for 3D-printable braille embossing and 
 6. **Download** and 3D print your files
 7. **Test** with actual card stock and adjust if needed
 
-> **⚡ Client-Side Generation**: STL files are now generated in your browser using advanced CSG algorithms. This means no timeout limits, faster iteration, and works perfectly on Vercel's free tier. See [CLIENT_SIDE_CSG_DOCUMENTATION.md](CLIENT_SIDE_CSG_DOCUMENTATION.md) for details.
+> **⚡ Client-Side Generation**: STL files are now generated in your browser using advanced CSG algorithms. This means no timeout limits, faster iteration, and works perfectly on Vercel's free tier. See [CLIENT_SIDE_CSG_DOCUMENTATION.md](docs/development/CLIENT_SIDE_CSG_DOCUMENTATION.md) for details.
 
 ### For Business Cards:
 - Print both emboss and counter plates
@@ -243,8 +243,8 @@ let useClientSideCSG = true; // Set to false to force server-side
 
 ### Documentation
 
-- **Full Architecture**: [CLIENT_SIDE_CSG_DOCUMENTATION.md](CLIENT_SIDE_CSG_DOCUMENTATION.md)
-- **Testing Guide**: [CLIENT_SIDE_CSG_TEST_PLAN.md](CLIENT_SIDE_CSG_TEST_PLAN.md)
+- **Full Architecture**: [CLIENT_SIDE_CSG_DOCUMENTATION.md](docs/development/CLIENT_SIDE_CSG_DOCUMENTATION.md)
+- **Testing Guide**: [CLIENT_SIDE_CSG_TEST_PLAN.md](docs/development/CLIENT_SIDE_CSG_TEST_PLAN.md)
 - **Optional Enhancement**: Client-side manifold3d (WASM) for maximum robustness
 
 ---

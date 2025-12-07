@@ -5,14 +5,14 @@ Move functions from `backend.py` into modular structure while maintaining all fu
 
 ## Progress Summary
 
-**Original backend.py:** 4455 lines  
-**Current backend.py:** 3849 lines  
+**Original backend.py:** 4455 lines
+**Current backend.py:** 3849 lines
 **Lines migrated:** 606 lines (13.6%)
 
 ## Completed Batches
 
 ### ✅ Batch 1: Cache Functions (12 functions, ~200 lines)
-**Target:** `app/cache.py`  
+**Target:** `app/cache.py`
 **Functions moved:**
 - `_get_redis_client()`
 - `_blob_url_cache_get()`, `_blob_url_cache_set()`
@@ -23,21 +23,21 @@ Move functions from `backend.py` into modular structure while maintaining all fu
 **Status:** ✅ Committed & Tested
 
 ### ✅ Batch 2: CardSettings Class (~318 lines)
-**Target:** `app/models.py`  
+**Target:** `app/models.py`
 **Functions moved:**
 - `CardSettings` class with `__init__()` and `_validate_margins()` methods
 
 **Status:** ✅ Committed & Tested
 
 ### ✅ Batch 3: Braille Utility (31 lines)
-**Target:** `app/utils.py`  
+**Target:** `app/utils.py`
 **Functions moved:**
 - `braille_to_dots()`
 
 **Status:** ✅ Committed & Tested
 
 ### ✅ Batch 4: Cylinder Frame Utility (15 lines)
-**Target:** `app/geometry/cylinder.py`  
+**Target:** `app/geometry/cylinder.py`
 **Functions moved:**
 - `_compute_cylinder_frame()`
 
@@ -126,4 +126,3 @@ Generation (2 functions):
 
 ## Next Actions
 Continue with Batch 5: Card shape builders
-

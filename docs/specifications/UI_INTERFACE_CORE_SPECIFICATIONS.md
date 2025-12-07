@@ -36,6 +36,11 @@ This document provides **comprehensive, in-depth specifications** for all UI int
    - 3.2 [Theme-Aware Colors and Lighting](#32-theme-aware-colors-and-lighting)
    - 3.3 [High Contrast Mode Lighting](#33-high-contrast-mode-lighting)
    - 3.4 [Camera and Controls](#34-camera-and-controls)
+     - 3.4.1 [CAMERA_SETTINGS Global Configuration](#341-camera_settings-global-configuration)
+     - 3.4.2 [Coordinate System Reference](#342-coordinate-system-reference)
+     - 3.4.3 [How to Adjust the Initial Camera View](#343-how-to-adjust-the-initial-camera-view)
+     - 3.4.4 [Camera Implementation Details](#344-camera-implementation-details)
+     - 3.4.5 [OrbitControls Configuration](#345-orbitcontrols-configuration)
    - 3.5 [Mobile Optimizations](#35-mobile-optimizations)
    - 3.6 [Dynamic Theme Updates](#36-dynamic-theme-updates)
 4. [Accessibility Features](#4-accessibility-features)
@@ -655,20 +660,110 @@ if (currentTheme === 'high-contrast') {
 
 ### 3.4 Camera and Controls
 
-```javascript
-// Camera settings
-camera = new THREE.PerspectiveCamera(
-    45,                    // Field of view (degrees)
-    initW / initH,         // Aspect ratio
-    0.1,                   // Near clipping plane
-    1000                   // Far clipping plane
-);
-camera.position.set(0, 0, 120);  // Initial position
-camera.up.set(0, 1, 0);          // Y-up orientation
+#### 3.4.1 CAMERA_SETTINGS Global Configuration
 
+The application uses a centralized `CAMERA_SETTINGS` object to control the initial camera position for each shape type. This allows easy adjustment of the default viewing angle without modifying multiple code locations.
+
+**Location in Code:** Search for `CAMERA_SETTINGS` in `public/index.html` (near line 2890)
+
+```javascript
+// ═══════════════════════════════════════════════════════════════════════════════
+// CAMERA SETTINGS - Central configuration for STL preview camera positions
+// ═══════════════════════════════════════════════════════════════════════════════
+const CAMERA_SETTINGS = {
+    // Card shape camera settings (standard flat plate)
+    CARD: {
+        position: { x: 0, y: 0, z: 120 },   // Camera on +Z axis, looking at origin
+        up: { x: 0, y: 1, z: 0 },           // Y-axis is up
+        target: { x: 0, y: 0, z: 0 },       // Look at origin
+        fov: 45,                            // Field of view in degrees
+        near: 0.1,                          // Near clipping plane
+        far: 1000                           // Far clipping plane
+    },
+    // Cylinder shape camera settings (cylindrical surface)
+    // Camera positioned to view the indicator shapes (triangle/rectangle) side
+    CYLINDER: {
+        position: { x: -120, y: 0, z: 0 },  // Camera on -X axis (views indicator side)
+        up: { x: 0, y: 0, z: 1 },           // Z-axis is up (cylinder axis)
+        target: { x: 0, y: 0, z: 0 },       // Look at origin
+        fov: 45,                            // Field of view in degrees
+        near: 0.1,                          // Near clipping plane
+        far: 1000                           // Far clipping plane
+    }
+};
+```
+
+#### 3.4.2 Coordinate System Reference
+
+| Shape Type | Up Axis | Camera Default Position | Notes |
+|------------|---------|------------------------|-------|
+| **Card** | Y-axis (0,1,0) | (0, 0, 120) on +Z axis | Camera looks straight at the flat plate |
+| **Cylinder** | Z-axis (0,0,1) | (-120, 0, 0) on -X axis | Camera views indicator shapes side |
+
+**Cylinder Coordinate System:**
+- The cylinder's central axis runs along the **Z-axis**
+- The cylinder is centered at the origin (0, 0, 0)
+- Camera orbits around the Z-axis in the XY plane
+
+#### 3.4.3 How to Adjust the Initial Camera View
+
+**To rotate the cylinder's initial view around its vertical axis:**
+
+1. Modify `CAMERA_SETTINGS.CYLINDER.position.x` and `.y` values
+2. The camera distance from origin (120 by default) controls zoom level
+3. Use these position patterns for common rotations:
+
+| Desired View | Position Values | Description |
+|--------------|-----------------|-------------|
+| View from -X axis | `{ x: -120, y: 0, z: 0 }` | **Current default** - Views indicator shapes |
+| View from +X axis | `{ x: 120, y: 0, z: 0 }` | Opposite side (braille dots facing camera) |
+| View from +Y axis | `{ x: 0, y: 120, z: 0 }` | 90° clockwise rotation |
+| View from -Y axis | `{ x: 0, y: -120, z: 0 }` | 90° counter-clockwise rotation |
+| View from corner | `{ x: 85, y: 85, z: 0 }` | 45° angle (diagonal view) |
+
+**To adjust zoom level:**
+- Increase position values (e.g., 150) to zoom out
+- Decrease position values (e.g., 80) to zoom in
+
+**To rotate the card's initial view:**
+- Modify `CAMERA_SETTINGS.CARD.position` values similarly
+- Cards use Y-up orientation, so adjust X and Y for rotation
+
+#### 3.4.4 Camera Implementation Details
+
+```javascript
+// Camera settings usage in init3D()
+const defaultCam = CAMERA_SETTINGS.CARD;
+camera = new THREE.PerspectiveCamera(defaultCam.fov, initW / initH, defaultCam.near, defaultCam.far);
+camera.position.set(defaultCam.position.x, defaultCam.position.y, defaultCam.position.z);
+camera.up.set(defaultCam.up.x, defaultCam.up.y, defaultCam.up.z);
+camera.lookAt(defaultCam.target.x, defaultCam.target.y, defaultCam.target.z);
+
+// When loading STL, camera is repositioned based on shape type
+if (isCylinder) {
+    const cylCam = CAMERA_SETTINGS.CYLINDER;
+    camera.up.set(cylCam.up.x, cylCam.up.y, cylCam.up.z);
+    camera.position.set(cylCam.position.x, cylCam.position.y, cylCam.position.z);
+    // ... rest of cylinder setup
+} else {
+    const cardCam = CAMERA_SETTINGS.CARD;
+    camera.position.set(cardCam.position.x, cardCam.position.y, cardCam.position.z);
+    // ... rest of card setup
+}
+```
+
+#### 3.4.5 OrbitControls Configuration
+
+```javascript
 // OrbitControls settings
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
+
+// For cylinders: panning orthogonal to world up (Z-up)
+controls.screenSpacePanning = false;
+
+// For cards: screen-space panning (Y-up)
+controls.screenSpacePanning = true;
 ```
 
 ### 3.5 Mobile Optimizations
@@ -1136,6 +1231,7 @@ Low vision users benefit from enhanced depth perception:
 |---------|------|---------|
 | 1.0 | 2024-12-06 | Initial specification document |
 | 1.1 | 2024-12-06 | Cross-check verification completed; corrected skip link href from `#main-form` to `#main-content`; updated appendices to match actual implementation |
+| 1.2 | 2024-12-06 | Added CAMERA_SETTINGS global configuration documentation in Section 3.4; expanded camera controls section with detailed instructions for adjusting initial view positions for cards and cylinders |
 
 ---
 

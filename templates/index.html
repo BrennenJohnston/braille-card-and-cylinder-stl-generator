@@ -2672,6 +2672,46 @@
             'light': 'Light'
         };
 
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // CAMERA SETTINGS - Central configuration for STL preview camera positions
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // These settings control the initial camera position when STL models are generated.
+        // Adjust these values to change the default viewing angle for each shape type.
+        //
+        // Coordinate System:
+        //   - Cards: Y-axis is up, camera looks from +Z axis toward origin
+        //   - Cylinders: Z-axis is up (cylinder axis), camera looks from XY plane toward origin
+        //
+        // To rotate the initial view:
+        //   - For cylinders: Adjust CYLINDER.position.x and .y to rotate around the Z-axis
+        //     Example: { x: -120, y: 0 } views from -X axis (opposite side)
+        //     Example: { x: 0, y: 120 } views from +Y axis (90° rotation)
+        //   - For cards: Adjust CARD.position values as needed
+        //
+        // Distance from origin determines zoom level (larger = more zoomed out)
+        // ═══════════════════════════════════════════════════════════════════════════════
+        const CAMERA_SETTINGS = {
+            // Card shape camera settings (standard flat plate)
+            CARD: {
+                position: { x: 0, y: 0, z: 120 },   // Camera on +Z axis, looking at origin
+                up: { x: 0, y: 1, z: 0 },           // Y-axis is up
+                target: { x: 0, y: 0, z: 0 },       // Look at origin
+                fov: 45,                            // Field of view in degrees
+                near: 0.1,                          // Near clipping plane
+                far: 1000                           // Far clipping plane
+            },
+            // Cylinder shape camera settings (cylindrical surface)
+            // Camera positioned to view the indicator shapes (triangle/rectangle) side
+            CYLINDER: {
+                position: { x: -120, y: 0, z: 0 },  // Camera on -X axis (views indicator side)
+                up: { x: 0, y: 0, z: 1 },           // Z-axis is up (cylinder axis)
+                target: { x: 0, y: 0, z: 0 },       // Look at origin
+                fov: 45,                            // Field of view in degrees
+                near: 0.1,                          // Near clipping plane
+                far: 1000                           // Far clipping plane
+            }
+        };
+
         let currentThemeIndex = 0;
         // Always start in dark mode; do not persist theme
         applyTheme('dark');
@@ -4276,15 +4316,17 @@
             scene = new THREE.Scene();
             scene.background = new THREE.Color(stlBackground);
 
-            camera = new THREE.PerspectiveCamera(45, initW / initH, 0.1, 1000);
-            camera.position.set(0, 0, 120);
-            camera.up.set(0, 1, 0); // Default Y-up
-            camera.lookAt(0, 0, 0);
+            // Initialize camera using CAMERA_SETTINGS.CARD as default (cards are default shape)
+            const defaultCam = CAMERA_SETTINGS.CARD;
+            camera = new THREE.PerspectiveCamera(defaultCam.fov, initW / initH, defaultCam.near, defaultCam.far);
+            camera.position.set(defaultCam.position.x, defaultCam.position.y, defaultCam.position.z);
+            camera.up.set(defaultCam.up.x, defaultCam.up.y, defaultCam.up.z);
+            camera.lookAt(defaultCam.target.x, defaultCam.target.y, defaultCam.target.z);
 
             // Add camera to scene so attached lights will work
             scene.add(camera);
             controls = new OrbitControls(camera, renderer.domElement);
-            controls.target.set(0, 0, 0);
+            controls.target.set(defaultCam.target.x, defaultCam.target.y, defaultCam.target.z);
 
             // Mobile-optimized controls
             controls.enableDamping = true;
@@ -4856,25 +4898,24 @@
                 mesh.rotation.x = 0;
                 scene.add(mesh);
 
-                // Adjust camera position based on object type
+                // Adjust camera position based on object type using CAMERA_SETTINGS
                 if (isCylinder) {
-                    // For cylinders: view from the side
-                    // After centering, the cylinder is at origin (0,0,0)
-                    // The cylinder's axis is along the Z-direction
+                    // For cylinders: use CAMERA_SETTINGS.CYLINDER configuration
+                    // The cylinder's axis is along the Z-direction, centered at origin
+                    const cylCam = CAMERA_SETTINGS.CYLINDER;
 
                     // Ensure camera up vector is correct for upright viewing BEFORE lookAt
-                    camera.up.set(0, 0, 1); // Z-axis is up for the cylinder
+                    camera.up.set(cylCam.up.x, cylCam.up.y, cylCam.up.z);
 
-                    // Position camera to view cylinder upright from the side
-                    // Set camera on the +X axis looking toward origin
-                    camera.position.set(120, 0, 0);
-                    controls.target.set(0, 0, 0);
-                    camera.lookAt(0, 0, 0);
+                    // Position camera using CAMERA_SETTINGS (views indicator shapes side)
+                    camera.position.set(cylCam.position.x, cylCam.position.y, cylCam.position.z);
+                    controls.target.set(cylCam.target.x, cylCam.target.y, cylCam.target.z);
+                    camera.lookAt(cylCam.target.x, cylCam.target.y, cylCam.target.z);
 
                     // Recreate controls so internal up-vector transform matches camera.up
                     if (controls) controls.dispose();
                     controls = new OrbitControls(camera, renderer.domElement);
-                    controls.target.set(0, 0, 0);
+                    controls.target.set(cylCam.target.x, cylCam.target.y, cylCam.target.z);
                     // Reapply standard control settings
                     {   const isMobile = window.innerWidth <= 768;
                         controls.enableDamping = true;
@@ -4889,14 +4930,16 @@
 
                     camera.updateProjectionMatrix();
                 } else {
-                    // For cards: keep default front view with Y-up
-                    camera.position.set(0, 0, 120);
-                    camera.up.set(0, 1, 0); // Y-axis is up for cards (default)
-                    camera.lookAt(0, 0, 0);
+                    // For cards: use CAMERA_SETTINGS.CARD configuration
+                    const cardCam = CAMERA_SETTINGS.CARD;
+
+                    camera.position.set(cardCam.position.x, cardCam.position.y, cardCam.position.z);
+                    camera.up.set(cardCam.up.x, cardCam.up.y, cardCam.up.z);
+                    camera.lookAt(cardCam.target.x, cardCam.target.y, cardCam.target.z);
                     // Recreate controls to ensure correct up-vector mapping when switching back to Y-up
                     if (controls) controls.dispose();
                     controls = new OrbitControls(camera, renderer.domElement);
-                    controls.target.set(0, 0, 0);
+                    controls.target.set(cardCam.target.x, cardCam.target.y, cardCam.target.z);
                     {   const isMobile = window.innerWidth <= 768;
                         controls.enableDamping = true;
                         controls.dampingFactor = 0.05;

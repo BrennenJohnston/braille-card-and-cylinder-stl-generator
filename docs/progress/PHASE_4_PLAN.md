@@ -7,7 +7,7 @@ Replace print statements with proper logging and standardize error responses.
 
 ### Print Statements Found
 - `backend.py`: 91 print statements
-- `app/geometry/cylinder.py`: ~60+ print statements  
+- `app/geometry/cylinder.py`: ~60+ print statements
 - `app/models.py`: ~10+ print statements
 - **Total:** ~161+ print statements to replace
 
@@ -76,11 +76,10 @@ Replace print statements with proper logging and standardize error responses.
 
 ## Acceptance Criteria
 
-✅ No print statements remain  
-✅ All logging uses proper levels  
-✅ Can control log level via env variable  
-✅ Errors return consistent JSON format  
-✅ All tests still pass  
+✅ No print statements remain
+✅ All logging uses proper levels
+✅ Can control log level via env variable
+✅ Errors return consistent JSON format
+✅ All tests still pass
 
 Ready to implement!
-

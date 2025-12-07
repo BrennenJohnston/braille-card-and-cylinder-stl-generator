@@ -1,7 +1,7 @@
 # Phase 1.2 Migration Checkpoint
 
-**Date:** October 10, 2025  
-**Branch:** `refactor/phase-0-safety-net`  
+**Date:** October 10, 2025
+**Branch:** `refactor/phase-0-safety-net`
 **Status:** IN PROGRESS - Partial Migration Complete
 
 ---
@@ -17,8 +17,8 @@
 | 3 | braille_to_dots | ~31 | `app/utils.py` | ✅ Committed |
 | 4 | _compute_cylinder_frame | ~15 | `app/geometry/cylinder.py` | ✅ Committed |
 
-**Total Migrated:** ~564 lines (12.7% of original backend.py)  
-**backend.py reduced:** 4455 → 3849 lines  
+**Total Migrated:** ~564 lines (12.7% of original backend.py)
+**backend.py reduced:** 4455 → 3849 lines
 **All 13 tests passing** ✓
 
 ---
@@ -72,8 +72,8 @@
 
 ## Estimated Remaining Work
 
-**Geometry Functions:** ~2500 lines  
-**Estimated Time:** 3-5 hours at current pace  
+**Geometry Functions:** ~2500 lines
+**Estimated Time:** 3-5 hours at current pace
 **Alternative:** Batch migration of entire modules at once (faster, needs careful testing)
 
 ---
@@ -115,9 +115,9 @@ Move all cylinder functions together (~1000+ lines) as one batch, then pause:
 
 ## What We've Accomplished
 
-✅ Phase 0: Complete (testing, linting, fixtures)  
-✅ Phase 1.1: Complete (package structure)  
-🔄 Phase 1.2: 13% complete (core utilities migrated)  
+✅ Phase 0: Complete (testing, linting, fixtures)
+✅ Phase 1.1: Complete (package structure)
+🔄 Phase 1.2: 13% complete (core utilities migrated)
 
 **This is excellent progress!** The hardest part (setting up the infrastructure and proving the approach) is done.
 
@@ -135,4 +135,3 @@ Move all cylinder functions together (~1000+ lines) as one batch, then pause:
 ---
 
 **What would you like to do?**
-

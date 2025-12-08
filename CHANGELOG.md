@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.1] - 2024-12-08
+## [1.2.0] - 2024-12-08
 
 ### 📚 Documentation Release
 
@@ -23,7 +23,17 @@ This release adds industry-standard documentation to the project.
 
 ---
 
-## [1.0.0] - 2024-12-08
+## [1.1.0] - 2024-12-08
+
+### Features & Fixes
+- Mobile compatibility improvements (lazy WASM loading)
+- Dead code cleanup (~680 lines removed)
+- ADA Accessibility Validation SOP
+- WCAG 2.1 Level AA compliance verified
+
+---
+
+## [1.0.0] - 2024-09-27
 
 ### 🎉 First Stable Release
 
@@ -90,6 +100,7 @@ Based on [tobiwg/braile-card-generator](https://github.com/tobiwg/braile-card-ge
 - Batch processing
 - OpenSCAD export option
 
-[1.0.1]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v1.0.1
+[1.2.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v1.2.0
+[1.1.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v1.1.0
 [1.0.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v1.0.0
-[Unreleased]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/compare/v1.2.0...HEAD

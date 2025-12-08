@@ -64,7 +64,7 @@ jobs:
       continue-on-error: false
 
     - name: W3C HTML Validation
-      uses: Cyb3r-Jak3/html5validator-action@v7
+      uses: Cyb3r-Jak3/html5validator-action@v7.2.0
       with:
         root: templates/
         format: text

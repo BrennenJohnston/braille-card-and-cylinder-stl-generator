@@ -169,7 +169,7 @@ class CardSettings:
             'card_height': 52,
             'card_thickness': 2.0,
             # Grid parameters
-            'grid_columns': 14,
+            'grid_columns': 13,  # 11 text cells + 2 reserved for indicators = 13 total (fits 90mm card)
             'grid_rows': 4,
             'cell_spacing': 6.5,  # Project brief default
             'line_spacing': 10.0,

@@ -2,7 +2,14 @@
 
 ## Overview
 
-This application now uses **client-side CSG (Constructive Solid Geometry)** as the primary method for generating braille STL files. The boolean operations (unions and subtractions) are performed in the browser using `three-bvh-csg`, with automatic fallback to server-side generation when needed.
+This application uses **client-side CSG (Constructive Solid Geometry)** as the **exclusive method** for generating braille STL files. A **dual-worker architecture** is employed:
+
+- **Standard Worker** (`csg-worker.js`): Uses `three-bvh-csg` for flat cards - fast but may produce non-manifold edges on complex geometry
+- **Manifold Worker** (`csg-worker-manifold.js`): Uses Manifold WASM for cylinders - guarantees watertight/manifold output
+
+> **BUG FIX (2024-12-08):** Prior to this fix, the CSG worker existed but was never integrated into the frontend. The code incorrectly went directly to the server-side `/generate_braille_stl` endpoint. This has been corrected - the frontend now properly initializes the CSG worker and uses client-side generation exclusively. Server-side fallback has been intentionally disabled to ensure the correct generation path is always used.
+
+> **MANIFOLD INTEGRATION (2024-12-08):** The Manifold worker (`csg-worker-manifold.js`) existed but was never integrated. This has been fixed - cylinder generation now automatically uses the Manifold worker, guaranteeing zero non-manifold edges. See `MANIFOLD_CYLINDER_FIX.md` for details.
 
 ## Why Client-Side CSG?
 
@@ -28,29 +35,39 @@ This application now uses **client-side CSG (Constructive Solid Geometry)** as t
 ### Components
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         Browser                              │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │  public/index.html (Main App)                          │ │
-│  │  - Collects user input                                 │ │
-│  │  - Translates text to braille via liblouis            │ │
-│  │  - Requests geometry spec from server                 │ │
-│  │  - Sends spec to CSG Worker                           │ │
-│  │  - Receives STL, renders preview, offers download     │ │
-│  └─────────────┬──────────────────────────────────────────┘ │
-│                │                                             │
-│         ┌──────▼──────┐            ┌──────────────────┐    │
-│         │ CSG Worker  │            │  Three.js        │    │
-│         │  (Module)   │◄───────────┤  STLExporter     │    │
-│         │             │            │  three-bvh-csg   │    │
-│         │ Builds 3D   │            │  three-mesh-bvh  │    │
-│         │ primitives  │            └──────────────────┘    │
-│         │ Performs    │                                     │
-│         │ CSG ops     │                                     │
-│         │ Exports STL │                                     │
-│         └──────┬──────┘                                     │
-│                │                                             │
-└────────────────┼─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                         Browser                                  │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │  public/index.html (Main App)                              │ │
+│  │  - Collects user input                                     │ │
+│  │  - Translates text to braille via liblouis                │ │
+│  │  - Requests geometry spec from server                     │ │
+│  │  - Selects worker based on shape_type                     │ │
+│  │  - Receives STL, renders preview, offers download         │ │
+│  └─────────────┬──────────────────────────────────────────────┘ │
+│                │                                                 │
+│       ┌────────┴────────┐                                       │
+│       │  Worker Select  │                                       │
+│       │  (shape_type)   │                                       │
+│       └────────┬────────┘                                       │
+│          ┌─────┴─────┐                                          │
+│          │           │                                          │
+│          ▼           ▼                                          │
+│  ┌───────────────┐  ┌────────────────────┐                     │
+│  │ csg-worker.js │  │ csg-worker-        │                     │
+│  │ (cards)       │  │ manifold.js        │                     │
+│  │               │  │ (cylinders)        │                     │
+│  │ three-bvh-csg │  │ Manifold WASM      │                     │
+│  │ Fast, ~200KB  │  │ Watertight, ~2.5MB │                     │
+│  └───────┬───────┘  └─────────┬──────────┘                     │
+│          │                    │                                 │
+│          └────────┬───────────┘                                 │
+│                   ▼                                             │
+│           ┌──────────────┐                                      │
+│           │  STL Binary  │                                      │
+│           │  + Geometry  │                                      │
+│           └──────────────┘                                      │
+└─────────────────────────────────────────────────────────────────┘
                  │
          ┌───────▼────────────────────────────────────────┐
          │  Vercel Backend (Python Flask)                 │
@@ -61,9 +78,9 @@ This application now uses **client-side CSG (Constructive Solid Geometry)** as t
          │  │  - Returns JSON spec (no booleans)       │  │
          │  └──────────────────────────────────────────┘  │
          │  ┌──────────────────────────────────────────┐  │
-         │  │  POST /generate_braille_stl (FALLBACK)   │  │
-         │  │  - Full server-side generation           │  │
-         │  │  - Used when client-side fails           │  │
+         │  │  POST /generate_braille_stl (DISABLED)   │  │
+         │  │  - Server-side fallback REMOVED          │  │
+         │  │  - Endpoint exists but not used by UI    │  │
          │  └──────────────────────────────────────────┘  │
          └────────────────────────────────────────────────┘
 ```
@@ -74,7 +91,7 @@ This application now uses **client-side CSG (Constructive Solid Geometry)** as t
 2. **Translated text + settings** → POST /geometry_spec → **JSON spec**
 3. **JSON spec** → CSG Worker → **STL ArrayBuffer + Geometry**
 4. **STL** → Blob URL → Three.js preview + download link
-5. **On error** → Fallback to POST /generate_braille_stl
+5. **On error** → Display error message (NO server fallback)
 
 ### Geometry Spec Format
 
@@ -159,22 +176,17 @@ The `/geometry_spec` endpoint returns JSON describing primitives:
 
 ## Configuration
 
-### Feature Flag
+### No Fallback Mode (Current Implementation)
 
-In `public/index.html` (around line 2417):
+As of the 2024-12-08 bug fix, client-side CSG is the **exclusive** STL generation method. There is no automatic fallback to server-side generation. This ensures:
 
-```javascript
-let useClientSideCSG = true; // Set to false to force server-side generation
-```
+1. The correct generation path is always used
+2. Bugs in the client-side path are surfaced immediately (not hidden by fallback)
+3. Consistent behavior across all users and browsers
 
-To **disable client-side CSG** and always use server:
-```javascript
-let useClientSideCSG = false;
-```
+### Error Conditions
 
-### Automatic Fallback Triggers
-
-Client-side CSG automatically falls back to server when:
+If CSG generation fails, users will see an error message. Common causes:
 1. Web Workers not supported by browser
 2. Worker initialization fails
 3. Module worker imports fail (Safari < 15, older browsers)
@@ -182,11 +194,14 @@ Client-side CSG automatically falls back to server when:
 5. CSG worker throws error during generation
 6. Worker timeout (2 minute limit)
 
-### Manual Server-Side Generation
+### Browser Requirements
 
-Users can force server-side generation by:
-1. Setting `useClientSideCSG = false` in browser console
-2. Refreshing the page after Worker error (auto-disables on error)
+For STL generation to work, the browser must support:
+- ES6 Modules
+- Module Workers (`new Worker(url, { type: 'module' })`)
+- Modern JavaScript (async/await, Promises)
+
+**Supported browsers**: Chrome 80+, Edge 80+, Firefox 114+, Safari 15+
 
 ## Browser Compatibility
 
@@ -196,11 +211,13 @@ Users can force server-side generation by:
 - ✅ Firefox 114+ (Module workers stable)
 - ✅ Safari 15+ (Module workers supported)
 
-### Fallback to Server (Automatic)
-- Safari < 15 (no module workers)
-- Firefox < 114 (module worker bugs)
-- IE 11, older mobile browsers
-- Any browser with JavaScript disabled
+### Not Supported (Will Show Error)
+- ❌ Safari < 15 (no module workers)
+- ❌ Firefox < 114 (module worker bugs)
+- ❌ IE 11, older mobile browsers
+- ❌ Any browser with JavaScript disabled
+
+> **Note:** Server-side fallback has been intentionally disabled. Users on unsupported browsers will see an error message asking them to use a modern browser.
 
 ## Performance Characteristics
 
@@ -218,11 +235,11 @@ Users can force server-side generation by:
 - Large models: ~200-500 MB
 - **Browser limit**: ~500 MB - 2 GB depending on browser/device
 
-### Server Fallback
-- Vercel Hobby timeout: 10 seconds
-- With Fluid Compute: 60-300 seconds
-- Medium models: Often hit timeout on Hobby
-- Counter plates: Usually cached, instant via CDN
+### Server Fallback (DISABLED)
+Server-side fallback has been intentionally disabled as of 2024-12-08.
+- The `/generate_braille_stl` endpoint still exists but is not used by the frontend
+- All STL generation uses client-side CSG exclusively
+- This ensures consistent behavior and surfaces bugs immediately
 
 ## Debugging
 
@@ -231,28 +248,37 @@ Users can force server-side generation by:
 Browser console:
 ```javascript
 // Check worker status
-console.log('Worker ready:', workerReady);
-console.log('Use client-side:', useClientSideCSG);
+console.log('CSG Worker ready:', csgWorkerReady);
 
-// Force server fallback
-useClientSideCSG = false;
+// Check if worker object exists
+console.log('CSG Worker:', csgWorker);
 ```
 
 ### Console Messages
 
-**Successful client-side generation:**
+**Successful initialization:**
 ```
+Initializing CSG worker...
+CSG Worker file is accessible
 CSG Worker initialized and ready
-Attempting client-side CSG generation...
-Geometry spec received: {...}
-Client-side CSG generation successful
-Using client-side generated STL
+CSG Worker ready for client-side STL generation
 ```
 
-**Fallback to server:**
+**Successful generation:**
 ```
-Client-side CSG failed: [error message]
-Using server-side STL generation
+Starting client-side CSG generation...
+Fetching geometry specification from /geometry_spec...
+Received geometry specification: {...}
+Geometry spec contains: X dots, Y markers
+Sending geometry spec to CSG worker...
+CSG Worker completed successfully
+Client-side CSG generation complete: filename.stl
+```
+
+**On error (no fallback):**
+```
+Client-side CSG generation failed: [error message]
+STL generation failed: [error message]
 ```
 
 ### Common Issues

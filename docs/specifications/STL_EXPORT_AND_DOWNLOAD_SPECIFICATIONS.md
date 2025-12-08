@@ -4,21 +4,22 @@
 
 This document provides **comprehensive, in-depth specifications** for the STL export and download system in the Braille Card and Cylinder STL Generator application. It serves as an authoritative reference for future development by documenting:
 
-1. **Generation Architecture** — Client-side CSG (primary) vs. server-side (fallback) generation
+1. **Generation Architecture** — Client-side CSG (exclusive method, no fallback)
 2. **Geometry Specification Format** — JSON structure sent to CSG workers
 3. **CSG Worker System** — Web Worker communication, processing, and error handling
 4. **STL Export Format** — Binary STL format details and file naming conventions
 5. **Download Button State Machine** — Generate/Download state transitions
-6. **Fallback Mechanisms** — Automatic fallback from client to server
-7. **Counter Plate Caching** — Server-side cache for negative plates
-8. **Server Endpoints** — `/geometry_spec` and `/generate_braille_stl` APIs
+6. **Error Handling** — No automatic fallback; errors displayed to user
+7. **Server Endpoints** — `/geometry_spec` API (primary), `/generate_braille_stl` (legacy, unused)
+
+> **BUG FIX (2024-12-08):** Prior to this fix, the CSG worker existed but was never integrated into the frontend. The frontend incorrectly called `/generate_braille_stl` directly. This has been corrected - the frontend now properly uses client-side CSG exclusively via `/geometry_spec` → CSG Worker. Server-side fallback has been intentionally disabled.
 
 **Source Priority (Order of Correctness):**
 1. `backend.py` — Primary authoritative source for server-side logic
 2. `geometry_spec.py` — Geometry specification extraction
-3. `static/workers/csg-worker.js` — Client-side CSG (three-bvh-csg)
-4. `static/workers/csg-worker-manifold.js` — Manifold WASM fallback/alternative
-5. `templates/index.html` / `public/index.html` — Frontend orchestration
+3. `static/workers/csg-worker.js` — Client-side CSG for cards (three-bvh-csg)
+4. `static/workers/csg-worker-manifold.js` — Client-side CSG for cylinders (Manifold WASM, guarantees manifold output)
+5. `templates/index.html` / `public/index.html` — Frontend orchestration with dual worker selection
 
 ---
 
@@ -45,11 +46,13 @@ This document provides **comprehensive, in-depth specifications** for the STL ex
 
 ### Design Philosophy
 
-The STL generation system follows a **client-first architecture** where:
+The STL generation system follows a **client-only architecture** where:
 
-1. **Primary path:** Client-side CSG using Web Workers
-2. **Fallback path:** Server-side generation via Flask API
-3. **Counter plates:** Server-side with caching to Vercel Blob storage
+1. **Exclusive path:** Client-side CSG using Web Workers
+2. **No fallback:** Server-side generation is disabled (endpoint exists but unused)
+3. **All plate types:** Both positive and negative plates generated client-side
+
+> **Updated 2024-12-08:** Server-side fallback has been intentionally disabled to ensure consistent behavior and surface bugs immediately.
 
 ### Data Flow Diagram
 
@@ -64,40 +67,34 @@ The STL generation system follows a **client-first architecture** where:
 │                                                                              │
 │  1. Translate text to braille Unicode (via liblouis worker)                 │
 │  2. Collect all form settings                                               │
-│  3. Determine generation path based on:                                     │
-│     - useClientSideCSG flag                                                 │
-│     - Worker availability                                                   │
-│     - Plate type (positive vs negative)                                     │
+│  3. Call generateSTLClientSide() - NO FALLBACK                              │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
-                    ┌─────────────────┴─────────────────┐
-                    │                                   │
-            ┌───────▼───────┐                   ┌───────▼───────┐
-            │ Client-Side   │                   │ Server-Side   │
-            │ CSG Path      │                   │ Fallback Path │
-            └───────┬───────┘                   └───────┬───────┘
-                    │                                   │
-                    ▼                                   ▼
-┌───────────────────────────────┐     ┌───────────────────────────────────────┐
-│   POST /geometry_spec          │     │   POST /generate_braille_stl          │
-│   - Returns JSON spec          │     │   - Returns STL binary                │
-│   - Lightweight computation    │     │   - Full server-side generation       │
-│   - No boolean operations      │     │   - Used for counter plate cache      │
-└───────────────┬───────────────┘     └───────────────────┬───────────────────┘
-                │                                         │
-                ▼                                         │
-┌───────────────────────────────┐                        │
-│   CSG WORKER (Web Worker)      │                        │
-│   - Receives JSON spec         │                        │
-│   - Creates 3D primitives      │                        │
-│   - Performs boolean ops       │                        │
-│   - Exports to STL binary      │                        │
-│   - Optional: Manifold repair  │                        │
-└───────────────┬───────────────┘                        │
-                │                                         │
-                └─────────────────┬───────────────────────┘
-                                  │
-                                  ▼
+                                      ▼
+                            ┌─────────────────┐
+                            │ Client-Side     │
+                            │ CSG Path ONLY   │
+                            └────────┬────────┘
+                                     │
+                                     ▼
+                   ┌───────────────────────────────┐
+                   │   POST /geometry_spec          │
+                   │   - Returns JSON spec          │
+                   │   - Lightweight computation    │
+                   │   - No boolean operations      │
+                   └───────────────┬───────────────┘
+                                   │
+                                   ▼
+                   ┌───────────────────────────────┐
+                   │   CSG WORKER (Web Worker)      │
+                   │   - Receives JSON spec         │
+                   │   - Creates 3D primitives      │
+                   │   - Performs boolean ops       │
+                   │   - Exports to STL binary      │
+                   │   - Optional: Manifold repair  │
+                   └───────────────┬───────────────┘
+                                   │
+                                   ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                    STL BINARY RECEIVED                                       │
 │                                                                              │
@@ -106,67 +103,66 @@ The STL generation system follows a **client-first architecture** where:
 │  3. Set download link href                                                  │
 │  4. Transition button to "Download STL" state                               │
 └─────────────────────────────────────────────────────────────────────────────┘
+
+                    ┌─────────────────────────────────────┐
+                    │   ON ERROR: Display error message   │
+                    │   (NO automatic server fallback)    │
+                    └─────────────────────────────────────┘
 ```
 
 ### Component Responsibilities
 
 | Component | Responsibility |
 |-----------|----------------|
-| `index.html` | Orchestration, state management, user interaction |
-| `csg-worker.js` | Primary CSG operations using three-bvh-csg |
-| `csg-worker-manifold.js` | Alternative CSG using Manifold WASM |
+| `index.html` | Orchestration, CSG worker init, state management |
+| `csg-worker.js` | Exclusive CSG operations using three-bvh-csg |
 | `geometry_spec.py` | Extract JSON spec from braille data |
-| `backend.py` | Server-side generation, caching, API endpoints |
+| `backend.py` | `/geometry_spec` endpoint (primary); `/generate_braille_stl` exists but unused |
 
 ---
 
 ## 2. Generation Strategy Selection
 
-### Decision Logic
+### Decision Logic (Updated 2024-12-08)
 
 ```javascript
-// From templates/index.html
-async function generateSTL() {
-    const plateType = getSelectedPlateType();  // 'positive' or 'negative'
+// From templates/index.html - NO FALLBACK
+// All STL generation uses client-side CSG exclusively
 
-    // Counter plates always use server (for caching)
-    if (plateType === 'negative') {
-        return await generateServerSide();
-    }
-
-    // Positive plates try client-side first
-    if (useClientSideCSG && workerReady) {
-        try {
-            return await generateClientSide();
-        } catch (error) {
-            console.warn('Client-side failed, falling back to server:', error);
-            return await generateServerSide();
-        }
-    }
-
-    // Direct server generation if client-side disabled
-    return await generateServerSide();
+// On form submit, after braille translation:
+try {
+    const stlData = await generateSTLClientSide({
+        lines: translatedLines,
+        originalLines: originalForIndicators,
+        placementMode: placementMode,
+        plateType: plateType,
+        shapeType: shapeType,
+        cylinderParams: cylinderParams,
+        perLineLanguageTables: perLineLanguageTables,
+        settings: settings
+    });
+    // Success: create blob, show preview, enable download
+} catch (csgError) {
+    // Error: show error message to user (NO server fallback)
+    errorText.textContent = 'STL generation failed: ' + csgError.message;
 }
 ```
 
-### Strategy Matrix
+### Strategy Matrix (Simplified)
 
-| Plate Type | useClientSideCSG | Worker Ready | Strategy |
-|------------|-----------------|--------------|----------|
-| Positive | true | true | Client-side CSG |
-| Positive | true | false | Server fallback |
-| Positive | false | any | Server direct |
-| Negative | any | any | Server (cached) |
+| Plate Type | Worker Ready | Strategy |
+|------------|--------------|----------|
+| Positive | true | Client-side CSG |
+| Positive | false | **Error** (no fallback) |
+| Negative | true | Client-side CSG |
+| Negative | false | **Error** (no fallback) |
 
-### Feature Flag
+### No Feature Flag
 
-```javascript
-// Global flag to enable/disable client-side CSG
-let useClientSideCSG = true;  // Set to false to force server-side
-
-// Can be toggled via browser console:
-// useClientSideCSG = false;
-```
+Server-side fallback has been intentionally disabled. There is no feature flag to toggle between methods. This ensures:
+- Consistent behavior across all users
+- Bugs are surfaced immediately (not hidden by fallback)
+- The correct generation path is always used
 
 ---
 
@@ -927,71 +923,52 @@ document.querySelectorAll('input, select, textarea').forEach(el => {
 
 ---
 
-## 9. Fallback Mechanisms
+## 9. Fallback Mechanisms (DISABLED)
 
-### Fallback Triggers
+> **Updated 2024-12-08:** Server-side fallback has been intentionally disabled. All errors are surfaced to the user.
 
-| Trigger | Cause | Action |
-|---------|-------|--------|
-| Worker initialization fails | Browser doesn't support module workers | Server-side generation |
-| `/geometry_spec` fails | Network error, server error | Server-side generation |
-| CSG worker throws error | Boolean operation failure | Server-side generation |
-| Worker timeout (2 min) | Very complex model | Server-side generation |
-| Counter plate requested | Caching requirement | Server-side generation |
+### Error Conditions (No Fallback)
 
-### Fallback Implementation
+| Condition | Cause | Action |
+|-----------|-------|--------|
+| Worker initialization fails | Browser doesn't support module workers | **Show error message** |
+| `/geometry_spec` fails | Network error, server error | **Show error message** |
+| CSG worker throws error | Boolean operation failure | **Show error message** |
+| Worker timeout (2 min) | Very complex model | **Show error message** |
+
+### Rationale for Disabling Fallback
+
+1. **Bug Discovery:** The original fallback hid a critical bug where the CSG worker was never integrated
+2. **Consistency:** All users get the same behavior regardless of edge cases
+3. **Debugging:** Errors are immediately visible, not silently handled
+4. **Simplicity:** Single code path is easier to maintain and test
+
+### Error Handling Implementation
 
 ```javascript
-async function generateSTL() {
-    const plateType = getSelectedPlateType();
+// From templates/index.html - NO FALLBACK
+try {
+    const stlData = await generateSTLClientSide({...});
+    // Success path
+} catch (csgError) {
+    log.error('Client-side CSG generation failed:', csgError);
 
-    // Counter plates always use server (for caching)
-    if (plateType === 'negative') {
-        return await generateServerSide();
-    }
+    // Show error - NO FALLBACK TO SERVER
+    errorText.textContent = 'STL generation failed: ' + csgError.message;
+    errorDiv.style.display = 'flex';
+    errorDiv.className = 'error-message';
 
-    // Try client-side first
-    if (useClientSideCSG && workerReady) {
-        try {
-            // Set timeout for client-side generation
-            const timeout = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Worker timeout')), 120000)
-            );
-
-            const result = await Promise.race([
-                generateClientSide(),
-                timeout
-            ]);
-
-            return result;
-
-        } catch (error) {
-            console.warn('Client-side generation failed:', error);
-            console.log('Falling back to server-side generation');
-
-            // Optionally disable client-side for future requests
-            // useClientSideCSG = false;
-        }
-    }
-
-    // Server fallback
-    return await generateServerSide();
+    // Re-enable button and reset to generate state
+    resetToGenerateState();
 }
 ```
 
-### User Notification
+### Legacy Endpoints (Still Available)
 
-```javascript
-function showFallbackNotification() {
-    const notice = document.createElement('div');
-    notice.className = 'fallback-notice';
-    notice.textContent = 'Using server-side generation...';
-    notice.setAttribute('role', 'status');
-    notice.setAttribute('aria-live', 'polite');
-    document.body.appendChild(notice);
-    setTimeout(() => notice.remove(), 3000);
-}
-```
+The `/generate_braille_stl` endpoint still exists in `backend.py` but is **not called by the frontend**. It may be useful for:
+- Direct API testing
+- Future integrations
+- Emergency manual generation (via curl/Postman)
 
 ---
 
@@ -1323,10 +1300,10 @@ def test_geometry_consistency():
 
 | File | Path | Purpose |
 |------|------|---------|
-| CSG Worker | `static/workers/csg-worker.js` | Primary CSG operations |
-| Manifold Worker | `static/workers/csg-worker-manifold.js` | Alternative with Manifold |
+| Standard CSG Worker | `static/workers/csg-worker.js` | CSG for flat cards (three-bvh-csg) |
+| Manifold CSG Worker | `static/workers/csg-worker-manifold.js` | CSG for cylinders (Manifold WASM, guarantees manifold) |
 | Three.js | `static/three.module.js` | 3D library |
-| BVH CSG | `static/vendor/three-bvh-csg/index.module.js` | Boolean operations |
+| BVH CSG | `static/vendor/three-bvh-csg/index.module.js` | Boolean operations for standard worker |
 | Mesh BVH | `static/vendor/three-mesh-bvh/index.module.js` | BVH acceleration |
 | STL Exporter | `static/examples/STLExporter.js` | Binary export |
 
@@ -1369,6 +1346,8 @@ def test_geometry_consistency():
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2024-12-06 | Initial specification document |
+| 1.1 | 2024-12-08 | **BUG FIX:** CSG worker integration. Frontend now properly initializes CSG worker and uses client-side generation exclusively. Server-side fallback disabled. Updated Sections 1, 2, and 9. |
+| 1.2 | 2024-12-08 | **BUG FIX:** Manifold worker integration. Cylinders now use `csg-worker-manifold.js` for guaranteed manifold output. Added dual-worker architecture with automatic shape-based routing. |
 
 ---
 

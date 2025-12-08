@@ -1,5 +1,8 @@
 # Manifold Cylinder Fix - Zero Non-Manifold Edges
 
+> **STATUS: ✅ IMPLEMENTED (2024-12-08)**
+> The Manifold worker has been fully integrated into the frontend. Cylinder generation now automatically uses the Manifold worker, guaranteeing zero non-manifold edges.
+
 ## Problem
 
 The original implementation used `three-bvh-csg` for all CSG operations, then attempted to "repair" the resulting mesh using Manifold's constructor. This approach failed because:
@@ -47,8 +50,16 @@ Created a dedicated Manifold CSG worker (`csg-worker-manifold.js`) that uses **M
 ### New Files
 - `static/workers/csg-worker-manifold.js` - Manifold-based CSG worker
 
-### Modified Files
+### Modified Files (2024-12-08 Integration)
 - `public/index.html` - Added Manifold worker initialization and routing logic
+- `templates/index.html` - Added Manifold worker initialization and routing logic
+
+### Key Changes in Frontend
+1. Added `manifoldWorker`, `manifoldWorkerReady`, `manifoldRequestId`, `pendingManifoldRequests` variables
+2. Added Manifold worker initialization in `window.onload` (30-second timeout for WASM loading)
+3. Updated `generateSTLClientSide()` to select worker based on `shapeType`:
+   - `cylinder` → Manifold worker (guaranteed manifold)
+   - `card` → Standard three-bvh-csg worker (faster)
 
 ## How It Works
 

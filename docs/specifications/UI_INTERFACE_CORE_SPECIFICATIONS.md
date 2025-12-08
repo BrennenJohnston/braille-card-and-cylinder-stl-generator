@@ -43,6 +43,8 @@ This document provides **comprehensive, in-depth specifications** for all UI int
      - 3.4.5 [OrbitControls Configuration](#345-orbitcontrols-configuration)
    - 3.5 [Mobile Optimizations](#35-mobile-optimizations)
    - 3.6 [Dynamic Theme Updates](#36-dynamic-theme-updates)
+   - 3.7 [STL Preview Label](#37-stl-preview-label)
+   - 3.8 [Preview Display Settings (Brightness and Contrast)](#38-preview-display-settings-brightness-and-contrast)
 4. [Accessibility Features](#4-accessibility-features)
    - 4.1 [Skip Link Navigation](#41-skip-link-navigation)
    - 4.2 [Focus Indicators](#42-focus-indicators)
@@ -825,6 +827,251 @@ function update3DSceneColors() {
 }
 ```
 
+### 3.7 STL Preview Label
+
+A clarifying label is displayed below the STL preview panel to help users understand its purpose. This was added because some users were confused and attempted to type text into the preview area.
+
+#### HTML Structure
+
+```html
+<div class="stl-preview-label" id="stl-preview-label" role="note" aria-label="STL Preview information">
+    <strong>3D STL Preview</strong> — Interactive preview only (drag to rotate, scroll to zoom)
+</div>
+```
+
+#### CSS Styling
+
+```css
+.stl-preview-label {
+    width: 100%;
+    text-align: center;
+    padding: 0.5em 0.75em;
+    margin-top: 0.5em;
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+}
+
+.stl-preview-label strong {
+    color: var(--text-primary);
+}
+
+/* High contrast mode */
+[data-theme="high-contrast"] .stl-preview-label {
+    background: #1a1a1a;
+    border: 2px solid #ffff00;
+    color: #02fe05;
+}
+
+[data-theme="high-contrast"] .stl-preview-label strong {
+    color: #fdfe00;
+}
+```
+
+#### Purpose
+
+The label serves to:
+- Clearly identify the panel as an STL preview (not a text input)
+- Provide brief interaction instructions (drag to rotate, scroll to zoom)
+- Reduce user confusion about the panel's purpose
+
+### 3.8 Preview Display Settings (Brightness and Contrast)
+
+User-adjustable brightness and contrast controls allow customization of how the 3D preview appears. These settings affect **only the visual preview** and do not modify the exported STL file.
+
+#### Control Overview
+
+| Setting | Purpose | Range | Default |
+|---------|---------|-------|---------|
+| **Brightness** | Adjusts overall light intensity | 1-5 | 3 (Normal) |
+| **Contrast** | Adjusts ambient vs directional light ratio | 1-5 | 3 (Normal) |
+
+#### Brightness Levels
+
+| Level | Name | Multiplier | Description |
+|-------|------|------------|-------------|
+| 1 | Very Dim | 0.6× | Significantly reduced lighting |
+| 2 | Dim | 0.8× | Slightly reduced lighting |
+| 3 | Normal | 1.0× | **Default** - Base theme lighting |
+| 4 | Bright | 1.2× | Slightly increased lighting |
+| 5 | Very Bright | 1.4× | Significantly increased lighting |
+
+#### Contrast Levels
+
+| Level | Name | Ambient Ratio | Directional Ratio | Effect |
+|-------|------|---------------|-------------------|--------|
+| 1 | Very Low | 1.4× | 0.6× | Flat, even lighting |
+| 2 | Low | 1.2× | 0.8× | Soft shadows |
+| 3 | Normal | 1.0× | 1.0× | **Default** - Balanced lighting |
+| 4 | High | 0.8× | 1.2× | More defined shadows |
+| 5 | Very High | 0.6× | 1.4× | Dramatic lighting with strong shadows |
+
+#### HTML Structure
+
+```html
+<fieldset class="preview-display-controls" role="group" aria-labelledby="preview-controls-legend">
+    <legend id="preview-controls-legend">Preview Display Settings</legend>
+
+    <!-- Brightness Control -->
+    <div class="preview-control-group" role="radiogroup" aria-labelledby="brightness-label">
+        <label id="brightness-label">Brightness:</label>
+        <div class="preview-control-options">
+            <input type="radio" name="preview-brightness" id="brightness-1" value="1">
+            <label for="brightness-1">1</label>
+            <input type="radio" name="preview-brightness" id="brightness-2" value="2">
+            <label for="brightness-2">2</label>
+            <input type="radio" name="preview-brightness" id="brightness-3" value="3" checked>
+            <label for="brightness-3">3</label>
+            <input type="radio" name="preview-brightness" id="brightness-4" value="4">
+            <label for="brightness-4">4</label>
+            <input type="radio" name="preview-brightness" id="brightness-5" value="5">
+            <label for="brightness-5">5</label>
+        </div>
+    </div>
+
+    <!-- Contrast Control -->
+    <div class="preview-control-group" role="radiogroup" aria-labelledby="contrast-label">
+        <label id="contrast-label">Contrast:</label>
+        <div class="preview-control-options">
+            <input type="radio" name="preview-contrast" id="contrast-1" value="1">
+            <label for="contrast-1">1</label>
+            <input type="radio" name="preview-contrast" id="contrast-2" value="2">
+            <label for="contrast-2">2</label>
+            <input type="radio" name="preview-contrast" id="contrast-3" value="3" checked>
+            <label for="contrast-3">3</label>
+            <input type="radio" name="preview-contrast" id="contrast-4" value="4">
+            <label for="contrast-4">4</label>
+            <input type="radio" name="preview-contrast" id="contrast-5" value="5">
+            <label for="contrast-5">5</label>
+        </div>
+    </div>
+</fieldset>
+```
+
+#### JavaScript Implementation
+
+```javascript
+// Preview display settings state
+let previewBrightnessLevel = 3; // Default: Normal (1-5 scale)
+let previewContrastLevel = 3;   // Default: Normal (1-5 scale)
+
+// Brightness multipliers for each level (1-5)
+const BRIGHTNESS_MULTIPLIERS = {
+    1: 0.6,   // Very dim
+    2: 0.8,   // Dim
+    3: 1.0,   // Normal (default)
+    4: 1.2,   // Bright
+    5: 1.4    // Very bright
+};
+
+// Contrast settings: ambient/directional ratios and material adjustments
+const CONTRAST_SETTINGS = {
+    1: { ambientRatio: 1.4, directionalRatio: 0.6, specularIntensity: 0.3, shininessOffset: -80 },
+    2: { ambientRatio: 1.2, directionalRatio: 0.8, specularIntensity: 0.6, shininessOffset: -40 },
+    3: { ambientRatio: 1.0, directionalRatio: 1.0, specularIntensity: 1.0, shininessOffset: 0 },
+    4: { ambientRatio: 0.8, directionalRatio: 1.2, specularIntensity: 1.3, shininessOffset: 40 },
+    5: { ambientRatio: 0.6, directionalRatio: 1.4, specularIntensity: 1.6, shininessOffset: 80 }
+};
+
+// Apply brightness setting
+function applyPreviewBrightness(level) {
+    previewBrightnessLevel = parseInt(level, 10) || 3;
+    updatePreviewDisplaySettings();
+    // Screen reader announcement...
+}
+
+// Apply contrast setting
+function applyPreviewContrast(level) {
+    previewContrastLevel = parseInt(level, 10) || 3;
+    updatePreviewDisplaySettings();
+    // Screen reader announcement...
+}
+
+// Update the 3D scene with current brightness/contrast
+function updatePreviewDisplaySettings() {
+    // Adjusts ambient light, directional lights, and material properties
+    // based on current brightness and contrast levels
+}
+```
+
+#### CSS Styling
+
+```css
+.preview-display-controls {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75em;
+    padding: 0.75em;
+    margin-top: 0.5em;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+}
+
+.preview-control-options input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.preview-control-options label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.3em 0.6em;
+    min-width: 2.5em;
+    font-size: 0.8em;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-secondary);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.preview-control-options input[type="radio"]:checked + label {
+    background: var(--border-focus);
+    color: #ffffff;
+    border-color: var(--border-focus);
+}
+```
+
+#### Integration with Theme System
+
+The brightness and contrast settings work in conjunction with the theme system:
+
+1. **Base Values from Theme**: Each theme provides base ambient and directional light intensities via CSS variables
+2. **User Adjustments Applied**: Brightness/contrast multipliers are applied on top of theme values
+3. **Theme Changes Preserve Settings**: When the theme changes, current brightness/contrast settings are reapplied
+
+```javascript
+// In update3DSceneColors():
+// After rebuilding lights for new theme...
+if (typeof storeOriginalLightIntensities === 'function') {
+    storeOriginalLightIntensities();
+}
+if (typeof updatePreviewDisplaySettings === 'function') {
+    updatePreviewDisplaySettings();
+}
+```
+
+#### Accessibility Features
+
+- **ARIA Labels**: Each control group has proper `role="radiogroup"` and `aria-labelledby`
+- **Screen Reader Announcements**: Changes are announced (e.g., "Preview brightness set to bright")
+- **Keyboard Navigation**: Full keyboard support via native radio button behavior
+- **Focus Indicators**: Clear focus outlines on selected options
+- **High Contrast Mode**: Yellow borders and green text for visibility
+
+#### Non-Persistence Policy
+
+Brightness and contrast settings are **not persisted** across sessions. This is consistent with the theme and font size policies:
+- Settings reset to defaults (level 3) on page load
+- Provides consistent starting experience for all users
+- Users with specific needs can quickly adjust as needed
+
 ---
 
 ## 4. Accessibility Features
@@ -1232,6 +1479,7 @@ Low vision users benefit from enhanced depth perception:
 | 1.0 | 2024-12-06 | Initial specification document |
 | 1.1 | 2024-12-06 | Cross-check verification completed; corrected skip link href from `#main-form` to `#main-content`; updated appendices to match actual implementation |
 | 1.2 | 2024-12-06 | Added CAMERA_SETTINGS global configuration documentation in Section 3.4; expanded camera controls section with detailed instructions for adjusting initial view positions for cards and cylinders |
+| 1.3 | 2025-12-08 | Added Section 3.7 (STL Preview Label) to clarify the preview panel's purpose; Added Section 3.8 (Preview Display Settings) documenting new brightness and contrast radio button controls for 3D preview customization |
 
 ---
 

@@ -377,13 +377,13 @@ def add_security_headers(response):
     connect_sources.append('https://cdn.jsdelivr.net')
     connect_sources.append('https://unpkg.com')
 
-    # Improved CSP: Remove 'unsafe-eval' for modern browsers
-    # Note: 'unsafe-eval' removed - requires Chrome 80+, Firefox 114+, Safari 15+, Edge 80+
-    # If you need to support older browsers, uncomment the 'unsafe-eval' fallback below
+    # CSP with 'unsafe-eval' required for Manifold-3D WASM library
+    # Note: Manifold-3D uses Emscripten's embind which requires Function() constructor
+    # 'unsafe-eval' is necessary for the embind runtime binding system
     csp_policy = (
         "default-src 'self'; "
-        # 'wasm-unsafe-eval' allows WebAssembly compilation without full eval
-        "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' "
+        # 'unsafe-eval' required for Manifold-3D embind, 'wasm-unsafe-eval' for WASM compilation
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' "
         'https://fonts.googleapis.com https://vercel.live '
         'https://cdn.jsdelivr.net https://unpkg.com; '
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "

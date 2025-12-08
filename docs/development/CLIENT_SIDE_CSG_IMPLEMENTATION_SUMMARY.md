@@ -1,8 +1,14 @@
 # Client-Side CSG Implementation - Complete Summary
 
-## Implementation Status: ✅ COMPLETE
+## Implementation Status: ✅ COMPLETE (Bug Fixed 2024-12-08)
 
-All planned features have been successfully implemented. The braille STL generator now uses client-side CSG as the primary generation method, with automatic fallback to server-side generation.
+All planned features have been successfully implemented. The braille STL generator now uses client-side CSG as the **exclusive** generation method.
+
+> **CRITICAL BUG FIX (2024-12-08):** The CSG worker (`static/workers/csg-worker.js`) existed but was never integrated into the frontend. The frontend code was incorrectly going directly to the server-side `/generate_braille_stl` endpoint, bypassing the client-side CSG entirely. This has been fixed:
+> - CSG worker is now properly initialized on page load
+> - `generateSTLClientSide()` function added to orchestrate client-side generation
+> - Server-side fallback has been intentionally DISABLED to ensure correct path is always used
+> - All STL generation now uses: `/geometry_spec` → CSG Worker → STL binary
 
 ---
 
@@ -24,18 +30,29 @@ All planned features have been successfully implemented. The braille STL generat
 - Supports binary STL export (compact, ~2-10 MB per file)
 - Compatible with all major slicer software
 
-### 3. ✅ CSG Web Worker
-**Location**: `static/workers/csg-worker.js`
+### 3. ✅ CSG Web Workers (Dual Worker Architecture)
 
-**Features**:
-- ESM module worker for modern browser support
-- Builds 3D primitives: cone frustums, spherical caps, boxes, triangles
-- Batch union operations for efficiency (32-64 dots per batch)
-- Single subtraction from base plate
-- Exports to binary STL
-- Returns geometry for Three.js preview
+**Standard Worker**: `static/workers/csg-worker.js`
+- Used for **flat cards**
+- Uses three-bvh-csg for boolean operations
+- Fast, ~200KB bundle
+- May produce non-manifold edges on complex geometry
 
-**Supported Geometry**:
+**Manifold Worker**: `static/workers/csg-worker-manifold.js`
+- Used for **cylinders**
+- Uses Manifold WASM primitives from start
+- ~2.5MB WASM bundle (loaded from CDN)
+- **Guarantees watertight/manifold output**
+
+**Worker Selection Logic**:
+```javascript
+// In generateSTLClientSide():
+const useManifolWorker = shapeType === 'cylinder' && manifoldWorkerReady;
+// Cylinders → Manifold worker (guaranteed manifold)
+// Cards → Standard worker (faster)
+```
+
+**Supported Geometry** (both workers):
 - Standard braille dots (cone frustums)
 - Rounded dots (frustum + spherical cap)
 - Hemisphere recesses (counter plates)
@@ -43,7 +60,7 @@ All planned features have been successfully implemented. The braille STL generat
 - Cone frustum recesses (counter plates)
 - Rectangle markers
 - Triangle markers
-- Character markers (simplified boxes)
+- Character markers (simplified boxes in standard, pixel-based in Manifold)
 
 ### 4. ✅ Geometry Spec Endpoint
 **Location**: `backend.py` - New endpoint `/geometry_spec`
@@ -71,26 +88,31 @@ All planned features have been successfully implemented. The braille STL generat
 
 **Rate limit**: 20 requests/minute (higher than STL endpoints since it's lightweight)
 
-### 5. ✅ Frontend Integration
-**Location**: `public/index.html`
+### 5. ✅ Frontend Integration (Fixed 2024-12-08)
+**Location**: `public/index.html` and `templates/index.html`
 
-**Changes**:
-- Worker initialization on page load
-- Health check for worker readiness
-- `tryClientSideCSG()` function for generation
-- Automatic fallback cascade:
-  1. Client-side CSG (primary)
-  2. Server-side generation (fallback)
-- Feature flag: `useClientSideCSG` (default: `true`)
+**Changes (Bug Fix)**:
+- CSG worker variables added: `csgWorker`, `csgWorkerReady`, `csgRequestId`, `pendingCsgRequests`
+- Worker initialization on page load (in `window.onload`)
+- `generateSTLClientSide()` function for orchestrating generation
+- Calls `/geometry_spec` → sends to CSG Worker → returns STL binary
+- **NO server-side fallback** - errors are displayed to user
 - Console logging for debugging
 
 **User Experience**:
-- Transparent - users see "Generating..." regardless of method
+- Shows "Generating 3D model (client-side CSG)..." during generation
 - Fast - no server round-trip for complex booleans
-- Reliable - falls back gracefully on errors
+- Clear error messages if generation fails
 
-### 6. ✅ Automatic Fallback Logic
-**Triggers**:
+### 6. ✅ Fallback Logic (DISABLED)
+**As of 2024-12-08, server-side fallback is intentionally disabled.**
+
+**Rationale**:
+- Ensures the correct generation path is always used
+- Bugs in client-side code are surfaced immediately (not hidden by fallback)
+- Consistent behavior across all deployments
+
+**Error conditions show user-facing error**:
 - Web Workers not supported (IE, very old browsers)
 - Module Workers not supported (Safari < 15)
 - Worker initialization fails
@@ -98,12 +120,6 @@ All planned features have been successfully implemented. The braille STL generat
 - Geometry spec fetch fails (network, server error)
 - CSG operation throws error
 - Worker timeout (2 minutes)
-
-**Behavior**:
-- Logs warning to console
-- Seamlessly falls back to server
-- User sees "Using server-side STL generation" in console
-- No user action required
 
 ### 7. ✅ Testing Documentation
 **Location**: `CLIENT_SIDE_CSG_TEST_PLAN.md`
@@ -160,16 +176,20 @@ braille-card-and-cylinder-stl-generator/
 │   ├── examples/
 │   │   └── STLExporter.js
 │   └── workers/
-│       └── csg-worker.js
+│       ├── csg-worker.js           # Standard worker (cards)
+│       └── csg-worker-manifold.js  # Manifold worker (cylinders)
 ├── app/
 │   └── geometry_spec.py (NEW)
 ├── backend.py (MODIFIED - added /geometry_spec endpoint)
 ├── public/
-│   └── index.html (MODIFIED - worker integration)
-├── CLIENT_SIDE_CSG_DOCUMENTATION.md (NEW)
-├── CLIENT_SIDE_CSG_TEST_PLAN.md (NEW)
-├── OPTIONAL_MANIFOLD3D_PATH.md (NEW)
-├── CLIENT_SIDE_CSG_IMPLEMENTATION_SUMMARY.md (NEW - this file)
+│   └── index.html (MODIFIED - dual worker integration)
+├── templates/
+│   └── index.html (MODIFIED - dual worker integration)
+├── docs/development/
+│   ├── CLIENT_SIDE_CSG_DOCUMENTATION.md
+│   ├── CLIENT_SIDE_CSG_TEST_PLAN.md
+│   ├── MANIFOLD_CYLINDER_FIX.md
+│   └── CLIENT_SIDE_CSG_IMPLEMENTATION_SUMMARY.md (this file)
 └── README.md (MODIFIED - added CSG section)
 ```
 
@@ -210,16 +230,15 @@ braille-card-and-cylinder-stl-generator/
 
 ## Configuration Reference
 
-### Feature Flag
-**File**: `public/index.html` (line ~2417)
+### No Feature Flag (Fallback Disabled)
+As of 2024-12-08, there is no feature flag to toggle between client-side and server-side generation. Client-side CSG is the **exclusive** method.
 
+**CSG Worker Variables** (in `public/index.html`):
 ```javascript
-let useClientSideCSG = true; // Primary method
-```
-
-**To force server-side**:
-```javascript
-let useClientSideCSG = false;
+let csgWorker = null;           // The worker instance
+let csgWorkerReady = false;     // True when worker is initialized
+let csgRequestId = 0;           // Request counter
+let pendingCsgRequests = new Map();  // Pending request handlers
 ```
 
 ### Worker Timeout
@@ -288,10 +307,10 @@ function batchUnion(geometries, batchSize = 32) {
 
 ### Current Implementation
 
-1. **Cylinder geometry**: Spec extraction not fully implemented
-   - Basic structure provided
-   - TODO: Compute curved positions on cylinder surface
-   - **Workaround**: Falls back to server for cylinders
+1. **Cylinder geometry**: Fully implemented in CSG worker
+   - `extract_cylinder_geometry_spec()` provides geometry spec
+   - CSG worker handles cylinder shell creation and dot positioning
+   - Cylinder-specific markers (triangle, rect, char) supported
 
 2. **Character markers**: Use simplified box geometry
    - Full text path rendering would require additional dependencies
@@ -303,7 +322,7 @@ function batchUnion(geometries, batchSize = 32) {
 
 4. **Memory ceiling**: Browser limits (~500 MB - 2 GB)
    - Very large models (500+ dots) may fail
-   - **Workaround**: Automatic fallback to server
+   - **No automatic fallback** - user sees error message
 
 ### vs. manifold3d WASM
 
@@ -317,15 +336,15 @@ function batchUnion(geometries, batchSize = 32) {
 
 ## Success Metrics
 
-### ✅ All Criteria Met
+### ✅ All Criteria Met (Updated 2024-12-08)
 
 1. ✅ **Vercel Hobby Compatible**: No timeout issues, works on free tier
 2. ✅ **Browser Support**: Modern browsers fully supported
-3. ✅ **Automatic Fallback**: Graceful degradation to server
+3. ✅ **No Silent Failures**: Errors surfaced to user (no hidden fallback)
 4. ✅ **Performance**: Acceptable for typical models (< 30 sec)
 5. ✅ **Bundle Size**: Reasonable impact (~200-300 KB, 60-80 KB gzipped)
-6. ✅ **No Breaking Changes**: Existing functionality preserved
-7. ✅ **Documentation**: Comprehensive guides provided
+6. ✅ **Bug Fixed**: CSG worker now properly integrated into frontend
+7. ✅ **Documentation**: Comprehensive guides provided and updated
 8. ✅ **Testing**: Test plan and procedures documented
 
 ---
@@ -395,17 +414,24 @@ The client-side CSG implementation is **production-ready** and provides signific
 - ✅ Better scalability
 - ✅ Faster iteration for users
 - ✅ Minimal bundle size impact
-- ✅ Graceful fallback strategy
+- ✅ Clear error handling (no silent fallbacks)
 - ✅ Comprehensive documentation
 
-The implementation follows best practices for progressive enhancement and provides a solid foundation for future improvements.
+The implementation follows best practices and provides a solid foundation for future improvements.
 
-**Total Implementation Time**: ~3-4 hours
+**Initial Implementation**: ~3-4 hours
+**Bug Fix (2024-12-08)**: Frontend integration fix
 **Files Added**: 8
-**Files Modified**: 3
-**Lines of Code**: ~1,500
-**Documentation**: ~2,500 lines
+**Files Modified**: 5 (including bug fix)
+**Lines of Code**: ~1,700
 
 ---
 
-**Status**: ✅ COMPLETE - Ready for deployment and testing
+**Status**: ✅ COMPLETE - Bug fixed, ready for deployment and testing
+
+## Bug Fix History
+
+| Date | Issue | Resolution |
+|------|-------|------------|
+| 2024-12-08 | CSG worker existed but was never integrated into frontend | Added CSG worker initialization, `generateSTLClientSide()` function, disabled server fallback |
+| 2024-12-08 | Manifold worker (csg-worker-manifold.js) existed but was never used | Added Manifold worker initialization and routing logic - cylinders now use Manifold for guaranteed manifold output |

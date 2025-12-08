@@ -4,7 +4,7 @@
 
 This document serves as the **master index** for all core architecture specifications in the Braille Card and Cylinder STL Generator project. Each specification document provides comprehensive, in-depth technical documentation for a specific subsystem or feature.
 
-**Last Updated:** 2025-12-07
+**Last Updated:** 2025-12-08
 **Total Specification Documents:** 13
 
 ---
@@ -14,11 +14,13 @@ This document serves as the **master index** for all core architecture specifica
 ### 1. User Interface & Experience
 
 #### [UI_INTERFACE_CORE_SPECIFICATIONS.md](./UI_INTERFACE_CORE_SPECIFICATIONS.md)
-**Status:** ✅ Complete
+**Status:** ✅ Complete (Updated 2025-12-08)
 **Covers:**
 - Theme system (Dark, Light, High Contrast)
 - Font size adjustment system
 - STL preview panel (Three.js 3D viewer)
+- **STL Preview Label** — Clarifying label below the preview panel (Section 3.7)
+- **Preview Display Settings** — Brightness and contrast radio button controls (Section 3.8)
 - Accessibility features (keyboard navigation, screen readers, ARIA)
 - Button state management
 - Layout responsiveness (desktop/mobile)
@@ -28,6 +30,7 @@ This document serves as the **master index** for all core architecture specifica
 - Three-point lighting for high contrast mode
 - OrbitControls configuration
 - Skip link navigation
+- Preview brightness/contrast controls (5 levels each)
 
 #### [CARD_THICKNESS_PRESET_SPECIFICATIONS.md](./CARD_THICKNESS_PRESET_SPECIFICATIONS.md)
 **Status:** ✅ Complete (Updated 2025-12-07)
@@ -347,13 +350,15 @@ This document serves as the **master index** for all core architecture specifica
 
 ## Web Worker Coverage
 
-| Worker | Purpose | Documentation |
-|--------|---------|---------------|
-| `static/liblouis-worker.js` | Braille translation | LIBLOUIS_TRANSLATION_CORE_SPECIFICATIONS (Section 3) |
-| `static/workers/csg-worker.js` | CSG operations (three-bvh-csg) | STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS (Section 4), CLIENT_SIDE_CSG_DOCUMENTATION |
-| `static/workers/csg-worker-manifold.js` | CSG with Manifold WASM | MANIFOLD_WASM_IMPLEMENTATION, RECESS_INDICATOR_SPECIFICATIONS (Section 3.1) |
+| Worker | Purpose | Shape Routing | Documentation |
+|--------|---------|---------------|---------------|
+| `static/liblouis-worker.js` | Braille translation | All | LIBLOUIS_TRANSLATION_CORE_SPECIFICATIONS (Section 3) |
+| `static/workers/csg-worker.js` | CSG operations (three-bvh-csg) | **Cards only** | STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS (Section 4), CLIENT_SIDE_CSG_DOCUMENTATION |
+| `static/workers/csg-worker-manifold.js` | CSG with Manifold WASM | **Cylinders only** | MANIFOLD_CYLINDER_FIX, MANIFOLD_WASM_IMPLEMENTATION |
 
 **Coverage:** 3/3 workers documented (100%)
+
+> **Dual Worker Architecture (2024-12-08):** The frontend automatically selects the appropriate CSG worker based on `shape_type`. Cylinders use the Manifold worker for guaranteed watertight output; cards use the standard worker for faster generation.
 
 ---
 
@@ -621,6 +626,8 @@ Section Reference: SURFACE_DIMENSIONS_SPECIFICATIONS.md (Section 2.1)
 **Dot numbering?** → BRAILLE_SPACING_SPECIFICATIONS (Section 1)
 **Marker positioning?** → RECESS_INDICATOR_SPECIFICATIONS (Sections 1-3)
 **High contrast mode?** → UI_INTERFACE_CORE_SPECIFICATIONS (Section 1.3)
+**Preview brightness/contrast?** → UI_INTERFACE_CORE_SPECIFICATIONS (Section 3.8)
+**STL preview label?** → UI_INTERFACE_CORE_SPECIFICATIONS (Section 3.7)
 
 **Request schema?** → SETTINGS_SCHEMA_CORE_SPECIFICATIONS
 
@@ -658,6 +665,8 @@ Section Reference: SURFACE_DIMENSIONS_SPECIFICATIONS.md (Section 2.1)
 | 2025-12-07 | Updated CARD_THICKNESS_PRESET_SPECIFICATIONS.md v1.3: Added "Custom" radio button with auto-detection when parameters deviate from presets |
 | 2025-12-07 | Added MAJOR_FEATURE_IMPLEMENTATION_SOP.md - Standard Operating Procedure for implementing major features; documents 6-phase workflow with comprehensive checklists, case study, and development best practices |
 | 2024-12-07 | Added Bug 7 (Cylinder rounded dot floating) to Known Issues as FIXED; fix applied in csg-worker-manifold.js |
+| 2025-12-08 | Updated UI_INTERFACE_CORE_SPECIFICATIONS.md v1.3: Added STL Preview Label (Section 3.7) and Preview Display Settings with brightness/contrast controls (Section 3.8) |
+| 2025-12-08 | **BUG FIX:** Manifold worker integration completed. Frontend now uses dual-worker architecture: csg-worker.js for cards, csg-worker-manifold.js for cylinders (guarantees manifold output). Updated Web Worker Coverage section. |
 
 ---
 

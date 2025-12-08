@@ -12,6 +12,20 @@
     <link rel="alternate icon" href="/favicon.ico" sizes="any">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
+        /* WCAG 1.4.12 Text Spacing Support */
+        * {
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+        }
+
+        .info-panel,
+        .grade-selection,
+        .line-input-group,
+        .expert-settings {
+            min-height: fit-content;
+            height: auto !important;
+        }
+
         /* Theme CSS Variables */
         :root {
             /* Light mode colors */
@@ -632,7 +646,6 @@
             overflow-y: scroll; /* Enable scrolling for right column menu boxes */
             -webkit-overflow-scrolling: touch;
             overflow-x: hidden; /* Prevent horizontal overflow */
-            /* scrollbar-gutter: stable; */ /* Reserved for future use - not yet widely supported by validators */
             scrollbar-width: auto; /* Firefox standard scrollbar */
             scrollbar-color: #3182ce #e2e8f0; /* Firefox: blue thumb on light grey track */
             /* Distinct background for scrollable area */
@@ -718,8 +731,6 @@
             border-color: #63b3ed !important; /* Bright blue border on hover */
             box-shadow: 0 3px 6px rgba(0,0,0,0.6) !important; /* Enhanced shadow on hover */
         }
-
-        /* Use default browser scrollbar arrow buttons in dark theme */
 
         [data-theme="dark"] body::-webkit-scrollbar-track {
             background: #2d3748; /* Darker background for better contrast */
@@ -870,6 +881,174 @@
             box-shadow: 0 8px 32px var(--shadow-medium);
         }
 
+        /* STL Preview Label and Controls */
+        .stl-preview-label {
+            width: 100%;
+            text-align: center;
+            padding: 0.5em 0.75em;
+            margin-top: 0.5em;
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 8px;
+        }
+
+        .stl-preview-label strong {
+            color: var(--text-primary);
+        }
+
+        /* High contrast mode - STL preview label */
+        [data-theme="high-contrast"] .stl-preview-label {
+            background: #1a1a1a;
+            border: 2px solid #ffff00;
+            color: #02fe05;
+        }
+
+        [data-theme="high-contrast"] .stl-preview-label strong {
+            color: #fdfe00;
+        }
+
+        /* Preview Display Controls Container */
+        .preview-display-controls {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75em;
+            padding: 0.75em;
+            margin-top: 0.5em;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 8px;
+        }
+
+        .preview-display-controls legend {
+            font-weight: 600;
+            font-size: 0.9em;
+            color: var(--text-primary);
+            margin-bottom: 0.25em;
+        }
+
+        /* Preview Control Group (for each setting row) */
+        .preview-control-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5em;
+            flex-wrap: wrap;
+        }
+
+        .preview-control-group label {
+            font-size: 0.85em;
+            font-weight: 500;
+            color: var(--text-primary);
+            min-width: 70px;
+        }
+
+        .preview-control-options {
+            display: flex;
+            gap: 0.25em;
+            flex-wrap: wrap;
+        }
+
+        .preview-control-options input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .preview-control-options label {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.3em 0.6em;
+            min-width: 2.5em;
+            font-size: 0.8em;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-secondary);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .preview-control-options label:hover {
+            background: var(--bg-input);
+            border-color: var(--border-focus);
+        }
+
+        .preview-control-options input[type="radio"]:checked + label {
+            background: var(--border-focus);
+            color: #ffffff;
+            border-color: var(--border-focus);
+        }
+
+        .preview-control-options input[type="radio"]:focus + label {
+            outline: 2px solid var(--border-focus);
+            outline-offset: 1px;
+        }
+
+        /* High contrast mode - Preview controls */
+        [data-theme="high-contrast"] .preview-display-controls {
+            background: #1a1a1a;
+            border: 2px solid #ffff00;
+        }
+
+        [data-theme="high-contrast"] .preview-display-controls legend,
+        [data-theme="high-contrast"] .preview-control-group label {
+            color: #02fe05;
+        }
+
+        [data-theme="high-contrast"] .preview-control-options label {
+            background: #2a2a2a;
+            color: #02fe05;
+            border: 2px solid #00ffff;
+        }
+
+        [data-theme="high-contrast"] .preview-control-options label:hover {
+            background: #3a3a3a;
+            border-color: #ff00ff;
+        }
+
+        [data-theme="high-contrast"] .preview-control-options input[type="radio"]:checked + label {
+            background: #0201fe;
+            color: #fdfe00;
+            border-color: #fdfe00;
+        }
+
+        [data-theme="high-contrast"] .preview-control-options input[type="radio"]:focus + label {
+            outline: 3px solid #ff00ff;
+            outline-offset: 2px;
+        }
+
+        /* Mobile optimization for preview controls */
+        @media (max-width: 768px) {
+            .preview-display-controls {
+                padding: 0.5em;
+            }
+
+            .preview-control-group {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.35em;
+            }
+
+            .preview-control-group label {
+                min-width: unset;
+            }
+
+            .preview-control-options {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .preview-control-options label {
+                padding: 0.4em 0.7em;
+                min-width: 3em;
+            }
+        }
+
         h1 {
             font-size: 2.2em;
             font-weight: 700;
@@ -1012,7 +1191,7 @@
         }
         /* Placement mode toggle: allow wrapping to avoid right cutoff on small screens */
         .line-input-mode-toggle {
-            flex-wrap: wrap; /* Allow items to wrap onto next line */
+            flex-wrap: wrap; /* New: allow items to wrap onto next line */
         }
         /* Put the "Placement Mode:" label on its own line when needed */
         .line-input-mode-toggle > .line-label {
@@ -1850,7 +2029,7 @@
 
 
 
-    <div class="main-layout" role="main" id="main-content">
+    <main class="main-layout" id="main-content">
         <!-- Title Section at the top -->
         <div class="title-section">
             <h1 id="main-heading">
@@ -1896,7 +2075,7 @@
         <div class="content-area">
             <!-- Left Column - STL Preview Section (45% width) -->
             <div class="preview-section" role="region" aria-label="3D STL Preview">
-                <div id="viewer" role="img" aria-label="3D preview of braille business card STL file" tabindex="0">
+                <div id="viewer" role="img" aria-label="3D preview of braille embossing plate. Interactive 3D model requires mouse or touch to rotate and zoom. Shows raised braille dots on plate surface." aria-describedby="viewer-instructions" tabindex="0">
                     <div id="error-message" role="alert" aria-live="assertive" aria-atomic="true">
                         <span style="font-weight:bold;" aria-hidden="true">⚠</span>
                         <span id="error-text-container" style="display: flex; flex-direction: column; align-items: center;">
@@ -1905,6 +2084,54 @@
                         </span>
                     </div>
                 </div>
+                <div id="viewer-instructions" class="sr-only">
+                    To interact with the 3D preview: Use mouse drag to rotate, mouse wheel to zoom. Touch users: one finger to rotate, pinch to zoom. Keyboard users: the visual preview is supplementary; generated STL files contain the same geometry.
+                </div>
+
+                <!-- STL Preview Label - Clarifies that this is a preview panel, not a text input -->
+                <div class="stl-preview-label" id="stl-preview-label" role="note" aria-label="STL Preview information">
+                    <strong>3D STL Preview</strong> — Interactive preview only (drag to rotate, scroll to zoom)
+                </div>
+
+                <!-- Preview Display Controls - Contrast and Brightness -->
+                <fieldset class="preview-display-controls" role="group" aria-labelledby="preview-controls-legend">
+                    <legend id="preview-controls-legend">Preview Display Settings</legend>
+
+                    <!-- Brightness Control -->
+                    <div class="preview-control-group" role="radiogroup" aria-labelledby="brightness-label">
+                        <label id="brightness-label">Brightness:</label>
+                        <div class="preview-control-options">
+                            <input type="radio" name="preview-brightness" id="brightness-1" value="1">
+                            <label for="brightness-1">1</label>
+                            <input type="radio" name="preview-brightness" id="brightness-2" value="2">
+                            <label for="brightness-2">2</label>
+                            <input type="radio" name="preview-brightness" id="brightness-3" value="3" checked>
+                            <label for="brightness-3">3</label>
+                            <input type="radio" name="preview-brightness" id="brightness-4" value="4">
+                            <label for="brightness-4">4</label>
+                            <input type="radio" name="preview-brightness" id="brightness-5" value="5">
+                            <label for="brightness-5">5</label>
+                        </div>
+                    </div>
+
+                    <!-- Contrast Control -->
+                    <div class="preview-control-group" role="radiogroup" aria-labelledby="contrast-label">
+                        <label id="contrast-label">Contrast:</label>
+                        <div class="preview-control-options">
+                            <input type="radio" name="preview-contrast" id="contrast-1" value="1">
+                            <label for="contrast-1">1</label>
+                            <input type="radio" name="preview-contrast" id="contrast-2" value="2">
+                            <label for="contrast-2">2</label>
+                            <input type="radio" name="preview-contrast" id="contrast-3" value="3" checked>
+                            <label for="contrast-3">3</label>
+                            <input type="radio" name="preview-contrast" id="contrast-4" value="4">
+                            <label for="contrast-4">4</label>
+                            <input type="radio" name="preview-contrast" id="contrast-5" value="5">
+                            <label for="contrast-5">5</label>
+                        </div>
+                    </div>
+                </fieldset>
+
                 <!-- Action Button moved here -->
                 <div class="button-row" style="margin-top: 1em;">
                     <button type="button" id="action-btn" class="generate-state" aria-label="Generate STL file from entered text" data-state="generate">Generate STL</button>
@@ -2004,9 +2231,25 @@
 
                         <p><strong>Acknowledgements:</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li>Powered by <a href="https://liblouis.io/" target="_blank" style="color: #3182ce; text-decoration: none;"><strong>Liblouis</strong></a>, an open-source professional braille translator.</li>
+                            <li>Powered by <a href="https://liblouis.io/" target="_blank" rel="noopener noreferrer" style="color: #3182ce; text-decoration: none;" aria-label="Liblouis website (opens in new window)"><strong>Liblouis</strong></a>, an open-source professional braille translator.</li>
                             <li>Extra thanks to <strong>Tobi Weinberg</strong> for the substantial time and effort he volunteered to help start this project and see it through.</li>
                         </ul>
+
+                        <details style="margin-top: 1em;">
+                            <summary style="cursor: pointer; font-weight: 700; font-size: 1.1em;">Accessibility Statement</summary>
+                            <p style="margin-top: 0.5em;">This application conforms to WCAG 2.1 Level AA.</p>
+                            <p><strong>Features:</strong></p>
+                            <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                                <li>High contrast mode for low vision users</li>
+                                <li>Adjustable font sizes (75% to 200%)</li>
+                                <li>Keyboard navigation support</li>
+                                <li>Screen reader compatible</li>
+                            </ul>
+                            <p><strong>Known Limitations:</strong></p>
+                            <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                                <li>3D preview requires mouse/touch for rotation</li>
+                            </ul>
+                        </details>
                     </div>
                 </div>
 
@@ -2033,7 +2276,7 @@
                             <!-- Auto placement textarea (hidden by default) -->
                             <div id="auto-input-container" style="display: none;">
                                 <label for="auto-text" class="line-label">Auto Placement Text</label>
-                                <textarea id="auto-text" rows="4" placeholder="Type all your text here. It will be translated to braille and auto-wrapped across rows based on available cells." style="width: 100%; resize: vertical;"></textarea>
+                                <textarea id="auto-text" rows="4" placeholder="Type all your text here. It will be translated to braille and auto-wrapped across rows based on available cells." style="width: 100%; resize: vertical;" autocomplete="off"></textarea>
                                 <div id="auto-overflow-warning" class="grade-note" style="margin-top: 0.6em; color: #d73502; display: none;">
                                     <strong>Warning:</strong> <span id="auto-overflow-message"></span>
                                 </div>
@@ -2147,11 +2390,11 @@
 
                         <!-- Submenu: Shape Selection -->
                         <div class="expert-submenu">
-                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false" aria-controls="expert-panel-shapes">
                                 <span class="expert-submenu-title">Shape Selection</span>
                                 <span class="expert-submenu-icon">▼</span>
                             </button>
-                            <div class="expert-submenu-content" style="display: none;">
+                            <div id="expert-panel-shapes" class="expert-submenu-content" style="display: none;">
                                 <!-- Output Shape Selection (moved into Expert Mode) -->
                                 <div class="grade-selection">
                                     <fieldset>
@@ -2222,35 +2465,35 @@
 
                         <!-- Submenu: Braille Spacing -->
                         <div class="expert-submenu">
-                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false" aria-controls="expert-panel-spacing">
                                 <span class="expert-submenu-title">Braille Spacing</span>
                                 <span class="expert-submenu-icon">▼</span>
                             </button>
-                            <div class="expert-submenu-content" style="display: none;">
+                            <div id="expert-panel-spacing" class="expert-submenu-content" style="display: none;">
                                 <div class="grade-selection">
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
                                     <div>
                                         <label for="grid_columns" id="grid_columns_label">Number of Braille Cells (Characters):</label>
-                                        <input type="number" id="grid_columns" name="grid_columns" value="13" style="width: 110px;">
+                                        <input type="number" id="grid_columns" name="grid_columns" value="11" style="width: 110px;" autocomplete="off">
                                         <div id="grid_columns_note" class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                            For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 13 cells available for text.
+                                            For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 11 cells available for text.
                                         </div>
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="grid_rows">Number of Braille Lines:</label>
-                                        <input type="number" id="grid_rows" name="grid_rows" value="4" style="width: 110px;">
+                                        <input type="number" id="grid_rows" name="grid_rows" value="4" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cell_spacing">Braille Cell Spacing:</label>
-                                        <input type="number" id="cell_spacing" name="cell_spacing" value="6.5" step="0.1" style="width: 110px;">
+                                        <input type="number" id="cell_spacing" name="cell_spacing" value="6.5" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="line_spacing">Braille Line Spacing:</label>
-                                        <input type="number" id="line_spacing" name="line_spacing" value="10.0" step="0.1" style="width: 110px;">
+                                        <input type="number" id="line_spacing" name="line_spacing" value="10.0" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="dot_spacing">Braille Dot Spacing:</label>
-                                        <input type="number" id="dot_spacing" name="dot_spacing" value="2.5" step="0.1" style="width: 110px;">
+                                        <input type="number" id="dot_spacing" name="dot_spacing" value="2.5" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                 </div>
 
@@ -2258,11 +2501,11 @@
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille / Card Positioning</label>
                                     <div>
                                         <label for="braille_y_adjust">Y Adjust:</label>
-                                        <input type="number" id="braille_y_adjust" name="braille_y_adjust" value="0.0" step="0.1" style="width: 110px;">
+                                        <input type="number" id="braille_y_adjust" name="braille_y_adjust" value="0.0" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="braille_x_adjust">X Adjust:</label>
-                                        <input type="number" id="braille_x_adjust" name="braille_x_adjust" value="0.0" step="0.1" style="width: 110px;">
+                                        <input type="number" id="braille_x_adjust" name="braille_x_adjust" value="0.0" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                 </div>
                             </div>
@@ -2270,28 +2513,28 @@
 
                         <!-- Submenu: Braille Dot Adjustments -->
                         <div class="expert-submenu">
-                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false" aria-controls="expert-panel-dots">
                                 <span class="expert-submenu-title">Braille Dot Adjustments</span>
                                 <span class="expert-submenu-icon">▼</span>
                             </button>
-                            <div class="expert-submenu-content" style="display: none;">
+                            <div id="expert-panel-dots" class="expert-submenu-content" style="display: none;">
                                 <div class="grade-selection" id="rounded_dot_group" style="margin-top: 8px;">
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Embossing Braille Dot Dimensions (Rounded Shape)</label>
                                     <div>
                                         <label for="rounded_dot_base_diameter">Rounded braille dot base diameter (cone base) (mm):</label>
-                                        <input type="number" id="rounded_dot_base_diameter" name="rounded_dot_base_diameter" value="2.0" step="0.1" min="0.5" max="3" style="width: 110px;">
+                                        <input type="number" id="rounded_dot_base_diameter" name="rounded_dot_base_diameter" value="2.0" step="0.1" min="0.5" max="3" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="rounded_dot_base_height">Rounded braille dot base height (cone height) (mm):</label>
-                                        <input type="number" id="rounded_dot_base_height" name="rounded_dot_base_height" value="0.2" step="0.1" min="0" max="2.0" style="width: 110px;">
+                                        <input type="number" id="rounded_dot_base_height" name="rounded_dot_base_height" value="0.2" step="0.1" min="0" max="2.0" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="rounded_dot_dome_diameter">Rounded braille dome diameter (linked to cone flat top) (mm):</label>
-                                        <input type="number" id="rounded_dot_dome_diameter" name="rounded_dot_dome_diameter" value="1.5" step="0.1" min="0.5" max="3.0" style="width: 110px;">
+                                        <input type="number" id="rounded_dot_dome_diameter" name="rounded_dot_dome_diameter" value="1.5" step="0.1" min="0.5" max="3.0" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="rounded_dot_dome_height">Rounded braille dot dome height (mm):</label>
-                                        <input type="number" id="rounded_dot_dome_height" name="rounded_dot_dome_height" value="0.6" step="0.1" min="0.1" max="2.0" style="width: 110px;">
+                                        <input type="number" id="rounded_dot_dome_height" name="rounded_dot_dome_height" value="0.6" step="0.1" min="0.1" max="2.0" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                         The cone base sits on the surface; the dome grows from the cone's flat top. Dome diameter is always equal to the cone flat-top diameter.
@@ -2302,15 +2545,15 @@
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Embossing Braille Dot Dimensions (Cone Shape)</label>
                                     <div>
                                         <label for="emboss_dot_base_diameter">Dot diameter:</label>
-                                        <input type="number" id="emboss_dot_base_diameter" name="emboss_dot_base_diameter" value="1.8" step="0.1" style="width: 110px;">
+                                        <input type="number" id="emboss_dot_base_diameter" name="emboss_dot_base_diameter" value="1.8" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="emboss_dot_height">Dot height:</label>
-                                        <input type="number" id="emboss_dot_height" name="emboss_dot_height" value="1.0" step="0.1" style="width: 110px;">
+                                        <input type="number" id="emboss_dot_height" name="emboss_dot_height" value="1.0" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="emboss_dot_flat_hat">Flat hat diameter:</label>
-                                        <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1" style="width: 110px;">
+                                        <input type="number" id="emboss_dot_flat_hat" name="emboss_dot_flat_hat" value="0.4" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                 </div>
 
@@ -2320,7 +2563,7 @@
                                     <!-- Hidden hemisphere dial for future use -->
                                     <div style="display: none;">
                                         <label for="hemi_counter_dot_base_diameter">Hemisphere Recess Dot Base Diameter (mm):</label>
-                                        <input type="number" id="hemi_counter_dot_base_diameter" name="hemi_counter_dot_base_diameter" value="1.6" step="0.1" min="0.5" max="5">
+                                        <input type="number" id="hemi_counter_dot_base_diameter" name="hemi_counter_dot_base_diameter" value="1.6" step="0.1" min="0.5" max="5" autocomplete="off">
                                     </div>
                                     <div id="hemisphere_dimensions_group" style="margin-top: 6px; display: none;">
                                         <div class="grade-note" style="font-size: 0.85em;">
@@ -2329,12 +2572,12 @@
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="bowl_counter_dot_base_diameter">Bowl Recess Dot Base Diameter (mm):</label>
-                                        <input type="number" id="bowl_counter_dot_base_diameter" name="bowl_counter_dot_base_diameter" value="1.8" step="0.1" min="0.5" max="5" style="width: 110px;">
+                                        <input type="number" id="bowl_counter_dot_base_diameter" name="bowl_counter_dot_base_diameter" value="1.8" step="0.1" min="0.5" max="5" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div id="bowl_dimensions_group" style="margin-top: 6px;">
                                         <div>
                                             <label for="counter_dot_depth">Bowl Recess Dot Depth (mm):</label>
-                                            <input type="number" id="counter_dot_depth" name="counter_dot_depth" value="0.8" step="0.1" min="0" max="5" style="width: 110px;">
+                                            <input type="number" id="counter_dot_depth" name="counter_dot_depth" value="0.8" step="0.1" min="0" max="5" style="width: 110px;" autocomplete="off">
                                         </div>
                                     </div>
                                 </div>
@@ -2344,15 +2587,15 @@
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Counter Braille Recessed Dot Dimensions (Cone Shape)</label>
                                     <div>
                                         <label for="cone_counter_dot_base_diameter">Dot Base Diameter (mm):</label>
-                                        <input type="number" id="cone_counter_dot_base_diameter" name="cone_counter_dot_base_diameter" value="1.6" step="0.1" min="0.1" max="5" style="width: 110px;">
+                                        <input type="number" id="cone_counter_dot_base_diameter" name="cone_counter_dot_base_diameter" value="1.6" step="0.1" min="0.1" max="5" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cone_counter_dot_height">Dot Height (mm):</label>
-                                        <input type="number" id="cone_counter_dot_height" name="cone_counter_dot_height" value="0.8" step="0.1" min="0" max="5" style="width: 110px;">
+                                        <input type="number" id="cone_counter_dot_height" name="cone_counter_dot_height" value="0.8" step="0.1" min="0" max="5" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cone_counter_dot_flat_hat">Dot Flat Hat Diameter (mm):</label>
-                                        <input type="number" id="cone_counter_dot_flat_hat" name="cone_counter_dot_flat_hat" value="0.4" step="0.1" min="0" max="5" style="width: 110px;">
+                                        <input type="number" id="cone_counter_dot_flat_hat" name="cone_counter_dot_flat_hat" value="0.4" step="0.1" min="0" max="5" style="width: 110px;" autocomplete="off">
                                     </div>
                                 </div>
                             </div>
@@ -2360,38 +2603,38 @@
 
                         <!-- Submenu: Surface Dimensions -->
                         <div class="expert-submenu">
-                            <button type="button" class="expert-submenu-toggle" aria-expanded="false">
+                            <button type="button" class="expert-submenu-toggle" aria-expanded="false" aria-controls="expert-panel-dimensions">
                                 <span class="expert-submenu-title">Surface Dimensions</span>
                                 <span class="expert-submenu-icon">▼</span>
                             </button>
-                            <div class="expert-submenu-content" style="display: none;">
+                            <div id="expert-panel-dimensions" class="expert-submenu-content" style="display: none;">
                                 <div class="grade-selection">
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Cylinder Dimensions</label>
                                     <div>
                                         <label for="cylinder_diameter_mm">Cylinder Diameter (mm):</label>
-                                        <input type="number" id="cylinder_diameter_mm" name="cylinder_diameter_mm" value="30.75" step="0.1" min="10" max="200" style="width: 110px;">
+                                        <input type="number" id="cylinder_diameter_mm" name="cylinder_diameter_mm" value="30.75" step="0.1" min="10" max="200" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cylinder_height_mm">Cylinder Height (mm):</label>
-                                        <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200" style="width: 110px;">
+                                        <input type="number" id="cylinder_height_mm" name="cylinder_height_mm" value="52" step="0.1" min="10" max="200" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cylinder_polygonal_cutout_radius_mm">Polygonal Cutout Circumscribed Radius (mm):</label>
-                                        <input type="number" id="cylinder_polygonal_cutout_radius_mm" name="cylinder_polygonal_cutout_radius_mm" value="13" step="0.1" min="0" max="50" style="width: 110px;">
+                                        <input type="number" id="cylinder_polygonal_cutout_radius_mm" name="cylinder_polygonal_cutout_radius_mm" value="13" step="0.1" min="0" max="50" style="width: 110px;" autocomplete="off">
                                         <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                             Creates a polygonal cutout along the cylinder's length. Set to 0 for no cutout.
                                         </div>
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="cylinder_polygonal_cutout_sides">Polygonal Cutout Points:</label>
-                                        <input type="number" id="cylinder_polygonal_cutout_sides" name="cylinder_polygonal_cutout_sides" value="12" step="1" min="3" max="60" style="width: 110px;">
+                                        <input type="number" id="cylinder_polygonal_cutout_sides" name="cylinder_polygonal_cutout_sides" value="12" step="1" min="3" max="60" style="width: 110px;" autocomplete="off">
                                         <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                             Lower values create simpler shapes (e.g., 6); higher values approximate a circle.
                                         </div>
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="seam_offset_deg">Seam Offset (degrees):</label>
-                                        <input type="number" id="seam_offset_deg" name="seam_offset_deg" value="355" step="1" min="0" max="360" style="width: 110px;">
+                                        <input type="number" id="seam_offset_deg" name="seam_offset_deg" value="355" step="1" min="0" max="360" style="width: 110px;" autocomplete="off">
                                         <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
                                             Rotates the starting position of braille text around the cylinder
                                         </div>
@@ -2405,15 +2648,15 @@
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Plate Dimensions</label>
                                     <div>
                                         <label for="card_width">Plate Width:</label>
-                                        <input type="number" id="card_width" name="card_width" value="90" step="0.1" style="width: 110px;">
+                                        <input type="number" id="card_width" name="card_width" value="90" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="card_height">Plate Height:</label>
-                                        <input type="number" id="card_height" name="card_height" value="52" step="0.1" style="width: 110px;">
+                                        <input type="number" id="card_height" name="card_height" value="52" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <label for="card_thickness">Plate Thickness:</label>
-                                        <input type="number" id="card_thickness" name="card_thickness" value="2.0" step="0.1" style="width: 110px;">
+                                        <input type="number" id="card_thickness" name="card_thickness" value="2.0" step="0.1" style="width: 110px;" autocomplete="off">
                                     </div>
                                 </div>
                             </div>
@@ -2426,7 +2669,7 @@
                 </form>
             </div>
         </div>
-    </div>
+    </main>
 
 
 
@@ -2438,251 +2681,6 @@
         import * as THREE from '/static/three.module.js';
         import { STLLoader } from '/static/STLLoader.js';
         import { OrbitControls } from '/static/OrbitControls.js';
-
-        // Production logging - only log errors in production (defined early for CSG worker)
-        const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-        const log = {
-            debug: isProduction ? () => {} : console.log,
-            info: isProduction ? () => {} : console.log,
-            warn: isProduction ? () => {} : console.warn,
-            error: console.error // Always log errors
-        };
-        const disableCSGFallback = !isProduction; // Debug client-side CSG locally by surfacing errors
-
-        // Helper function to sync emboss cone params to counter cone params (module scope)
-        function syncEmbossToCounterConeParams() {
-            const embossBase = document.getElementById('emboss_dot_base_diameter');
-            const embossHeight = document.getElementById('emboss_dot_height');
-            const embossFlatHat = document.getElementById('emboss_dot_flat_hat');
-            const counterBase = document.getElementById('cone_counter_dot_base_diameter');
-            const counterHeight = document.getElementById('cone_counter_dot_height');
-            const counterFlatHat = document.getElementById('cone_counter_dot_flat_hat');
-
-            if (embossBase && counterBase) {
-                counterBase.value = embossBase.value;
-                log.debug('Synced cone_counter_dot_base_diameter to:', embossBase.value);
-            }
-            if (embossHeight && counterHeight) {
-                counterHeight.value = embossHeight.value;
-                log.debug('Synced cone_counter_dot_height to:', embossHeight.value);
-            }
-            if (embossFlatHat && counterFlatHat) {
-                counterFlatHat.value = embossFlatHat.value;
-                log.debug('Synced cone_counter_dot_flat_hat to:', embossFlatHat.value);
-            }
-        }
-
-        // Client-side CSG Worker Setup
-        let csgWorker = null;
-        let workerReady = false;
-        let workerRequestId = 0;
-        let useClientSideCSG = true; // Feature flag
-
-        // Manifold CSG Worker for cylinders (guaranteed manifold output)
-        let manifoldWorker = null;
-        let manifoldWorkerReady = false;
-
-        // Initialize standard CSG worker (three-bvh-csg based)
-        function initCSGWorker() {
-            if (csgWorker || !useClientSideCSG) return;
-
-            try {
-                csgWorker = new Worker('/static/workers/csg-worker.js', { type: 'module' });
-
-                csgWorker.onmessage = function(event) {
-                    const { type, error, stack } = event.data;
-                    if (type === 'ready') {
-                        workerReady = true;
-                        log.info('CSG Worker initialized and ready');
-                    } else if (type === 'init_error') {
-                        log.error('CSG Worker initialization failed:', error);
-                        log.error('CSG Worker init error stack:', stack);
-                        workerReady = false;
-                        useClientSideCSG = false;
-                    }
-                };
-
-                csgWorker.onerror = function(error) {
-                    log.error('CSG Worker error:', error.message || error);
-                    log.error('CSG Worker error file:', error.filename);
-                    log.error('CSG Worker error line:', error.lineno);
-                    workerReady = false;
-                    useClientSideCSG = false; // Disable on error
-                };
-
-            } catch (error) {
-                log.warn('Failed to initialize CSG Worker, falling back to server:', error);
-                useClientSideCSG = false;
-            }
-        }
-
-        // Initialize Manifold CSG worker for cylinders
-        function initManifoldWorker() {
-            if (manifoldWorker) return;
-
-            try {
-                console.log('Frontend: Initializing Manifold CSG Worker...');
-                manifoldWorker = new Worker('/static/workers/csg-worker-manifold.js', { type: 'module' });
-
-                manifoldWorker.onmessage = function(event) {
-                    const { type, error, stack } = event.data;
-                    if (type === 'ready') {
-                        manifoldWorkerReady = true;
-                        console.log('Frontend: ✓ Manifold CSG Worker initialized and ready (for cylinders)');
-                    } else if (type === 'init_error') {
-                        console.warn('Frontend: ✗ Manifold CSG Worker initialization failed:', error);
-                        console.warn('Frontend: Manifold worker will not be used, falling back to standard worker');
-                        manifoldWorkerReady = false;
-                    }
-                };
-
-                manifoldWorker.onerror = function(error) {
-                    console.error('Frontend: ✗ Manifold CSG Worker error:', error.message || error);
-                    console.error('Frontend: Error details:', error);
-                    manifoldWorkerReady = false;
-                };
-
-            } catch (error) {
-                console.error('Frontend: ✗ Failed to initialize Manifold CSG Worker:', error);
-                manifoldWorkerReady = false;
-            }
-        }
-
-        // Try client-side CSG generation
-        async function tryClientSideCSG(requestData) {
-            if (!useClientSideCSG || !workerReady) {
-                const err = new Error('Client-side CSG worker is not ready');
-                if (disableCSGFallback) {
-                    throw err;
-                }
-                return null; // Fall back to server in production
-            }
-
-            try {
-                log.info('Attempting client-side CSG generation...');
-
-                // Fetch geometry spec from server
-                const specRes = await fetch('/geometry_spec', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestData)
-                });
-
-                if (!specRes.ok) {
-                    const err = new Error(`Geometry spec fetch failed: ${specRes.status} ${specRes.statusText}`);
-                    log.warn('Geometry spec fetch failed, falling back to server');
-                    if (disableCSGFallback) {
-                        throw err;
-                    }
-                    return null;
-                }
-
-                const spec = await specRes.json();
-                log.debug('Geometry spec received:', spec);
-
-                // Determine which worker to use based on shape type
-                // Use Manifold worker for cylinders (guaranteed manifold output)
-                // Use standard worker for flat cards (faster, simpler geometry)
-                const isCylinder = spec.shape_type === 'cylinder';
-                console.log('Frontend: Shape type:', spec.shape_type, '| Is cylinder:', isCylinder);
-                console.log('Frontend: Manifold worker ready:', manifoldWorkerReady);
-
-                const useManifold = isCylinder && manifoldWorkerReady;
-                const activeWorker = useManifold ? manifoldWorker : csgWorker;
-                const workerName = useManifold ? 'Manifold' : 'Standard';
-
-                if (isCylinder && !manifoldWorkerReady) {
-                    console.warn('Frontend: ⚠ Manifold worker NOT READY for cylinder - using standard worker (WILL have non-manifold edges)');
-                }
-
-                console.log(`Frontend: >>> Using ${workerName} CSG worker for ${spec.shape_type} generation <<<`);
-
-                // Send to worker
-                const requestId = ++workerRequestId;
-
-                return new Promise((resolve, reject) => {
-                    const timeout = setTimeout(() => {
-                        reject(new Error('Worker timeout'));
-                    }, 180000); // 3 minute timeout for Manifold (larger meshes)
-
-                    const handler = function(event) {
-                        const { type, requestId: respId, geometry, stl, error } = event.data;
-
-                        if (respId !== requestId) return; // Not our response
-
-                        clearTimeout(timeout);
-                        activeWorker.removeEventListener('message', handler);
-
-                        if (type === 'success') {
-                            console.log(`Frontend: ✓ ${workerName} CSG generation successful`);
-                            if (useManifold) {
-                                console.log('Frontend: ✓ Mesh was generated with Manifold - should be watertight with 0 non-manifold edges');
-                            }
-                            resolve({ geometry, stl });
-                        } else if (type === 'error') {
-                            console.error(`Frontend: ✗ ${workerName} CSG Worker error:`, error);
-
-                            // If Manifold failed, try falling back to standard worker
-                            if (useManifold && workerReady) {
-                                log.warn('Manifold worker failed, retrying with standard worker');
-                                activeWorker.removeEventListener('message', handler);
-                                clearTimeout(timeout);
-
-                                // Retry with standard worker
-                                const retryId = ++workerRequestId;
-                                const retryTimeout = setTimeout(() => {
-                                    reject(new Error('Standard worker timeout after Manifold fallback'));
-                                }, 120000);
-
-                                const retryHandler = function(retryEvent) {
-                                    const { type: retryType, requestId: retryRespId, geometry: retryGeom, stl: retryStl, error: retryError } = retryEvent.data;
-                                    if (retryRespId !== retryId) return;
-                                    clearTimeout(retryTimeout);
-                                    csgWorker.removeEventListener('message', retryHandler);
-                                    if (retryType === 'success') {
-                                        log.info('Standard CSG fallback successful (may have non-manifold edges)');
-                                        resolve({ geometry: retryGeom, stl: retryStl });
-                                    } else {
-                                        reject(new Error(retryError));
-                                    }
-                                };
-
-                                csgWorker.addEventListener('message', retryHandler);
-                                csgWorker.postMessage({ type: 'generate', spec: spec, requestId: retryId });
-                            } else {
-                                reject(new Error(error));
-                            }
-                        }
-                    };
-
-                    activeWorker.addEventListener('message', handler);
-
-                    // Send generation request
-                    activeWorker.postMessage({
-                        type: 'generate',
-                        spec: spec,
-                        requestId: requestId
-                    });
-                });
-
-            } catch (error) {
-                log.warn('Client-side CSG failed:', error);
-                if (disableCSGFallback) {
-                    throw error;
-                }
-                return null; // Fall back to server
-            }
-        }
-
-        // Initialize workers on page load
-        if (typeof Worker !== 'undefined') {
-            initCSGWorker();
-            initManifoldWorker(); // Initialize Manifold worker for cylinders
-        } else {
-            log.warn('Web Workers not supported, client-side CSG disabled');
-            useClientSideCSG = false;
-        }
-
         async function loadLanguageOptions() {
             const select = document.getElementById('language-table');
             if (!select) return;
@@ -2903,6 +2901,37 @@
         let renderer, scene, camera, mesh, controls;
         let lastSTLUrl = null;
 
+        // Production logging - only log errors in production
+        const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+        const log = {
+            debug: isProduction ? () => {} : console.log,
+            info: isProduction ? () => {} : console.log,
+            error: console.error // Always log errors
+        };
+
+        // Helper function to sync emboss cone params to counter cone params (module scope)
+        function syncEmbossToCounterConeParams() {
+            const embossBase = document.getElementById('emboss_dot_base_diameter');
+            const embossHeight = document.getElementById('emboss_dot_height');
+            const embossFlatHat = document.getElementById('emboss_dot_flat_hat');
+            const counterBase = document.getElementById('cone_counter_dot_base_diameter');
+            const counterHeight = document.getElementById('cone_counter_dot_height');
+            const counterFlatHat = document.getElementById('cone_counter_dot_flat_hat');
+
+            if (embossBase && counterBase) {
+                counterBase.value = embossBase.value;
+                log.debug('Synced cone_counter_dot_base_diameter to:', embossBase.value);
+            }
+            if (embossHeight && counterHeight) {
+                counterHeight.value = embossHeight.value;
+                log.debug('Synced cone_counter_dot_height to:', embossHeight.value);
+            }
+            if (embossFlatHat && counterFlatHat) {
+                counterFlatHat.value = embossFlatHat.value;
+                log.debug('Synced cone_counter_dot_flat_hat to:', embossFlatHat.value);
+            }
+        }
+
         // Theme switching functionality
         const themes = ['dark', 'high-contrast', 'light'];
         const themeIcons = {
@@ -3074,6 +3103,16 @@
                     mesh.material.needsUpdate = true;
                 }
 
+                // Store original light intensities for brightness/contrast adjustments
+                if (typeof storeOriginalLightIntensities === 'function') {
+                    storeOriginalLightIntensities();
+                }
+
+                // Apply current brightness/contrast settings after rebuilding lights
+                if (typeof updatePreviewDisplaySettings === 'function') {
+                    updatePreviewDisplaySettings();
+                }
+
                 // Force a re-render
                 if (renderer && scene && camera) {
                     renderer.render(scene, camera);
@@ -3082,6 +3121,185 @@
         }
 
         // Theme initialization is handled above in the main theme logic
+
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // PREVIEW DISPLAY SETTINGS - Brightness and Contrast Controls
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // These controls adjust the visual appearance of the 3D STL preview only.
+        // They do not affect the exported STL file or print results.
+        //
+        // Brightness: Adjusts the overall light intensity in the scene
+        //   - Level 1: Very dim (60% of base)
+        //   - Level 2: Dim (80% of base)
+        //   - Level 3: Normal (100% - default)
+        //   - Level 4: Bright (120% of base)
+        //   - Level 5: Very bright (140% of base)
+        //
+        // Contrast: Adjusts the ratio between ambient and directional lighting
+        //   - Level 1: Very low contrast (flat lighting)
+        //   - Level 2: Low contrast
+        //   - Level 3: Normal contrast (default)
+        //   - Level 4: High contrast
+        //   - Level 5: Very high contrast (dramatic lighting)
+        // ═══════════════════════════════════════════════════════════════════════════════
+
+        // Preview display settings state
+        let previewBrightnessLevel = 3; // Default: Normal (1-5 scale)
+        let previewContrastLevel = 3;   // Default: Normal (1-5 scale)
+
+        // Brightness multipliers for each level (1-5)
+        const BRIGHTNESS_MULTIPLIERS = {
+            1: 0.6,   // Very dim
+            2: 0.8,   // Dim
+            3: 1.0,   // Normal (default)
+            4: 1.2,   // Bright
+            5: 1.4    // Very bright
+        };
+
+        // Contrast settings: [ambient_ratio, directional_ratio, specular_intensity, shininess_offset]
+        // Lower ambient + higher directional = higher contrast
+        const CONTRAST_SETTINGS = {
+            1: { ambientRatio: 1.4, directionalRatio: 0.6, specularIntensity: 0.3, shininessOffset: -80 },  // Very low contrast
+            2: { ambientRatio: 1.2, directionalRatio: 0.8, specularIntensity: 0.6, shininessOffset: -40 },  // Low contrast
+            3: { ambientRatio: 1.0, directionalRatio: 1.0, specularIntensity: 1.0, shininessOffset: 0 },    // Normal (default)
+            4: { ambientRatio: 0.8, directionalRatio: 1.2, specularIntensity: 1.3, shininessOffset: 40 },   // High contrast
+            5: { ambientRatio: 0.6, directionalRatio: 1.4, specularIntensity: 1.6, shininessOffset: 80 }    // Very high contrast
+        };
+
+        // Function to update the 3D preview with current brightness and contrast settings
+        function updatePreviewDisplaySettings() {
+            if (typeof scene === 'undefined' || !scene || typeof renderer === 'undefined' || !renderer) {
+                return; // Scene not yet initialized
+            }
+
+            const brightnessMultiplier = BRIGHTNESS_MULTIPLIERS[previewBrightnessLevel] || 1.0;
+            const contrastSettings = CONTRAST_SETTINGS[previewContrastLevel] || CONTRAST_SETTINGS[3];
+
+            // Get theme-based lighting values
+            const styles = getComputedStyle(document.documentElement);
+            const baseAmbientIntensity = parseFloat(styles.getPropertyValue('--stl-ambient-intensity').trim()) || 0.5;
+            const baseDirectionalIntensity = parseFloat(styles.getPropertyValue('--stl-directional-intensity').trim()) || 1.0;
+
+            // Calculate adjusted intensities
+            const adjustedAmbientIntensity = baseAmbientIntensity * contrastSettings.ambientRatio * brightnessMultiplier;
+            const adjustedDirectionalIntensity = baseDirectionalIntensity * contrastSettings.directionalRatio * brightnessMultiplier;
+
+            // Update ambient lights in scene
+            scene.children.forEach(child => {
+                if (child instanceof THREE.AmbientLight) {
+                    child.intensity = adjustedAmbientIntensity;
+                }
+            });
+
+            // Update directional lights attached to camera
+            if (camera && camera.children) {
+                camera.children.forEach(child => {
+                    if (child instanceof THREE.DirectionalLight) {
+                        // Preserve relative intensity ratios for multi-light setups
+                        const originalIntensity = child.userData.originalIntensity || baseDirectionalIntensity;
+                        const ratio = originalIntensity / baseDirectionalIntensity;
+                        child.intensity = adjustedDirectionalIntensity * ratio;
+                    }
+                });
+            }
+
+            // Also check scene for any directional lights not attached to camera
+            scene.children.forEach(child => {
+                if (child instanceof THREE.DirectionalLight) {
+                    const originalIntensity = child.userData.originalIntensity || baseDirectionalIntensity;
+                    const ratio = originalIntensity / baseDirectionalIntensity;
+                    child.intensity = adjustedDirectionalIntensity * ratio;
+                }
+            });
+
+            // Update mesh material properties for contrast
+            if (mesh && mesh.material) {
+                const currentTheme = document.documentElement.getAttribute('data-theme');
+                const baseShininess = currentTheme === 'high-contrast' ? 300 : 200;
+                const baseSpecular = currentTheme === 'high-contrast' ? 0xffffff : 0x111111;
+
+                // Adjust specular for contrast
+                const specularBrightness = Math.min(255, Math.floor(
+                    (currentTheme === 'high-contrast' ? 255 : 17) * contrastSettings.specularIntensity
+                ));
+                mesh.material.specular = new THREE.Color(
+                    specularBrightness << 16 | specularBrightness << 8 | specularBrightness
+                );
+                mesh.material.shininess = Math.max(50, baseShininess + contrastSettings.shininessOffset);
+                mesh.material.needsUpdate = true;
+            }
+
+            // Force re-render
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+
+        // Store original intensities when lights are created (used for brightness/contrast adjustments)
+        function storeOriginalLightIntensities() {
+            if (camera && camera.children) {
+                camera.children.forEach(child => {
+                    if (child instanceof THREE.DirectionalLight) {
+                        child.userData.originalIntensity = child.intensity;
+                    }
+                });
+            }
+            scene.children.forEach(child => {
+                if (child instanceof THREE.DirectionalLight || child instanceof THREE.AmbientLight) {
+                    child.userData.originalIntensity = child.intensity;
+                }
+            });
+        }
+
+        // Apply brightness setting
+        function applyPreviewBrightness(level) {
+            previewBrightnessLevel = parseInt(level, 10) || 3;
+            updatePreviewDisplaySettings();
+
+            // Announce change to screen readers
+            const levelNames = { 1: 'very dim', 2: 'dim', 3: 'normal', 4: 'bright', 5: 'very bright' };
+            const announcement = document.createElement('div');
+            announcement.className = 'sr-only';
+            announcement.setAttribute('role', 'status');
+            announcement.setAttribute('aria-live', 'polite');
+            announcement.textContent = `Preview brightness set to ${levelNames[previewBrightnessLevel] || 'normal'}`;
+            document.body.appendChild(announcement);
+            setTimeout(() => announcement.remove(), 1000);
+        }
+
+        // Apply contrast setting
+        function applyPreviewContrast(level) {
+            previewContrastLevel = parseInt(level, 10) || 3;
+            updatePreviewDisplaySettings();
+
+            // Announce change to screen readers
+            const levelNames = { 1: 'very low', 2: 'low', 3: 'normal', 4: 'high', 5: 'very high' };
+            const announcement = document.createElement('div');
+            announcement.className = 'sr-only';
+            announcement.setAttribute('role', 'status');
+            announcement.setAttribute('aria-live', 'polite');
+            announcement.textContent = `Preview contrast set to ${levelNames[previewContrastLevel] || 'normal'}`;
+            document.body.appendChild(announcement);
+            setTimeout(() => announcement.remove(), 1000);
+        }
+
+        // Event listeners for brightness radio buttons
+        document.querySelectorAll('input[name="preview-brightness"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.checked) {
+                    applyPreviewBrightness(this.value);
+                }
+            });
+        });
+
+        // Event listeners for contrast radio buttons
+        document.querySelectorAll('input[name="preview-contrast"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.checked) {
+                    applyPreviewContrast(this.value);
+                }
+            });
+        });
 
         // Font size adjustment functionality
         const fontSizes = [75, 87.5, 100, 112.5, 125, 150, 175, 200];
@@ -3147,18 +3365,6 @@
             actionBtn.setAttribute('aria-label', 'Generate STL file from entered text');
             actionBtn.style.opacity = '1';
             actionBtn.disabled = false;
-        }
-
-        function showCSGDebugError(message, subtext = 'Client-side CSG fallback is disabled for debugging. Check the console for details.') {
-            const errorSubtext = document.getElementById('error-subtext');
-            errorText.textContent = message;
-            errorDiv.style.display = 'flex';
-            errorDiv.className = 'error-message';
-            if (errorSubtext) {
-                errorSubtext.textContent = subtext;
-                errorSubtext.style.display = 'block';
-            }
-            resetToGenerateState();
         }
 
         // Function to set button to download state
@@ -3255,10 +3461,8 @@
                     gridColumnsNote.textContent = indicatorOn
                         ? 'For embossing plates: 2 cells are reserved for row indicators (start/end markers).'
                         : 'Indicators off: all columns are available for text.';
-                    // Only set default value if not preserving user input
-                    if (!preserveValue) {
-                        gridColumnsInput.value = indicatorOn ? '13' : '15';
-                    }
+                    // Always normalize the dial to the recommended default to avoid drift
+                    gridColumnsInput.value = indicatorOn ? '13' : '15';
                 } else {
                     // Counter plate - available cells depend on indicator toggle
                     gridColumnsLabel.textContent = 'Available Braille Cells for Text:';
@@ -3266,10 +3470,8 @@
                         ? 'For counter plates: 2 cells are reserved for row indicators (start/end markers), leaving 13 cells available for text.'
                         : 'Indicators off: all columns are available for text.';
                     gridColumnsNote.style.display = 'block';
-                    // Only set default value if not preserving user input
-                    if (!preserveValue) {
-                        gridColumnsInput.value = indicatorOn ? '13' : '15';
-                    }
+                    // Always normalize the dial to the recommended default to avoid drift
+                    gridColumnsInput.value = indicatorOn ? '13' : '15';
                 }
             }
             // Expose for other handlers safely
@@ -3563,7 +3765,7 @@
                     </div>
                     <div class="line-text-row">
                         <label for="line${i}" class="line-label">Line ${i}</label>
-                        <input type="text" id="line${i}" name="line${i}" placeholder="Enter English text here..." maxlength="50" aria-describedby="line${i}-help">
+                        <input type="text" id="line${i}" name="line${i}" placeholder="Enter English text here..." maxlength="50" aria-describedby="line${i}-help" autocomplete="off">
                         <span id="line${i}-help" class="sr-only">Maximum 50 characters for line ${i}</span>
                     </div>
                 `;
@@ -3681,7 +3883,7 @@
         }
 
         function getAvailableColumns() {
-            const gridColumnsValue = parseInt(document.getElementById('grid_columns').value) || 15;
+            const gridColumnsValue = parseInt(document.getElementById('grid_columns').value) || 11;
             // The UI dial shows usable text cells; use it directly for wrapping
             return gridColumnsValue;
         }
@@ -3693,32 +3895,37 @@
         }
 
         // BANA-compliant-ish auto wrapping for braille rows
-        // - Avoid splitting words across lines
-        // - Allow breaks after existing hyphens, '@', and '.' (email/URLs)
-        // - If a single word exceeds the row width, attempt a simple syllable-like split; warn if not possible
+        // Policy:
+        // - Prefer not to divide words across lines
+        // - Hyphenated words may break after a hyphen (hyphen remains at end of line)
+        // - If a single non-hyphenated word exceeds the row width in braille cells,
+        //   we attempt a simple syllable-like split; if none found, we warn and abort
         async function banaAutoWrap(src, cols, rows, tableName) {
             const warnings = [];
             const textLines = [];
             const brailleLines = [];
-            let truncated = false;
 
             const normalizeSpaces = (s) => s.replace(/\s+/g, ' ').trim();
             const isHyphenChar = (ch) => /[-\u2010\u2011\u2012\u2013\u2014\u2212]/.test(ch);
             const isEmailBreakChar = (ch) => ch === '@' || ch === '.';
 
             // Preferred in-word break positions (rightmost-first) for overlong tokens
+            // - After hyphen-like chars
+            // - After '@' or '.' (email/URLs)
             function findPreferredBreakPositions(word) {
                 const positions = [];
                 for (let i = 0; i < word.length; i++) {
                     const ch = word[i];
                     if (isHyphenChar(ch) || isEmailBreakChar(ch)) {
+                        // break AFTER this char
                         if (i + 1 < word.length) positions.push(i);
                     }
                 }
                 return positions;
             }
 
-            // Fallback syllable-like break positions (vowel-based heuristic)
+            // Find potential syllable break indices using a simple vowel-based heuristic.
+            // This is a fallback when no hyphen is present; not perfect, but avoids arbitrary splits.
             function findHeuristicSyllableBreaks(word) {
                 const breaks = [];
                 const vowels = /[aeiouyAEIOUY]/;
@@ -3727,11 +3934,14 @@
                     const cur = word[i];
                     const next = word[i + 1];
                     if (vowels.test(prev) && !vowels.test(cur)) {
+                        // Vowel → consonant boundary; prefer breaking here if needed
                         breaks.push(i);
                     } else if (vowels.test(cur) && !vowels.test(next)) {
+                        // After a vowel when next is consonant
                         breaks.push(i + 1);
                     }
                 }
+                // Deduplicate and sort ascending
                 return Array.from(new Set(breaks)).filter(b => b > 0 && b < word.length).sort((a,b)=>a-b);
             }
 
@@ -3746,14 +3956,16 @@
 
             let remaining = normalizeSpaces(src);
             if (!remaining) {
+                // Return empty lines matching requested rows
                 for (let r = 0; r < rows; r++) { textLines.push(''); brailleLines.push(''); }
-                return { textLines, brailleLines, warnings, truncated: false };
+                return { textLines, brailleLines, warnings };
             }
 
             const words = remaining.split(' ');
             let currentText = '';
             let currentBraille = '';
 
+            // Helper to finalize current line
             async function pushCurrent() {
                 const text = currentText.trim();
                 const braille = text ? await translateText(text) : '';
@@ -3763,35 +3975,39 @@
                 currentBraille = '';
             }
 
+            // Process each word greedily with lookahead via translation
             let i = 0;
             while (i < words.length && textLines.length < rows) {
                 let word = words[i];
                 if (!word) { i++; continue; }
 
+                // Try to append word to current line (with a space if needed)
                 const candidate = currentText ? `${currentText} ${word}` : word;
                 const candidateBrailleLen = await translateLen(candidate);
                 if (candidateBrailleLen <= cols) {
                     currentText = candidate;
-                    currentBraille = null;
+                    currentBraille = null; // invalidate cache
                     i++;
                     continue;
                 }
 
+                // Would overflow. If current line has content, finalize it and retry word on next line
                 if (currentText) {
                     await pushCurrent();
-                    continue;
+                    continue; // Retry same word on new line
                 }
 
-                // Single overlong word: try preferred positions first
+                // Single word longer than a line. Try preferred break opportunities first.
                 const pref = findPreferredBreakPositions(word);
                 let didSplitPreferred = false;
                 for (let k = pref.length - 1; k >= 0; k--) {
                     const pos = pref[k];
-                    const head = word.slice(0, pos + 1);
+                    const head = word.slice(0, pos + 1); // include break char at end of line
                     const headLen = await translateLen(head);
                     if (headLen <= cols) {
                         currentText = head;
                         await pushCurrent();
+                        // Remainder becomes current word for next iteration
                         const tail = word.slice(pos + 1);
                         words[i] = tail || '';
                         if (!words[i]) { i++; }
@@ -3799,11 +4015,14 @@
                         break;
                     }
                 }
-                if (didSplitPreferred) continue;
+                if (didSplitPreferred) {
+                    continue; // continue outer while loop on possibly updated words[i]
+                }
 
-                // Fallback heuristic syllable breaks (no hyphen insertion)
+                // Try heuristic syllable-like breaks (do NOT insert a hyphen)
                 const syllableBreaks = findHeuristicSyllableBreaks(word);
                 if (syllableBreaks.length > 0) {
+                    // Choose the largest prefix that fits
                     let chosen = -1;
                     for (const b of syllableBreaks) {
                         const head = word.slice(0, b);
@@ -3821,25 +4040,29 @@
                     }
                 }
 
-                // Cannot split per BANA
+                // Monosyllabic or no safe split found: cannot divide per BANA
                 const wordBrailleLen = await translateLen(word);
                 warnings.push(`Word "${word}" requires ${wordBrailleLen} cells but only ${cols} fit per row. It cannot be divided per BANA; increase columns/rows or use Manual Placement.`);
-                return { error: true, warnings, truncated: false };
+                return { error: true, warnings };
             }
 
+            // Push the last line if any and if we still have space for lines
             if (currentText && textLines.length < rows) {
                 await pushCurrent();
             }
 
+            // If content remains beyond rows, warn
             if (i < words.length) {
                 warnings.push('Text exceeds available rows after word-aware wrapping; extra content was not placed.');
-                truncated = true;
             }
 
+            // Ensure we return exactly "rows" lines for downstream consumers
             while (textLines.length < rows) { textLines.push(''); brailleLines.push(''); }
-            if (textLines.length > rows) { textLines.length = rows; brailleLines.length = rows; }
+            if (textLines.length > rows) {
+                textLines.length = rows; brailleLines.length = rows;
+            }
 
-            return { textLines, brailleLines, warnings, truncated };
+            return { textLines, brailleLines, warnings };
         }
 
         function updatePlacementUI() {
@@ -4237,8 +4460,8 @@
         // Note: Text inputs (line1, line2, etc.) are NOT affected by presets.
         const THICKNESS_PRESETS = {
             '0.4': {
-                // Braille Spacing
-                grid_columns: 13,
+                // Braille Spacing (11 text cells + 2 indicator reserved = 13 total)
+                grid_columns: 11,
                 grid_rows: 4,
                 cell_spacing: 6.5,
                 line_spacing: 10.0,
@@ -4273,8 +4496,8 @@
                 card_thickness: 2.0
             },
             '0.3': {
-                // Braille Spacing
-                grid_columns: 15,
+                // Braille Spacing (11 text cells + 2 indicator reserved = 13 total for 90mm card)
+                grid_columns: 11,
                 grid_rows: 4,
                 cell_spacing: 6.5,
                 line_spacing: 10.0,
@@ -4510,12 +4733,22 @@
             const submenuToggles = Array.from(document.querySelectorAll('.expert-submenu-toggle'));
             submenuToggles.forEach(toggle => {
                 toggle.addEventListener('click', () => {
-                    const content = toggle.parentElement?.querySelector('.expert-submenu-content');
+                    const content = toggle.nextElementSibling;
                     if (!content) return;
-                    const isOpen = content.style.display !== 'none';
-                    content.style.display = isOpen ? 'none' : 'block';
-                    toggle.classList.toggle('active', !isOpen);
+                    const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+
+                    if (isOpen) {
+                        content.style.display = 'none';
+                    } else {
+                        content.style.display = 'block';
+                        // Move focus to first input when opening
+                        const firstFocusable = content.querySelector('input, select, button, textarea, [tabindex]:not([tabindex="-1"])');
+                        if (firstFocusable) {
+                            setTimeout(() => firstFocusable.focus(), 100);
+                        }
+                    }
                     toggle.setAttribute('aria-expanded', String(!isOpen));
+                    toggle.classList.toggle('active', !isOpen);
                     const icon = toggle.querySelector('.expert-submenu-icon');
                     if (icon) icon.textContent = isOpen ? '▼' : '▲';
                 });
@@ -4708,37 +4941,6 @@
             return result;
         }
 
-        // Helper function to create preview line elements safely (XSS prevention)
-        function createPreviewLineElement(isSuccess, label, inputText, outputText, shorthand, errorMsg) {
-            const lineDiv = document.createElement('div');
-            lineDiv.className = isSuccess ? 'preview-line-success' : 'preview-line-error';
-
-            const mainDiv = document.createElement('div');
-            const strong = document.createElement('strong');
-            strong.textContent = label + ': ';
-            mainDiv.appendChild(strong);
-
-            if (isSuccess) {
-                // Safe text content - no innerHTML with user data
-                const textSpan = document.createTextNode(`"${inputText}" → "${outputText}"`);
-                mainDiv.appendChild(textSpan);
-            } else {
-                // Error case - safely escape error message
-                const textSpan = document.createTextNode(`"${inputText}" → Error: ${errorMsg}`);
-                mainDiv.appendChild(textSpan);
-            }
-            lineDiv.appendChild(mainDiv);
-
-            if (isSuccess && shorthand) {
-                const subDiv = document.createElement('div');
-                subDiv.className = 'preview-subline';
-                subDiv.textContent = `Computer shorthand: "${shorthand}"`;
-                lineDiv.appendChild(subDiv);
-            }
-
-            return lineDiv;
-        }
-
         // Preview braille translation using real liblouis (supports manual and auto placement)
         previewBrailleBtn.addEventListener('click', async () => {
             // Reset button state when previewing (user is making changes)
@@ -4749,9 +4951,7 @@
 
             const placementMode = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
             errorDiv.style.display = 'none';
-
-            // Clear previous preview content safely
-            previewContent.innerHTML = '';
+            let previewHTML = '';
 
             if (placementMode === 'manual') {
                 const lines = getDynamicLineValues();
@@ -4766,28 +4966,15 @@
                             const perLineTable = (document.getElementById(`line_lang_${i+1}`)?.value) || tableName;
                             const braille = await translateWithLiblouis(lines[i].trim(), 'g2', perLineTable);
                             const shorthand = brailleToComputerShorthand(braille);
-                            // Use safe DOM creation instead of innerHTML
-                            const elem = createPreviewLineElement(
-                                true,
-                                `Line ${i + 1}`,
-                                lines[i].trim(),
-                                braille,
-                                shorthand,
-                                null
-                            );
-                            previewContent.appendChild(elem);
+                            previewHTML += `<div class="preview-line-success">
+                                <div><strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → "${braille}"</div>
+                                <div class="preview-subline">Computer shorthand: "${shorthand}"</div>
+                            </div>`;
                         } catch (error) {
                             log.error('Translation failed for line', i + 1, ':', error);
-                            // Use safe DOM creation for error messages too
-                            const elem = createPreviewLineElement(
-                                false,
-                                `Line ${i + 1}`,
-                                lines[i].trim(),
-                                null,
-                                null,
-                                error.message
-                            );
-                            previewContent.appendChild(elem);
+                            previewHTML += `<div class="preview-line-error">
+                                <strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → Error: ${error.message}
+                            </div>`;
                         }
                     }
                 }
@@ -4800,6 +4987,9 @@
                     return;
                 }
                 try {
+                    const shapeTypeEl = document.querySelector('input[name="shape_type"]:checked');
+                    const shapeTypeVal = shapeTypeEl ? shapeTypeEl.value : 'card';
+                    // Use unified available columns helper
                     const cols = getAvailableColumns();
                     const rows = parseInt(document.getElementById('grid_rows').value) || 4;
                     const wrap = await banaAutoWrap(src, cols, rows, tableName);
@@ -4807,29 +4997,16 @@
                         errorText.textContent = wrap.warnings && wrap.warnings.length ? wrap.warnings.join(' ') : 'Unable to wrap text per BANA rules.';
                         errorDiv.style.display = 'flex';
                         errorDiv.className = 'error-message';
+                        // Still show whatever lines we have (empty)
                     }
                     const linesForPreview = wrap.brailleLines || [];
                     for (let r = 0; r < rows; r++) {
                         const slice = linesForPreview[r] || '';
                         const shorthand = slice ? brailleToComputerShorthand(slice) : '';
-                        // Use safe DOM creation for auto mode preview
-                        const lineDiv = document.createElement('div');
-                        lineDiv.className = 'preview-line-success';
-
-                        const mainDiv = document.createElement('div');
-                        const strong = document.createElement('strong');
-                        strong.textContent = `Row ${r + 1}: `;
-                        mainDiv.appendChild(strong);
-                        mainDiv.appendChild(document.createTextNode(`"${slice}"`));
-                        lineDiv.appendChild(mainDiv);
-
-                        if (shorthand) {
-                            const subDiv = document.createElement('div');
-                            subDiv.className = 'preview-subline';
-                            subDiv.textContent = `Computer shorthand: "${shorthand}"`;
-                            lineDiv.appendChild(subDiv);
-                        }
-                        previewContent.appendChild(lineDiv);
+                        previewHTML += `<div class="preview-line-success">
+                            <div><strong>Row ${r + 1}:</strong> "${slice}"</div>
+                            <div class="preview-subline">${shorthand ? `Computer shorthand: "${shorthand}"` : ''}</div>
+                        </div>`;
                     }
                     if (wrap.warnings && wrap.warnings.length) {
                         errorText.textContent = wrap.warnings.join(' ');
@@ -4838,19 +5015,13 @@
                     }
                 } catch (error) {
                     log.error('BANA wrap failed for auto text:', error);
-                    // Use safe DOM creation for auto mode errors
-                    const elem = createPreviewLineElement(
-                        false,
-                        'Auto Placement',
-                        '',
-                        null,
-                        null,
-                        error.message
-                    );
-                    previewContent.appendChild(elem);
+                    previewHTML += `<div class="preview-line-error">
+                        <strong>Auto Placement:</strong> Error: ${error.message}
+                    </div>`;
                 }
             }
 
+            previewContent.innerHTML = previewHTML;
             braillePreview.style.display = 'block';
         });
 
@@ -4943,6 +5114,16 @@
 
             scene.add(new THREE.AmbientLight(new THREE.Color(stlAmbientLight), stlAmbientIntensity));
 
+            // Store original light intensities for brightness/contrast controls
+            if (typeof storeOriginalLightIntensities === 'function') {
+                storeOriginalLightIntensities();
+            }
+
+            // Apply current brightness/contrast settings
+            if (typeof updatePreviewDisplaySettings === 'function') {
+                updatePreviewDisplaySettings();
+            }
+
             // Handle window resize for mobile orientation changes
             window.addEventListener('resize', onWindowResize, false);
         }
@@ -5022,19 +5203,24 @@
                         translatedLines = Array(parseInt(document.getElementById('grid_rows').value) || 4).fill('');
                     } else {
                         try {
+                            const shapeTypeEl = document.querySelector('input[name="shape_type"]:checked');
+                            const shapeTypeVal = shapeTypeEl ? shapeTypeEl.value : 'card';
                             const cols = getAvailableColumns();
                             const rows = parseInt(document.getElementById('grid_rows').value) || 4;
                             const wrap = await banaAutoWrap(src, cols, rows, tableName);
-                            if (wrap.error || wrap.truncated) {
+                            if (wrap.error) {
                                 const msg = wrap.warnings && wrap.warnings.length ? wrap.warnings.join(' ') : 'Unable to wrap text per BANA rules.';
-                                errorText.textContent = wrap.truncated ? (msg + ' No STL was generated. Reduce text or increase grid size.') : msg;
+                                errorText.textContent = msg;
                                 errorDiv.style.display = 'flex';
                                 errorDiv.className = 'error-message';
+                                // Stop submission
                                 resetToGenerateState();
                                 return;
                             }
                             translatedLines = wrap.brailleLines;
+                            // Provide per-line language tables (single table for all lines in auto mode)
                             perLineLanguageTables = new Array(rows).fill(tableName);
+                            // Update originalLines to reflect the per-line source segments
                             originalLines = wrap.textLines;
                             if (wrap.warnings && wrap.warnings.length) {
                                 errorText.textContent = wrap.warnings.join(' ');
@@ -5053,26 +5239,18 @@
 
                 // Check if any translation errors occurred
                 if (translationErrors.length > 0) {
-                    // Build error message safely to prevent XSS
-                    // Use textContent instead of innerHTML for user-provided data
-                    errorText.textContent = ''; // Clear existing content
-
-                    let errorLines = ['Translation failed for the following lines:', ''];
+                    let errorMessage = '<strong>Translation failed for the following lines:</strong><br><br>';
                     translationErrors.forEach(err => {
-                        // Safely include line number and text (textContent will escape)
-                        errorLines.push(`Line ${err.line}: "${err.text}"`);
+                        errorMessage += `Line ${err.line}: "${err.text}"<br>`;
                     });
-                    errorLines.push('');
-                    errorLines.push('Please check your text and try again.');
-                    errorLines.push('');
-                    errorLines.push('Common issues include:');
-                    errorLines.push('• Special characters that cannot be translated');
-                    errorLines.push('• Text that is incompatible with the selected braille table');
-                    errorLines.push('• System errors during translation');
-                    errorLines.push('');
-                    errorLines.push('The STL file was not generated to prevent producing incorrect braille.');
+                    errorMessage += '<br><strong>Please check your text and try again.</strong><br><br>';
+                    errorMessage += 'Common issues include:<br>';
+                    errorMessage += '• Special characters that cannot be translated<br>';
+                    errorMessage += '• Text that is incompatible with the selected braille table<br>';
+                    errorMessage += '• System errors during translation<br><br>';
+                    errorMessage += '<em>The STL file was not generated to prevent producing incorrect braille.</em>';
 
-                    errorText.textContent = errorLines.join('\n');
+                    errorText.innerHTML = errorMessage;  // Use innerHTML for HTML formatting
                     errorDiv.style.display = 'flex';
                     errorDiv.className = 'error-message';
 
@@ -5251,159 +5429,66 @@
                 }
             }
 
-            // Try GET lookup first for negative plates to leverage CDN-cached 302
-            if (plateType === 'negative') {
-                try {
-                    const lookupParams = new URLSearchParams();
-                    lookupParams.set('shape_type', shapeType);
-                    lookupParams.set('settings', JSON.stringify(settings));
-                    lookupParams.set('format', 'json');
-                    if (shapeType === 'cylinder') {
-                        lookupParams.set('cylinder_params', JSON.stringify(cylinderParams));
-                    }
-                    const lookupRes = await fetch(`/lookup_stl?${lookupParams.toString()}`, { method: 'GET', headers: { 'Accept': 'application/json' } });
-                    if (lookupRes.ok) {
-                        const j = await lookupRes.json();
-                        const blobUrl = j && j.url;
-                        if (blobUrl) {
-                            errorDiv.style.display = 'none';
-                            // Directly proceed to preview/download using the blob URL
-                            if (lastSTLUrl) URL.revokeObjectURL(lastSTLUrl);
-                            lastSTLUrl = blobUrl; // external URL; no need to createObjectURL
-                            // Update filename with sequential counter (counter plate)
-                            lastGeneratedSTLUrl = lastSTLUrl;
-                            lastGeneratedFilename = `Universal_Counter_Plate_${getNextCounterPlateNumber()}.stl`;
-                            loadSTL(lastSTLUrl);
-                            actionBtn.disabled = false;
-                            setToDownloadState();
-                            return; // done via GET lookup
-                        }
-                    }
-                } catch (e) {
-                    // Fallback to POST if lookup fails
-                }
-            }
-
-            // Try client-side CSG first, fall back to server
-            const requestData = {
-                lines: translatedLines,
-                original_lines: originalForIndicators,
-                placement_mode: placementMode,
-                grade: 'g2',
-                plate_type: plateType,
-                shape_type: shapeType,
-                cylinder_params: cylinderParams,
-                per_line_language_tables: perLineLanguageTables,
-                settings: settings
-            };
-
-            let blob;
-            let clientSideSuccess = false;
-
-            // Try client-side CSG
-            if (useClientSideCSG && workerReady) {
-                try {
-                    const result = await tryClientSideCSG(requestData);
-                    if (result && result.stl) {
-                        // Create blob from STL ArrayBuffer
-                        blob = new Blob([result.stl], { type: 'application/octet-stream' });
-                        clientSideSuccess = true;
-                        log.info('Using client-side generated STL');
-                    }
-                } catch (error) {
-                    log.warn('Client-side CSG failed, falling back to server:', error);
-                    if (disableCSGFallback) {
-                        showCSGDebugError(`Client-side CSG failed: ${error?.message || error}`);
-                        return;
-                    }
-                }
-            } else if (disableCSGFallback) {
-                showCSGDebugError('Client-side CSG worker is unavailable. Fallback is disabled for debugging.');
-                return;
-            }
-
-            // Fall back to server if client-side failed or unavailable
-            if (!clientSideSuccess) {
-                if (disableCSGFallback) {
-                    showCSGDebugError('Client-side CSG did not produce an STL and fallback has been disabled.');
-                    return;
-                }
-                log.info('Using server-side STL generation');
-                const res = await fetch('/generate_braille_stl', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestData)
-                });
-
-                // Error handling for server response
-                if (!res.ok) {
-                    let msg = 'Error generating STL';
-                    let errorCode = null;
-                    try {
-                        const data = await res.json();
-                        if (data.error) msg = data.error;
-                        if (data.error_code) errorCode = data.error_code;
-
-                        // Handle specific error: no boolean backend available
-                        if (errorCode === 'NO_BOOLEAN_BACKEND') {
-                            if (!useClientSideCSG || !workerReady) {
-                                msg = 'Server cannot generate STL files and client-side generation is not available. Please use a modern browser (Chrome 80+, Firefox 114+, Safari 15+, or Edge 80+) with JavaScript enabled.';
-                                log.error('Server has no boolean backend and client worker not ready');
-                            } else {
-                                msg = 'Client-side generation failed and server cannot generate STL files. Please refresh the page and try again.';
-                                log.error('Both client and server generation failed');
-                            }
-                        }
-                    } catch (e) {
-                        msg = `Server error: ${res.status} ${res.statusText}`;
-                    }
-                    errorText.textContent = msg;
-                    errorDiv.style.display = 'flex';
-                    errorDiv.className = 'error-message';
-                    resetToGenerateState();
-                    return;
-                }
-
-                blob = await res.blob();
-            }
-
-            // Hide loading message
-            errorDiv.style.display = 'none';
-            if (errorSubtext) {
-                errorSubtext.textContent = '';
-                errorSubtext.style.display = 'none';
-            }
+            // =====================================================================
+            // CLIENT-SIDE CSG GENERATION (PRIMARY AND ONLY METHOD - NO FALLBACK)
+            // =====================================================================
+            // Per specification: Use CSG worker for all STL generation.
+            // This calls /geometry_spec to get the JSON spec, then sends it to
+            // the CSG worker for boolean operations and STL export.
+            // =====================================================================
 
             try {
-                // blob already created above (either client-side or server-side)
+                // Update loading message for client-side generation
+                errorText.textContent = 'Generating 3D model (client-side CSG)...';
+                errorDiv.style.display = 'flex';
+                errorDiv.className = 'error-message info';
+
+                // Generate STL using client-side CSG worker
+                const stlData = await generateSTLClientSide({
+                    lines: translatedLines,
+                    originalLines: originalForIndicators,
+                    placementMode: placementMode,
+                    plateType: plateType,
+                    shapeType: shapeType,
+                    cylinderParams: cylinderParams,
+                    perLineLanguageTables: perLineLanguageTables,
+                    settings: settings
+                });
+
+                // Hide loading message
+                errorDiv.style.display = 'none';
+                if (errorSubtext) {
+                    errorSubtext.textContent = '';
+                    errorSubtext.style.display = 'none';
+                }
+
+                // Create blob and URL from the ArrayBuffer
+                const blob = new Blob([stlData], { type: 'application/octet-stream' });
                 if (lastSTLUrl) URL.revokeObjectURL(lastSTLUrl);
                 lastSTLUrl = URL.createObjectURL(blob);
 
-                // Generate filename on frontend to match backend logic
-                const plateType = document.querySelector('input[name="plate_type"]:checked').value;
-                const shapeType = document.querySelector('input[name="shape_type"]:checked').value;
-                let filename = 'Embossing_Plate_untitled'; // Default, will be updated below
+                // Generate filename based on plate type
+                const currentPlateType = document.querySelector('input[name="plate_type"]:checked').value;
+                let filename = 'Embossing_Plate_untitled';
 
-                if (plateType === 'positive') {
+                if (currentPlateType === 'positive') {
                     // Get the current lines from the form
                     const placementModeNow = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
-                    let lines = [];
+                    let formLines = [];
                     if (placementModeNow === 'manual') {
                         const gridRows = parseInt(document.getElementById('grid_rows').value) || 4;
                         for (let i = 1; i <= gridRows; i++) {
                             const input = document.getElementById(`line${i}`);
-                            lines.push(input ? input.value : '');
+                            formLines.push(input ? input.value : '');
                         }
                     } else {
-                        lines = [document.getElementById('auto-text')?.value || ''];
+                        formLines = [document.getElementById('auto-text')?.value || ''];
                     }
 
                     // Find first non-empty line and extract the first word
-                    for (let i = 0; i < lines.length; i++) {
-                        if (lines[i].trim()) {
-                            // Extract the first word
-                            const firstWord = lines[i].trim().split(/\s+/)[0];
-                            // Sanitize: remove special characters and limit length
+                    for (let i = 0; i < formLines.length; i++) {
+                        if (formLines[i].trim()) {
+                            const firstWord = formLines[i].trim().split(/\s+/)[0];
                             let sanitized = firstWord.substring(0, 30);
                             sanitized = sanitized.replace(/[^\w\s-]/g, '');
                             sanitized = sanitized.replace(/[-\s]+/g, '_').replace(/^_+|_+$/g, '');
@@ -5427,11 +5512,25 @@
                 // Change button to download state after successful generation
                 actionBtn.disabled = false;
                 setToDownloadState();
-            } catch (e) {
-                errorText.textContent = 'Failed to process STL file: ' + e.message;
+
+                log.debug('Client-side CSG generation complete:', filename);
+
+            } catch (csgError) {
+                log.error('Client-side CSG generation failed:', csgError);
+
+                // Hide loading message
+                errorDiv.style.display = 'none';
+                if (errorSubtext) {
+                    errorSubtext.textContent = '';
+                    errorSubtext.style.display = 'none';
+                }
+
+                // Show error - NO FALLBACK TO SERVER
+                errorText.textContent = 'STL generation failed: ' + csgError.message;
                 errorDiv.style.display = 'flex';
-                errorDiv.className = 'error-message'; // Reset to error style
-                // Re-enable button on error and reset to generate state
+                errorDiv.className = 'error-message';
+
+                // Re-enable button and reset to generate state
                 resetToGenerateState();
             }
         };
@@ -5567,6 +5666,18 @@
         let workerMessageId = 0;
         let pendingWorkerMessages = new Map();
 
+        // CSG Worker for client-side STL generation (standard three-bvh-csg for cards)
+        let csgWorker = null;
+        let csgWorkerReady = false;
+        let csgRequestId = 0;
+        let pendingCsgRequests = new Map();
+
+        // Manifold CSG Worker for cylinders (guarantees watertight/manifold output)
+        let manifoldWorker = null;
+        let manifoldWorkerReady = false;
+        let manifoldRequestId = 0;
+        let pendingManifoldRequests = new Map();
+
         // Function to send message to worker and get response
         function sendWorkerMessage(type, data = {}) {
             return new Promise((resolve, reject) => {
@@ -5700,9 +5811,164 @@
                 }
             }
 
-            // Always default to cylinder on load; do not restore from storage
-            const cyl = document.querySelector('input[name="shape_type"][value="cylinder"]');
-            if (cyl) cyl.checked = true;
+            // Initialize CSG Worker for client-side STL generation
+            try {
+                log.debug('Initializing CSG worker...');
+
+                // Test if CSG worker file is accessible
+                const csgWorkerResponse = await fetch('/static/workers/csg-worker.js');
+                if (!csgWorkerResponse.ok) {
+                    throw new Error(`CSG Worker file not accessible: ${csgWorkerResponse.status}`);
+                }
+                log.debug('CSG Worker file is accessible');
+
+                // Create module worker
+                csgWorker = new Worker('/static/workers/csg-worker.js', { type: 'module' });
+
+                // Set up message handler
+                csgWorker.onmessage = function(e) {
+                    const { type, requestId, error, stack, geometry, stl } = e.data;
+
+                    if (type === 'ready') {
+                        csgWorkerReady = true;
+                        log.debug('CSG Worker initialized and ready');
+                    } else if (type === 'init_error') {
+                        log.error('CSG Worker initialization error:', error, stack);
+                        csgWorkerReady = false;
+                    } else if (type === 'success' || type === 'error') {
+                        // Handle pending request responses
+                        if (pendingCsgRequests.has(requestId)) {
+                            const { resolve, reject } = pendingCsgRequests.get(requestId);
+                            pendingCsgRequests.delete(requestId);
+
+                            if (type === 'success') {
+                                resolve({ geometry, stl });
+                            } else {
+                                reject(new Error(error || 'CSG operation failed'));
+                            }
+                        }
+                    } else if (type === 'pong') {
+                        // Health check response
+                        if (pendingCsgRequests.has(requestId)) {
+                            const { resolve } = pendingCsgRequests.get(requestId);
+                            pendingCsgRequests.delete(requestId);
+                            resolve({ pong: true });
+                        }
+                    }
+                };
+
+                csgWorker.onerror = function(error) {
+                    log.error('CSG Worker error:', error);
+                    csgWorkerReady = false;
+                };
+
+                // Wait for ready signal with timeout
+                await new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        if (!csgWorkerReady) {
+                            reject(new Error('CSG Worker initialization timeout'));
+                        }
+                    }, 10000);
+
+                    const checkReady = setInterval(() => {
+                        if (csgWorkerReady) {
+                            clearTimeout(timeout);
+                            clearInterval(checkReady);
+                            resolve();
+                        }
+                    }, 100);
+                });
+
+                log.debug('CSG Worker ready for client-side STL generation');
+
+            } catch (csgError) {
+                log.error('Failed to initialize CSG worker:', csgError);
+                csgWorkerReady = false;
+                csgWorker = null;
+                // Don't show error to user yet - will show when they try to generate
+            }
+
+            // Initialize Manifold CSG Worker for cylinder generation (guarantees manifold output)
+            try {
+                log.debug('Initializing Manifold CSG worker for cylinders...');
+
+                // Test if Manifold worker file is accessible
+                const manifoldWorkerResponse = await fetch('/static/workers/csg-worker-manifold.js');
+                if (!manifoldWorkerResponse.ok) {
+                    throw new Error(`Manifold Worker file not accessible: ${manifoldWorkerResponse.status}`);
+                }
+                log.debug('Manifold Worker file is accessible');
+
+                // Create module worker
+                manifoldWorker = new Worker('/static/workers/csg-worker-manifold.js', { type: 'module' });
+
+                // Set up message handler
+                manifoldWorker.onmessage = function(e) {
+                    const { type, requestId, error, stack, geometry, stl } = e.data;
+
+                    if (type === 'ready') {
+                        manifoldWorkerReady = true;
+                        log.debug('Manifold CSG Worker initialized and ready');
+                    } else if (type === 'init_error') {
+                        log.error('Manifold CSG Worker initialization error:', error, stack);
+                        manifoldWorkerReady = false;
+                    } else if (type === 'success' || type === 'error') {
+                        // Handle pending request responses
+                        if (pendingManifoldRequests.has(requestId)) {
+                            const { resolve, reject } = pendingManifoldRequests.get(requestId);
+                            pendingManifoldRequests.delete(requestId);
+
+                            if (type === 'success') {
+                                resolve({ geometry, stl });
+                            } else {
+                                reject(new Error(error || 'Manifold CSG operation failed'));
+                            }
+                        }
+                    } else if (type === 'pong') {
+                        // Health check response
+                        if (pendingManifoldRequests.has(requestId)) {
+                            const { resolve } = pendingManifoldRequests.get(requestId);
+                            pendingManifoldRequests.delete(requestId);
+                            resolve({ pong: true });
+                        }
+                    }
+                };
+
+                manifoldWorker.onerror = function(error) {
+                    log.error('Manifold CSG Worker error:', error);
+                    manifoldWorkerReady = false;
+                };
+
+                // Wait for ready signal with timeout (longer timeout for WASM loading)
+                await new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        if (!manifoldWorkerReady) {
+                            reject(new Error('Manifold CSG Worker initialization timeout'));
+                        }
+                    }, 30000); // 30 seconds for WASM loading
+
+                    const checkReady = setInterval(() => {
+                        if (manifoldWorkerReady) {
+                            clearTimeout(timeout);
+                            clearInterval(checkReady);
+                            resolve();
+                        }
+                    }, 100);
+                });
+
+                log.debug('Manifold CSG Worker ready for cylinder STL generation (guarantees manifold output)');
+
+            } catch (manifoldError) {
+                log.warn('Failed to initialize Manifold CSG worker:', manifoldError);
+                log.warn('Cylinder generation will fall back to standard CSG worker (may have non-manifold edges)');
+                manifoldWorkerReady = false;
+                manifoldWorker = null;
+                // Non-fatal - can fall back to standard worker
+            }
+
+            // Always default to cylinder on load (card is temporarily disabled)
+            const cylinder = document.querySelector('input[name="shape_type"][value="cylinder"]');
+            if (cylinder) cylinder.checked = true;
 
             init3D();
             animate();
@@ -5730,7 +5996,126 @@
             }
         }
 
+        /**
+         * Generate STL using client-side CSG worker.
+         * This is the PRIMARY and ONLY method for STL generation.
+         * NO FALLBACK to server-side generation.
+         *
+         * Worker Selection:
+         * - Cylinders: Use Manifold worker (guarantees watertight manifold output)
+         * - Cards: Use standard three-bvh-csg worker (faster, smaller bundle)
+         *
+         * See MANIFOLD_CYLINDER_FIX.md for details on why cylinders need Manifold.
+         *
+         * @param {Object} params - Generation parameters
+         * @returns {Promise<ArrayBuffer>} Binary STL data
+         */
+        async function generateSTLClientSide(params) {
+            const { lines, originalLines, placementMode, plateType, shapeType, cylinderParams, perLineLanguageTables, settings } = params;
 
+            // Determine which worker to use based on shape type
+            const useManifolWorker = shapeType === 'cylinder' && manifoldWorkerReady && manifoldWorker;
+            const useStandardWorker = csgWorkerReady && csgWorker;
+
+            // Verify at least one worker is ready
+            if (useManifolWorker) {
+                log.debug('Using Manifold CSG worker for cylinder generation (guarantees manifold output)');
+            } else if (useStandardWorker) {
+                if (shapeType === 'cylinder') {
+                    log.warn('Manifold worker not available, using standard CSG worker for cylinder (may have non-manifold edges)');
+                } else {
+                    log.debug('Using standard CSG worker for card generation');
+                }
+            } else {
+                throw new Error('No CSG Worker initialized. Please refresh the page and try again.');
+            }
+
+            log.debug('Starting client-side CSG generation...');
+            log.debug('Parameters:', { shapeType, plateType, lines: lines?.length, settings, worker: useManifolWorker ? 'manifold' : 'standard' });
+
+            // Step 1: Get geometry specification from server
+            log.debug('Fetching geometry specification from /geometry_spec...');
+            const specResponse = await fetch('/geometry_spec', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    lines: lines,
+                    original_lines: originalLines,
+                    placement_mode: placementMode,
+                    grade: 'g2',
+                    plate_type: plateType,
+                    shape_type: shapeType,
+                    cylinder_params: cylinderParams,
+                    per_line_language_tables: perLineLanguageTables,
+                    settings: settings
+                })
+            });
+
+            if (!specResponse.ok) {
+                let errorMsg = 'Failed to get geometry specification';
+                try {
+                    const errorData = await specResponse.json();
+                    if (errorData.error) errorMsg = errorData.error;
+                } catch (e) {
+                    errorMsg = `Server error: ${specResponse.status} ${specResponse.statusText}`;
+                }
+                throw new Error(errorMsg);
+            }
+
+            const geometrySpec = await specResponse.json();
+            log.debug('Received geometry specification:', geometrySpec);
+            log.debug(`Geometry spec contains: ${geometrySpec.dots?.length || 0} dots, ${geometrySpec.markers?.length || 0} markers`);
+
+            // Step 2: Send spec to appropriate CSG worker for boolean operations
+            // Select worker and tracking map based on shape type
+            const selectedWorker = useManifolWorker ? manifoldWorker : csgWorker;
+            const pendingRequests = useManifolWorker ? pendingManifoldRequests : pendingCsgRequests;
+            const requestId = useManifolWorker ? ++manifoldRequestId : ++csgRequestId;
+            const workerName = useManifolWorker ? 'Manifold CSG' : 'Standard CSG';
+
+            log.debug(`Sending geometry spec to ${workerName} worker...`);
+
+            const csgResult = await new Promise((resolve, reject) => {
+                // Store the pending request
+                pendingRequests.set(requestId, { resolve, reject });
+
+                // Set timeout (2 minutes for complex models)
+                const timeout = setTimeout(() => {
+                    if (pendingRequests.has(requestId)) {
+                        pendingRequests.delete(requestId);
+                        reject(new Error(`${workerName} Worker timeout - model may be too complex. Please try with simpler text.`));
+                    }
+                }, 120000);
+
+                // Clear timeout on completion
+                const originalResolve = resolve;
+                const originalReject = reject;
+
+                pendingRequests.set(requestId, {
+                    resolve: (result) => {
+                        clearTimeout(timeout);
+                        originalResolve(result);
+                    },
+                    reject: (error) => {
+                        clearTimeout(timeout);
+                        originalReject(error);
+                    }
+                });
+
+                // Send message to selected worker
+                selectedWorker.postMessage({
+                    type: 'generate',
+                    spec: geometrySpec,
+                    requestId: requestId
+                });
+            });
+
+            log.debug(`${workerName} Worker completed successfully`);
+            log.debug('Result contains STL data:', csgResult.stl instanceof ArrayBuffer);
+
+            // Return the STL binary data
+            return csgResult.stl;
+        }
 
 
     </script>

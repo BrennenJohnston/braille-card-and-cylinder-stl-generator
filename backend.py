@@ -1580,8 +1580,10 @@ def generate_counter_plate_stl():
                 'shape_type': 'card',
             }
             early_cache_key = compute_cache_key(cache_payload_early)
-            early_public = _build_blob_public_url(early_cache_key)
-            if _blob_check_exists(early_public):
+            # Check Redis mapping (URL may include random suffix set by provider)
+            mapped_url = _blob_url_cache_get(early_cache_key)
+            early_public = mapped_url or _build_blob_public_url(early_cache_key)
+            if early_public and _blob_check_exists(early_public):
                 app.logger.info(f'BLOB CACHE EARLY HIT (counter plate standalone) key={early_cache_key}')
                 resp = redirect(early_public, code=302)
                 resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
@@ -1666,6 +1668,8 @@ def generate_counter_plate_stl():
         public_url = _blob_upload(cache_key, stl_bytes)
         if public_url and _blob_check_exists(public_url):
             app.logger.info(f'BLOB CACHE MISS -> UPLOAD OK (standalone) key={cache_key}')
+            # Persist mapping so future early checks can redirect immediately
+            _blob_url_cache_set(cache_key, public_url)
             resp = redirect(public_url, code=302)
             resp.headers['ETag'] = etag
             resp.headers['X-Blob-Cache-Key'] = cache_key

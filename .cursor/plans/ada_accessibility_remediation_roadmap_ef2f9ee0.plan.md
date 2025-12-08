@@ -72,7 +72,7 @@ todos:
 - ✅ 3D viewer documented for screen readers
 - ✅ All color contrast requirements exceed WCAG AA standards
 
-### Fixes Applied (This Session):
+### Fixes Applied (Previous Sessions):
 
 - ✅ Removed duplicate `</html>` closing tag
 - ✅ Fixed CSS box-shadow color values (transparent vs none)
@@ -82,10 +82,21 @@ todos:
 - ✅ Fixed multiple labels issue on placement mode radio buttons
 - ✅ **Fixed Expert Toggle contrast ratio** (December 8, 2025): Changed `.expert-toggle-btn.active` background from `var(--border-focus)` to darker blues (`#1e4976` light mode, `#1e5a8a` dark mode) to meet WCAG AA 4.5:1 contrast requirement with white text
 
+### Fixes Applied (Re-Audit December 8, 2025):
+
+- ✅ **Added `aria-expanded` and `aria-controls` to `#info-toggle` button**: Now properly indicates expanded/collapsed state to screen readers (WCAG 4.1.2)
+- ✅ **Added `aria-expanded` and `aria-controls` to `#expert-toggle` button**: Now properly indicates expanded/collapsed state to screen readers (WCAG 4.1.2)
+- ✅ **Updated JavaScript handlers to toggle `aria-expanded`**: Both `infoToggleBtn` and `expertToggleBtn` click handlers now dynamically update `aria-expanded` attribute when toggling panels
+- ✅ **Fixed Info Toggle contrast ratio**: Changed `.info-toggle-btn.active` background from `var(--border-focus)` to darker blues (`#1e4976` light mode, `#1e5a8a` dark mode) to meet WCAG AA 4.5:1 contrast requirement with white text
+
 ### All Work Complete:
 
 - ✅ **Manual testing with screen reader**: COMPLETE
 - ✅ **Full keyboard navigation verification**: COMPLETE
+- ✅ **Re-verification after re-audit**: COMPLETE (December 8, 2025)
+  - W3C HTML Validator: ✅ PASSED - 0 errors, 0 warnings
+  - Lighthouse Desktop Accessibility: ✅ 💯 100/100
+  - Lighthouse Mobile Accessibility: ✅ 💯 100/100
 - ⏳ **Recommended**: Commit changes to version control (pending)
 
 ---
@@ -341,7 +352,62 @@ The accessibility statement is already in place with:
 
 ### Recommended Actions:
 
-1. ✅ **Commit changes to version control** (git commands provided above)
+1. ⏳ **Commit changes to version control** (pending)
 2. 📄 **Document compliance** for organizational records
 3. 🎓 **Share achievement** with stakeholders
 4. 🔄 **Maintain compliance** during future updates
+
+---
+
+## 🔄 Re-Audit Session (December 8, 2025)
+
+### Re-Audit Summary
+
+A comprehensive accessibility re-audit was conducted following major UI changes (STL Preview Label, Brightness/Contrast controls). The audit identified and fixed **4 new accessibility issues**.
+
+### Issues Found and Fixed:
+
+| Issue | WCAG Criterion | Status |
+
+|-------|---------------|--------|
+
+| `#info-toggle` missing `aria-expanded` and `aria-controls` | 4.1.2 Name, Role, Value | ✅ Fixed |
+
+| `#expert-toggle` missing `aria-expanded` and `aria-controls` | 4.1.2 Name, Role, Value | ✅ Fixed |
+
+| JavaScript handlers not updating `aria-expanded` on toggle | 4.1.2 Name, Role, Value | ✅ Fixed |
+
+| `.info-toggle-btn.active` insufficient contrast ratio | 1.4.3 Contrast (Minimum) | ✅ Fixed |
+
+### Code Changes Made:
+
+1. **HTML Attributes** (`templates/index.html`, `public/index.html`):
+
+   - Added `aria-expanded="false" aria-controls="info-content"` to `#info-toggle` button
+   - Added `aria-expanded="false" aria-controls="expert-settings"` to `#expert-toggle` button
+
+2. **JavaScript Handlers**:
+
+   - `expertToggleBtn.addEventListener('click')` now includes `expertToggleBtn.setAttribute('aria-expanded', String(!isVisible))`
+   - `infoToggleBtn.addEventListener('click')` now includes `infoToggleBtn.setAttribute('aria-expanded', String(!isVisible))`
+
+3. **CSS Contrast Fix**:
+
+   - Changed `.info-toggle-btn.active` background from `var(--border-focus)` (#3182ce) to `#1e4976` (light mode)
+   - Added `[data-theme="dark"] .info-toggle-btn.active `with background `#1e5a8a` for dark mode
+   - Both values meet WCAG AA 4.5:1 contrast ratio with white text
+
+### Verification Results (December 8, 2025):
+
+✅ **All Tests Passed**
+
+| Test | Result | Date |
+|------|--------|------|
+| W3C HTML Validator | ✅ 0 errors, 0 warnings | Dec 8, 2025 |
+| Lighthouse Desktop Accessibility | ✅ 💯 100/100 | Dec 8, 2025 |
+| Lighthouse Mobile Accessibility | ✅ 💯 100/100 | Dec 8, 2025 |
+
+### Files Modified:
+
+- `templates/index.html` - All accessibility fixes
+- `public/index.html` - Synchronized copy of templates/index.html

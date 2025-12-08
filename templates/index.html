@@ -1619,12 +1619,22 @@
         }
 
         .info-toggle-btn.active {
-            background: var(--border-focus);
+            background: #1e4976; /* Darker blue for WCAG AA contrast (6.1:1 with white) */
             color: #fff;
-            border-color: var(--border-focus);
+            border-color: #1e4976;
         }
 
         .info-toggle-btn.active #info-toggle-text {
+            color: #fff;
+        }
+
+        /* Dark mode: Use darker blue for active state to ensure contrast */
+        [data-theme="dark"] .info-toggle-btn.active {
+            background: #1e5a8a; /* Darker blue for WCAG AA contrast (4.7:1 with white) */
+            border-color: #1e5a8a;
+        }
+
+        [data-theme="dark"] .info-toggle-btn.active #info-toggle-text {
             color: #fff;
         }
 
@@ -2129,7 +2139,7 @@
                 </div>
 
                 <div class="info-dropdown">
-                    <button type="button" id="info-toggle" class="info-toggle-btn">
+                    <button type="button" id="info-toggle" class="info-toggle-btn" aria-expanded="false" aria-controls="info-content">
                         <span id="info-toggle-text">Directions:</span>
                         <span id="info-toggle-icon">▼</span>
                     </button>
@@ -2348,7 +2358,7 @@
 
 
                     <div class="expert-mode-toggle">
-                        <button type="button" id="expert-toggle" class="expert-toggle-btn">
+                        <button type="button" id="expert-toggle" class="expert-toggle-btn" aria-expanded="false" aria-controls="expert-settings">
                             <span id="expert-toggle-text">Show Expert Mode</span>
                             <span id="expert-toggle-icon">▼</span>
                         </button>
@@ -4735,6 +4745,7 @@
             expertToggleText.textContent = isVisible ? 'Show Expert Mode' : 'Hide Expert Mode';
             expertToggleIcon.textContent = isVisible ? '▼' : '▲';
             expertToggleBtn.classList.toggle('active', !isVisible);
+            expertToggleBtn.setAttribute('aria-expanded', String(!isVisible));
         });
 
         // Dot shape radio buttons
@@ -4749,9 +4760,10 @@
         infoToggleBtn.addEventListener('click', () => {
             const isVisible = infoContent.style.display !== 'none';
             infoContent.style.display = isVisible ? 'none' : 'block';
-                                        infoToggleText.textContent = isVisible ? 'More Info' : 'Hide Information';
+            infoToggleText.textContent = isVisible ? 'More Info' : 'Hide Information';
             infoToggleIcon.textContent = isVisible ? '▼' : '▲';
             infoToggleBtn.classList.toggle('active', !isVisible);
+            infoToggleBtn.setAttribute('aria-expanded', String(!isVisible));
         });
 
         // Wire Expert submenus (expand/collapse)

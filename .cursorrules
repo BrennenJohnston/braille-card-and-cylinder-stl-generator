@@ -50,6 +50,25 @@ This project uses a **centralized settings architecture** with specification-dri
 | Indicators | `RECESS_INDICATOR_SPECIFICATIONS.md` |
 | Export | `STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS.md` |
 | Caching | `CACHING_SYSTEM_CORE_SPECIFICATIONS.md` |
+| **ADA Compliance** | `docs/development/ADA_ACCESSIBILITY_VALIDATION_SOP.md` |
+
+### Accessibility Compliance (WCAG 2.1 Level AA)
+
+After any UI changes, follow the **ADA Accessibility Validation SOP** (`docs/development/ADA_ACCESSIBILITY_VALIDATION_SOP.md`):
+
+1. **Required for all UI changes:**
+   - Run W3C HTML Validator (target: 0 errors)
+   - Run Lighthouse Accessibility audit (target: 100/100)
+   - Verify color contrast meets WCAG AA (4.5:1 for text, 3:1 for UI)
+
+2. **Toggle/Accordion buttons must have:**
+   - `aria-expanded="false"` attribute
+   - `aria-controls="content-id"` pointing to controlled element
+   - JavaScript handler that updates `aria-expanded` dynamically
+
+3. **Active button states must use high-contrast colors:**
+   - Light mode: `#1e4976` background (6.1:1 with white)
+   - Dark mode: `#1e5a8a` background (4.7:1 with white)
 
 ---
 

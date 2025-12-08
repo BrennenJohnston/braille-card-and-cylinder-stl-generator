@@ -1,7 +1,7 @@
 # Braille STL Generator
 
 [![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: PolyForm Noncommercial](https://img.shields.io/badge/License-PolyForm%20Noncommercial-red.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![WCAG 2.1 AA](https://img.shields.io/badge/WCAG-2.1%20AA-green.svg)](https://www.w3.org/WAI/WCAG21/quickref/)
 
@@ -136,4 +136,10 @@ See [CHANGELOG.md](CHANGELOG.md) for release history and version changes.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **PolyForm Noncommercial License 1.0.0**.
+
+- ✅ Free for personal, educational, and non-commercial use
+- ✅ Modification and remixing allowed
+- ❌ **No commercial use permitted**
+
+See the [LICENSE](LICENSE) file for full terms.

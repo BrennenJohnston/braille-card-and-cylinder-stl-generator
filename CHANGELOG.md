@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This release adds industry-standard documentation to the project.
 
 ### Added
-- **LICENSE** — MIT License file
+- **LICENSE** — PolyForm Noncommercial License 1.0.0 (no commercial use permitted)
 - **CHANGELOG.md** — Release history following Keep a Changelog format
 - **CONTRIBUTING.md** — Comprehensive contribution guidelines
 

@@ -5915,6 +5915,8 @@
             }
 
             // Initialize Manifold CSG Worker for cylinder generation (guarantees manifold output)
+            // MOBILE FIX (2024-12-08): Worker now uses lazy WASM loading to improve mobile compatibility.
+            // The worker signals 'ready' immediately, and WASM loads on-demand during first generation.
             try {
                 log.debug('Initializing Manifold CSG worker for cylinders...');
 
@@ -5930,14 +5932,25 @@
 
                 // Set up message handler
                 manifoldWorker.onmessage = function(e) {
-                    const { type, requestId, error, stack, geometry, stl } = e.data;
+                    const { type, requestId, error, stack, geometry, stl, wasmLoading } = e.data;
 
                     if (type === 'ready') {
                         manifoldWorkerReady = true;
-                        log.debug('Manifold CSG Worker initialized and ready');
+                        if (wasmLoading) {
+                            log.debug('Manifold CSG Worker ready (WASM loading in background)');
+                        } else {
+                            log.debug('Manifold CSG Worker initialized with WASM ready');
+                        }
                     } else if (type === 'init_error') {
-                        log.error('Manifold CSG Worker initialization error:', error, stack);
-                        manifoldWorkerReady = false;
+                        // Non-fatal during init - WASM will load on-demand
+                        log.warn('Manifold CSG Worker WASM pre-load warning:', error);
+                    } else if (type === 'init_status') {
+                        // Response to init_check message
+                        if (pendingManifoldRequests.has(requestId)) {
+                            const { resolve, reject } = pendingManifoldRequests.get(requestId);
+                            pendingManifoldRequests.delete(requestId);
+                            resolve(e.data);
+                        }
                     } else if (type === 'success' || type === 'error') {
                         // Handle pending request responses
                         if (pendingManifoldRequests.has(requestId)) {
@@ -5962,16 +5975,18 @@
 
                 manifoldWorker.onerror = function(error) {
                     log.error('Manifold CSG Worker error:', error);
-                    manifoldWorkerReady = false;
+                    // Don't set manifoldWorkerReady to false here - worker may recover on retry
+                    // The worker handles WASM loading on-demand
                 };
 
-                // Wait for ready signal with timeout (longer timeout for WASM loading)
+                // Wait for ready signal - now much faster since WASM loads lazily
+                // Short timeout (5 seconds) just for worker file to load
                 await new Promise((resolve, reject) => {
                     const timeout = setTimeout(() => {
                         if (!manifoldWorkerReady) {
-                            reject(new Error('Manifold CSG Worker initialization timeout'));
+                            reject(new Error('Manifold CSG Worker failed to load. Your browser may not support module workers.'));
                         }
-                    }, 30000); // 30 seconds for WASM loading
+                    }, 5000); // 5 seconds for worker script (not WASM)
 
                     const checkReady = setInterval(() => {
                         if (manifoldWorkerReady) {
@@ -5982,11 +5997,11 @@
                     }, 100);
                 });
 
-                log.debug('Manifold CSG Worker ready for cylinder STL generation (guarantees manifold output)');
+                log.debug('Manifold CSG Worker ready for cylinder STL generation (WASM loads on first use)');
 
             } catch (manifoldError) {
                 log.error('Failed to initialize Manifold CSG worker:', manifoldError);
-                log.error('Cylinder generation will NOT be available until Manifold worker loads successfully');
+                log.error('Cylinder generation requires the Manifold worker. Please refresh and try again.');
                 manifoldWorkerReady = false;
                 manifoldWorker = null;
                 // Per specification: NO FALLBACK - cylinder generation requires Manifold worker
@@ -6052,7 +6067,15 @@
                 // Cylinders require Manifold worker - NO FALLBACK to standard worker
                 // Standard worker produces non-manifold edges on curved surfaces
                 if (!manifoldWorkerReady || !manifoldWorker) {
-                    throw new Error('Manifold CSG Worker required for cylinder generation but not available. Please refresh the page and try again. If this persists, check your internet connection (WASM loads from CDN).');
+                    // Provide mobile-friendly error message
+                    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                    let errorMsg = 'Cylinder generation requires the Manifold 3D engine which failed to load.';
+                    if (isMobile) {
+                        errorMsg += ' On mobile devices, please ensure you have a stable internet connection and try refreshing the page. If the problem persists, try using a desktop browser.';
+                    } else {
+                        errorMsg += ' Please refresh the page and try again. If this persists, check your internet connection.';
+                    }
+                    throw new Error(errorMsg);
                 }
                 useManifolWorker = true;
                 log.debug('Using Manifold CSG worker for cylinder generation (guarantees manifold output)');

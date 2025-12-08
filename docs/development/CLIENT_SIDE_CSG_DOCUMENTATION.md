@@ -210,6 +210,22 @@ For STL generation to work, the browser must support:
 - ✅ Edge 80+
 - ✅ Firefox 114+ (Module workers stable)
 - ✅ Safari 15+ (Module workers supported)
+- ✅ Mobile Safari (iOS 15+) - with lazy WASM loading
+- ✅ Chrome for Android
+
+### Mobile Support (2024-12-08 Fix)
+
+The Manifold worker now uses **lazy WASM loading** to improve mobile compatibility:
+
+1. **Worker loads immediately**: The worker script loads and signals "ready" quickly
+2. **WASM loads on-demand**: The ~2.5MB Manifold WASM module loads when first cylinder is generated
+3. **Better error messages**: Mobile-specific error messages guide users if loading fails
+
+**Mobile Considerations:**
+- First cylinder generation may take longer due to WASM loading
+- Requires stable internet connection for CDN access
+- If WASM fails to load, users see helpful error with mobile-specific guidance
+- Desktop browser recommended for best performance
 
 ### Not Supported (Will Show Error)
 - ❌ Safari < 15 (no module workers)

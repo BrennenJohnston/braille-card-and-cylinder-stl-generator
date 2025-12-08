@@ -6,6 +6,10 @@
  *
  * Primarily designed for cylinder generation where three-bvh-csg produces
  * non-manifold edges due to complex curved surface boolean operations.
+ *
+ * MOBILE FIX (2024-12-08): Removed top-level await which caused issues on
+ * some mobile browsers. WASM is now loaded lazily on first generation request.
+ * This improves compatibility with Safari iOS and older mobile browsers.
  */
 
 let wasm = null;
@@ -14,47 +18,84 @@ let CrossSection = null;
 let Mesh = null;
 let manifoldReady = false;
 let initError = null;
+let initPromise = null;  // Track initialization promise to avoid duplicate loads
+let initAttempted = false;  // Track if we've attempted initialization
 
-// Initialize Manifold WASM module
+// Initialize Manifold WASM module (lazy - called on first use)
 async function initManifold() {
-    if (wasm) return true;
+    // Return immediately if already initialized
+    if (wasm && manifoldReady) return true;
 
-    const manifoldUrls = [
-        'https://cdn.jsdelivr.net/npm/manifold-3d@2.5.1/manifold.js',
-        'https://unpkg.com/manifold-3d@2.5.1/manifold.js'
-    ];
-
-    for (const url of manifoldUrls) {
-        try {
-            console.log('Manifold CSG Worker: Attempting to load from', url);
-            const module = await import(url);
-            console.log('Manifold CSG Worker: Module imported, initializing WASM...');
-            wasm = await module.default();
-            wasm.setup();
-            Manifold = wasm.Manifold;
-            CrossSection = wasm.CrossSection;
-            Mesh = wasm.Mesh;
-            manifoldReady = true;
-            console.log('Manifold CSG Worker: WASM loaded and initialized from', url);
-            console.log('Manifold CSG Worker: Available classes:', Object.keys(wasm).join(', '));
-            return true;
-        } catch (e) {
-            console.warn('Manifold CSG Worker: Failed to load from', url, ':', e.message);
-            console.warn('Manifold CSG Worker: Error stack:', e.stack);
-        }
+    // If initialization is in progress, wait for it
+    if (initPromise) {
+        return initPromise;
     }
 
-    throw new Error('Failed to load Manifold WASM from any CDN');
+    // Start initialization
+    initPromise = (async () => {
+        const manifoldUrls = [
+            'https://cdn.jsdelivr.net/npm/manifold-3d@2.5.1/manifold.js',
+            'https://unpkg.com/manifold-3d@2.5.1/manifold.js'
+        ];
+
+        let lastError = null;
+
+        for (const url of manifoldUrls) {
+            try {
+                console.log('Manifold CSG Worker: Attempting to load from', url);
+
+                // Use dynamic import with explicit error handling
+                const module = await import(/* webpackIgnore: true */ url);
+                console.log('Manifold CSG Worker: Module imported, initializing WASM...');
+
+                // Initialize the WASM module
+                wasm = await module.default();
+                wasm.setup();
+                Manifold = wasm.Manifold;
+                CrossSection = wasm.CrossSection;
+                Mesh = wasm.Mesh;
+                manifoldReady = true;
+                initError = null;
+
+                console.log('Manifold CSG Worker: WASM loaded and initialized from', url);
+                console.log('Manifold CSG Worker: Available classes:', Object.keys(wasm).join(', '));
+                return true;
+            } catch (e) {
+                lastError = e;
+                console.warn('Manifold CSG Worker: Failed to load from', url, ':', e.message);
+                if (e.stack) console.warn('Manifold CSG Worker: Error stack:', e.stack);
+            }
+        }
+
+        // All CDNs failed
+        initError = lastError || new Error('Failed to load Manifold WASM from any CDN');
+        throw initError;
+    })();
+
+    try {
+        await initPromise;
+        return true;
+    } finally {
+        // Allow retry on next attempt if failed
+        if (!manifoldReady) {
+            initPromise = null;
+        }
+    }
 }
 
-// Initialize on worker load
-try {
-    await initManifold();
-    console.log('Manifold CSG Worker: Initialization complete, ready for requests');
-} catch (error) {
-    initError = error;
-    console.error('Manifold CSG Worker: Initialization failed:', error.message);
-}
+// Attempt eager initialization but don't block or fail
+// This allows the worker to report 'ready' quickly while WASM loads in background
+(function tryEagerInit() {
+    initAttempted = true;
+    initManifold()
+        .then(() => {
+            console.log('Manifold CSG Worker: Eager initialization complete, ready for requests');
+        })
+        .catch((error) => {
+            // Don't set initError here - will retry on demand
+            console.warn('Manifold CSG Worker: Eager initialization failed, will retry on demand:', error.message);
+        });
+})();
 
 /**
  * Create a cylinder using Manifold primitives
@@ -1563,28 +1604,43 @@ self.onmessage = async function(event) {
 
     console.log('Manifold CSG Worker: Received message type:', type, 'requestId:', requestId);
 
-    // Check if initialization failed
-    if (initError) {
-        console.error('Manifold CSG Worker: Init error present:', initError.message);
-        self.postMessage({
-            type: 'error',
-            requestId: requestId,
-            error: 'Manifold Worker initialization failed: ' + initError.message
-        });
+    // Handle init_check type for verifying worker readiness
+    if (type === 'init_check') {
+        if (manifoldReady) {
+            self.postMessage({ type: 'init_status', requestId: requestId, ready: true });
+        } else if (initError) {
+            self.postMessage({ type: 'init_status', requestId: requestId, ready: false, error: initError.message });
+        } else {
+            // Initialization in progress
+            self.postMessage({ type: 'init_status', requestId: requestId, ready: false, loading: true });
+        }
         return;
     }
 
-    // Ensure Manifold is ready
-    if (!manifoldReady) {
-        console.log('Manifold CSG Worker: Not ready, attempting initialization...');
-        try {
-            await initManifold();
-        } catch (e) {
-            console.error('Manifold CSG Worker: Failed to initialize:', e.message);
+    // For generation requests, ensure Manifold is initialized (lazy loading)
+    if (type === 'generate') {
+        // Attempt initialization if not ready
+        if (!manifoldReady) {
+            console.log('Manifold CSG Worker: WASM not ready, initializing on demand...');
+            try {
+                await initManifold();
+            } catch (e) {
+                console.error('Manifold CSG Worker: On-demand initialization failed:', e.message);
+                self.postMessage({
+                    type: 'error',
+                    requestId: requestId,
+                    error: 'Failed to load Manifold WASM. This may be due to a slow or restricted network connection. Please ensure you have internet access and try refreshing the page. Error: ' + e.message
+                });
+                return;
+            }
+        }
+
+        // Double-check we're ready
+        if (!manifoldReady || !Manifold) {
             self.postMessage({
                 type: 'error',
                 requestId: requestId,
-                error: 'Failed to initialize Manifold: ' + e.message
+                error: 'Manifold WASM failed to initialize properly. Please refresh the page and try again.'
             });
             return;
         }
@@ -1647,9 +1703,7 @@ self.onmessage = async function(event) {
     }
 };
 
-// Signal that worker is ready
-if (initError) {
-    self.postMessage({ type: 'init_error', error: initError.message });
-} else {
-    self.postMessage({ type: 'ready' });
-}
+// Signal that worker is ready (WASM may still be loading in background)
+// We signal ready immediately so the main thread knows the worker is available
+// WASM will be loaded on-demand if not already loaded when generation is requested
+self.postMessage({ type: 'ready', wasmLoading: !manifoldReady });

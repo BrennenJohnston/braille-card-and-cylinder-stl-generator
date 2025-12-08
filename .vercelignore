@@ -1,3 +1,9 @@
+# Force Vercel to use requirements.txt instead of pyproject.toml
+# This reduces the serverless function size by excluding heavy dependencies
+# (scipy, matplotlib, manifold3d) that aren't needed for client-side CSG architecture
+pyproject.toml
+
+# Standard exclusions
 node_modules/
 third_party/
 __pycache__/
@@ -13,3 +19,20 @@ __pycache__/
 venv/
 .env.local
 .env.*
+
+# Test files and fixtures not needed in production
+tests/
+*.stl
+
+# Development files
+docs/
+scripts/
+*.md
+!README.md
+OpenSCAD/
+.cursor/
+.git/
+.github/
+.pre-commit-config.yaml
+.ruff_cache/
+requirements-dev.txt

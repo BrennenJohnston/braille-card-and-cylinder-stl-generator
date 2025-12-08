@@ -115,8 +115,8 @@
             --info-bg: #0000ff;
             --info-border: #0000ff;
             --info-text: #02fe05; /* Green instead of white */
-            --shadow-light: none;
-            --shadow-medium: none;
+            --shadow-light: transparent;
+            --shadow-medium: transparent;
             --stl-mesh-color: #00ffff; /* Bright cyan for high contrast */
             --stl-background: #000000; /* Keep black background */
             --stl-ambient-light: #666666; /* Reduced ambient light to prevent washing out */
@@ -632,7 +632,7 @@
             overflow-y: scroll; /* Enable scrolling for right column menu boxes */
             -webkit-overflow-scrolling: touch;
             overflow-x: hidden; /* Prevent horizontal overflow */
-            scrollbar-gutter: stable; /* Reserve space so the scrollbar is always visible */
+            /* scrollbar-gutter: stable; */ /* Reserved for future use - not yet widely supported by validators */
             scrollbar-width: auto; /* Firefox standard scrollbar */
             scrollbar-color: #3182ce #e2e8f0; /* Firefox: blue thumb on light grey track */
             /* Distinct background for scrollable area */
@@ -1866,7 +1866,7 @@
                         <span aria-hidden="true">A-</span>
                         <span class="sr-only">Decrease font size</span>
                     </button>
-                    <span class="font-size-display" aria-label="Current font size">
+                    <span class="font-size-display" role="status" aria-live="polite" aria-atomic="true">
                         <span id="current-font-size">100</span>%
                     </span>
                     <button id="font-increase" class="font-size-btn" aria-label="Increase font size" title="Increase font size">
@@ -2020,7 +2020,7 @@
                             </div>
                             <!-- Placement mode toggle -->
                             <div class="line-input-mode-toggle" style="margin-bottom: 0.8em; display: flex; align-items: center; gap: 1em;">
-                                <label class="line-label" for="placement_mode_auto" style="margin: 0;">Placement Mode:</label>
+                                <span class="line-label" style="margin: 0;">Placement Mode:</span>
                                 <label style="display: inline-flex; align-items: center; gap: 0.4em;">
                                     <input type="radio" name="placement_mode" value="auto" id="placement_mode_auto" checked>
                                     Auto Placement
@@ -2049,6 +2049,7 @@
                         <fieldset>
                             <legend class="grade-label">Select Language:</legend>
                             <div style="margin-bottom: 0.8em;">
+                                <label for="language-table" class="sr-only">Select braille language table</label>
                                 <select id="language-table" name="language_table" class="language-select" aria-describedby="language-help">
                                     <option value="en-ueb-g2.ctb">English (UEB), United States — contracted (grade 2)</option>
                                     <option value="en-ueb-g1.ctb" selected>English (UEB), United States — uncontracted (grade 1)</option>
@@ -5734,5 +5735,4 @@
 
     </script>
 </body>
-</html>
 </html>

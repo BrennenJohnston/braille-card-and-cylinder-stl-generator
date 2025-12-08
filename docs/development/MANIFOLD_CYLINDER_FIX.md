@@ -64,10 +64,10 @@ Created a dedicated Manifold CSG worker (`csg-worker-manifold.js`) that uses **M
 ## How It Works
 
 1. **Worker Selection**: When generating STL, the frontend checks `spec.shape_type`:
-   - `cylinder` → Uses Manifold worker (if ready)
+   - `cylinder` → Uses Manifold worker (REQUIRED - no fallback)
    - `card` → Uses standard three-bvh-csg worker
 
-2. **Fallback**: If Manifold worker fails to load (CDN issue), falls back to standard worker with a warning
+2. **No Fallback**: If Manifold worker fails to load (CDN issue, timeout), cylinder generation will display an error message asking the user to refresh. There is NO fallback to the standard worker for cylinders because it produces non-manifold edges.
 
 3. **Coordinate System**: Manifold uses Z-up natively, matching the STL/CAD convention
 

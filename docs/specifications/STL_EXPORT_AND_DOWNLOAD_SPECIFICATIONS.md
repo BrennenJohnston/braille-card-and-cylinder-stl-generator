@@ -1107,7 +1107,7 @@ return redirect(blob_url, code=302)
 
 ### POST /generate_braille_stl
 
-**Purpose:** Full server-side STL generation (used for fallback and counter plates).
+**Purpose:** Full server-side STL generation (LEGACY - endpoint exists but is NOT used by frontend).
 
 **Request:**
 
@@ -1155,10 +1155,10 @@ Location: https://[blob-url]/counter_plate_[hash].stl
 | Category | Source | Handling |
 |----------|--------|----------|
 | Validation Error | Invalid input | Display message, stay in Generate state |
-| Network Error | Fetch failed | Retry or show error |
-| Worker Error | CSG operation failed | Fallback to server |
+| Network Error | Fetch failed | Display error, allow retry |
+| Worker Error | CSG operation failed | Display error message (NO fallback) |
 | Server Error | Backend exception | Display error message |
-| Timeout | Operation took too long | Fallback to server |
+| Timeout | Operation took too long | Display error message (NO fallback) |
 
 ### User-Facing Error Messages
 
@@ -1187,20 +1187,11 @@ function showError(type, details = '') {
 ### Error Recovery
 
 ```javascript
-async function handleGenerationError(error, fallbackToServer = true) {
+// NO FALLBACK - errors are displayed to the user
+async function handleGenerationError(error) {
     console.error('Generation error:', error);
 
-    if (fallbackToServer && error.type !== 'validation') {
-        showError('worker');
-        try {
-            return await generateServerSide();
-        } catch (serverError) {
-            showError('server', serverError.message);
-            resetToGenerateState();
-            return null;
-        }
-    }
-
+    // Show error message - NO fallback to server or alternative worker
     showError(error.type || 'unknown', error.message);
     resetToGenerateState();
     return null;
@@ -1348,6 +1339,7 @@ def test_geometry_consistency():
 | 1.0 | 2024-12-06 | Initial specification document |
 | 1.1 | 2024-12-08 | **BUG FIX:** CSG worker integration. Frontend now properly initializes CSG worker and uses client-side generation exclusively. Server-side fallback disabled. Updated Sections 1, 2, and 9. |
 | 1.2 | 2024-12-08 | **BUG FIX:** Manifold worker integration. Cylinders now use `csg-worker-manifold.js` for guaranteed manifold output. Added dual-worker architecture with automatic shape-based routing. |
+| 1.3 | 2024-12-08 | **NO FALLBACK ENFORCEMENT:** Removed fallback from Manifold to standard worker for cylinders. Cylinder generation now requires Manifold worker; displays error if unavailable. Updated Sections 9 and 12. |
 
 ---
 

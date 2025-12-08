@@ -5985,11 +5985,12 @@
                 log.debug('Manifold CSG Worker ready for cylinder STL generation (guarantees manifold output)');
 
             } catch (manifoldError) {
-                log.warn('Failed to initialize Manifold CSG worker:', manifoldError);
-                log.warn('Cylinder generation will fall back to standard CSG worker (may have non-manifold edges)');
+                log.error('Failed to initialize Manifold CSG worker:', manifoldError);
+                log.error('Cylinder generation will NOT be available until Manifold worker loads successfully');
                 manifoldWorkerReady = false;
                 manifoldWorker = null;
-                // Non-fatal - can fall back to standard worker
+                // Per specification: NO FALLBACK - cylinder generation requires Manifold worker
+                // Users will see an error when attempting to generate cylinders
             }
 
             // Always default to cylinder on load (card is temporarily disabled)
@@ -6040,20 +6041,28 @@
             const { lines, originalLines, placementMode, plateType, shapeType, cylinderParams, perLineLanguageTables, settings } = params;
 
             // Determine which worker to use based on shape type
-            const useManifolWorker = shapeType === 'cylinder' && manifoldWorkerReady && manifoldWorker;
-            const useStandardWorker = csgWorkerReady && csgWorker;
+            // Per specification: NO FALLBACK between workers
+            // - Cylinders MUST use Manifold worker (guarantees watertight manifold output)
+            // - Cards use standard three-bvh-csg worker
+            // See CLIENT_SIDE_CSG_DOCUMENTATION.md and MANIFOLD_CYLINDER_FIX.md
+            let useManifolWorker = false;
+            let useStandardWorker = false;
 
-            // Verify at least one worker is ready
-            if (useManifolWorker) {
-                log.debug('Using Manifold CSG worker for cylinder generation (guarantees manifold output)');
-            } else if (useStandardWorker) {
-                if (shapeType === 'cylinder') {
-                    log.warn('Manifold worker not available, using standard CSG worker for cylinder (may have non-manifold edges)');
-                } else {
-                    log.debug('Using standard CSG worker for card generation');
+            if (shapeType === 'cylinder') {
+                // Cylinders require Manifold worker - NO FALLBACK to standard worker
+                // Standard worker produces non-manifold edges on curved surfaces
+                if (!manifoldWorkerReady || !manifoldWorker) {
+                    throw new Error('Manifold CSG Worker required for cylinder generation but not available. Please refresh the page and try again. If this persists, check your internet connection (WASM loads from CDN).');
                 }
+                useManifolWorker = true;
+                log.debug('Using Manifold CSG worker for cylinder generation (guarantees manifold output)');
             } else {
-                throw new Error('No CSG Worker initialized. Please refresh the page and try again.');
+                // Cards use standard CSG worker
+                if (!csgWorkerReady || !csgWorker) {
+                    throw new Error('CSG Worker not initialized. Please refresh the page and try again.');
+                }
+                useStandardWorker = true;
+                log.debug('Using standard CSG worker for card generation');
             }
 
             log.debug('Starting client-side CSG generation...');

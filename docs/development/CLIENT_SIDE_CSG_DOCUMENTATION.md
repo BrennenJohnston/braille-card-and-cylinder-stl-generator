@@ -172,7 +172,7 @@ The `/geometry_spec` endpoint returns JSON describing primitives:
 
 ### Modified Files
 - `backend.py` - Added `/geometry_spec` endpoint
-- `public/index.html` - Added CSG worker initialization and fallback logic
+- `public/index.html` - Added CSG worker initialization (no fallback between workers)
 
 ## Configuration
 
@@ -300,7 +300,7 @@ STL generation failed: [error message]
 
 **Generated STL is invalid:**
 - Check watertightness in slicer
-- Try server fallback to compare
+- For cylinders, verify Manifold worker initialized successfully
 - Report geometry edge cases
 
 ## Deployment to Vercel
@@ -380,11 +380,11 @@ Copy-Item node_modules\three\examples\jsm\exporters\STLExporter.js static\exampl
 
 ## Future Enhancements (Optional)
 
-See the `optional-manifold-worker` todo for adding client-side manifold3d as an additional option:
-- Add manifold-3d WASM files to `static/vendor/`
-- Create `static/workers/csg-worker-manifold.js`
-- Add runtime toggle: three-bvh-csg → manifold3d → server fallback
-- ~2-3 MB additional bundle, maximum robustness
+**COMPLETED (2024-12-08):** The Manifold worker has been fully integrated:
+- Manifold WASM loads from CDN (`manifold-3d@2.5.1`)
+- `static/workers/csg-worker-manifold.js` handles cylinder generation
+- **No fallback**: Cylinders MUST use Manifold worker; cards use standard worker
+- See `MANIFOLD_CYLINDER_FIX.md` for details
 
 ## Support & Troubleshooting
 
@@ -403,8 +403,8 @@ See the `optional-manifold-worker` todo for adding client-side manifold3d as an 
 ### Slow Performance
 1. Check browser task manager (memory usage)
 2. Close other tabs
-3. Try smaller model
-4. Use server fallback for large models
+3. Try smaller model (reduce text length or line count)
+4. Refresh page and ensure workers initialize properly
 
 ### Worker Not Initializing
 1. Check browser version (need module worker support)

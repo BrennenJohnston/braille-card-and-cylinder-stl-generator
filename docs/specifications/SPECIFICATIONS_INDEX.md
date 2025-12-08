@@ -323,7 +323,7 @@ This document serves as the **master index** for all core architecture specifica
 | `app/exporters.py` | STL export utilities | STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS |
 | `app/models.py` | Data models | Referenced across multiple specs |
 | `app/geometry/*` | Geometry generation | Referenced across geometry-related specs |
-| `geometry_spec.py` | Spec extraction | STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS (Section 3) |
+| `app/geometry_spec.py` | Spec extraction | STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS (Section 3) |
 | `backend.py` | API endpoints | Documented per-endpoint in relevant specs |
 
 ---

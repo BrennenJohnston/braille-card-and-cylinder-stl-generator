@@ -11,6 +11,9 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
 
+# Planned for future use: Flask application factory pattern
+# Currently unused - application uses backend.py directly
+# These functions are reserved for future refactoring to improve modularity
 def create_app(config=None):
     """
     Flask application factory.
@@ -53,6 +56,7 @@ app = None
 limiter = None
 
 
+# Planned for future use: Initialize default app instance
 def init_app():
     """Initialize the default app instance."""
     global app, limiter

@@ -130,10 +130,3 @@ def braille_to_dots(braille_char: str) -> list:
             dots[i] = 1
 
     return dots
-
-
-def _truthy(value: str | None) -> bool:
-    """Return True for common truthy strings."""
-    if value is None:
-        return False
-    return str(value).strip().lower() in ('1', 'true', 'yes', 'on')

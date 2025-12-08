@@ -14,7 +14,7 @@ This project uses a **centralized settings architecture** with specification-dri
 2. **Follow the Source Priority Order (for each domain):**
    - Settings/Validation: `settings.schema.json` > `app/models.py` > `backend.py`
    - Translation: `backend.py` > `static/liblouis-worker.js`
-   - Geometry: `geometry_spec.py` > `app/geometry/*.py`
+   - Geometry: `app/geometry_spec.py` > `app/geometry/*.py`
    - Caching: `app/cache.py` > `backend.py`
 
 3. **When modifying defaults or adding parameters:**

@@ -2906,6 +2906,7 @@
         const log = {
             debug: isProduction ? () => {} : console.log,
             info: isProduction ? () => {} : console.log,
+            warn: isProduction ? () => {} : console.warn, // Warnings suppressed in production
             error: console.error // Always log errors
         };
 

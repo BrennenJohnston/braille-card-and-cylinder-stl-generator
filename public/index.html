@@ -3575,10 +3575,11 @@
                         }
                     });
 
-                    // Sync emboss cone parameters to counter cone parameters when cone is selected
-                    if (isCone) {
-                        syncEmbossToCounterConeParams();
-                    }
+                    // NOTE: We intentionally do NOT call syncEmbossToCounterConeParams() here.
+                    // The thickness presets define different (intentional) values for emboss and counter cone params.
+                    // Syncing would overwrite the preset's counter cone values with emboss values, causing the bug
+                    // where dimensions are incorrect on first shape switch after changing presets.
+                    // The sync is only performed when user manually changes emboss params (see below).
 
                     // Update dimension groups visibility
                     const bowlGroup = document.getElementById('bowl_dimensions_group');
@@ -4229,8 +4230,9 @@
                 } else if (savedCombined === 'cone') {
                     dotShapeRadios.forEach(r => { if (r.value === 'cone') r.checked = true; });
                     recessShapeRadios.forEach(r => { if (r.value === '2') r.checked = true; }); // Cone
-                    // Sync emboss cone params to counter cone params on initialization
-                    syncEmbossToCounterConeParams();
+                    // NOTE: We intentionally do NOT call syncEmbossToCounterConeParams() here.
+                    // The thickness preset (applied before this) already sets correct values for both
+                    // emboss and counter cone params. Syncing would overwrite the preset's counter values.
                     console.log('Initialized to cone - dot_shape: cone, recess_shape: 2');
                 }
             }

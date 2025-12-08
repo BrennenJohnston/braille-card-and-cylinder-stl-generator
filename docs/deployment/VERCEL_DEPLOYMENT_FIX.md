@@ -20,7 +20,7 @@
 ### 2. Updated `requirements.txt`
 **Changes:**
 - Pinned all dependency versions
-- Matches `requirements_vercel.txt` versions
+- Pinned versions for serverless deployment
 - Ensures consistent builds across deployments
 
 **Key versions:**

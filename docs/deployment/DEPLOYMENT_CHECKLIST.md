@@ -76,7 +76,7 @@ Review and update Content Security Policy in `backend.py` if needed:
 4. Deploy and test
 
 > Note: `wsgi.py` imports `app` from `backend.py` for Vercel serverless.
-> Use `requirements_vercel.txt` for the Install step to reduce footprint.
+> Use `requirements.txt` for the Install step to reduce footprint.
 > Add a `.vercelignore` to exclude build artifacts and large `third_party/` assets; keep `static/liblouis/`.
 
 #### Environment Variables in Vercel:
@@ -142,7 +142,7 @@ Review and update Content Security Policy in `backend.py` if needed:
 pip list --outdated
 
 # Update requirements
-pip freeze > requirements_vercel.txt
+pip freeze > requirements.txt
 ```
 
 ### 🆘 Incident Response

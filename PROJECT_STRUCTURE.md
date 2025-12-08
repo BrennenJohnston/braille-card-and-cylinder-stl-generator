@@ -33,8 +33,7 @@ braille-card-and-cylinder-stl-generator/
 ├── third_party/              # Third-party dependencies (liblouis tables)
 ├── backend.py                # Main Flask application
 ├── wsgi.py                   # WSGI entry point for Vercel serverless
-├── requirements.txt          # Python dependencies (full)
-├── requirements_vercel.txt   # Python dependencies (serverless minimal)
+├── requirements.txt          # Python dependencies (serverless minimal for Vercel)
 ├── requirements-dev.txt      # Development dependencies
 ├── package.json              # Node.js dependencies
 ├── vercel.json               # Vercel deployment configuration
@@ -182,7 +181,7 @@ python backend.py  # Opens http://localhost:5001
 
 ### Vercel Deployment
 - Uses `wsgi.py` as serverless entry point
-- Minimal dependencies from `requirements_vercel.txt`
+- Minimal dependencies from `requirements.txt`
 - Static assets bundled in deployment
 - See `docs/deployment/DEPLOYMENT_CHECKLIST.md`
 

@@ -284,7 +284,7 @@ Preferred-Languages: en
 
 4. **Regular dependency audits**:
 ```bash
-pip-audit -r requirements_vercel.txt
+pip-audit -r requirements.txt
 npm audit
 ```
 

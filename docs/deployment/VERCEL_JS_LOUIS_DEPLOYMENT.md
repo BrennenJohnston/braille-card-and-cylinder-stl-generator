@@ -16,7 +16,7 @@ This deployment strategy uses the [liblouis/js-build](https://github.com/libloui
 Your repository is already set up with:
 - `backend.py` - Flask app used locally and in serverless
 - `wsgi.py` - Vercel entry point importing `app` from `backend.py`
-- `requirements_vercel.txt` - Minimal dependencies
+- `requirements.txt` - Minimal dependencies
 - `vercel.json` - Vercel configuration
 - `.vercelignore` - Excludes heavy files
 
@@ -24,7 +24,7 @@ Your repository is already set up with:
 
 1. **Connect your GitHub repository to Vercel**
 2. **Set build settings**:
-   - Install Command: `pip install -r requirements_vercel.txt`
+   - Install Command: `pip install -r requirements.txt`
    - Output Directory: `.`
 3. **Deploy!** 🎉
 
@@ -121,7 +121,7 @@ async function translateToBraille(text, grade) {
 ### **Common Issues**
 
 1. **Build fails on Vercel**
-   - Check `requirements_vercel.txt` syntax
+   - Check `requirements.txt` syntax
    - Verify Python version compatibility
 
 2. **Function times out**

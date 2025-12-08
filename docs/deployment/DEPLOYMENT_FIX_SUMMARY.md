@@ -22,7 +22,7 @@ This occurred because:
 
 ### 2. Updated Shapely Version
 - Upgraded shapely from 2.0.4 to 2.0.6 for better pre-built wheel support
-- Updated in all requirements files: `requirements.txt`, `requirements_vercel.txt`, and `pyproject.toml`
+- Updated in all requirements files: `requirements.txt` and `pyproject.toml`
 
 ### 3. Forced Binary Package Installation
 - Added environment variable in `vercel.json`: `"PIP_ONLY_BINARY": "shapely"`
@@ -31,7 +31,7 @@ This occurred because:
 ## Changes Made
 1. `pyproject.toml`: Updated Python version constraint and shapely version
 2. `vercel.json`: Set Python 3.9 runtime and added PIP_ONLY_BINARY env var
-3. `requirements.txt` & `requirements_vercel.txt`: Updated shapely to 2.0.6
+3. `requirements.txt`: Updated shapely to 2.0.6
 4. `.python-version`: New file specifying Python 3.9
 5. `runtime.txt`: New file for additional Python version specification
 

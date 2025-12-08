@@ -315,7 +315,7 @@ Add validate_original_lines() function with type and length checking.
 
 ## Dependency Security Analysis
 
-### Python Dependencies (requirements_vercel.txt)
+### Python Dependencies (requirements.txt)
 
 Checked versions against known CVEs (as of December 2025):
 

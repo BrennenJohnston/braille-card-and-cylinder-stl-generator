@@ -2405,11 +2405,11 @@
                                                 <span class="radio-text">Cylinder</span>
                                             </label>
                                             <span id="cylinder-shape-desc" class="sr-only">Creates a cylindrical braille surface</span>
-                                            <label class="radio-option" style="opacity: 0.5; cursor: not-allowed;">
-                                                <input type="radio" name="shape_type" value="card" disabled aria-describedby="card-shape-desc">
-                                                <span class="radio-text">Flat Card <em style="font-size: 0.85em; color: var(--warning-color, #f39c12);">(temporarily disabled)</em></span>
+                                            <label class="radio-option">
+                                                <input type="radio" name="shape_type" value="card" aria-describedby="card-shape-desc">
+                                                <span class="radio-text">Flat Card</span>
                                             </label>
-                                            <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card - temporarily disabled</span>
+                                            <span id="card-shape-desc" class="sr-only">Creates a flat rectangular braille card</span>
                                         </div>
                                     </fieldset>
                                 </div>
@@ -5969,7 +5969,7 @@
                 // Non-fatal - can fall back to standard worker
             }
 
-            // Always default to cylinder on load (card is temporarily disabled)
+            // Default to cylinder on load (user can switch to card if desired)
             const cylinder = document.querySelector('input[name="shape_type"][value="cylinder"]');
             if (cylinder) cylinder.checked = true;
 

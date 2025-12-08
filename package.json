@@ -1,4 +1,36 @@
 {
+  "name": "braille-stl-generator",
+  "version": "1.2.0",
+  "description": "Web application for generating 3D-printable STL files for braille embossing plates and cylinders",
+  "private": true,
+  "license": "SEE LICENSE IN LICENSE",
+  "author": {
+    "name": "Brennen Johnston",
+    "url": "https://github.com/BrennenJohnston"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/issues"
+  },
+  "homepage": "https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator#readme",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "scripts": {
+    "test": "echo \"No JS tests configured\" && exit 0"
+  },
+  "keywords": [
+    "braille",
+    "stl",
+    "3d-printing",
+    "accessibility",
+    "embossing",
+    "liblouis"
+  ],
   "dependencies": {
     "@vercel/blob": "^2.0.0",
     "liblouis": "^0.4.0",

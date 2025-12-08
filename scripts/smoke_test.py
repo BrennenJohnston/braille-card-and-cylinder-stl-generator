@@ -7,7 +7,7 @@ PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-import backend
+import backend  # noqa: E402
 
 
 def run():

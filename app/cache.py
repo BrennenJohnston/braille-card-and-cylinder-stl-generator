@@ -128,7 +128,7 @@ def _normalize_number(value):
             value = float(value)
         if isinstance(value, bool):
             return int(value)
-        if isinstance(value, (int,)):
+        if isinstance(value, int):
             return value
         if isinstance(value, float):
             rounded = round(value, 5)

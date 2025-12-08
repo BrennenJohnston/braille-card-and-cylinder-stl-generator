@@ -8,13 +8,12 @@ appropriate headers for HTTP responses.
 import hashlib
 import io
 import time
-from typing import Optional, Tuple
 
 import trimesh
-from flask import make_response, send_file
+from flask import Response, make_response, send_file
 
 
-def mesh_to_stl_bytes(mesh: trimesh.Trimesh) -> Tuple[bytes, int]:
+def mesh_to_stl_bytes(mesh: trimesh.Trimesh) -> tuple[bytes, int]:
     """
     Export a trimesh object to STL bytes with timing.
 
@@ -49,10 +48,10 @@ def compute_etag(stl_bytes: bytes) -> str:
 def create_stl_response(
     stl_bytes: bytes,
     filename: str,
-    etag: Optional[str] = None,
+    etag: str | None = None,
     cache_control: str = 'public, max-age=3600, stale-while-revalidate=86400',
-    extra_headers: Optional[dict] = None,
-) -> 'Response':
+    extra_headers: dict | None = None,
+) -> Response:
     """
     Create Flask response for STL file download.
 
@@ -82,7 +81,7 @@ def create_stl_response(
     return resp
 
 
-def create_304_response(etag: str, cache_control: str = 'public, max-age=3600', extra_headers: Optional[dict] = None):
+def create_304_response(etag: str, cache_control: str = 'public, max-age=3600', extra_headers: dict | None = None):
     """
     Create 304 Not Modified response for conditional requests.
 

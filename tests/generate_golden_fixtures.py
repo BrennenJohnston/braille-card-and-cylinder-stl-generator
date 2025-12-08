@@ -16,7 +16,7 @@ import trimesh
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-import backend
+import backend  # noqa: E402
 
 
 def save_fixture_with_metadata(stl_bytes, fixture_name, description, request_payload):

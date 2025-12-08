@@ -80,6 +80,7 @@ todos:
 - ✅ Commented out non-standard scrollbar-gutter property
 - ✅ Added explicit label for language select dropdown
 - ✅ Fixed multiple labels issue on placement mode radio buttons
+- ✅ **Fixed Expert Toggle contrast ratio** (December 8, 2025): Changed `.expert-toggle-btn.active` background from `var(--border-focus)` to darker blues (`#1e4976` light mode, `#1e5a8a` dark mode) to meet WCAG AA 4.5:1 contrast requirement with white text
 
 ### All Work Complete:
 

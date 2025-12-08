@@ -829,29 +829,47 @@ function update3DSceneColors() {
 
 ### 3.7 STL Preview Label
 
-A clarifying label is displayed below the STL preview panel to help users understand its purpose. This was added because some users were confused and attempted to type text into the preview area.
+A clarifying label is displayed as an **overlay at the top** of the STL preview panel to help users understand its purpose. This was added because some users were confused and attempted to type text into the preview area. The label is positioned as a top-layer overlay to ensure maximum visibility.
 
 #### HTML Structure
 
 ```html
-<div class="stl-preview-label" id="stl-preview-label" role="note" aria-label="STL Preview information">
-    <strong>3D STL Preview</strong> — Interactive preview only (drag to rotate, scroll to zoom)
+<!-- Viewer Container with Overlay Label -->
+<div class="viewer-container">
+    <!-- STL Preview Label - Positioned as overlay at top of viewer -->
+    <div class="stl-preview-label" id="stl-preview-label" role="note" aria-label="STL Preview information">
+        <strong>3D STL Preview</strong> — Interactive preview only (drag to rotate, scroll to zoom)
+    </div>
+    <div id="viewer" role="img" ...>
+        <!-- 3D viewer content -->
+    </div>
 </div>
 ```
 
 #### CSS Styling
 
 ```css
-.stl-preview-label {
+/* Viewer Container - wraps viewer and overlay label */
+.viewer-container {
+    position: relative;
     width: 100%;
+}
+
+/* STL Preview Label - Overlay at top of viewer */
+.stl-preview-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
     text-align: center;
     padding: 0.5em 0.75em;
-    margin-top: 0.5em;
     font-size: 0.85em;
     color: var(--text-secondary);
     background: var(--bg-secondary);
     border: 1px solid var(--border-primary);
-    border-radius: 8px;
+    border-radius: 8px 8px 0 0;
+    opacity: 0.95;
 }
 
 .stl-preview-label strong {
@@ -863,6 +881,7 @@ A clarifying label is displayed below the STL preview panel to help users unders
     background: #1a1a1a;
     border: 2px solid #ffff00;
     color: #02fe05;
+    opacity: 1;
 }
 
 [data-theme="high-contrast"] .stl-preview-label strong {
@@ -876,17 +895,20 @@ The label serves to:
 - Clearly identify the panel as an STL preview (not a text input)
 - Provide brief interaction instructions (drag to rotate, scroll to zoom)
 - Reduce user confusion about the panel's purpose
+- **Positioned at top as overlay** to maximize visibility without taking extra space below the viewer
 
 ### 3.8 Preview Display Settings (Brightness and Contrast)
 
 User-adjustable brightness and contrast controls allow customization of how the 3D preview appears. These settings affect **only the visual preview** and do not modify the exported STL file.
 
+**UI Pattern:** Click-through toggle buttons (similar to Theme toggle) that cycle through levels on each click.
+
 #### Control Overview
 
-| Setting | Purpose | Range | Default |
-|---------|---------|-------|---------|
-| **Brightness** | Adjusts overall light intensity | 1-5 | 3 (Normal) |
-| **Contrast** | Adjusts ambient vs directional light ratio | 1-5 | 3 (Normal) |
+| Setting | Purpose | Range | Default | Cycle Pattern |
+|---------|---------|-------|---------|---------------|
+| **Brightness** | Adjusts overall light intensity | 1-5 | 3 (Normal) | 1 → 2 → 3 → 4 → 5 → 1... |
+| **Contrast** | Adjusts ambient vs directional light ratio | 1-5 | 3 (Normal) | 1 → 2 → 3 → 4 → 5 → 1... |
 
 #### Brightness Levels
 
@@ -911,43 +933,32 @@ User-adjustable brightness and contrast controls allow customization of how the 
 #### HTML Structure
 
 ```html
-<fieldset class="preview-display-controls" role="group" aria-labelledby="preview-controls-legend">
-    <legend id="preview-controls-legend">Preview Display Settings</legend>
+<!-- Preview Display Controls - Brightness and Contrast as click-through buttons -->
+<div class="preview-display-controls" role="group" aria-labelledby="preview-controls-legend">
+    <span id="preview-controls-legend" class="preview-controls-title">Preview Display Settings</span>
 
-    <!-- Brightness Control -->
-    <div class="preview-control-group" role="radiogroup" aria-labelledby="brightness-label">
-        <label id="brightness-label">Brightness:</label>
-        <div class="preview-control-options">
-            <input type="radio" name="preview-brightness" id="brightness-1" value="1">
-            <label for="brightness-1">1</label>
-            <input type="radio" name="preview-brightness" id="brightness-2" value="2">
-            <label for="brightness-2">2</label>
-            <input type="radio" name="preview-brightness" id="brightness-3" value="3" checked>
-            <label for="brightness-3">3</label>
-            <input type="radio" name="preview-brightness" id="brightness-4" value="4">
-            <label for="brightness-4">4</label>
-            <input type="radio" name="preview-brightness" id="brightness-5" value="5">
-            <label for="brightness-5">5</label>
-        </div>
+    <!-- Brightness Click-Through Button -->
+    <div class="preview-control-group">
+        <span class="preview-control-label">Brightness:</span>
+        <button type="button" id="brightness-toggle" class="preview-toggle-btn"
+                aria-label="Current brightness: Normal (3). Click to cycle through brightness levels"
+                title="Click to cycle brightness: Very Dim → Dim → Normal → Bright → Very Bright">
+            <span class="preview-toggle-icon" aria-hidden="true">☀</span>
+            <span class="preview-toggle-text">Normal (3)</span>
+        </button>
     </div>
 
-    <!-- Contrast Control -->
-    <div class="preview-control-group" role="radiogroup" aria-labelledby="contrast-label">
-        <label id="contrast-label">Contrast:</label>
-        <div class="preview-control-options">
-            <input type="radio" name="preview-contrast" id="contrast-1" value="1">
-            <label for="contrast-1">1</label>
-            <input type="radio" name="preview-contrast" id="contrast-2" value="2">
-            <label for="contrast-2">2</label>
-            <input type="radio" name="preview-contrast" id="contrast-3" value="3" checked>
-            <label for="contrast-3">3</label>
-            <input type="radio" name="preview-contrast" id="contrast-4" value="4">
-            <label for="contrast-4">4</label>
-            <input type="radio" name="preview-contrast" id="contrast-5" value="5">
-            <label for="contrast-5">5</label>
-        </div>
+    <!-- Contrast Click-Through Button -->
+    <div class="preview-control-group">
+        <span class="preview-control-label">Contrast:</span>
+        <button type="button" id="contrast-toggle" class="preview-toggle-btn"
+                aria-label="Current contrast: Normal (3). Click to cycle through contrast levels"
+                title="Click to cycle contrast: Very Low → Low → Normal → High → Very High">
+            <span class="preview-toggle-icon" aria-hidden="true">◐</span>
+            <span class="preview-toggle-text">Normal (3)</span>
+        </button>
     </div>
-</fieldset>
+</div>
 ```
 
 #### JavaScript Implementation
@@ -975,66 +986,100 @@ const CONTRAST_SETTINGS = {
     5: { ambientRatio: 0.6, directionalRatio: 1.4, specularIntensity: 1.6, shininessOffset: 80 }
 };
 
-// Apply brightness setting
-function applyPreviewBrightness(level) {
-    previewBrightnessLevel = parseInt(level, 10) || 3;
-    updatePreviewDisplaySettings();
-    // Screen reader announcement...
+// Level name mappings
+const brightnessLevelNames = {
+    1: 'Very Dim', 2: 'Dim', 3: 'Normal', 4: 'Bright', 5: 'Very Bright'
+};
+const contrastLevelNames = {
+    1: 'Very Low', 2: 'Low', 3: 'Normal', 4: 'High', 5: 'Very High'
+};
+
+// Update button display after level change
+function updateBrightnessButtonDisplay() {
+    const btn = document.getElementById('brightness-toggle');
+    const textSpan = btn.querySelector('.preview-toggle-text');
+    const levelName = brightnessLevelNames[previewBrightnessLevel];
+    textSpan.textContent = `${levelName} (${previewBrightnessLevel})`;
+    btn.setAttribute('aria-label',
+        `Current brightness: ${levelName} (${previewBrightnessLevel}). Click to cycle through brightness levels`);
 }
 
-// Apply contrast setting
-function applyPreviewContrast(level) {
-    previewContrastLevel = parseInt(level, 10) || 3;
-    updatePreviewDisplaySettings();
-    // Screen reader announcement...
-}
+// Click-through toggle: cycles 1 → 2 → 3 → 4 → 5 → 1 ...
+document.getElementById('brightness-toggle').addEventListener('click', () => {
+    const nextLevel = (previewBrightnessLevel % 5) + 1;
+    applyPreviewBrightness(nextLevel);
+    updateBrightnessButtonDisplay();
+});
 
-// Update the 3D scene with current brightness/contrast
-function updatePreviewDisplaySettings() {
-    // Adjusts ambient light, directional lights, and material properties
-    // based on current brightness and contrast levels
-}
+// Similar pattern for contrast toggle...
 ```
 
 #### CSS Styling
 
 ```css
+/* Preview Display Controls Container - Click-through button style */
 .preview-display-controls {
     width: 100%;
     display: flex;
-    flex-direction: column;
-    gap: 0.75em;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 1em;
     padding: 0.75em;
     margin-top: 0.5em;
     background: var(--bg-secondary);
     border: 1px solid var(--border-primary);
     border-radius: 8px;
+    flex-wrap: wrap;
 }
 
-.preview-control-options input[type="radio"] {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
+.preview-controls-title {
+    font-weight: 600;
+    font-size: 0.9em;
+    color: var(--text-primary);
+    white-space: nowrap;
 }
 
-.preview-control-options label {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.3em 0.6em;
-    min-width: 2.5em;
-    font-size: 0.8em;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-secondary);
-    border-radius: 4px;
+/* Preview Toggle Button - Click-through style like Theme toggle */
+.preview-toggle-btn {
+    background: var(--bg-primary);
+    border: 2px solid var(--border-primary);
+    border-radius: 8px;
+    padding: 0.4em 0.8em;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--text-primary);
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px var(--shadow-light);
+    white-space: nowrap;
 }
 
-.preview-control-options input[type="radio"]:checked + label {
-    background: var(--border-focus);
-    color: #ffffff;
-    border-color: var(--border-focus);
+.preview-toggle-btn:hover {
+    background: var(--bg-secondary);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px var(--shadow-medium);
+}
+
+.preview-toggle-btn:focus {
+    outline: 3px solid var(--border-focus);
+    outline-offset: 2px;
+}
+
+/* High contrast mode - Preview toggle buttons */
+[data-theme="high-contrast"] .preview-toggle-btn {
+    background: #1a1a1a !important;
+    color: #ffff00 !important;
+    border: 2px solid #ffff00 !important;
+}
+
+[data-theme="high-contrast"] .preview-toggle-btn:hover {
+    background: #ffff00 !important;
+    color: #000000 !important;
+    border: 2px solid #000000 !important;
 }
 ```
 
@@ -1059,11 +1104,11 @@ if (typeof updatePreviewDisplaySettings === 'function') {
 
 #### Accessibility Features
 
-- **ARIA Labels**: Each control group has proper `role="radiogroup"` and `aria-labelledby`
-- **Screen Reader Announcements**: Changes are announced (e.g., "Preview brightness set to bright")
-- **Keyboard Navigation**: Full keyboard support via native radio button behavior
-- **Focus Indicators**: Clear focus outlines on selected options
-- **High Contrast Mode**: Yellow borders and green text for visibility
+- **ARIA Labels**: Dynamic labels showing current level and next action (e.g., "Current brightness: Normal (3). Click to cycle through brightness levels")
+- **Screen Reader Announcements**: Level changes are announced (e.g., "Preview brightness set to bright")
+- **Keyboard Navigation**: Full keyboard support via native button behavior (Enter/Space to activate)
+- **Focus Indicators**: Clear 3px focus outlines with offset for visibility
+- **High Contrast Mode**: Yellow borders and text for visibility, inverted on hover
 
 #### Non-Persistence Policy
 
@@ -1480,6 +1525,8 @@ Low vision users benefit from enhanced depth perception:
 | 1.1 | 2024-12-06 | Cross-check verification completed; corrected skip link href from `#main-form` to `#main-content`; updated appendices to match actual implementation |
 | 1.2 | 2024-12-06 | Added CAMERA_SETTINGS global configuration documentation in Section 3.4; expanded camera controls section with detailed instructions for adjusting initial view positions for cards and cylinders |
 | 1.3 | 2025-12-08 | Added Section 3.7 (STL Preview Label) to clarify the preview panel's purpose; Added Section 3.8 (Preview Display Settings) documenting new brightness and contrast radio button controls for 3D preview customization |
+| 1.4 | 2025-12-08 | Fixed Expert Toggle button active state contrast ratio: Changed background from `var(--border-focus)` to darker blues (`#1e4976` for light mode, `#1e5a8a` for dark mode) to meet WCAG AA 4.5:1 contrast requirement with white text |
+| 1.5 | 2025-12-08 | **UI Enhancement:** (1) Moved STL Preview Label to top of preview panel as overlay with z-index for visibility; (2) Changed Brightness and Contrast controls from radio buttons to click-through toggle buttons (like Theme toggle) that cycle through levels 1→2→3→4→5→1 on each click |
 
 ---
 

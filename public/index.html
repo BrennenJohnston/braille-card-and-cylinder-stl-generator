@@ -881,17 +881,27 @@
             box-shadow: 0 8px 32px var(--shadow-medium);
         }
 
-        /* STL Preview Label and Controls */
-        .stl-preview-label {
+        /* Viewer Container - wraps viewer and overlay label */
+        .viewer-container {
+            position: relative;
             width: 100%;
+        }
+
+        /* STL Preview Label - Overlay at top of viewer */
+        .stl-preview-label {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
             text-align: center;
             padding: 0.5em 0.75em;
-            margin-top: 0.5em;
             font-size: 0.85em;
             color: var(--text-secondary);
             background: var(--bg-secondary);
             border: 1px solid var(--border-primary);
-            border-radius: 8px;
+            border-radius: 8px 8px 0 0;
+            opacity: 0.95;
         }
 
         .stl-preview-label strong {
@@ -903,149 +913,120 @@
             background: #1a1a1a;
             border: 2px solid #ffff00;
             color: #02fe05;
+            opacity: 1;
         }
 
         [data-theme="high-contrast"] .stl-preview-label strong {
             color: #fdfe00;
         }
 
-        /* Preview Display Controls Container */
+        /* Preview Display Controls Container - Click-through button style */
         .preview-display-controls {
             width: 100%;
             display: flex;
-            flex-direction: column;
-            gap: 0.75em;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 1em;
             padding: 0.75em;
             margin-top: 0.5em;
             background: var(--bg-secondary);
             border: 1px solid var(--border-primary);
             border-radius: 8px;
+            flex-wrap: wrap;
         }
 
-        .preview-display-controls legend {
+        .preview-controls-title {
             font-weight: 600;
             font-size: 0.9em;
             color: var(--text-primary);
-            margin-bottom: 0.25em;
+            white-space: nowrap;
         }
 
-        /* Preview Control Group (for each setting row) */
+        /* Preview Control Group (for each setting) */
         .preview-control-group {
             display: flex;
             align-items: center;
             gap: 0.5em;
-            flex-wrap: wrap;
         }
 
-        .preview-control-group label {
+        .preview-control-label {
             font-size: 0.85em;
             font-weight: 500;
             color: var(--text-primary);
-            min-width: 70px;
         }
 
-        .preview-control-options {
-            display: flex;
-            gap: 0.25em;
-            flex-wrap: wrap;
-        }
-
-        .preview-control-options input[type="radio"] {
-            position: absolute;
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .preview-control-options label {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0.3em 0.6em;
-            min-width: 2.5em;
-            font-size: 0.8em;
-            font-weight: 500;
-            color: var(--text-secondary);
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-secondary);
-            border-radius: 4px;
+        /* Preview Toggle Button - Click-through style like Theme toggle */
+        .preview-toggle-btn {
+            background: var(--bg-primary);
+            border: 2px solid var(--border-primary);
+            border-radius: 8px;
+            padding: 0.4em 0.8em;
+            font-size: 0.85em;
+            font-weight: 600;
+            color: var(--text-primary);
             cursor: pointer;
-            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.4em;
+            transition: all 0.2s;
+            box-shadow: 0 2px 6px var(--shadow-light);
+            white-space: nowrap;
         }
 
-        .preview-control-options label:hover {
-            background: var(--bg-input);
-            border-color: var(--border-focus);
+        .preview-toggle-btn:hover {
+            background: var(--bg-secondary);
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px var(--shadow-medium);
         }
 
-        .preview-control-options input[type="radio"]:checked + label {
-            background: var(--border-focus);
-            color: #ffffff;
-            border-color: var(--border-focus);
-        }
-
-        .preview-control-options input[type="radio"]:focus + label {
-            outline: 2px solid var(--border-focus);
-            outline-offset: 1px;
-        }
-
-        /* High contrast mode - Preview controls */
-        [data-theme="high-contrast"] .preview-display-controls {
-            background: #1a1a1a;
-            border: 2px solid #ffff00;
-        }
-
-        [data-theme="high-contrast"] .preview-display-controls legend,
-        [data-theme="high-contrast"] .preview-control-group label {
-            color: #02fe05;
-        }
-
-        [data-theme="high-contrast"] .preview-control-options label {
-            background: #2a2a2a;
-            color: #02fe05;
-            border: 2px solid #00ffff;
-        }
-
-        [data-theme="high-contrast"] .preview-control-options label:hover {
-            background: #3a3a3a;
-            border-color: #ff00ff;
-        }
-
-        [data-theme="high-contrast"] .preview-control-options input[type="radio"]:checked + label {
-            background: #0201fe;
-            color: #fdfe00;
-            border-color: #fdfe00;
-        }
-
-        [data-theme="high-contrast"] .preview-control-options input[type="radio"]:focus + label {
-            outline: 3px solid #ff00ff;
+        .preview-toggle-btn:focus {
+            outline: 3px solid var(--border-focus);
             outline-offset: 2px;
+        }
+
+        .preview-toggle-icon {
+            font-size: 1.1em;
+        }
+
+        .preview-toggle-text {
+            font-size: 0.9em;
+        }
+
+        /* High contrast mode - Preview toggle buttons */
+        [data-theme="high-contrast"] .preview-toggle-btn {
+            background: #1a1a1a !important;
+            color: #ffff00 !important;
+            border: 2px solid #ffff00 !important;
+        }
+
+        [data-theme="high-contrast"] .preview-toggle-btn:hover {
+            background: #ffff00 !important;
+            color: #000000 !important;
+            border: 2px solid #000000 !important;
+        }
+
+        [data-theme="high-contrast"] .preview-controls-title,
+        [data-theme="high-contrast"] .preview-control-label {
+            color: #02fe05 !important;
         }
 
         /* Mobile optimization for preview controls */
         @media (max-width: 768px) {
             .preview-display-controls {
                 padding: 0.5em;
+                flex-direction: column;
+                align-items: flex-start;
             }
 
             .preview-control-group {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 0.35em;
-            }
-
-            .preview-control-group label {
-                min-width: unset;
-            }
-
-            .preview-control-options {
                 width: 100%;
-                justify-content: flex-start;
+                flex-wrap: wrap;
             }
 
-            .preview-control-options label {
-                padding: 0.4em 0.7em;
-                min-width: 3em;
+            .preview-toggle-btn {
+                flex: 1;
+                justify-content: center;
             }
         }
 
@@ -1527,12 +1508,22 @@
         }
 
         .expert-toggle-btn.active {
-            background: var(--border-focus);
+            background: #1e4976; /* Darker blue for WCAG AA contrast (6.1:1 with white) */
             color: #fff;
-            border-color: var(--border-focus);
+            border-color: #1e4976;
         }
 
         .expert-toggle-btn.active #expert-toggle-text {
+            color: #fff;
+        }
+
+        /* Dark mode: Use darker blue for active state to ensure contrast */
+        [data-theme="dark"] .expert-toggle-btn.active {
+            background: #1e5a8a; /* Darker blue for WCAG AA contrast (4.7:1 with white) */
+            border-color: #1e5a8a;
+        }
+
+        [data-theme="dark"] .expert-toggle-btn.active #expert-toggle-text {
             color: #fff;
         }
 
@@ -2075,62 +2066,52 @@
         <div class="content-area">
             <!-- Left Column - STL Preview Section (45% width) -->
             <div class="preview-section" role="region" aria-label="3D STL Preview">
-                <div id="viewer" role="img" aria-label="3D preview of braille embossing plate. Interactive 3D model requires mouse or touch to rotate and zoom. Shows raised braille dots on plate surface." aria-describedby="viewer-instructions" tabindex="0">
-                    <div id="error-message" role="alert" aria-live="assertive" aria-atomic="true">
-                        <span style="font-weight:bold;" aria-hidden="true">⚠</span>
-                        <span id="error-text-container" style="display: flex; flex-direction: column; align-items: center;">
-                            <span id="error-text"></span>
-                            <span id="error-subtext" style="display: none; font-size: 0.8em; margin-top: 0.4em; opacity: 0.85;"></span>
-                        </span>
+                <!-- Viewer Container with Overlay Label -->
+                <div class="viewer-container">
+                    <!-- STL Preview Label - Positioned as overlay at top of viewer -->
+                    <div class="stl-preview-label" id="stl-preview-label" role="note" aria-label="STL Preview information">
+                        <strong>3D STL Preview</strong> — Interactive preview only (drag to rotate, scroll to zoom)
+                    </div>
+                    <div id="viewer" role="img" aria-label="3D preview of braille embossing plate. Interactive 3D model requires mouse or touch to rotate and zoom. Shows raised braille dots on plate surface." aria-describedby="viewer-instructions" tabindex="0">
+                        <div id="error-message" role="alert" aria-live="assertive" aria-atomic="true">
+                            <span style="font-weight:bold;" aria-hidden="true">⚠</span>
+                            <span id="error-text-container" style="display: flex; flex-direction: column; align-items: center;">
+                                <span id="error-text"></span>
+                                <span id="error-subtext" style="display: none; font-size: 0.8em; margin-top: 0.4em; opacity: 0.85;"></span>
+                            </span>
+                        </div>
                     </div>
                 </div>
                 <div id="viewer-instructions" class="sr-only">
                     To interact with the 3D preview: Use mouse drag to rotate, mouse wheel to zoom. Touch users: one finger to rotate, pinch to zoom. Keyboard users: the visual preview is supplementary; generated STL files contain the same geometry.
                 </div>
 
-                <!-- STL Preview Label - Clarifies that this is a preview panel, not a text input -->
-                <div class="stl-preview-label" id="stl-preview-label" role="note" aria-label="STL Preview information">
-                    <strong>3D STL Preview</strong> — Interactive preview only (drag to rotate, scroll to zoom)
+                <!-- Preview Display Controls - Brightness and Contrast as click-through buttons -->
+                <div class="preview-display-controls" role="group" aria-labelledby="preview-controls-legend">
+                    <span id="preview-controls-legend" class="preview-controls-title">Preview Display Settings</span>
+
+                    <!-- Brightness Click-Through Button -->
+                    <div class="preview-control-group">
+                        <span class="preview-control-label">Brightness:</span>
+                        <button type="button" id="brightness-toggle" class="preview-toggle-btn"
+                                aria-label="Current brightness: Normal (3). Click to cycle through brightness levels"
+                                title="Click to cycle brightness: Very Dim → Dim → Normal → Bright → Very Bright">
+                            <span class="preview-toggle-icon" aria-hidden="true">☀</span>
+                            <span class="preview-toggle-text">Normal (3)</span>
+                        </button>
+                    </div>
+
+                    <!-- Contrast Click-Through Button -->
+                    <div class="preview-control-group">
+                        <span class="preview-control-label">Contrast:</span>
+                        <button type="button" id="contrast-toggle" class="preview-toggle-btn"
+                                aria-label="Current contrast: Normal (3). Click to cycle through contrast levels"
+                                title="Click to cycle contrast: Very Low → Low → Normal → High → Very High">
+                            <span class="preview-toggle-icon" aria-hidden="true">◐</span>
+                            <span class="preview-toggle-text">Normal (3)</span>
+                        </button>
+                    </div>
                 </div>
-
-                <!-- Preview Display Controls - Contrast and Brightness -->
-                <fieldset class="preview-display-controls" role="group" aria-labelledby="preview-controls-legend">
-                    <legend id="preview-controls-legend">Preview Display Settings</legend>
-
-                    <!-- Brightness Control -->
-                    <div class="preview-control-group" role="radiogroup" aria-labelledby="brightness-label">
-                        <label id="brightness-label">Brightness:</label>
-                        <div class="preview-control-options">
-                            <input type="radio" name="preview-brightness" id="brightness-1" value="1">
-                            <label for="brightness-1">1</label>
-                            <input type="radio" name="preview-brightness" id="brightness-2" value="2">
-                            <label for="brightness-2">2</label>
-                            <input type="radio" name="preview-brightness" id="brightness-3" value="3" checked>
-                            <label for="brightness-3">3</label>
-                            <input type="radio" name="preview-brightness" id="brightness-4" value="4">
-                            <label for="brightness-4">4</label>
-                            <input type="radio" name="preview-brightness" id="brightness-5" value="5">
-                            <label for="brightness-5">5</label>
-                        </div>
-                    </div>
-
-                    <!-- Contrast Control -->
-                    <div class="preview-control-group" role="radiogroup" aria-labelledby="contrast-label">
-                        <label id="contrast-label">Contrast:</label>
-                        <div class="preview-control-options">
-                            <input type="radio" name="preview-contrast" id="contrast-1" value="1">
-                            <label for="contrast-1">1</label>
-                            <input type="radio" name="preview-contrast" id="contrast-2" value="2">
-                            <label for="contrast-2">2</label>
-                            <input type="radio" name="preview-contrast" id="contrast-3" value="3" checked>
-                            <label for="contrast-3">3</label>
-                            <input type="radio" name="preview-contrast" id="contrast-4" value="4">
-                            <label for="contrast-4">4</label>
-                            <input type="radio" name="preview-contrast" id="contrast-5" value="5">
-                            <label for="contrast-5">5</label>
-                        </div>
-                    </div>
-                </fieldset>
 
                 <!-- Action Button moved here -->
                 <div class="button-row" style="margin-top: 1em;">
@@ -3284,23 +3265,65 @@
             setTimeout(() => announcement.remove(), 1000);
         }
 
-        // Event listeners for brightness radio buttons
-        document.querySelectorAll('input[name="preview-brightness"]').forEach(radio => {
-            radio.addEventListener('change', function() {
-                if (this.checked) {
-                    applyPreviewBrightness(this.value);
-                }
-            });
+        // Brightness and Contrast level names and icons
+        const brightnessLevelNames = {
+            1: 'Very Dim',
+            2: 'Dim',
+            3: 'Normal',
+            4: 'Bright',
+            5: 'Very Bright'
+        };
+        const contrastLevelNames = {
+            1: 'Very Low',
+            2: 'Low',
+            3: 'Normal',
+            4: 'High',
+            5: 'Very High'
+        };
+
+        // Function to update brightness button display
+        function updateBrightnessButtonDisplay() {
+            const btn = document.getElementById('brightness-toggle');
+            if (!btn) return;
+
+            const textSpan = btn.querySelector('.preview-toggle-text');
+            const levelName = brightnessLevelNames[previewBrightnessLevel] || 'Normal';
+
+            textSpan.textContent = `${levelName} (${previewBrightnessLevel})`;
+            btn.setAttribute('aria-label', `Current brightness: ${levelName} (${previewBrightnessLevel}). Click to cycle through brightness levels`);
+        }
+
+        // Function to update contrast button display
+        function updateContrastButtonDisplay() {
+            const btn = document.getElementById('contrast-toggle');
+            if (!btn) return;
+
+            const textSpan = btn.querySelector('.preview-toggle-text');
+            const levelName = contrastLevelNames[previewContrastLevel] || 'Normal';
+
+            textSpan.textContent = `${levelName} (${previewContrastLevel})`;
+            btn.setAttribute('aria-label', `Current contrast: ${levelName} (${previewContrastLevel}). Click to cycle through contrast levels`);
+        }
+
+        // Click-through brightness toggle: cycles 1 → 2 → 3 → 4 → 5 → 1 ...
+        document.getElementById('brightness-toggle').addEventListener('click', () => {
+            // Cycle to next level (1-5, wrapping around)
+            const nextLevel = (previewBrightnessLevel % 5) + 1;
+            applyPreviewBrightness(nextLevel);
+            updateBrightnessButtonDisplay();
         });
 
-        // Event listeners for contrast radio buttons
-        document.querySelectorAll('input[name="preview-contrast"]').forEach(radio => {
-            radio.addEventListener('change', function() {
-                if (this.checked) {
-                    applyPreviewContrast(this.value);
-                }
-            });
+        // Click-through contrast toggle: cycles 1 → 2 → 3 → 4 → 5 → 1 ...
+        document.getElementById('contrast-toggle').addEventListener('click', () => {
+            // Cycle to next level (1-5, wrapping around)
+            const nextLevel = (previewContrastLevel % 5) + 1;
+            applyPreviewContrast(nextLevel);
+            updateContrastButtonDisplay();
         });
+
+        // Initialize button displays
+        updateBrightnessButtonDisplay();
+        updateContrastButtonDisplay();
 
         // Font size adjustment functionality
         const fontSizes = [75, 87.5, 100, 112.5, 125, 150, 175, 200];

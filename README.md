@@ -1,5 +1,10 @@
 # Braille STL Generator
 
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/owner/braille-card-and-cylinder-stl-generator/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![WCAG 2.1 AA](https://img.shields.io/badge/WCAG-2.1%20AA-green.svg)](https://www.w3.org/WAI/WCAG21/quickref/)
+
 A web application that generates 3D-printable STL files for braille embossing plates and cylinders. Enter text, translate to braille, and export ready-to-print 3D models.
 
 ## Features
@@ -121,6 +126,14 @@ Thanks to **Tobi Weinberg** for kick-starting the project.
 
 Originally based on [tobiwg/braile-card-generator](https://github.com/tobiwg/braile-card-generator).
 
+## Contributing
+
+Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting a pull request.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release history and version changes.
+
 ## License
 
-See repository for license information.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

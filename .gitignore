@@ -66,3 +66,6 @@ tmp_spec_direct.py
 reorganize.bat
 reorganize_docs.py
 reorganize_files.py
+
+# OpenSCAD version (work in progress - to be revisited)
+OpenSCAD/

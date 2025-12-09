@@ -8,3 +8,9 @@ mypy==1.7.1
 pre-commit==3.5.0
 types-requests==2.31.0.10
 types-Flask==1.1.6
+
+# Testing dependencies for server-side STL generation
+# (manifold3d is excluded from requirements.txt for minimal Vercel deployment,
+# but required in dev/CI to test boolean operations and STL generation)
+manifold3d==3.0.1
+scipy==1.11.4

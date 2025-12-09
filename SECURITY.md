@@ -34,6 +34,7 @@ For detailed security documentation, see [docs/security/](docs/security/).
 
 | Version | Supported          |
 | ------- | ------------------ |
+| 1.3.x   | :white_check_mark: |
 | 1.2.x   | :white_check_mark: |
 | 1.1.x   | :white_check_mark: |
 | < 1.1   | :x:                |

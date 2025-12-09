@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-12-09
+
+### 🏛️ Community Infrastructure & License Update
+
+This release establishes GitHub community standards and changes to a noncommercial license.
+
+### Changed
+- **LICENSE** — Changed from MIT to PolyForm Noncommercial License 1.0.0 (no commercial use permitted)
+- **Dependencies** — Synchronized `requirements.txt` and `requirements-dev.txt` with dev dependencies
+
+### Added
+- **GitHub Actions CI** — Automated testing, linting, Lighthouse accessibility audits, and W3C HTML validation
+- **Issue Templates** — Bug report and feature request templates
+- **Pull Request Template** — Standardized PR description format
+- **Dependabot** — Automated dependency updates for pip and npm
+- **SECURITY.md** — Security policy with vulnerability reporting guidelines
+- **CODE_OF_CONDUCT.md** — Contributor Covenant Code of Conduct v2.0
+- **lighthouserc.json** — Lighthouse CI configuration for accessibility testing
+- **package.json** — Node.js configuration for Lighthouse CI
+- **.vercelignore** — Exclude unnecessary files from Vercel deployments
+
+### Fixed
+- **CI** — Lighthouse CI configuration for accessibility audits
+- **CI** — Added `manifold3d` and `scipy` to dev dependencies for STL generation tests
+- **CI** — Set `FLASK_ENV=development` for pytest runs
+- **CI** — Synchronized ruff version between pre-commit and CI workflow
+- **CI** — Corrected requirements filename reference
+- **CI** — Use specific version tag for html5validator-action
+- **Vercel** — Reduced serverless function size under 250 MB limit
+
+### Removed
+- Removed AI tool-specific plan files and references from repository
+
+---
+
 ## [1.2.0] - 2024-12-08
 
 ### 📚 Documentation Release
@@ -100,7 +135,8 @@ Based on [tobiwg/braile-card-generator](https://github.com/tobiwg/braile-card-ge
 - Batch processing
 - OpenSCAD export option
 
+[1.3.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v1.3.0
 [1.2.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v1.2.0
 [1.1.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v1.1.0
 [1.0.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v1.0.0
-[Unreleased]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/compare/v1.3.0...HEAD

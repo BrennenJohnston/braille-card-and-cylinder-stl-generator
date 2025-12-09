@@ -8,7 +8,7 @@
 # For local development with all features, use: pip install -e .
 # (This installs from pyproject.toml with all dependencies)
 
-flask==2.3.3
+flask==3.1.2
 flask-cors==6.0.1
 Flask-Limiter==3.8.0
 redis==5.0.7

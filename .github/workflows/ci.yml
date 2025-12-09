@@ -41,6 +41,8 @@ jobs:
     - name: Run tests
       run: |
         pytest --tb=short -v
+      env:
+        FLASK_ENV: development
 
     - name: Start test server
       run: |

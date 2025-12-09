@@ -52,7 +52,7 @@ jobs:
         FLASK_ENV: development
 
     - name: Setup Node.js for Lighthouse
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '20'
 

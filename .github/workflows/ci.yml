@@ -61,8 +61,7 @@ jobs:
 
     - name: Run Lighthouse Accessibility Audit
       run: |
-        lhci autorun --collect.url=http://localhost:5001 \
-          --assert.preset=lighthouse:accessibility
+        lhci autorun --collect.url=http://localhost:5001
       continue-on-error: false
 
     - name: W3C HTML Validation

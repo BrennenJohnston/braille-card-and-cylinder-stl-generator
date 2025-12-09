@@ -9,7 +9,7 @@
 # (This installs from pyproject.toml with all dependencies)
 
 flask==2.3.3
-flask-cors==4.0.0
+flask-cors==6.0.1
 Flask-Limiter==3.8.0
 redis==5.0.7
 requests==2.32.3

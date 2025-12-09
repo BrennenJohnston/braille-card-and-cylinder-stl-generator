@@ -290,7 +290,7 @@ This document serves as the **master index** for all core architecture specifica
 - Specification template and quick-start guide for AI assistants
 
 **Target Audience:**
-- AI coding assistants (Claude, GPT, etc.)
+- AI coding assistants
 - Junior developers
 - Senior developers implementing large features
 - Code reviewers
@@ -660,7 +660,7 @@ Section Reference: SURFACE_DIMENSIONS_SPECIFICATIONS.md (Section 2.1)
 | 2024-12-06 | Initial index creation |
 | 2024-12-06 | Added CACHING_SYSTEM_CORE_SPECIFICATIONS.md to index |
 | 2025-12-06 | Added SETTINGS_SCHEMA_CORE_SPECIFICATIONS.md; updated counts and quick reference |
-| 2025-12-06 | Enhanced SETTINGS_SCHEMA with AI Model Guidelines; added cache_version field; updated .cursorrules with architecture guidance |
+| 2025-12-06 | Enhanced SETTINGS_SCHEMA with AI Model Guidelines; added cache_version field |
 | 2025-12-07 | Added CARD_THICKNESS_PRESET_SPECIFICATIONS.md documenting new Card Thickness Preset System (0.3mm/0.4mm layer height presets); updated UI/UX coverage; incremented total spec count to 13 |
 | 2025-12-07 | Updated CARD_THICKNESS_PRESET_SPECIFICATIONS.md v1.3: Added "Custom" radio button with auto-detection when parameters deviate from presets |
 | 2025-12-07 | Added MAJOR_FEATURE_IMPLEMENTATION_SOP.md - Standard Operating Procedure for implementing major features; documents 6-phase workflow with comprehensive checklists, case study, and development best practices |

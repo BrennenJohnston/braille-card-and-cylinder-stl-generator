@@ -38,7 +38,6 @@ braille-card-and-cylinder-stl-generator/
 ├── package.json              # Node.js dependencies
 ├── vercel.json               # Vercel deployment configuration
 ├── pyproject.toml            # Python project metadata
-├── .cursorrules              # Cursor AI development rules
 └── README.md                 # Main project documentation
 ```
 
@@ -193,7 +192,6 @@ python backend.py  # Opens http://localhost:5001
 | `vercel.json` | Vercel deployment settings |
 | `.vercelignore` | Files excluded from deployment |
 | `.gitignore` | Git exclusions |
-| `.cursorrules` | Cursor AI development guidelines |
 | `.pre-commit-config.yaml` | Pre-commit hooks |
 | `settings.schema.json` | JSON Schema for settings validation |
 

@@ -319,7 +319,7 @@ Cylinder, negative (counter, bowl recess):
 
 ## 9. AI Model Development Guidelines
 
-This section provides explicit instructions for AI models (including Claude, GPT, and future AI assistants) operating on this codebase when prompts request changes.
+This section provides explicit instructions for AI assistants operating on this codebase when prompts request changes.
 
 ### Change Workflow for AI Models
 

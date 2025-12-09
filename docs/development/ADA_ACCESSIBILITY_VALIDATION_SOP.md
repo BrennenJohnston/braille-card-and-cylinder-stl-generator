@@ -408,11 +408,9 @@ select:focus {
 
 After completing accessibility validation, update the following:
 
-### 10.1 Update Accessibility Roadmap
+### 10.1 Update Accessibility Documentation
 
-Location: `.cursor/plans/ada_accessibility_remediation_roadmap_ef2f9ee0.plan.md`
-
-Add a new entry under "Re-Audit Session" with:
+Add a new entry to your accessibility tracking with:
 - Date of validation
 - Issues found (if any)
 - Fixes applied
@@ -492,5 +490,4 @@ button.setAttribute('aria-expanded', String(!isCollapsed));
 ## Related Documents
 
 - [UI Interface Core Specifications](../specifications/UI_INTERFACE_CORE_SPECIFICATIONS.md)
-- [ADA Accessibility Remediation Roadmap](../../.cursor/plans/ada_accessibility_remediation_roadmap_ef2f9ee0.plan.md)
 - [Browser Compatibility Audit](./BROWSER_COMPATIBILITY_AUDIT.md)

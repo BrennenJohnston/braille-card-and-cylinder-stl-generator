@@ -64,3 +64,13 @@ tmp_spec_direct.py
 
 # OpenSCAD version (work in progress - to be revisited)
 OpenSCAD/
+
+# AI Coding Assistants (tool-agnostic)
+.cursor/
+.cursorrules
+.github/copilot/
+.copilot/
+.codeium/
+.tabnine/
+.aider*
+.continue/

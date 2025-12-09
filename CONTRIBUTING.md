@@ -169,8 +169,7 @@ docs(api): update endpoint documentation
 Before making changes, consult the specification documents:
 
 - `docs/specifications/SPECIFICATIONS_INDEX.md` — Master index
-- `SETTINGS_SCHEMA_CORE_SPECIFICATIONS.md` — Settings reference
-- `.cursorrules` — Development guidelines
+- `docs/specifications/SETTINGS_SCHEMA_CORE_SPECIFICATIONS.md` — Settings reference
 
 ## Testing
 

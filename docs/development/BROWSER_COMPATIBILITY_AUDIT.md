@@ -5,7 +5,7 @@
 This document provides a comprehensive browser compatibility audit for the Braille Card and Cylinder STL Generator application. It analyzes all web technologies used and their support across major browsers, platforms, and devices.
 
 **Audit Date:** December 8, 2025
-**Auditor:** AI Assistant (Claude)
+**Auditor:** AI Assistant
 **Application Version:** 2024-12-19-revised
 
 ---

@@ -5,7 +5,7 @@
 This document provides a standardized roadmap for implementing major features in the Braille Card and Cylinder STL Generator. It captures the proven workflow established during the Card Thickness Preset System implementation (2025-12-07) and ensures consistency, completeness, and quality for all future feature additions.
 
 **Target Audience:**
-- AI coding assistants (Claude, GPT, etc.)
+- AI coding assistants
 - Junior developers
 - Senior developers implementing large features
 - Code reviewers
@@ -990,8 +990,8 @@ applyThicknessPreset(presetToApply);
 All specifications in `docs/specifications/` are relevant depending on the feature being implemented.
 
 ### Development Guidelines
-- .cursorrules - AI model development guidelines
 - PROJECT_STRUCTURE.md - Project organization
+- docs/development/DEVELOPMENT_GUIDELINES.md - Development guidelines (if available)
 
 ---
 

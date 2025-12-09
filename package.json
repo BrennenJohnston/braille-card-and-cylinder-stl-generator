@@ -34,7 +34,7 @@
   "dependencies": {
     "@vercel/blob": "^2.0.0",
     "liblouis": "^0.4.0",
-    "manifold-3d": "^2.5.1",
+    "manifold-3d": "^3.3.2",
     "three-bvh-csg": "^0.0.17",
     "three-mesh-bvh": "^0.9.2"
   }

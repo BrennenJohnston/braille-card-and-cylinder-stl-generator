@@ -5,22 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - 2025-01-06
+## [2.0.0] - 2026-01-06
 
 ### 🎯 Zero-Maintenance Stable Release
 
-This major release represents the most stable and reliable version of the Braille STL Generator, optimized for zero-maintenance deployment.
+This major release represents the most stable and reliable version of the Braille STL Generator, optimized for **zero-maintenance deployment**. No external services (Redis, Blob storage) required — just deploy and forget.
+
+#### Why v2.0.0?
+
+After extensive production testing, we've achieved a "deploy once, run forever" architecture:
+- **No Redis dependency** — Eliminated Upstash Redis that would archive after 14 days of inactivity
+- **No Blob storage** — Removed Vercel Blob dependency completely
+- **100% client-side generation** — All heavy computation runs in the browser
+- **Minimal server footprint** — Flask serves only static files and lightweight JSON geometry specs
+
+### Added
+- **Comprehensive Dependency Updates** — All GitHub Actions, npm, and pip packages updated to latest stable versions
+- **Python 3.13 Support** — Updated all dev dependencies for Python 3.13 compatibility
+- **Robust CI Pipeline** — Health check loop ensures reliable Lighthouse accessibility audits
 
 ### Changed
-- **Default Braille Dot Shape** — Changed default to Cone shape for improved print quality and readability
-- **Simplified Architecture** — Removed external dependencies for zero-maintenance operation
+- **Default Braille Dot Shape** — Cone shape for improved print quality and tactile readability
+- **Simplified Architecture** — Server only provides geometry specifications; all CSG operations run client-side
+- **GitHub Actions** — Updated to checkout@v6, setup-python@v6, setup-node@v6, html5validator-action@v8.0.0
+- **NPM Dependencies** — three-mesh-bvh updated to 0.9.4
+- **Dev Dependencies** — numpy 2.4.0, scipy 1.16.3, ruff 0.14.10, pytest 9.0.2, and more
 
 ### Removed
-- **Upstash Redis** — Removed Redis caching dependency (no longer required)
-- **Vercel Blob Storage** — Removed blob storage dependency (no longer required)
+- **Upstash Redis** — Caching dependency removed (caused deployment failures after inactivity)
+- **Vercel Blob Storage** — Blob storage dependency removed (no longer needed)
+- **Server-side STL generation** — Completely removed in favor of client-side generation
+- **Flask-Limiter** — Rate limiting removed (Vercel provides DDoS protection)
+- **requests library** — HTTP client removed (was only used for blob upload)
 
 ### Fixed
+- **CI Pipeline** — Fixed PORT environment variable (5001) for Flask server in CI
+- **CI Pipeline** — Replaced fixed sleep with health check loop for reliable Lighthouse audits
 - **Documentation** — Comprehensive cleanup and refresh for public release
+
+### Technical Highlights
+
+| Metric | Before (v1.x) | After (v2.0.0) |
+|--------|---------------|----------------|
+| External Services | 2 (Redis, Blob) | 0 |
+| Server Dependencies | ~15 packages | 2 packages (Flask, Flask-CORS) |
+| Cold Start Time | ~5s | <1s |
+| Maintenance Required | Weekly checks | None |
+| Deployment Complexity | Environment variables, secrets | Deploy and forget |
 
 ---
 

@@ -1,11 +1,14 @@
 # Braille STL Generator
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v2.0.0)
+[![Zero Maintenance](https://img.shields.io/badge/maintenance-zero-brightgreen.svg)](#zero-maintenance-architecture)
 [![License: PolyForm Noncommercial](https://img.shields.io/badge/License-PolyForm%20Noncommercial-red.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![WCAG 2.1 AA](https://img.shields.io/badge/WCAG-2.1%20AA-green.svg)](https://www.w3.org/WAI/WCAG21/quickref/)
 
 A web application that generates 3D-printable STL files for braille embossing plates and cylinders. Enter text, translate to braille, and export ready-to-print 3D models.
+
+> **v2.0.0 — Zero-Maintenance Stable Release:** Deploy once, run forever. No Redis, no Blob storage, no external services required.
 
 ## Features
 
@@ -14,6 +17,26 @@ A web application that generates 3D-printable STL files for braille embossing pl
 - **Client-Side Generation** — STL files generated in-browser for fast iteration
 - **Real-Time Preview** — 3D visualization before download
 - **Configurable Parameters** — Adjust dot dimensions, spacing, and surface settings
+- **Zero-Maintenance Deployment** — No external services, no expiring caches, no secrets to manage
+
+## Zero-Maintenance Architecture
+
+v2.0.0 is designed for **"deploy once, run forever"** operation:
+
+| What Changed | Before (v1.x) | After (v2.0.0) |
+|--------------|---------------|----------------|
+| External Services | Redis + Blob Storage | **None** |
+| Server Dependencies | 15+ packages | **2 packages** (Flask, Flask-CORS) |
+| STL Generation | Server-side | **100% client-side** |
+| Required Environment Variables | 5+ secrets | **Optional** |
+| Deployment | Complex setup | **Just deploy** |
+
+**Why this matters:**
+- No Redis that archives after 14 days of inactivity
+- No Blob storage quotas or expiring URLs
+- No API keys or secrets to rotate
+- Minimal attack surface (server only serves static files)
+- Works on Vercel free tier indefinitely
 
 ## Quick Start
 

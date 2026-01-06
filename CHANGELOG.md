@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-01-06
+
+### 🎯 Zero-Maintenance Stable Release
+
+This major release represents the most stable and reliable version of the Braille STL Generator, optimized for zero-maintenance deployment.
+
+### Changed
+- **Default Braille Dot Shape** — Changed default to Cone shape for improved print quality and readability
+- **Simplified Architecture** — Removed external dependencies for zero-maintenance operation
+
+### Removed
+- **Upstash Redis** — Removed Redis caching dependency (no longer required)
+- **Vercel Blob Storage** — Removed blob storage dependency (no longer required)
+
+### Fixed
+- **Documentation** — Comprehensive cleanup and refresh for public release
+
+---
+
 ## [1.3.0] - 2025-12-09
 
 ### 🏛️ Community Infrastructure & License Update
@@ -135,8 +154,9 @@ Based on [tobiwg/braile-card-generator](https://github.com/tobiwg/braile-card-ge
 - Batch processing
 - OpenSCAD export option
 
+[2.0.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v2.0.0
 [1.3.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v1.3.0
 [1.2.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v1.2.0
 [1.1.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v1.1.0
 [1.0.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v1.0.0
-[Unreleased]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/compare/v2.0.0...HEAD

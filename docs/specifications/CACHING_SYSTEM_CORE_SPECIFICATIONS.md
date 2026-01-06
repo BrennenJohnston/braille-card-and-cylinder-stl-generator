@@ -1,8 +1,50 @@
 # Caching System Core Specifications
 
-## Document Purpose
+---
 
-This document provides **comprehensive, in-depth specifications** for the caching system that enables efficient STL generation and delivery on serverless platforms (Vercel). It serves as an authoritative reference for future development by documenting:
+## ⚠️ DEPRECATION NOTICE (2026-01-05)
+
+**This caching system has been REMOVED from the application.**
+
+### Why It Was Removed
+
+1. **Root Cause of Deployment Failures:** Upstash Redis archives free-tier databases after 14 days of inactivity, causing `redis.exceptions.ConnectionError` on ALL requests (Error 16: Device or resource busy).
+
+2. **Server-Side Generation Not Available on Vercel:** The `/generate_braille_stl` and `/generate_counter_plate_stl` endpoints cannot work on Vercel because `manifold3d` requires native binaries not available in Vercel's Python runtime.
+
+3. **Client-Side Generation is Sufficient:** The application's client-side CSG system (BVH-CSG for cards, Manifold WASM for cylinders) generates STL files quickly enough that caching is unnecessary.
+
+4. **Zero Maintenance Architecture:** Removing Redis and Blob storage eliminates all external service dependencies, creating a deployment that cannot fail due to inactivity.
+
+### Current Architecture (2026-01-05)
+
+**Minimal Backend + Client-Side Generation:**
+- Flask backend provides lightweight JSON geometry specifications (`/geometry_spec`)
+- No Redis, no Blob storage, no rate limiting infrastructure
+- All STL generation happens client-side using Web Workers
+- Zero external service dependencies
+- No 14-day inactivity failure mode
+
+**For implementation details, see:**
+- [Codebase Audit and Renovation Plan](../development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md)
+- [Upstash Dependencies Removal Plan](.cursor/plans/remove_upstash_dependencies_99900762.plan.md)
+
+### What Was Archived
+
+- `app/cache.py` → `app/legacy/cache.py` (moved for historical reference)
+- Redis integration removed from `backend.py`
+- Blob storage integration removed from `backend.py`
+- Flask-Limiter removed entirely
+
+### Document Status
+
+**This document is ARCHIVED for historical reference only.** The caching system described below is no longer implemented in the application.
+
+---
+
+## Historical Document Purpose (Pre-2026-01-05)
+
+This document provides **comprehensive, in-depth specifications** for the caching system that **was** used to enable efficient STL generation and delivery on serverless platforms (Vercel). It serves as an historical reference by documenting:
 
 1. **Architecture Overview** — Content-addressable caching with Vercel Blob storage
 2. **Cache Key Generation** — Deterministic hashing for geometry-based cache lookups
@@ -13,7 +55,7 @@ This document provides **comprehensive, in-depth specifications** for the cachin
 7. **Environment Configuration** — Required environment variables and their purposes
 
 **Source Priority (Order of Correctness):**
-1. `app/cache.py` — Primary caching logic module
+1. `app/legacy/cache.py` — Archived caching logic module (historical reference; previously `app/cache.py`)
 2. `backend.py` — Cache integration in API endpoints
 3. `app/models.py` — Data normalization for cache keys
 4. `wsgi.py` — Deployment environment detection

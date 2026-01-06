@@ -1,6 +1,27 @@
 # Vercel Optimization Roadmap
 
-This roadmap outlines performance and cost optimization steps for deploying the Braille Card and Cylinder STL Generator on Vercel.
+⚠️ **ARCHITECTURE UPDATE (2026-01-05):** Phases 3 and 4 (Redis/Blob caching) have been **DEPRECATED and REMOVED** from the application. The application now uses client-side CSG generation exclusively, eliminating all external service dependencies. This document is maintained for historical reference.
+
+---
+
+## Current Architecture (2026-01-05)
+
+**Minimal Backend + Client-Side Generation:**
+- Flask backend provides lightweight JSON geometry specifications (`/geometry_spec`)
+- No Redis, no Blob storage, no rate limiting infrastructure needed
+- All STL generation happens client-side using Web Workers (BVH-CSG for cards, Manifold WASM for cylinders)
+- Zero external service dependencies = zero maintenance overhead
+- No 14-day inactivity failure mode
+
+**For implementation details, see:**
+- [Codebase Audit and Renovation Plan](../development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md)
+- [Upstash Dependencies Removal Plan](.cursor/plans/remove_upstash_dependencies_99900762.plan.md)
+
+---
+
+## Historical Roadmap (Pre-2026-01-05)
+
+This roadmap outlines performance and cost optimization steps that were implemented for deploying the Braille Card and Cylinder STL Generator on Vercel with server-side generation and caching infrastructure.
 
 ## Phase 1: Static Asset Optimization (Immediate Impact)
 
@@ -53,7 +74,17 @@ Action:
 ## Phase 3: Persistent Caching
 
 ### 3.1 Content-Addressable STL Cache
-**Status: COMPLETE**
+**Status: ~~COMPLETE~~ → DEPRECATED (2026-01-05)**
+
+⚠️ **REMOVED:** Blob storage caching has been removed from the application.
+
+**Reason for Removal:**
+- Server-side STL generation does not work on Vercel (no manifold3d binaries)
+- Client-side generation is fast enough that caching is unnecessary
+- Eliminates external service dependency and associated costs
+- Removes complexity from deployment and maintenance
+
+**Historical Implementation:**
 - Research available Vercel Blob SDKs for Python (e.g. REST API vs `vercel_blob`)
 - Select approach for server-side blob interactions
 - Implement Vercel Blob storage for generated STLs
@@ -74,18 +105,33 @@ Implementation:
 ## Phase 4: Rate Limiting
 
 ### 4.1 Remove In-Memory Rate Limiting
-**Status: COMPLETE**
+**Status: ~~COMPLETE~~ → DEPRECATED (2026-01-05)**
+
+⚠️ **REMOVED:** Flask-Limiter and all rate limiting infrastructure have been removed.
+
+**Reason for Removal:**
+- `/geometry_spec` endpoint is lightweight (returns JSON only, no heavy computation)
+- Vercel provides DDoS protection at the edge network level
+- Rate limiting on a JSON-only endpoint is unnecessary overhead
+- Eliminates Redis dependency that caused 14-day inactivity failures
+
+**Historical Implementation:**
 - Replace defaultdict-based limiter with Flask-Limiter
 - Configure shared storage via Redis when available
 - Preserve memory:// fallback for development
 
 ### 4.2 Integrate Upstash Redis
-**Status: COMPLETE**
-- Use Flask-Limiter with Redis backend whenever `REDIS_URL` is provided
-- Falls back to memory:// for local development
-- Environment variable: `REDIS_URL`
+**Status: ~~COMPLETE~~ → DEPRECATED (2026-01-05)**
 
-Setup:
+⚠️ **REMOVED:** Upstash Redis integration has been removed.
+
+**Reason for Removal:**
+- Upstash free tier archives databases after 14 days of inactivity
+- Archived databases cause `redis.exceptions.ConnectionError` on ALL requests
+- This was the root cause of deployment failures (Error 16: Device or resource busy)
+- Client-side generation eliminates need for distributed rate limiting
+
+**Historical Setup:**
 1. Create Upstash Redis database (free tier)
 2. Add `REDIS_URL` to Vercel environment variables
 3. Deploy with redis and flask-limiter dependencies
@@ -148,16 +194,41 @@ Setup:
 
 ## Environment Variables Required
 
-1. **BLOB_STORE_WRITE_TOKEN** (Vercel Blob)
+### Current Architecture (2026-01-05)
+
+**Optional (recommended for production):**
+
+1. **SECRET_KEY** (Flask)
+   - Generate: `python -c "import secrets; print(secrets.token_hex(32))"`
+   - Used for: Flask session security (optional for stateless backend)
+
+2. **PRODUCTION_DOMAIN** (CORS)
+   - Format: `https://your-domain.vercel.app`
+   - Used for: CORS origin validation
+
+3. **FLASK_ENV** (Environment)
+   - Value: `production` or `development`
+   - Used for: Debug mode control
+
+**Note:** No Redis, Blob storage, or other external service credentials required!
+
+---
+
+### Historical Architecture (Pre-2026-01-05) - DEPRECATED
+
+~~1. **BLOB_STORE_WRITE_TOKEN** (Vercel Blob)~~
+   - **REMOVED** - Blob storage no longer used
    - Get from: Vercel Dashboard → Storage → Create Blob Store
    - Used for: Caching generated STL files
 
-2. **REDIS_URL** (Upstash Redis)
+~~2. **REDIS_URL** (Upstash Redis)~~
+   - **REMOVED** - Causes deployment failures when database archives
    - Get from: Upstash Console → Create Database → Connection String
    - Format: `rediss://default:<password>@<host>:<port>`
    - Used for: Rate limiting
 
 3. **SECRET_KEY** (Flask)
+   - Still optional but recommended
    - Generate: Random string for session security
    - Used for: Flask session management
 

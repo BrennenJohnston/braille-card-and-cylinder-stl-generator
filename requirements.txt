@@ -1,19 +1,33 @@
 # Minimal dependencies for Vercel serverless deployment
-# Heavy packages (scipy, matplotlib, manifold3d) are excluded because:
-# - Client-side CSG handles boolean operations in the browser
-# - Server returns 503 for server-side STL generation, prompting client-side fallback
-# - Character markers fall back to rectangles without matplotlib
-# - Mesh normals use unify_normals() instead of fix_normals() without scipy
 #
-# For local development with all features, use: pip install -e .
-# (This installs from pyproject.toml with all dependencies)
+# ARCHITECTURE CHANGE (2026-01-05):
+# ===================================
+# Server-side STL generation removed to eliminate Redis/Blob dependencies.
+# Heavy packages (numpy, trimesh, shapely, scipy, matplotlib, manifold3d) removed.
+#
+# RATIONALE:
+# - Client-side CSG handles all boolean operations in the browser
+#   (BVH-CSG for cards, Manifold WASM for cylinders)
+# - Server only provides lightweight JSON geometry specs via /geometry_spec
+# - Eliminates 14-day Upstash Redis inactivity failure mode
+# - Reduces deployment package size by ~80%
+# - Faster cold starts on Vercel
+#
+# For local development with full features (server-side generation):
+#   pip install -e .
+# This installs all dependencies from pyproject.toml including dev extras.
+#
+# See: docs/development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md
 
+# Core web framework (REQUIRED)
 flask==2.3.3
 flask-cors==4.0.0
-Flask-Limiter==3.8.0
-redis==5.0.7
-requests==2.32.3
-numpy==1.26.4
-trimesh==4.5.3
-shapely==2.0.6
-mapbox_earcut==1.0.2
+
+# REMOVED (2026-01-05):
+# Flask-Limiter==3.8.0       # Rate limiting (Vercel provides DDoS protection)
+# redis==5.0.7               # Redis client (caused Upstash archived DB failures)
+# requests==2.32.3           # HTTP client (only used for blob upload)
+# numpy==1.26.4              # Only used by server-side STL generation
+# trimesh==4.5.3             # Only used by server-side STL generation
+# shapely==2.0.6             # Only used by server-side STL generation
+# mapbox_earcut==1.0.2       # Only used by server-side STL generation

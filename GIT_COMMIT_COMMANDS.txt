@@ -1,0 +1,107 @@
+# Git Commit and Push Commands
+# Ready to execute in PowerShell terminal
+# Date: January 5-6, 2026
+
+# ============================================================================
+# STEP 1: Review changes
+# ============================================================================
+
+cd "c:\Users\WATAP\Documents\github\braille-card-and-cylinder-stl-generator"
+
+git status
+
+git diff --stat
+
+# ============================================================================
+# STEP 2: Stage all changes
+# ============================================================================
+
+git add -A
+
+# ============================================================================
+# STEP 3: Commit with descriptive message
+# ============================================================================
+
+git commit -m "Remove Upstash Redis and Blob storage dependencies
+
+BREAKING CHANGE: Server-side STL generation endpoints removed
+
+- Remove Flask-Limiter, redis, requests, numpy, trimesh, shapely from production deps
+- Replace /generate_braille_stl and /generate_counter_plate_stl with 410 Gone
+- Replace /lookup_stl and /debug/blob_upload with 410 Gone
+- Archive app/cache.py to app/legacy/cache.py
+- Update documentation for minimal backend architecture
+
+Rationale:
+- Upstash Redis archives after 14 days inactivity, causing all requests to fail
+- Server-side generation doesn't work on Vercel (no manifold3d binaries)
+- Client-side CSG (BVH-CSG + Manifold WASM) is fully functional
+- Eliminates all external service dependencies
+
+Benefits:
+- Zero maintenance overhead
+- No inactivity failure mode
+- 80% reduction in deployment package size
+- Faster cold starts
+- Lower costs (no Redis/Blob fees)
+
+See: docs/development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md"
+
+# ============================================================================
+# STEP 4: If pre-commit hooks fix files, re-stage and commit again
+# ============================================================================
+
+# If the commit fails with "files were modified by this hook", run:
+git add -A
+git commit -m "Remove Upstash Redis and Blob storage dependencies
+
+BREAKING CHANGE: Server-side STL generation endpoints removed
+
+- Remove Flask-Limiter, redis, requests, numpy, trimesh, shapely from production deps
+- Replace /generate_braille_stl and /generate_counter_plate_stl with 410 Gone
+- Replace /lookup_stl and /debug/blob_upload with 410 Gone
+- Archive app/cache.py to app/legacy/cache.py
+- Update documentation for minimal backend architecture
+
+Rationale:
+- Upstash Redis archives after 14 days inactivity, causing all requests to fail
+- Server-side generation doesn't work on Vercel (no manifold3d binaries)
+- Client-side CSG (BVH-CSG + Manifold WASM) is fully functional
+- Eliminates all external service dependencies
+
+Benefits:
+- Zero maintenance overhead
+- No inactivity failure mode
+- 80% reduction in deployment package size
+- Faster cold starts
+- Lower costs (no Redis/Blob fees)
+
+See: docs/development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md"
+
+# ============================================================================
+# STEP 5: Push to GitHub
+# ============================================================================
+
+git push origin main
+
+# Or if your branch is named differently:
+# git push origin master
+
+# ============================================================================
+# NOTES
+# ============================================================================
+
+# 1. Pre-commit hooks may auto-fix files (trailing whitespace, EOF newlines, ruff formatting)
+#    If this happens, the first commit will fail and you'll need to run it twice
+#
+# 2. After pushing, you MUST remove environment variables from Vercel:
+#    - vercel env rm REDIS_URL production
+#    - vercel env rm BLOB_STORE_WRITE_TOKEN production
+#    - vercel env rm BLOB_PUBLIC_BASE_URL production
+#    - See IMPLEMENTATION_SUMMARY.md for full checklist
+#
+# 3. Then deploy to Vercel:
+#    - vercel --prod
+#
+# 4. Monitor logs to ensure no Redis connection errors:
+#    - vercel logs --follow

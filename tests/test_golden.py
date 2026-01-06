@@ -1,16 +1,20 @@
 """
-Golden/regression tests for braille STL generator.
+Golden/regression tests for geometry specs (/geometry_spec).
 
-These tests compare newly generated STLs against golden fixtures to detect
-unintended changes in geometry generation.
+The project now uses client-side CSG for STL generation; the backend is minimal
+and only returns deterministic geometry specs (positions + parameters).
+
+These tests validate the geometry spec response shape and key invariants to
+catch unintended changes that would break client-side generation.
 """
 
-import io
 import json
 from pathlib import Path
 
 import pytest
-import trimesh
+
+from app.models import CardSettings
+from app.utils import braille_to_dots
 
 
 @pytest.fixture(scope='module')
@@ -26,110 +30,85 @@ def load_fixture_metadata(fixtures_dir, fixture_name):
         return json.load(f)
 
 
-def assert_mesh_similar(mesh, expected_props, tolerance=0.1):
+def _count_raised_dots(lines: list[str], max_cols: int | None = None) -> int:
+    total = 0
+    for line in lines:
+        for col, ch in enumerate(line or ''):
+            if max_cols is not None and col >= max_cols:
+                break
+            dots = braille_to_dots(ch)
+            total += sum(1 for d in dots if d == 1)
+    return total
+
+
+def _expected_counts(payload: dict) -> tuple[int, int]:
     """
-    Assert that a mesh is similar to expected properties.
-
-    Args:
-        mesh: Trimesh object
-        expected_props: Dict with expected_properties from fixture metadata
-        tolerance: Relative tolerance for face count (0.1 = 10%)
+    Return (expected_dots, expected_markers) for /geometry_spec based on the
+    behavior in app/geometry_spec.py.
     """
-    # Face count should be within tolerance
-    expected_faces = expected_props['face_count']
-    actual_faces = len(mesh.faces)
-    face_tolerance = max(10, int(expected_faces * tolerance))  # At least 10 faces tolerance
+    settings = CardSettings(**payload.get('settings', {}))
+    shape_type = payload.get('shape_type', 'card')
+    plate_type = payload.get('plate_type', 'positive')
+    lines = payload.get('lines', ['', '', '', ''])
 
-    assert (
-        abs(actual_faces - expected_faces) <= face_tolerance
-    ), f'Face count mismatch: expected {expected_faces}, got {actual_faces} (tolerance: {face_tolerance})'
+    indicator_shapes = bool(getattr(settings, 'indicator_shapes', 1))
+    expected_markers = settings.grid_rows * 2 if indicator_shapes else 0
 
-    # Vertex count should be within tolerance
-    expected_vertices = expected_props['vertex_count']
-    actual_vertices = len(mesh.vertices)
-    vertex_tolerance = max(10, int(expected_vertices * tolerance))
+    if shape_type == 'card':
+        if plate_type == 'negative':
+            expected_dots = settings.grid_rows * settings.grid_columns * 6
+        else:
+            expected_dots = _count_raised_dots(lines, max_cols=settings.grid_columns)
+        return expected_dots, expected_markers
 
-    assert (
-        abs(actual_vertices - expected_vertices) <= vertex_tolerance
-    ), f'Vertex count mismatch: expected {expected_vertices}, got {actual_vertices} (tolerance: {vertex_tolerance})'
+    # cylinder
+    reserved = 2 if indicator_shapes else 0
+    max_text_cols = settings.grid_columns - reserved
 
-    # Watertight property should match (for watertight fixtures)
-    if expected_props['is_watertight']:
-        assert mesh.is_watertight or actual_faces > 100, 'Expected watertight mesh or substantial geometry'
+    if plate_type == 'negative':
+        expected_dots = settings.grid_rows * max_text_cols * 6
+    else:
+        expected_dots = _count_raised_dots(lines, max_cols=max_text_cols)
 
-    # Bounding box should be similar (within 5% per dimension)
-    if expected_props['bbox_min'] and expected_props['bbox_max']:
-        expected_min = expected_props['bbox_min']
-        expected_max = expected_props['bbox_max']
-
-        actual_min = mesh.vertices.min(axis=0).tolist()
-        actual_max = mesh.vertices.max(axis=0).tolist()
-
-        for i, (exp_min, exp_max, act_min, act_max) in enumerate(
-            zip(expected_min, expected_max, actual_min, actual_max)
-        ):
-            dim_range = max(1.0, exp_max - exp_min)  # Avoid division by zero
-            bbox_tolerance = dim_range * 0.05  # 5% of dimension range
-
-            assert (
-                abs(act_min - exp_min) <= bbox_tolerance
-            ), f'BBox min[{i}] mismatch: expected {exp_min}, got {act_min}'
-            assert (
-                abs(act_max - exp_max) <= bbox_tolerance
-            ), f'BBox max[{i}] mismatch: expected {exp_max}, got {act_max}'
+    return expected_dots, expected_markers
 
 
-def test_golden_card_positive(client, fixtures_dir):
-    """Test card positive generation matches golden fixture."""
-    metadata = load_fixture_metadata(fixtures_dir, 'card_positive_small')
+@pytest.mark.parametrize(
+    'fixture_name',
+    ['card_positive_small', 'card_counter_small', 'cylinder_positive_small', 'cylinder_counter_small'],
+)
+def test_golden_geometry_spec(client, fixtures_dir, fixture_name):
+    """Validate /geometry_spec invariants for each fixture payload."""
+    metadata = load_fixture_metadata(fixtures_dir, fixture_name)
     payload = metadata['request_payload']
 
-    response = client.post('/generate_braille_stl', json=payload, headers={'Content-Type': 'application/json'})
+    resp = client.post('/geometry_spec', json=payload, headers={'Content-Type': 'application/json'})
+    assert resp.status_code == 200, resp.data
+    data = resp.get_json()
+    assert data is not None
 
-    assert response.status_code == 200
-    assert len(response.data) > 0
+    assert data.get('shape_type') == payload.get('shape_type')
+    assert data.get('plate_type') == payload.get('plate_type')
+    assert isinstance(data.get('dots'), list)
+    assert isinstance(data.get('markers'), list)
 
-    mesh = trimesh.load(io.BytesIO(response.data), file_type='stl', force='mesh')
-    assert_mesh_similar(mesh, metadata['expected_properties'])
+    expected_dots, expected_markers = _expected_counts(payload)
+    assert len(data['markers']) == expected_markers
+    assert len(data['dots']) == expected_dots
 
-
-def test_golden_card_counter(client, fixtures_dir):
-    """Test card counter generation matches golden fixture."""
-    metadata = load_fixture_metadata(fixtures_dir, 'card_counter_small')
-    payload = metadata['request_payload']
-
-    response = client.post('/generate_braille_stl', json=payload, headers={'Content-Type': 'application/json'})
-
-    assert response.status_code == 200
-    assert len(response.data) > 0
-
-    mesh = trimesh.load(io.BytesIO(response.data), file_type='stl', force='mesh')
-    assert_mesh_similar(mesh, metadata['expected_properties'])
-
-
-def test_golden_cylinder_positive(client, fixtures_dir):
-    """Test cylinder positive generation matches golden fixture."""
-    metadata = load_fixture_metadata(fixtures_dir, 'cylinder_positive_small')
-    payload = metadata['request_payload']
-
-    response = client.post('/generate_braille_stl', json=payload, headers={'Content-Type': 'application/json'})
-
-    assert response.status_code == 200
-    assert len(response.data) > 0
-
-    mesh = trimesh.load(io.BytesIO(response.data), file_type='stl', force='mesh')
-    assert_mesh_similar(mesh, metadata['expected_properties'])
-
-
-def test_golden_cylinder_counter(client, fixtures_dir):
-    """Test cylinder counter generation matches golden fixture."""
-    metadata = load_fixture_metadata(fixtures_dir, 'cylinder_counter_small')
-    payload = metadata['request_payload']
-
-    response = client.post('/generate_braille_stl', json=payload, headers={'Content-Type': 'application/json'})
-
-    assert response.status_code == 200
-    assert len(response.data) > 0
-
-    mesh = trimesh.load(io.BytesIO(response.data), file_type='stl', force='mesh')
-    assert_mesh_similar(mesh, metadata['expected_properties'])
+    # Minimal structural validation on dot specs
+    if data['shape_type'] == 'card':
+        assert 'plate' in data
+        if data['dots']:
+            d0 = data['dots'][0]
+            assert 'x' in d0 and 'y' in d0 and 'z' in d0
+            assert 'type' in d0
+            assert 'params' in d0 and isinstance(d0['params'], dict)
+    else:
+        assert 'cylinder' in data
+        if data['dots']:
+            d0 = data['dots'][0]
+            assert 'x' in d0 and 'y' in d0 and 'z' in d0
+            assert 'theta' in d0 and 'radius' in d0
+            assert 'type' in d0
+            assert 'params' in d0 and isinstance(d0['params'], dict)

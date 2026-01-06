@@ -1,60 +1,14 @@
-import hashlib
-import io
-import json
 import os
-import re
-import time
-from datetime import datetime
+from datetime import UTC, datetime
 
-from flask import Flask, jsonify, make_response, redirect, request, send_file, send_from_directory
+from flask import Flask, jsonify, make_response, request, send_from_directory
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 
-from app.geometry.plates import (
-    build_counter_plate_bowl,
-    build_counter_plate_cone,
-    build_counter_plate_hemispheres,
-    create_positive_plate_mesh,
-)
+# MINIMAL BACKEND - Client-side CSG generation only
+# Server-side STL generation removed (2026-01-05) - see CODEBASE_AUDIT_AND_RENOVATION_PLAN.md
 from app.geometry_spec import extract_card_geometry_spec, extract_cylinder_geometry_spec
 
-try:
-    import requests  # Optional, used for Vercel Blob REST API
-except Exception:
-    requests = None
-# Matplotlib imports are intentionally deferred to inside functions that need them
-# to keep the serverless deployment lightweight and optional
-
-try:
-    from flask_limiter import Limiter
-    from flask_limiter.util import get_remote_address
-except Exception:  # pragma: no cover - allow local dev without limiter installed
-    Limiter = None
-
-    def get_remote_address():
-        return request.remote_addr
-
-
-# Import cache functions from app.cache module
-import contextlib
-
-from app.cache import (
-    _blob_check_exists,
-    _blob_public_base_url,
-    _blob_upload,
-    _blob_url_cache_get,
-    _blob_url_cache_set,
-    _build_blob_public_url,
-    _normalize_cylinder_params_for_cache,
-    _normalize_settings_for_cache,
-    compute_cache_key,
-)
-
-# Import geometry functions from app.geometry
-from app.geometry.cylinder import generate_cylinder_counter_plate, generate_cylinder_stl
-
-# Note: Other marker and plate functions are defined below in this file
-# The marker functions above are imported to avoid NameError in counter plate generation
 # Import models from app.models
 from app.models import CardSettings
 
@@ -129,574 +83,207 @@ CORS(app, origins=allowed_origins, supports_credentials=cors_supports_credential
 # Typical requests: Braille text (~10KB), Geometry spec (~50KB)
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024  # 100KB max (reduced from 1MB)
 
-# SECRET_KEY configuration - mandatory in production
+# SECRET_KEY configuration - optional for stateless backend
 SECRET_KEY = os.environ.get('SECRET_KEY')
 if not SECRET_KEY:
     if os.environ.get('FLASK_ENV') == 'development':
         SECRET_KEY = 'dev-key-change-in-production'
         logger.warning('Using insecure development SECRET_KEY - DO NOT use in production!')
     else:
-        raise RuntimeError(
-            'SECRET_KEY environment variable must be set in production. '
-            'Generate with: python -c "import secrets; print(secrets.token_hex(32))"'
-        )
+        # For stateless backend, SECRET_KEY is optional but recommended
+        SECRET_KEY = 'stateless-backend-no-sessions'
+        logger.warning('SECRET_KEY not set - using placeholder (backend is stateless)')
 app.config['SECRET_KEY'] = SECRET_KEY
 
-# Flask-Limiter setup with tiered rate limiting
-# Stricter limits to prevent resource exhaustion and abuse
-redis_url = os.environ.get('REDIS_URL')
-storage_uri = redis_url if redis_url else 'memory://'
-if Limiter is not None:
-    limiter = Limiter(
-        key_func=get_remote_address,
-        storage_uri=storage_uri,
-        default_limits=[
-            '5 per minute',  # Burst protection
-            '50 per hour',  # Sustained usage limit
-            '200 per day',  # Daily cap
-        ],
-    )
-    limiter.init_app(app)
-else:
 
-    class _NoopLimiter:
-        def limit(self, *_args, **_kwargs):
-            def decorator(f):
-                return f
-
-            return decorator
-
-    limiter = _NoopLimiter()
-
-
-# Rate limit exceeded handler
-@app.errorhandler(429)
-def rate_limit_exceeded(e):
-    return jsonify(
-        {
-            'error': 'Rate limit exceeded',
-            'message': 'Too many requests. Please wait before trying again.',
-            'retry_after': getattr(e, 'description', 'Please try again later'),
-        }
-    ), 429
-
-
-# Helper functions for security (cache functions now in app.cache)
-
-
-@app.route('/lookup_stl', methods=['GET'])
-@limiter.limit('20 per minute; 200 per hour')
-def lookup_stl_redirect():
-    """Return cached negative plate location (302 redirect or JSON) if available.
-
-    Query params:
-    - shape_type: 'card' (default) or 'cylinder'
-    - settings: JSON for CardSettings
-    - cylinder_params: JSON for cylinder (when shape_type='cylinder')
-    - format: 'json' to return { url, cache_key } with cacheable headers instead of 302
-    """
-    try:
-        shape_type = request.args.get('shape_type', 'card')
-        if shape_type not in ('card', 'cylinder'):
-            return jsonify({'error': 'Invalid shape_type'}), 400
-
-        settings_json = request.args.get('settings', '')
-        cylinder_json = request.args.get('cylinder_params', '')
-
-        try:
-            settings_data = json.loads(settings_json) if settings_json else {}
-            validate_settings(settings_data)
-            settings = CardSettings(**settings_data)
-        except Exception:
-            settings = CardSettings(**{})
-
-        cylinder_params = {}
-        if shape_type == 'cylinder':
-            try:
-                cylinder_params = json.loads(cylinder_json) if cylinder_json else {}
-            except Exception:
-                cylinder_params = {}
-
-        cache_payload = {
-            'plate_type': 'negative',
-            'shape_type': shape_type,
-            'settings': _normalize_settings_for_cache(settings),
-        }
-        if shape_type == 'cylinder':
-            cache_payload['cylinder_params'] = _normalize_cylinder_params_for_cache(cylinder_params)
-        cache_key = compute_cache_key(cache_payload)
-
-        mapped = _blob_url_cache_get(cache_key)
-        public_url = mapped or _build_blob_public_url(cache_key)
-        if public_url and _blob_check_exists(public_url):
-            if request.args.get('format') == 'json' or 'application/json' in (request.headers.get('Accept') or ''):
-                payload = {'url': public_url, 'cache_key': cache_key}
-                resp = make_response(jsonify(payload), 200)
-                resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-                resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
-                resp.headers['X-Blob-Cache'] = 'hit'
-                resp.headers['X-Blob-Cache-Reason'] = 'lookup-exists'
-                resp.headers['X-Cache'] = 'hit-json'
-                resp.headers['X-Compute-Time'] = '0'
-                return resp
-            resp = redirect(public_url, code=302)
-            resp.headers['X-Blob-Cache-Key'] = cache_key
-            resp.headers['X-Blob-URL'] = public_url
-            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-            resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
-            resp.headers['X-Blob-Cache'] = 'hit'
-            resp.headers['X-Blob-Cache-Reason'] = 'lookup-exists'
-            resp.headers['X-Cache'] = 'hit-redirect'
-            resp.headers['X-Compute-Time'] = '0'
-            return resp
-
-        resp = make_response(jsonify({'error': 'not-found', 'cache_key': cache_key}), 404)
-        resp.headers['Cache-Control'] = 'no-store'
-        resp.headers['CDN-Cache-Control'] = 'no-store'
-        return resp
-    except Exception as e:
-        return jsonify({'error': f'lookup-failed: {str(e)}'}), 500
-
-
-# Blob storage functions now in app.cache
-
-
-@app.route('/debug/blob_upload', methods=['GET'])
-@limiter.limit('1 per minute')
-def debug_blob_upload():
-    """Try both direct and API blob uploads with a 1-byte payload and report results.
-
-    SECURITY: This endpoint is restricted to development mode only.
-    """
-    # Restrict to development environment
-    if os.environ.get('FLASK_ENV') != 'development' and not os.environ.get('ENABLE_DEBUG_ENDPOINTS'):
-        return jsonify({'error': 'Endpoint not available'}), 404
-
-    try:
-        token = os.environ.get('BLOB_STORE_WRITE_TOKEN') or os.environ.get('BLOB_READ_WRITE_TOKEN')
-        public_base = os.environ.get('BLOB_PUBLIC_BASE_URL')
-        direct_base = os.environ.get('BLOB_DIRECT_UPLOAD_URL', 'https://blob.vercel-storage.com')
-        api_base = os.environ.get('BLOB_API_BASE_URL', 'https://api.vercel.com')
-        info = {
-            'env': {
-                'has_BLOB_STORE_WRITE_TOKEN': bool(os.environ.get('BLOB_STORE_WRITE_TOKEN')),
-                'has_BLOB_READ_WRITE_TOKEN': bool(os.environ.get('BLOB_READ_WRITE_TOKEN')),
-                'BLOB_PUBLIC_BASE_URL': public_base,
-                'BLOB_DIRECT_UPLOAD_URL': direct_base,
-                'BLOB_API_BASE_URL': api_base,
-            }
-        }
-        if not token:
-            info['error'] = 'missing-token'
-            return jsonify(info), 200
-
-        test_key = f'debug_{int(time.time())}'
-        pathname = f'stl/{test_key}.bin'
-        payload = b'x'
-
-        # Direct upload
-        direct_headers = {
-            'Authorization': f'Bearer {token}',
-            'x-vercel-filename': pathname,
-            # support both header spellings seen in docs
-            'x-vercel-blob-add-random-suffix': '0',
-            'x-vercel-blobs-add-random-suffix': '0',
-            'x-vercel-blob-access': 'public',
-            'x-vercel-blobs-access': 'public',
-            'content-type': 'application/octet-stream',
-        }
-        try:
-            d_resp = requests.put(
-                f'{direct_base.rstrip("/")}/{pathname}', data=payload, headers=direct_headers, timeout=20
-            )
-            info['direct'] = {
-                'status': d_resp.status_code,
-                'text': d_resp.text[:800] if hasattr(d_resp, 'text') else '<no text>',
-            }
-            with contextlib.suppress(Exception):
-                info['direct']['json'] = d_resp.json()
-        except Exception as e:
-            info['direct'] = {'exception': str(e)}
-
-        # API upload
-        api_url = f'{api_base.rstrip("/")}/v2/blobs'
-        files = {'file': (pathname, payload, 'application/octet-stream')}
-        data = {
-            'pathname': pathname,
-            'contentType': 'application/octet-stream',
-            'cacheControlMaxAge': os.environ.get('BLOB_CACHE_MAX_AGE', '31536000'),
-            'access': 'public',
-            'addRandomSuffix': 'false',
-        }
-        api_headers = {'Authorization': f'Bearer {token}'}
-        try:
-            a_resp = requests.post(api_url, files=files, data=data, headers=api_headers, timeout=20)
-            info['api'] = {
-                'status': a_resp.status_code,
-                'text': a_resp.text[:800] if hasattr(a_resp, 'text') else '<no text>',
-            }
-            with contextlib.suppress(Exception):
-                info['api']['json'] = a_resp.json()
-        except Exception as e:
-            info['api'] = {'exception': str(e)}
-
-        return jsonify(info), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 200
-
-
-# Security headers
+# Security headers middleware
 @app.after_request
-def add_security_headers(response):
-    """Add comprehensive security headers to all responses"""
+def set_security_headers(response):
+    """Add comprehensive security headers to all responses."""
+    # If already in cache (304), skip modifying headers
+    if response.status_code == 304:
+        return response
+
+    # CSP: Allow client-side CSG workers and Manifold WASM CDNs
+    csp_directives = [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: cdn.jsdelivr.net unpkg.com",
+        "worker-src 'self' blob:",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: blob:",
+        "connect-src 'self' blob: cdn.jsdelivr.net unpkg.com",
+        "font-src 'self' data:",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+        'upgrade-insecure-requests',
+    ]
+    response.headers['Content-Security-Policy'] = '; '.join(csp_directives)
+
+    # Additional security headers
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
-    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
-
-    # Cross-Origin Policies for enhanced security
-    response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
-    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
-    response.headers['Cross-Origin-Resource-Policy'] = 'same-origin'
-    response.headers['X-Permitted-Cross-Domain-Policies'] = 'none'
-    # Content-Security-Policy allowing web workers, table loading, and Blob CDN redirects
-    blob_base = _blob_public_base_url().rstrip('/')
-    connect_sources = ["'self'", 'blob:', 'data:']
-    if blob_base:
-        connect_sources.append(blob_base)
-    # Also allow generic Vercel Blob CDN wildcard as a fallback if no env set
-    if not blob_base:
-        connect_sources.append('https://*.vercel-storage.com')
-    # Allow CDN sources for manifold-3d WASM loading
-    connect_sources.append('https://cdn.jsdelivr.net')
-    connect_sources.append('https://unpkg.com')
-
-    # CSP with 'unsafe-eval' required for Manifold-3D WASM library
-    # Note: Manifold-3D uses Emscripten's embind which requires Function() constructor
-    # 'unsafe-eval' is necessary for the embind runtime binding system
-    csp_policy = (
-        "default-src 'self'; "
-        # 'unsafe-eval' required for Manifold-3D embind, 'wasm-unsafe-eval' for WASM compilation
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' "
-        'https://fonts.googleapis.com https://vercel.live '
-        'https://cdn.jsdelivr.net https://unpkg.com; '
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: blob:; "
-        f'connect-src {" ".join(connect_sources)}; '
-        "object-src 'none'; "
-        "base-uri 'self'; "
-        "worker-src 'self' blob:; "
-        "frame-ancestors 'none'"
-    )
-    response.headers['Content-Security-Policy'] = csp_policy
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+
     return response
-
-
-## Removed legacy in-memory rate limiting in favor of Flask-Limiter
-
-
-# Add error handling for Vercel environment
-@app.errorhandler(Exception)
-def handle_error(e):
-    import traceback
-
-    # Pass through HTTPExceptions (e.g., 404) so they keep their original status codes
-    if isinstance(e, HTTPException):
-        return e
-    # Log unexpected errors for debugging in production
-    app.logger.error(f'Error: {str(e)}')
-    app.logger.error(f'Traceback: {traceback.format_exc()}')
-    # Don't expose internal details in production
-    if app.debug:
-        return jsonify({'error': f'Server error: {str(e)}'}), 500
-    else:
-        return jsonify({'error': 'An internal server error occurred'}), 500
 
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
-    return jsonify({'error': 'Request too large. Maximum size is 100KB.'}), 413
+    return jsonify({'error': 'Request payload too large', 'max_size': '100KB'}), 413
 
 
-@app.before_request
-def check_content_length():
-    """Additional content length validation per endpoint."""
-    if request.method in ['POST', 'PUT']:
-        cl = request.content_length
-        endpoint = request.endpoint
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Pass through HTTP errors
+    if isinstance(e, HTTPException):
+        return e
 
-        # Stricter limits for specific endpoints
-        if endpoint in ['generate_braille_stl', 'geometry_spec'] and cl and cl > 50 * 1024:
-            return jsonify({'error': 'Request too large for this endpoint (max 50KB)'}), 413
-
-        if endpoint == 'generate_counter_plate_stl' and cl and cl > 10 * 1024:
-            return jsonify({'error': 'Request too large for this endpoint (max 10KB)'}), 413
-
-
-@app.errorhandler(400)
-def bad_request(error):
-    return jsonify({'error': 'Invalid request format'}), 400
+    # Log non-HTTP exceptions
+    app.logger.error(f'Unhandled exception: {e}')
+    return jsonify({'error': 'Internal server error'}), 500
 
 
 @app.route('/health')
 def health_check():
-    return jsonify({'status': 'ok', 'message': 'Vercel backend is running'})
+    """Health check endpoint for monitoring."""
+    return jsonify({'status': 'ok', 'timestamp': datetime.now(UTC).isoformat()})
 
 
 @app.route('/')
 def index():
-    """
-    Serve the main application page.
-    Uses public/index.html as the single source of truth for both local and Vercel deployments.
-    This ensures the client-side CSG generation logic is consistent across environments.
-    """
-    try:
-        # Serve public/index.html directly - same file used by Vercel
-        return send_from_directory('public', 'index.html')
-    except Exception as e:
-        logger.info(f'Error serving index.html: {e}')
-        return jsonify({'error': 'Failed to load page'}), 500
+    """Serve the main HTML page."""
+    return send_from_directory('public', 'index.html')
 
 
-# @app.route('/node_modules/<path:filename>')
-# def node_modules(filename):
-#     """Redirect node_modules requests to static files for Vercel deployment"""
-#     # Map common node_modules paths to static equivalents
-#     if filename.startswith('liblouis-build/') or filename.startswith('liblouis/'):
-#         # Remove the 'liblouis-build/' or 'liblouis/' prefix and redirect to static
-#         static_path = filename.replace('liblouis-build/', 'liblouis/').replace('liblouis/', 'liblouis/')
-#         return redirect(f'/static/{static_path}')
-#
-#     # For other node_modules requests, return 404
-#     return jsonify({'error': 'node_modules not available on deployment'}), 404
+@app.route('/index.html')
+def index_html_explicit():
+    """Explicit index.html route for compatibility."""
+    return send_from_directory('public', 'index.html')
 
 
 @app.route('/favicon.ico')
-def favicon():
-    """Handle favicon requests to prevent 404 errors"""
-    return '', 204  # Return empty response with "No Content" status
+def favicon_ico():
+    """Serve favicon.ico."""
+    return send_from_directory('static', 'favicon.svg', mimetype='image/svg+xml')
 
 
 @app.route('/favicon.png')
 def favicon_png():
-    """Serve or gracefully handle /favicon.png requests"""
-    try:
-        static_dir = 'static'
-        png_path = os.path.join(static_dir, 'favicon.png')
-        ico_path = os.path.join(static_dir, 'favicon.ico')
-        # Prefer a real png if present
-        if os.path.exists(png_path) and os.path.isfile(png_path):
-            return send_from_directory(static_dir, 'favicon.png')
-        # Fall back to ico if present
-        if os.path.exists(ico_path) and os.path.isfile(ico_path):
-            return send_from_directory(static_dir, 'favicon.ico')
-        # Nothing available; avoid noisy 404 -> return 204
-        return '', 204
-    except Exception as e:
-        app.logger.error(f'Failed to serve favicon: {e}')
-        return '', 204
+    """Serve favicon as PNG (fallback)."""
+    return send_from_directory('static', 'favicon.svg', mimetype='image/svg+xml')
 
 
 @app.route('/static/<path:filename>', methods=['GET', 'OPTIONS'])
-def static_files(filename):
-    # Handle CORS preflight requests
-    if request.method == 'OPTIONS':
-        response = jsonify({'message': 'OK'})
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-        return response
-
-    try:
-        # Security: Prevent path traversal attacks
-        if '..' in filename or filename.startswith('/'):
-            return jsonify({'error': 'Invalid file path'}), 400
-
-        # Normalize the path to prevent bypassing
-        safe_path = os.path.normpath(filename)
-        if safe_path != filename or safe_path.startswith('..'):
-            return jsonify({'error': 'Invalid file path'}), 400
-
-        # Check if static directory exists
-        if not os.path.exists('static'):
-            app.logger.error('Static directory not found')
-            return jsonify({'error': 'Resource not found'}), 404
-
-        # Check if file exists
-        full_path = os.path.join('static', safe_path)
-        if not os.path.exists(full_path) or not os.path.isfile(full_path):
-            return jsonify({'error': 'File not found'}), 404
-
-        # Additional security: ensure the resolved path is still under static/
-        if not os.path.abspath(full_path).startswith(os.path.abspath('static')):
-            return jsonify({'error': 'Invalid file path'}), 400
-
-        response = send_from_directory('static', safe_path)
-
-        # Add security headers to static files
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-
-        # Set cache headers for static assets
-        if safe_path.endswith(('.js', '.css', '.woff', '.woff2', '.ttf', '.eot')):
-            response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
-        else:
-            response.headers['Cache-Control'] = 'public, max-age=3600'
-
-        # Add CORS headers for liblouis files to ensure they can be loaded by web workers
-        if 'liblouis' in safe_path:
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-            # Set appropriate content type for liblouis table files
-            if safe_path.endswith('.ctb') or safe_path.endswith('.utb') or safe_path.endswith('.dis'):
-                response.headers['Content-Type'] = 'text/plain; charset=utf-8'
-
-        return response
-    except Exception as e:
-        app.logger.error(f'Failed to serve static file {filename}: {e}')
-        return jsonify({'error': 'Failed to serve file'}), 500
-
-
-def _scan_liblouis_tables(directory: str):
-    """Scan a directory for liblouis translation tables and extract basic metadata.
-
-    Returns a list of dicts with keys: file, locale, type, grade, contraction, dots, variant.
+def serve_static(filename):
     """
-    tables_info = []
-    try:
-        if not os.path.isdir(directory):
-            return tables_info
+    Serve static files with appropriate caching headers.
 
-        # Walk recursively to find tables in subfolders as well
-        for root, _, files in os.walk(directory):
-            for fname in files:
-                low = fname.lower()
-                # Only expose primary translation tables
-                if not (low.endswith('.ctb') or low.endswith('.utb') or low.endswith('.tbl')):
+    Static files served by Python (not Vercel CDN) due to liblouis table include resolution:
+    - liblouis tables can include other tables using relative paths
+    - Python serving ensures correct include resolution
+    - See VERCEL_OPTIMIZATION_ROADMAP.md for details
+
+    Files served:
+    - liblouis translation tables and WASM binaries
+    - Web Workers (csg-worker.js, csg-worker-manifold.js, liblouis-worker.js)
+    - Vendor libraries (three.module.js, OrbitControls.js, STLLoader.js)
+    """
+    # Handle CORS preflight
+    if request.method == 'OPTIONS':
+        resp = make_response('', 204)
+        resp.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
+        resp.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        resp.headers['Access-Control-Max-Age'] = '86400'  # 24 hours
+        return resp
+
+    try:
+        # Serve the file
+        resp = send_from_directory('static', filename)
+
+        # Set cache headers based on file type
+        if filename.endswith(('.wasm', '.js', '.json')):
+            # Cache JavaScript, WASM, and JSON files aggressively
+            resp.headers['Cache-Control'] = 'public, max-age=86400, immutable'  # 24 hours
+        elif filename.endswith(('.ctb', '.tbl', '.utb', '.cti', '.uti', '.dis')):
+            # Cache liblouis tables
+            resp.headers['Cache-Control'] = 'public, max-age=86400, immutable'  # 24 hours
+        elif filename.endswith(('.svg', '.png', '.ico')):
+            # Cache images
+            resp.headers['Cache-Control'] = 'public, max-age=86400'  # 24 hours
+        else:
+            # Default cache
+            resp.headers['Cache-Control'] = 'public, max-age=3600'  # 1 hour
+
+        return resp
+
+    except FileNotFoundError:
+        return jsonify({'error': 'File not found'}), 404
+
+
+def _scan_liblouis_tables(directory):
+    """Recursively scan a directory for liblouis table files (.ctb, .tbl, .utb, etc.).
+    Returns a list of table metadata dicts with 'file', 'path', 'locale', 'description'.
+    """
+    tables = []
+    try:
+        for root, _dirs, files in os.walk(directory):
+            for filename in files:
+                # Check for liblouis table extensions
+                if not filename.endswith(('.ctb', '.tbl', '.utb', '.cti', '.uti', '.dis')):
                     continue
 
-                fpath = os.path.join(root, fname)
+                # Construct relative path from the base directory
+                full_path = os.path.join(root, filename)
+                rel_path = os.path.relpath(full_path, directory)
 
-                meta = {
-                    'file': fname,
-                    'locale': None,
-                    'type': None,
-                    'grade': None,
-                    'contraction': None,
-                    'dots': None,
-                    'variant': None,
-                }
+                # Extract locale from filename (heuristic)
+                # Format: lang-region-variant.ctb (e.g., en-us-g2.ctb)
+                locale = None
+                description = filename
+                if '-' in filename:
+                    parts = filename.split('-')
+                    if len(parts) >= 2:
+                        locale = f'{parts[0]}-{parts[1]}'  # e.g., en-us
 
-                # Parse lightweight metadata from the file header
-                try:
-                    with open(fpath, encoding='utf-8', errors='ignore') as f:
-                        for _ in range(200):
-                            line = f.readline()
-                            if not line:
-                                break
-                            m = re.match(r'^\s*#\+\s*([A-Za-z_-]+)\s*:\s*(.+?)\s*$', line)
-                            if not m:
-                                continue
-                            key = m.group(1).strip().lower()
-                            val = m.group(2).strip()
-                            if key == 'locale' and not meta['locale']:
-                                # Normalize locale casing, e.g., en-us -> en-US
-                                parts = val.replace('_', '-').split('-')
-                                if parts:
-                                    parts[0] = parts[0].lower()
-                                    for i in range(1, len(parts)):
-                                        if len(parts[i]) in (2, 3):
-                                            parts[i] = parts[i].upper()
-                                meta['locale'] = '-'.join(parts)
-                            elif key == 'type' and not meta['type']:
-                                meta['type'] = val.lower()
-                            elif key == 'grade' and not meta['grade']:
-                                meta['grade'] = str(val)
-                            elif key == 'contraction' and not meta['contraction']:
-                                meta['contraction'] = val.lower()
-                            elif key == 'dots' and not meta['dots']:
-                                try:
-                                    meta['dots'] = int(val)
-                                except Exception:
-                                    meta['dots'] = None
-                except Exception:
-                    pass
-
-                base = os.path.splitext(fname)[0]
-                base_norm = base.lower()
-
-                # Derive locale from filename when missing
-                if not meta['locale']:
-                    candidate = base
-                    # Common separators to normalize
-                    candidate = candidate.replace('_', '-')
-                    # Trim trailing grade tokens for locale inference
-                    candidate = re.sub(r'-g[012]\b.*$', '', candidate, flags=re.IGNORECASE)
-                    # Special english variants keep base 'en'
-                    if candidate.startswith('en-ueb') or candidate.startswith('en-us') or candidate.startswith('en-gb'):
-                        loc = candidate.split('-')[0]
-                    else:
-                        parts = candidate.split('-')
-                        loc = parts[0]
-                        if len(parts) > 1 and len(parts[1]) in (2, 3):
-                            loc = f'{parts[0]}-{parts[1]}'
-                    parts = loc.split('-')
-                    if parts:
-                        parts[0] = parts[0].lower()
-                        for i in range(1, len(parts)):
-                            if len(parts[i]) in (2, 3):
-                                parts[i] = parts[i].upper()
-                        meta['locale'] = '-'.join(parts)
-
-                # Derive grade from filename when missing
-                if not meta['grade']:
-                    m = re.search(r'-g([012])\b', base_norm)
-                    if m:
-                        meta['grade'] = m.group(1)
-
-                # Derive dots from filename if not present (e.g., comp8/comp6)
-                if meta['dots'] is None:
-                    if 'comp8' in base_norm or re.search(r'8dot|8-dot', base_norm):
-                        meta['dots'] = 8
-                    elif 'comp6' in base_norm or re.search(r'6dot|6-dot', base_norm):
-                        meta['dots'] = 6
-
-                # Derive type/contraction heuristics if missing
-                if not meta['type']:
-                    if 'comp' in base_norm or (meta['dots'] in (6, 8) and 'g' not in (meta['grade'] or '')):
-                        meta['type'] = 'computer'
-                    else:
-                        meta['type'] = 'literary'
-
-                if not meta['contraction']:
-                    # Infer from grade when possible
-                    if meta['grade'] == '2':
-                        meta['contraction'] = 'full'
-                    elif meta['grade'] in ('0', '1'):
-                        meta['contraction'] = 'no'
-
-                # Variant hints (primarily for English)
-                if 'ueb' in base_norm:
-                    meta['variant'] = 'UEB'
-                elif base_norm.startswith('en-us'):
-                    meta['variant'] = 'EBAE'
-
-                tables_info.append(meta)
-    except Exception:
-        # Fail silently and return whatever we collected
-        return tables_info
-
-    return tables_info
+                tables.append(
+                    {
+                        'file': rel_path.replace('\\', '/'),  # Normalize path separators
+                        'path': rel_path.replace('\\', '/'),
+                        'locale': locale,
+                        'description': description,
+                    }
+                )
+    except OSError:
+        # Directory not found or not accessible
+        pass
+    return tables
 
 
 @app.route('/liblouis/tables')
 def list_liblouis_tables():
-    """List available liblouis translation tables from static assets.
+    """Return a JSON list of available liblouis translation tables.
+    Scans all candidate directories and deduplicates by file name.
 
-    This powers the frontend language dropdown dynamically so it stays in sync
+    Returns:
+        {
+            "tables": [
+                {
+                    "file": "en-us-g2.ctb",
+                    "path": "en-us-g2.ctb",
+                    "locale": "en-us",
+                    "description": "en-us-g2.ctb"
+                },
+                ...
+            ]
+        }
+
+    This is used by the frontend to populate the language/table selection dropdown
     with the actual shipped tables.
     """
     # Resolve candidate directories relative to app root
@@ -722,423 +309,134 @@ def list_liblouis_tables():
     return jsonify({'tables': tables})
 
 
+# =============================================================================
+# DEPRECATED ENDPOINTS - Server-side STL generation removed 2026-01-05
+# =============================================================================
+# These endpoints return 410 Gone to avoid breaking old bookmarks while
+# preventing reintroduction of Redis/Blob dependencies.
+#
+# Rationale:
+# - Server-side STL generation does not work on Vercel (no manifold3d binaries)
+# - Client-side CSG (BVH-CSG for cards, Manifold WASM for cylinders) is fully functional
+# - Removing Redis/Blob eliminates 14-day inactivity failure mode
+#
+# For implementation details, see:
+# - docs/development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md
+# - .cursor/plans/remove_upstash_dependencies_99900762.plan.md
+# =============================================================================
+
+
 @app.route('/generate_braille_stl', methods=['POST'])
-@limiter.limit('3 per minute; 20 per hour; 100 per day')
-def generate_braille_stl():
-    try:
-        # Validate request content type
-        if not request.is_json:
-            return jsonify({'error': 'Content-Type must be application/json'}), 400
-
-        data = request.get_json(force=True)
-
-        if not data:
-            return jsonify({'error': 'No JSON data provided'}), 400
-
-        lines = data.get('lines', ['', '', '', ''])
-        original_lines = data.get('original_lines', None)  # Optional: original text before braille conversion
-        placement_mode = data.get('placement_mode', 'manual')
-        plate_type = data.get('plate_type', 'positive')
-        grade = data.get('grade', 'g2')
-        settings_data = data.get('settings', {})
-        shape_type = data.get('shape_type', 'card')  # New: default to 'card' for backward compatibility
-        cylinder_params = data.get('cylinder_params', {})  # New: optional cylinder parameters
-        per_line_language_tables = data.get('per_line_language_tables', None)  # Optional: per-line liblouis tables used
-
-        # Validate inputs
-        validate_lines(lines)
-        validate_original_lines(original_lines)
-        validate_settings(settings_data)
-
-        # Validate braille characters for positive plates
-        validate_braille_lines(lines, plate_type)
-
-        # Validate plate_type
-        if plate_type not in ['positive', 'negative']:
-            return jsonify({'error': 'Invalid plate_type. Must be "positive" or "negative"'}), 400
-
-        # Validate grade
-        if grade not in ['g1', 'g2']:
-            return jsonify({'error': 'Invalid grade. Must be "g1" or "g2"'}), 400
-
-        # Validate shape_type
-        if shape_type not in ['card', 'cylinder']:
-            return jsonify({'error': 'Invalid shape_type. Must be "card" or "cylinder"'}), 400
-
-        settings = CardSettings(**settings_data)
-
-        # Check for empty input only for positive plates (emboss plates require text)
-        if plate_type == 'positive' and all(not line.strip() for line in lines):
-            return jsonify({'error': 'Please enter text in at least one line'}), 400
-
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 400
-    except Exception as e:
-        app.logger.error(f'Validation error in generate_braille_stl: {e}')
-        return jsonify({'error': 'Invalid request data'}), 400
-
-    # Character limit validation is now done on frontend after braille translation
-    # Backend expects lines to already be within limits
-
-    # Check if boolean backends are available - required for server-side generation
-    from app.geometry.booleans import has_boolean_backend
-
-    if not has_boolean_backend():
-        # On Vercel or other serverless platforms without boolean backends
-        # Client-side CSG should be used instead
-        return jsonify(
+def deprecated_generate_braille_stl():
+    """DEPRECATED: Server-side STL generation removed 2026-01-05."""
+    return (
+        jsonify(
             {
-                'error': 'Server-side STL generation requires a modern browser with JavaScript enabled. '
-                'This server does not have 3D boolean operation backends available. '
-                'Please ensure JavaScript is enabled in your browser to use client-side geometry processing.',
-                'error_code': 'NO_BOOLEAN_BACKEND',
-                'suggestion': 'Use a modern browser (Chrome 80+, Firefox 114+, Safari 15+, or Edge 80+) with JavaScript enabled. '
-                'The application will automatically generate STL files in your browser.',
+                'error': 'Server-side STL generation has been removed.',
+                'status': 'deprecated',
+                'reason': 'This endpoint required Redis and Blob storage that caused deployment failures. '
+                'The application now uses client-side CSG generation exclusively.',
+                'solution': 'Use the web interface at the root URL (/). STL generation happens automatically '
+                'in your browser using Web Workers and client-side CSG.',
+                'documentation': 'docs/development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md',
+                'deprecated_date': '2026-01-05',
             }
-        ), 503
+        ),
+        410,
+    )
 
-    try:
-        allow_blob_cache = plate_type == 'negative'
-        # EARLY BLOB CACHE CHECK (before heavy mesh generation)
-        if allow_blob_cache:
-            try:
-                # For counter plates, exclude user-provided text/grade from cache key
-                if plate_type == 'negative':
-                    cache_payload_early = {
-                        'plate_type': 'negative',
-                        'shape_type': shape_type,
-                        'settings': _normalize_settings_for_cache(settings),
-                    }
-                    if shape_type == 'cylinder':
-                        cache_payload_early['cylinder_params'] = _normalize_cylinder_params_for_cache(cylinder_params)
-                else:
-                    cache_payload_early = {
-                        'lines': lines,
-                        'original_lines': original_lines,
-                        'placement_mode': placement_mode,
-                        'plate_type': plate_type,
-                        'grade': grade,
-                        'settings': settings_data,
-                        'shape_type': shape_type,
-                        'cylinder_params': cylinder_params,
-                    }
-                early_cache_key = compute_cache_key(cache_payload_early)
-                # Check Redis mapping (URL may include random suffix set by provider)
-                mapped_url = _blob_url_cache_get(early_cache_key)
-                early_public = mapped_url or _build_blob_public_url(early_cache_key)
-                if early_public and _blob_check_exists(early_public):
-                    app.logger.info(f'BLOB CACHE EARLY HIT (counter plate) key={early_cache_key}')
-                    resp = redirect(early_public, code=302)
-                    resp.headers['X-Blob-Cache-Key'] = early_cache_key
-                    resp.headers['X-Blob-URL'] = early_public
-                    resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-                    resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
-                    resp.headers['X-Cache'] = 'hit-redirect'
-                    resp.headers['X-Compute-Time'] = '0'
-                    resp.headers['X-Blob-Cache'] = 'hit'
-                    resp.headers['X-Blob-Cache-Reason'] = 'early-exists'
-                    return resp
-            except Exception:
-                pass
 
-        if shape_type == 'card':
-            # Original card generation logic
-            if plate_type == 'positive':
-                # Use provided original_lines (manual lines or auto-derived indicators)
-                mesh = create_positive_plate_mesh(lines, grade, settings, original_lines)
-            elif plate_type == 'negative':
-                # Counter plate: choose recess shape
-                # It does NOT depend on text input - always creates ALL 6 dots per cell
-                recess_shape = int(getattr(settings, 'recess_shape', 1))
-                # Always use 3D boolean approach; failure results in 500 to surface deployment/runtime issues
-                if recess_shape == 1:
-                    logger.debug('Generating counter plate with bowl (spherical cap) recesses (all positions)')
-                    mesh = build_counter_plate_bowl(settings)
-                elif recess_shape == 0:
-                    logger.debug('Generating counter plate with hemispherical recesses (all positions)')
-                    mesh = build_counter_plate_hemispheres(settings)
-                elif recess_shape == 2:
-                    logger.debug('Generating counter plate with conical (frustum) recesses (all positions)')
-                    mesh = build_counter_plate_cone(settings)
-                else:
-                    logger.warning('Unknown recess_shape value, defaulting to bowl')
-                    mesh = build_counter_plate_bowl(settings)
-
-                # Rough sanity check: ensure we actually produced a complex mesh (counter plate should be detailed)
-                if len(mesh.faces) < 100:
-                    raise RuntimeError('3D boolean approach produced suspiciously few faces (possible failure)')
-            else:
-                return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
-
-        elif shape_type == 'cylinder':
-            # New cylinder generation logic
-            if plate_type == 'positive':
-                mesh = generate_cylinder_stl(lines, grade, settings, cylinder_params, original_lines)
-            elif plate_type == 'negative':
-                # Cylinder counter plate
-                mesh = generate_cylinder_counter_plate(lines, settings, cylinder_params)
-            else:
-                return jsonify({'error': f'Invalid plate type: {plate_type}. Use "positive" or "negative".'}), 400
-
-        # Verify mesh is watertight and manifold
-        if not mesh.is_watertight:
-            logger.warning(f'Generated {plate_type} plate mesh is not watertight!')
-            # Try to fix the mesh
-            mesh.fill_holes()
-            if mesh.is_watertight:
-                logger.info('Mesh holes filled successfully')
-            else:
-                logger.error('Could not make mesh watertight')
-
-        if not mesh.is_winding_consistent:
-            logger.warning(f'Generated {plate_type} plate mesh has inconsistent winding!')
-            try:
-                mesh.fix_normals()
-                logger.info('Fixed mesh normals')
-            except ImportError:
-                # fix_normals requires scipy, try unify_normals instead
-                mesh.unify_normals()
-                logger.info('Unified mesh normals (scipy not available)')
-
-        # Compute content-addressable cache key from request payload
-        # Build cache payload; exclude user text/grade for counter plates for universal caching
-        if plate_type == 'negative':
-            cache_payload = {
-                'plate_type': 'negative',
-                'shape_type': shape_type,
-                'settings': _normalize_settings_for_cache(settings),
+@app.route('/generate_counter_plate_stl', methods=['POST'])
+def deprecated_generate_counter_plate_stl():
+    """DEPRECATED: Server-side counter plate generation removed 2026-01-05."""
+    return (
+        jsonify(
+            {
+                'error': 'Server-side counter plate generation has been removed.',
+                'status': 'deprecated',
+                'reason': 'This endpoint required Redis and Blob storage that caused deployment failures. '
+                'The application now uses client-side CSG generation exclusively.',
+                'solution': 'Use the web interface at the root URL (/). Counter plate generation happens automatically '
+                'in your browser using Web Workers and client-side CSG.',
+                'documentation': 'docs/development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md',
+                'deprecated_date': '2026-01-05',
             }
-            if shape_type == 'cylinder':
-                cache_payload['cylinder_params'] = _normalize_cylinder_params_for_cache(cylinder_params)
-        else:
-            cache_payload = {
-                'lines': lines,
-                'original_lines': original_lines,
-                'placement_mode': placement_mode,
-                'plate_type': plate_type,
-                'grade': grade,
-                'settings': settings_data,
-                'shape_type': shape_type,
-                'cylinder_params': cylinder_params,
+        ),
+        410,
+    )
+
+
+@app.route('/lookup_stl', methods=['GET'])
+def deprecated_lookup_stl():
+    """DEPRECATED: STL lookup endpoint removed 2026-01-05."""
+    return (
+        jsonify(
+            {
+                'error': 'STL lookup endpoint has been removed.',
+                'status': 'deprecated',
+                'reason': 'This endpoint required Redis cache that caused deployment failures. '
+                'Client-side generation is now the only supported method.',
+                'solution': 'Use the web interface at the root URL (/).',
+                'deprecated_date': '2026-01-05',
             }
-        cache_key = compute_cache_key(cache_payload)
+        ),
+        410,
+    )
 
-        # If a public base is configured and the blob already exists, redirect (only for card counter plates)
-        if allow_blob_cache:
-            mapped = _blob_url_cache_get(cache_key)
-            cached_public = mapped or _build_blob_public_url(cache_key)
-            if cached_public and _blob_check_exists(cached_public):
-                app.logger.info(f'BLOB CACHE HIT (pre-export) key={cache_key}')
-                resp = redirect(cached_public, code=302)
-                resp.headers['X-Blob-Cache-Key'] = cache_key
-                resp.headers['X-Blob-URL'] = cached_public
-                resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-                resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
-                resp.headers['X-Cache'] = 'hit-redirect'
-                resp.headers['X-Compute-Time'] = '0'
-                resp.headers['X-Blob-Cache'] = 'hit'
-                resp.headers['X-Blob-Cache-Reason'] = 'pre-export-exists'
-                return resp
 
-        # Compute time around STL export for observability
-        t0 = time.time()
-        # Export to STL
-        stl_io = io.BytesIO()
-        mesh.export(stl_io, file_type='stl')
-        stl_io.seek(0)
-        compute_ms = int((time.time() - t0) * 1000)
+@app.route('/debug/blob_upload', methods=['GET'])
+def deprecated_debug_blob_upload():
+    """DEPRECATED: Debug endpoint removed 2026-01-05."""
+    return (
+        jsonify(
+            {
+                'error': 'Debug blob upload endpoint has been removed.',
+                'status': 'deprecated',
+                'reason': 'Blob storage integration was removed as part of architecture simplification.',
+                'deprecated_date': '2026-01-05',
+            }
+        ),
+        410,
+    )
 
-        # Compute ETag and conditional 304 handling
-        stl_bytes = stl_io.getvalue()
-        etag = hashlib.sha256(stl_bytes).hexdigest()
-        client_etag = request.headers.get('If-None-Match')
-        if client_etag and client_etag == etag:
-            resp = make_response('', 304)
-            resp.headers['ETag'] = etag
-            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-            resp.headers['X-Blob-Cache'] = 'miss' if allow_blob_cache else 'bypass'
-            resp.headers['X-Blob-Cache-Key'] = cache_key
-            resp.headers['X-Blob-URL'] = _build_blob_public_url(cache_key)
-            return resp
 
-        # Create JSON config dump for reproducibility
-        # Avoid accessing volume when booleans may be disabled or mesh invalid in serverless
-        safe_volume = None
-        try:
-            safe_volume = float(mesh.volume)
-        except Exception:
-            safe_volume = None
-
-        config_dump = {
-            'timestamp': datetime.now().isoformat(),
-            'plate_type': plate_type,
-            'shape_type': shape_type,
-            'grade': grade if plate_type == 'positive' else 'n/a',
-            'text_lines': lines if plate_type == 'positive' else ['Counter plate - all positions'],
-            'cylinder_params': cylinder_params if shape_type == 'cylinder' else 'n/a',
-            'per_line_language_tables': per_line_language_tables if per_line_language_tables else 'n/a',
-            'settings': {
-                # Card parameters
-                'card_width': settings.card_width,
-                'card_height': settings.card_height,
-                'card_thickness': settings.card_thickness,
-                # Grid parameters
-                'grid_columns': settings.grid_columns,
-                'grid_rows': settings.grid_rows,
-                'cell_spacing': settings.cell_spacing,
-                'line_spacing': settings.line_spacing,
-                'dot_spacing': settings.dot_spacing,
-                # Emboss plate dot parameters
-                'emboss_dot_base_diameter': settings.emboss_dot_base_diameter,
-                'emboss_dot_height': settings.emboss_dot_height,
-                'emboss_dot_flat_hat': settings.emboss_dot_flat_hat,
-                # Offsets
-                'braille_x_adjust': settings.braille_x_adjust,
-                'braille_y_adjust': settings.braille_y_adjust,
-                # Counter plate specific
-                'hemisphere_subdivisions': settings.hemisphere_subdivisions if plate_type == 'negative' else 'n/a',
-                'cone_segments': settings.cone_segments if plate_type == 'negative' else 'n/a',
-                'hemi_counter_dot_base_diameter': getattr(
-                    settings, 'hemi_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter', 'n/a')
-                )
-                if plate_type == 'negative'
-                else 'n/a',
-                'bowl_counter_dot_base_diameter': getattr(
-                    settings, 'bowl_counter_dot_base_diameter', getattr(settings, 'counter_dot_base_diameter', 'n/a')
-                )
-                if plate_type == 'negative'
-                else 'n/a',
-                'use_bowl_recess': int(getattr(settings, 'use_bowl_recess', 0)) if plate_type == 'negative' else 'n/a',
-                'counter_dot_depth': float(getattr(settings, 'counter_dot_depth', 0.6))
-                if (plate_type == 'negative' and int(getattr(settings, 'use_bowl_recess', 0)) == 1)
-                else ('n/a' if plate_type != 'negative' else 0.0),
-            },
-            'mesh_info': {
-                'vertices': len(mesh.vertices),
-                'faces': len(mesh.faces),
-                'is_watertight': bool(getattr(mesh, 'is_watertight', False)),
-                'volume': safe_volume,
-            },
-        }
-
-        # Save config as JSON
-        config_json = json.dumps(config_dump, indent=2)
-        logger.debug(f'Config dump:\n{config_json}')
-
-        def sanitize_filename(text: str, max_length: int = 30) -> str:
-            """Safely sanitize text for use in filenames."""
-            # Remove any null bytes
-            text = text.replace('\x00', '')
-            # Allow only alphanumeric, spaces, hyphens
-            text = re.sub(r'[^\w\s-]', '', text)[:max_length]
-            # Replace spaces and multiple hyphens with single underscore
-            text = re.sub(r'[-\s]+', '_', text)
-            # Remove leading/trailing underscores
-            text = text.strip('_')
-            # Prevent directory traversal sequences
-            text = text.replace('..', '').replace('/', '').replace('\\', '')
-            # Ensure not empty
-            if not text:
-                text = 'untitled'
-            return text
-
-        def extract_first_word(text: str) -> str:
-            """Extract the first word from a text string."""
-            words = text.strip().split()
-            return words[0] if words else ''
-
-        # Create filename based on text content with fallback logic
-        if plate_type == 'positive':
-            # For embossing plates, extract first word from first non-empty line
-            filename = 'Embossing_Plate_untitled'
-            for line in lines:
-                if line.strip():
-                    first_word = extract_first_word(line.strip())
-                    sanitized = sanitize_filename(first_word)
-                    if sanitized and sanitized != 'untitled':
-                        filename = f'Embossing_Plate_{sanitized}'
-                        break
-        else:
-            # For counter plates, use simple default name
-            # (Frontend handles sequential counter for downloads)
-            filename = 'Universal_Counter_Plate'
-
-        # Additional filename sanitization for security
-        filename = re.sub(r'[^\w\-_]', '', filename)[:60]  # Allow longer names to accommodate shape type
-
-        # Attempt to persist to Blob store and redirect if successful (only for card counter plates)
-        if allow_blob_cache:
-            public_url = _blob_upload(cache_key, stl_bytes)
-            if public_url:
-                app.logger.info(f'BLOB CACHE MISS -> UPLOAD OK key={cache_key}')
-                # Persist mapping so future early checks can redirect immediately
-                _blob_url_cache_set(cache_key, public_url)
-                resp = redirect(public_url, code=302)
-                resp.headers['ETag'] = etag
-                resp.headers['X-Blob-Cache-Key'] = cache_key
-                resp.headers['X-Blob-URL'] = public_url
-                resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-                resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
-                resp.headers['X-Cache'] = 'miss-redirect'
-                resp.headers['X-Compute-Time'] = str(compute_ms)
-                resp.headers['X-Blob-Cache'] = 'miss'
-                resp.headers['X-Blob-Cache-Reason'] = 'uploaded-now'
-                # Structured cost log
-                with contextlib.suppress(Exception):
-                    app.logger.info(
-                        json.dumps(
-                            {
-                                'event': 'stl_upload',
-                                'cache_key': cache_key,
-                                'size_bytes': len(stl_bytes),
-                                'compute_ms': compute_ms,
-                                'shape_type': shape_type,
-                                'plate_type': plate_type,
-                                'action': 'upload-and-redirect',
-                            }
-                        )
-                    )
-                return resp
-
-        # Build response with headers
-        resp = make_response(
-            send_file(io.BytesIO(stl_bytes), mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl')
-        )
-        resp.headers['ETag'] = etag
-        resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-        resp.headers['X-Blob-Cache'] = 'miss' if allow_blob_cache else 'bypass'
-        resp.headers['X-Blob-Cache-Reason'] = 'no-upload-url' if allow_blob_cache else 'embossing-disabled'
-        resp.headers['X-Blob-Cache-Key'] = cache_key
-        resp.headers['X-Blob-URL'] = _build_blob_public_url(cache_key)
-        resp.headers['X-Cache'] = 'origin'
-        resp.headers['X-Compute-Time'] = str(compute_ms)
-        # Structured cost log for origin send
-        with contextlib.suppress(Exception):
-            app.logger.info(
-                json.dumps(
-                    {
-                        'event': 'stl_origin',
-                        'cache_key': cache_key,
-                        'size_bytes': len(stl_bytes),
-                        'compute_ms': compute_ms,
-                        'shape_type': shape_type,
-                        'plate_type': plate_type,
-                        'action': 'origin-send',
-                    }
-                )
-            )
-        return resp
-
-    except Exception as e:
-        return jsonify({'error': f'Failed to generate STL: {str(e)}'}), 500
+# =============================================================================
+# ACTIVE ENDPOINTS - Essential for client-side generation
+# =============================================================================
 
 
 @app.route('/geometry_spec', methods=['POST'])
-@limiter.limit('5 per minute; 40 per hour; 150 per day')
 def geometry_spec():
     """
     Generate geometry specification (positions, dimensions) for client-side CSG.
     Returns JSON describing primitives without performing boolean operations.
+
+    This is the ONLY server-side endpoint required for STL generation.
+    All heavy computation (CSG, mesh generation, STL export) happens client-side.
+
+    Request body:
+    {
+        "lines": ["⠓⠑⠇⠇⠕", "", "", ""],  // Braille text (4 lines)
+        "original_lines": ["Hello", "", "", ""],  // Optional: original text
+        "plate_type": "positive" | "negative",
+        "grade": "g1" | "g2",
+        "shape_type": "card" | "cylinder",
+        "settings": { /* CardSettings fields */ },
+        "cylinder_params": { /* Optional: for cylinders */ }
+    }
+
+    Response:
+    {
+        "shape_type": "card" | "cylinder",
+        "plate_type": "positive" | "negative",
+        "base_dimensions": { "width": 100, "depth": 80, "height": 2 },
+        "dots": [
+            { "x": 10, "y": 5, "z": 2, "char_index": 0, "dot_index": 0 },
+            ...
+        ],
+        "markers": [ /* character position markers */ ],
+        // ... shape-specific fields
+    }
     """
     try:
         # Validate request content type
@@ -1211,207 +509,7 @@ def geometry_spec():
         return jsonify({'error': 'Failed to generate geometry specification'}), 500
 
 
-@app.route('/generate_counter_plate_stl', methods=['POST'])
-@limiter.limit('3 per minute; 20 per hour; 100 per day')
-def generate_counter_plate_stl():
-    """
-    Generate counter plate with hemispherical recesses as per project brief.
-    Counter plate does NOT depend on text input - it always creates ALL 6 dots per cell.
-    """
-    try:
-        if not request.is_json:
-            return jsonify({'error': 'Content-Type must be application/json'}), 400
-
-        data = request.get_json(force=True)
-        if not data:
-            return jsonify({'error': 'No JSON data provided'}), 400
-
-        settings_data = data.get('settings', {})
-        validate_settings(settings_data)
-        settings = CardSettings(**settings_data)
-
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 400
-    except Exception as e:
-        app.logger.error(f'Validation error in generate_counter_plate_stl: {e}')
-        return jsonify({'error': 'Invalid request data'}), 400
-
-    # Check if boolean backends are available - required for server-side generation
-    from app.geometry.booleans import has_boolean_backend
-
-    if not has_boolean_backend():
-        # On Vercel or other serverless platforms without boolean backends
-        # Client-side CSG should be used instead
-        return jsonify(
-            {
-                'error': 'Server-side STL generation requires a modern browser with JavaScript enabled. '
-                'This server does not have 3D boolean operation backends available. '
-                'Please ensure JavaScript is enabled in your browser to use client-side geometry processing.',
-                'error_code': 'NO_BOOLEAN_BACKEND',
-                'suggestion': 'Use a modern browser (Chrome 80+, Firefox 114+, Safari 15+, or Edge 80+) with JavaScript enabled. '
-                'The application will automatically generate STL files in your browser.',
-            }
-        ), 503
-
-    try:
-        # EARLY BLOB CACHE CHECK (before heavy mesh generation)
-        try:
-            cache_payload_early = {
-                'plate_type': 'negative',
-                'settings': _normalize_settings_for_cache(settings),
-                'shape_type': 'card',
-            }
-            early_cache_key = compute_cache_key(cache_payload_early)
-            # Check Redis mapping (URL may include random suffix set by provider)
-            mapped_url = _blob_url_cache_get(early_cache_key)
-            early_public = mapped_url or _build_blob_public_url(early_cache_key)
-            if early_public and _blob_check_exists(early_public):
-                app.logger.info(f'BLOB CACHE EARLY HIT (counter plate standalone) key={early_cache_key}')
-                resp = redirect(early_public, code=302)
-                resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-                resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
-                resp.headers['X-Cache'] = 'hit-redirect'
-                resp.headers['X-Compute-Time'] = '0'
-                resp.headers['X-Blob-Cache'] = 'hit'
-                resp.headers['X-Blob-Cache-Reason'] = 'early-exists'
-                return resp
-        except Exception:
-            pass
-
-        # Counter plate: choose recess shape
-        # It does NOT depend on text input - always creates ALL 6 dots per cell
-        recess_shape = int(getattr(settings, 'recess_shape', 1))
-
-        # Always use 3D boolean approach; failure results in 500 to surface deployment/runtime issues
-        if recess_shape == 1:
-            logger.debug('Generating counter plate with bowl (spherical cap) recesses (all positions)')
-            mesh = build_counter_plate_bowl(settings)
-        elif recess_shape == 0:
-            logger.debug('Generating counter plate with hemispherical recesses (all positions)')
-            mesh = build_counter_plate_hemispheres(settings)
-        elif recess_shape == 2:
-            logger.debug('Generating counter plate with conical (frustum) recesses (all positions)')
-            mesh = build_counter_plate_cone(settings)
-        else:
-            logger.warning(f'Unknown recess_shape={recess_shape}, defaulting to hemisphere')
-            mesh = build_counter_plate_hemispheres(settings)
-
-        # Rough sanity check: ensure we actually produced a complex mesh (counter plate should be detailed)
-        if len(mesh.faces) < 100:
-            raise RuntimeError('3D boolean approach produced suspiciously few faces (possible failure)')
-
-        # Compute content-addressable cache key from request payload
-        cache_payload = {
-            'plate_type': 'negative',
-            'settings': _normalize_settings_for_cache(settings),
-            'shape_type': 'card',
-        }
-        cache_key = compute_cache_key(cache_payload)
-
-        # If a public base is configured and the blob already exists, redirect
-        mapped = _blob_url_cache_get(cache_key)
-        cached_public = mapped or _build_blob_public_url(cache_key)
-        if cached_public and _blob_check_exists(cached_public):
-            app.logger.info(f'BLOB CACHE HIT (pre-export standalone) key={cache_key}')
-            resp = redirect(cached_public, code=302)
-            resp.headers['X-Blob-Cache-Key'] = cache_key
-            resp.headers['X-Blob-URL'] = cached_public
-            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-            resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
-            resp.headers['X-Cache'] = 'hit-redirect'
-            resp.headers['X-Compute-Time'] = '0'
-            resp.headers['X-Blob-Cache'] = 'hit'
-            resp.headers['X-Blob-Cache-Reason'] = 'pre-export-exists'
-            return resp
-
-        # Compute time around STL export for observability
-        t0 = time.time()
-        # Export to STL
-        stl_io = io.BytesIO()
-        mesh.export(stl_io, file_type='stl')
-        stl_io.seek(0)
-        compute_ms = int((time.time() - t0) * 1000)
-
-        # Compute ETag and conditional 304 handling
-        stl_bytes = stl_io.getvalue()
-        etag = hashlib.sha256(stl_bytes).hexdigest()
-        client_etag = request.headers.get('If-None-Match')
-        if client_etag and client_etag == etag:
-            resp = make_response('', 304)
-            resp.headers['ETag'] = etag
-            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-            resp.headers['X-Blob-Cache'] = 'miss'
-            return resp
-
-        # For counter plates, use simple default name
-        # (Frontend handles sequential counter for downloads)
-        filename = 'Universal_Counter_Plate'
-        # Attempt to persist to Blob store and redirect if successful
-        public_url = _blob_upload(cache_key, stl_bytes)
-        if public_url and _blob_check_exists(public_url):
-            app.logger.info(f'BLOB CACHE MISS -> UPLOAD OK (standalone) key={cache_key}')
-            # Persist mapping so future early checks can redirect immediately
-            _blob_url_cache_set(cache_key, public_url)
-            resp = redirect(public_url, code=302)
-            resp.headers['ETag'] = etag
-            resp.headers['X-Blob-Cache-Key'] = cache_key
-            resp.headers['X-Blob-URL'] = public_url
-            resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-            resp.headers['CDN-Cache-Control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
-            resp.headers['X-Cache'] = 'miss-redirect'
-            resp.headers['X-Compute-Time'] = str(compute_ms)
-            resp.headers['X-Blob-Cache'] = 'miss'
-            resp.headers['X-Blob-Cache-Reason'] = 'uploaded-now'
-            # Structured cost log
-            with contextlib.suppress(Exception):
-                app.logger.info(
-                    json.dumps(
-                        {
-                            'event': 'stl_upload',
-                            'cache_key': cache_key,
-                            'size_bytes': len(stl_bytes),
-                            'compute_ms': compute_ms,
-                            'shape_type': 'card',
-                            'plate_type': 'negative',
-                            'action': 'upload-and-redirect',
-                        }
-                    )
-                )
-            return resp
-
-        # Build response with headers
-        resp = make_response(
-            send_file(io.BytesIO(stl_bytes), mimetype='model/stl', as_attachment=True, download_name=f'{filename}.stl')
-        )
-        resp.headers['ETag'] = etag
-        resp.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=86400'
-        resp.headers['X-Blob-Cache'] = 'miss'
-        resp.headers['X-Blob-Cache-Reason'] = 'no-upload-url'
-        resp.headers['X-Cache'] = 'origin'
-        resp.headers['X-Compute-Time'] = str(compute_ms)
-        # Structured cost log for origin send
-        with contextlib.suppress(Exception):
-            app.logger.info(
-                json.dumps(
-                    {
-                        'event': 'stl_origin',
-                        'cache_key': cache_key,
-                        'size_bytes': len(stl_bytes),
-                        'compute_ms': compute_ms,
-                        'shape_type': 'card',
-                        'plate_type': 'negative',
-                        'action': 'origin-send',
-                    }
-                )
-            )
-        return resp
-
-    except Exception as e:
-        return jsonify({'error': f'Failed to generate counter plate: {str(e)}'}), 500
-
-
+# Run the Flask development server
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
-
-# For Vercel deployment - DISABLED for baseline
-# app.debug = False
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=os.environ.get('FLASK_ENV') == 'development')

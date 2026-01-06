@@ -62,6 +62,9 @@ tmp_spec_direct.py
 .vercel
 .env*.local
 
+# Vercel Runtime Logs (diagnostic exports - do not commit)
+Vercel Runtime Logs/
+
 # OpenSCAD version (work in progress - to be revisited)
 OpenSCAD/
 

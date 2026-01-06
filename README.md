@@ -32,8 +32,13 @@ Open http://localhost:5001 in your browser.
 ### Production Deployment (Vercel)
 
 1. Connect repository to Vercel
-2. Configure required environment variables (see [Environment Variables](docs/security/ENVIRONMENT_VARIABLES.md))
+2. **(Optional)** Configure environment variables:
+   - `SECRET_KEY` — Session key (optional for stateless backend)
+   - `PRODUCTION_DOMAIN` — Your Vercel domain for CORS
+   - See [Environment Variables](docs/security/ENVIRONMENT_VARIABLES.md) for details
 3. Deploy
+
+**Note:** No Redis, Blob storage, or external services required! The application works out of the box on Vercel.
 
 ## Usage
 
@@ -49,17 +54,19 @@ Open http://localhost:5001 in your browser.
 ```
 ├── app/                  # Application package
 │   ├── geometry/         # 3D geometry generation
-│   ├── models.py         # Data models (Pydantic)
+│   ├── geometry_spec.py  # Geometry specification extraction
+│   ├── models.py         # Data models (dataclass/Enum)
 │   ├── validation.py     # Input validation
-│   └── cache.py          # Caching system
+│   └── utils.py          # Utility functions
 ├── docs/                 # Documentation
 │   ├── specifications/   # Technical specifications
 │   ├── deployment/       # Deployment guides
 │   ├── development/      # Development guides
 │   └── security/         # Security documentation
-├── static/               # Frontend assets
+├── public/               # Public HTML files
+├── static/               # Frontend assets (workers, libraries)
 ├── tests/                # Test suite
-├── backend.py            # Flask application
+├── backend.py            # Flask application (minimal backend)
 └── wsgi.py               # Vercel entry point
 ```
 
@@ -67,14 +74,26 @@ See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for detailed architecture.
 
 ## API Endpoints
 
+**Active Endpoints:**
+
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/` | GET | Serve main UI |
 | `/health` | GET | Health check |
 | `/liblouis/tables` | GET | List braille translation tables |
 | `/geometry_spec` | POST | Get geometry specification (for client-side CSG) |
-| `/generate_braille_stl` | POST | Generate embossing plate (server fallback) |
-| `/generate_counter_plate_stl` | POST | Generate counter plate (server fallback) |
+| `/static/<path>` | GET | Serve static files (workers, libraries, tables) |
+
+**Deprecated Endpoints (return 410 Gone):**
+
+| Endpoint | Method | Status |
+|----------|--------|--------|
+| `/generate_braille_stl` | POST | ~~Removed 2026-01-05~~ (use client-side generation) |
+| `/generate_counter_plate_stl` | POST | ~~Removed 2026-01-05~~ (use client-side generation) |
+| `/lookup_stl` | GET | ~~Removed 2026-01-05~~ (cache removed) |
+| `/debug/blob_upload` | GET | ~~Removed 2026-01-05~~ (blob storage removed) |
+
+**Architecture Note:** Server-side STL generation has been removed to eliminate Redis and Blob storage dependencies. All STL generation now happens client-side using Web Workers (BVH-CSG for cards, Manifold WASM for cylinders). See [CODEBASE_AUDIT_AND_RENOVATION_PLAN.md](docs/development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md) for details.
 
 ## Development
 
@@ -109,16 +128,20 @@ The project uses pre-commit hooks for consistent code quality.
 
 ## Technology Stack
 
-**Backend:**
-- Flask — Web framework
-- Trimesh — 3D mesh operations
-- NumPy/SciPy — Numerical computing
-- Shapely — 2D geometry
+**Backend (Minimal):**
+- Flask — Web framework (serves static files and JSON geometry specs)
+- Python Standard Library — All computation uses stdlib only
 
-**Frontend:**
-- Three.js — 3D rendering
-- three-bvh-csg — Client-side boolean operations
+**Frontend (Client-Side Generation):**
+- Three.js — 3D rendering and visualization
+- three-bvh-csg — Client-side CSG for cards
+- Manifold WASM — Client-side CSG for cylinders
 - liblouis — Braille translation (WebAssembly)
+- Web Workers — Background STL generation
+
+**Development Only:**
+- NumPy, Trimesh, Shapely — Optional server-side generation (local dev)
+- Manifold3D — Optional local boolean operations
 
 ## Acknowledgments
 

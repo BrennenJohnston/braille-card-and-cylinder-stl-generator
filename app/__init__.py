@@ -7,8 +7,11 @@ for generating braille cards and cylinders as STL files.
 
 from flask import Flask
 from flask_cors import CORS
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+
+# NOTE (2026-01-05): Flask-Limiter/Redis were removed to keep the Vercel backend
+# lightweight and eliminate the Upstash inactivity failure mode. The production
+# entrypoint is `backend.py`; this factory is retained for potential future
+# refactoring and for local/dev usage.
 
 
 # Planned for future use: Flask application factory pattern
@@ -41,12 +44,6 @@ def create_app(config=None):
     # Setup CORS
     CORS(app)
 
-    # Setup rate limiting
-    limiter = Limiter(app=app, key_func=get_remote_address, default_limits=['100 per hour'], storage_uri='memory://')
-
-    # Store limiter on app for access in routes
-    app.limiter = limiter
-
     return app
 
 
@@ -61,5 +58,5 @@ def init_app():
     """Initialize the default app instance."""
     global app, limiter
     app = create_app()
-    limiter = app.limiter
+    limiter = None
     return app

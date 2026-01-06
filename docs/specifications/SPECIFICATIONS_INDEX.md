@@ -310,7 +310,7 @@ This document serves as the **master index** for all core architecture specifica
 | **Dot Geometry** | BRAILLE_DOT_ADJUSTMENTS_SPECIFICATIONS, BRAILLE_DOT_SHAPE_SPECIFICATIONS | BRAILLE_SPACING_SPECIFICATIONS |
 | **Indicators** | RECESS_INDICATOR_SPECIFICATIONS | — |
 | **Generation** | STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS | CLIENT_SIDE_CSG_DOCUMENTATION |
-| **Caching** | CACHING_SYSTEM_CORE_SPECIFICATIONS | — |
+| **Caching (archived)** | CACHING_SYSTEM_CORE_SPECIFICATIONS | — |
 | **Settings Schema** | SETTINGS_SCHEMA_CORE_SPECIFICATIONS | — |
 
 ### Supporting Code Modules (Documented Within Specs)
@@ -319,7 +319,7 @@ This document serves as the **master index** for all core architecture specifica
 |--------|---------|----------------------|
 | `app/validation.py` | Input validation | LIBLOUIS_TRANSLATION_CORE_SPECIFICATIONS (Section 8) |
 | `app/utils.py` | Utility functions | LIBLOUIS_TRANSLATION_CORE_SPECIFICATIONS (Section 9) |
-| `app/cache.py` | Caching logic | CACHING_SYSTEM_CORE_SPECIFICATIONS |
+| `app/legacy/cache.py` | Archived caching logic (historical reference) | CACHING_SYSTEM_CORE_SPECIFICATIONS |
 | `app/exporters.py` | STL export utilities | STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS |
 | `app/models.py` | Data models | Referenced across multiple specs |
 | `app/geometry/*` | Geometry generation | Referenced across geometry-related specs |
@@ -337,14 +337,14 @@ This document serves as the **master index** for all core architecture specifica
 | `/static/<path>` | GET | (standard static file serving) |
 | `/favicon.ico` | GET | (standard favicon) |
 | `/liblouis/tables` | GET | LIBLOUIS_TRANSLATION_CORE_SPECIFICATIONS (Section 10) |
-| `/generate_braille_stl` | POST | STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS (Section 11) |
+| `/generate_braille_stl` | POST | STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS (DEPRECATED: returns 410 Gone) |
 | `/geometry_spec` | POST | STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS (Section 11) |
-| `/generate_counter_plate_stl` | POST | STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS (Section 11) |
-| `/lookup_stl` | GET | CACHING_SYSTEM_CORE_SPECIFICATIONS (Section 8) |
-| `/debug/blob_upload` | GET | (debug endpoint, not spec'd) |
+| `/generate_counter_plate_stl` | POST | STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS (DEPRECATED: returns 410 Gone) |
+| `/lookup_stl` | GET | CACHING_SYSTEM_CORE_SPECIFICATIONS (ARCHIVED: returns 410 Gone) |
+| `/debug/blob_upload` | GET | (debug endpoint; returns 410 Gone) |
 
-**Coverage:** 9/10 endpoints documented (90%)
-**Note:** Debug endpoints intentionally excluded from core specifications.
+**Coverage:** Active endpoints documented; deprecated endpoints retained for historical reference.
+**Note:** Deprecated endpoints return `410 Gone` as of 2026-01-05.
 
 ---
 

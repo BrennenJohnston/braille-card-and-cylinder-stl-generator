@@ -3,20 +3,49 @@ name = "braille-stl-generator"
 version = "1.2.0"
 description = "Braille card and cylinder STL generator"
 requires-python = ">=3.12"
+
+# MINIMAL PRODUCTION DEPENDENCIES (Vercel deployment)
+# Server only provides lightweight JSON geometry specs
+# Client-side CSG handles all heavy computation
 dependencies = [
     "flask==2.3.3",
-    "trimesh==4.5.3",
-    "numpy==1.26.4",
     "flask-cors==4.0.0",
-    "shapely==2.0.6",
-    "Flask-Limiter==3.8.0",
-    "redis==5.0.7",
-    "requests==2.32.3",
-    "scipy==1.11.4",
-    "mapbox_earcut==1.0.2",
-    "manifold3d==3.0.1",
-    "matplotlib==3.8.0",
 ]
+
+# OPTIONAL DEPENDENCIES FOR LOCAL DEVELOPMENT
+# Heavy dependencies for optional server-side STL generation
+# (Does not work on Vercel, but useful for local dev/testing)
+[project.optional-dependencies]
+dev = [
+    # Geometry processing (server-side generation)
+    "numpy==1.26.4",
+    "trimesh==4.5.3",
+    "shapely==2.0.6",
+    "mapbox_earcut==1.0.2",
+    "scipy==1.11.4",        # For mesh.fix_normals()
+    "matplotlib==3.8.0",    # For character markers
+    "manifold3d==3.0.1",    # Boolean operations
+
+    # Development tools
+    "pytest==7.4.3",
+    "pytest-cov==4.1.0",
+    "ruff==0.1.6",
+    "mypy==1.7.1",
+    "pre-commit==3.5.0",
+]
+
+test = [
+    "pytest==7.4.3",
+    "pytest-cov==4.1.0",
+]
+
+# REMOVED FROM PRODUCTION (2026-01-05):
+# - Flask-Limiter (rate limiting - Vercel provides DDoS protection)
+# - redis (caused Upstash archived DB failures)
+# - requests (only used for Blob upload)
+# - Heavy geometry deps (moved to [dev] extras)
+#
+# See: docs/development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md
 
 [tool.ruff]
 line-length = 120

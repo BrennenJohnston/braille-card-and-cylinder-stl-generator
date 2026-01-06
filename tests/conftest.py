@@ -20,8 +20,6 @@ def app():
     """
     import backend
 
-    # Disable rate limiting for tests
-    backend.limiter.enabled = False
     return backend.app
 
 

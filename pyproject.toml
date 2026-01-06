@@ -21,7 +21,7 @@ dev = [
     "numpy==2.4.0",
     "trimesh==4.5.3",
     "shapely==2.0.6",
-    "mapbox_earcut==1.0.2",
+    "mapbox_earcut==2.0.0",
     "scipy==1.11.4",        # For mesh.fix_normals()
     "matplotlib==3.8.0",    # For character markers
     "manifold3d==3.0.1",    # Boolean operations

@@ -47,7 +47,20 @@ jobs:
     - name: Start test server
       run: |
         python backend.py &
-        sleep 5
+        echo "Waiting for server to start..."
+        for i in {1..30}; do
+          if curl -s http://localhost:5001/ > /dev/null 2>&1; then
+            echo "Server is ready!"
+            break
+          fi
+          echo "Attempt $i: Server not ready yet, waiting..."
+          sleep 2
+        done
+        # Final check
+        if ! curl -s http://localhost:5001/ > /dev/null 2>&1; then
+          echo "ERROR: Server failed to start after 60 seconds"
+          exit 1
+        fi
       env:
         FLASK_ENV: development
 

@@ -7,6 +7,16 @@
 
 ---
 
+## ⚠️ Architecture Update Notice (2026-01-05)
+
+This audit was performed against the **pre-2026 architecture** that included **Redis/Blob caching** and **server-side STL generation**.
+
+As of **2026-01-05**, those systems were removed and the backend is now a **minimal Flask app** that primarily serves **`/geometry_spec`** for client-side generation. Some findings and dependency references below are therefore **historical** and may no longer apply.
+
+For current configuration, see:
+- `docs/security/ENVIRONMENT_VARIABLES.md`
+- `docs/development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md`
+
 ## Executive Summary
 
 This comprehensive security audit examined the Braille STL Generator application for potential vulnerabilities across all layers: backend (Python/Flask), frontend (HTML/JavaScript), infrastructure (Vercel deployment), dependencies, and data handling. The application demonstrates **strong security practices overall** with multiple defense layers, though several areas require attention before production release.

@@ -26,13 +26,6 @@ Deployment guides and production notes:
 - **Deployment Checklists**: Pre-deployment verification steps
 - **Runtime Fixes**: Solutions to production issues
 
-### [progress/](progress/)
-Development progress tracking:
-- **Phase Summaries**: Major development phases (0, 1.1, 1.2, 4, 6)
-- **Refactoring Notes**: Code refactoring sessions and progress
-- **Session Summaries**: Detailed development session notes
-- **Migration Checkpoints**: Key migration milestones
-
 ### [security/](security/)
 Security documentation and audit reports:
 - **Security Audit**: Complete security audit findings and fixes
@@ -61,10 +54,10 @@ Security documentation and audit reports:
 ## 📝 Documentation Standards
 
 - **Specifications**: Detailed technical requirements and implementation details
-- **Progress Reports**: Historical development tracking and decision rationale
 - **Deployment Guides**: Production deployment and troubleshooting
 - **Development Guides**: Implementation guides for specific features
+- **Security Docs**: Security audit findings and configuration
 
 ---
 
-*Last updated: December 2024*
+*Last updated: January 2026*

@@ -18,6 +18,38 @@ This document provides **comprehensive, in-depth specifications** for all UI int
 
 ---
 
+## ⚠️ CRITICAL: HTML File Location Warning
+
+**There are TWO `index.html` files in this project. You MUST edit the correct one:**
+
+| File | Purpose | Served by Flask? |
+|------|---------|------------------|
+| **`public/index.html`** | **PRODUCTION FILE — Edit this one!** | ✅ YES |
+| `templates/index.html` | Legacy/backup file — NOT served | ❌ NO |
+
+**Why this matters:**
+- The Flask backend (`backend.py`) serves `public/index.html` via `send_from_directory('public', 'index.html')`
+- Changes to `templates/index.html` will have **NO EFFECT** on the running application
+- Both files may contain similar content, which can cause confusion
+
+**Before making UI changes:**
+1. Always edit `public/index.html`
+2. Verify the correct file by checking `backend.py` routes if uncertain
+3. Hard refresh the browser (Ctrl+Shift+R) after changes to clear cache
+
+**Route Configuration (from `backend.py`):**
+```python
+@app.route('/')
+def index():
+    return send_from_directory('public', 'index.html')
+
+@app.route('/index.html')
+def index_explicit():
+    return send_from_directory('public', 'index.html')
+```
+
+---
+
 ## Table of Contents
 
 1. [Theme System](#1-theme-system)
@@ -45,11 +77,14 @@ This document provides **comprehensive, in-depth specifications** for all UI int
    - 3.6 [Dynamic Theme Updates](#36-dynamic-theme-updates)
    - 3.7 [STL Preview Label](#37-stl-preview-label)
    - 3.8 [Preview Display Settings (Brightness and Contrast)](#38-preview-display-settings-brightness-and-contrast)
+   - 3.9 [WebGL Context Recovery](#39-webgl-context-recovery)
 4. [Accessibility Features](#4-accessibility-features)
    - 4.1 [Skip Link Navigation](#41-skip-link-navigation)
    - 4.2 [Focus Indicators](#42-focus-indicators)
    - 4.3 [Screen Reader Support](#43-screen-reader-support)
    - 4.4 [Touch and Mobile Accessibility](#44-touch-and-mobile-accessibility)
+   - 4.5 [Toggle Button ARIA Requirements](#45-toggle-button-aria-requirements)
+   - 4.6 [Reduced Motion Support](#46-reduced-motion-support)
 5. [Scrollbar Customization](#5-scrollbar-customization)
    - 5.1 [Form Section Scrollbar](#51-form-section-scrollbar)
    - 5.2 [Global Page Scrollbar](#52-global-page-scrollbar)
@@ -60,6 +95,7 @@ This document provides **comprehensive, in-depth specifications** for all UI int
 7. [Layout Responsiveness](#7-layout-responsiveness)
    - 7.1 [Desktop Two-Column Layout](#71-desktop-two-column-layout)
    - 7.2 [Mobile Stacked Layout](#72-mobile-stacked-layout)
+   - 7.3 [iOS Safe Area Handling](#73-ios-safe-area-handling)
 8. [Design Rationale](#8-design-rationale)
 
 ---
@@ -901,14 +937,14 @@ The label serves to:
 
 User-adjustable brightness and contrast controls allow customization of how the 3D preview appears. These settings affect **only the visual preview** and do not modify the exported STL file.
 
-**UI Pattern:** Click-through toggle buttons (similar to Theme toggle) that cycle through levels on each click.
+**UI Pattern:** Non-cycling **stepper controls** (`−` / `+`) with live value displays. Buttons disable at bounds (levels 1 and 5) and reuse the font-size control styling for consistent keyboard and screen reader behavior.
 
 #### Control Overview
 
-| Setting | Purpose | Range | Default | Cycle Pattern |
+| Setting | Purpose | Range | Default | Step Behavior |
 |---------|---------|-------|---------|---------------|
-| **Brightness** | Adjusts overall light intensity | 1-5 | 3 (Normal) | 1 → 2 → 3 → 4 → 5 → 1... |
-| **Contrast** | Adjusts ambient vs directional light ratio | 1-5 | 3 (Normal) | 1 → 2 → 3 → 4 → 5 → 1... |
+| **Brightness** | Adjusts overall light intensity | 1-5 | 3 (Normal) | Non-cycling; +/- buttons disable at min/max |
+| **Contrast** | Adjusts ambient vs directional light ratio | 1-5 | 3 (Normal) | Non-cycling; +/- buttons disable at min/max |
 
 #### Brightness Levels
 
@@ -930,33 +966,39 @@ User-adjustable brightness and contrast controls allow customization of how the 
 | 4 | High | 0.8× | 1.2× | More defined shadows |
 | 5 | Very High | 0.6× | 1.4× | Dramatic lighting with strong shadows |
 
-#### HTML Structure
+#### HTML Structure (Stepper)
 
 ```html
-<!-- Preview Display Controls - Brightness and Contrast as click-through buttons -->
-<div class="preview-display-controls" role="group" aria-labelledby="preview-controls-legend">
-    <span id="preview-controls-legend" class="preview-controls-title">Preview Display Settings</span>
-
-    <!-- Brightness Click-Through Button -->
+<!-- Preview Display Controls - Brightness and Contrast as +/- steppers -->
+<div class="preview-display-controls" role="group" aria-label="Preview display settings">
     <div class="preview-control-group">
-        <span class="preview-control-label">Brightness:</span>
-        <button type="button" id="brightness-toggle" class="preview-toggle-btn"
-                aria-label="Current brightness: Normal (3). Click to cycle through brightness levels"
-                title="Click to cycle brightness: Very Dim → Dim → Normal → Bright → Very Bright">
-            <span class="preview-toggle-icon" aria-hidden="true">☀</span>
-            <span class="preview-toggle-text">Normal (3)</span>
-        </button>
+        <span class="preview-control-label" id="brightness-label">Brightness:</span>
+        <div class="preview-stepper" role="group" aria-labelledby="brightness-label brightness-value">
+            <button type="button" id="brightness-decrease" class="font-size-btn preview-stepper-btn"
+                    aria-label="Decrease brightness" aria-controls="brightness-value">
+                <span aria-hidden="true">−</span>
+            </button>
+            <span class="font-size-display preview-stepper-value" id="brightness-value" role="status" aria-live="polite">Normal</span>
+            <button type="button" id="brightness-increase" class="font-size-btn preview-stepper-btn"
+                    aria-label="Increase brightness" aria-controls="brightness-value">
+                <span aria-hidden="true">+</span>
+            </button>
+        </div>
     </div>
 
-    <!-- Contrast Click-Through Button -->
     <div class="preview-control-group">
-        <span class="preview-control-label">Contrast:</span>
-        <button type="button" id="contrast-toggle" class="preview-toggle-btn"
-                aria-label="Current contrast: Normal (3). Click to cycle through contrast levels"
-                title="Click to cycle contrast: Very Low → Low → Normal → High → Very High">
-            <span class="preview-toggle-icon" aria-hidden="true">◐</span>
-            <span class="preview-toggle-text">Normal (3)</span>
-        </button>
+        <span class="preview-control-label" id="contrast-label">Contrast:</span>
+        <div class="preview-stepper" role="group" aria-labelledby="contrast-label contrast-value">
+            <button type="button" id="contrast-decrease" class="font-size-btn preview-stepper-btn"
+                    aria-label="Decrease contrast" aria-controls="contrast-value">
+                <span aria-hidden="true">−</span>
+            </button>
+            <span class="font-size-display preview-stepper-value" id="contrast-value" role="status" aria-live="polite">Normal</span>
+            <button type="button" id="contrast-increase" class="font-size-btn preview-stepper-btn"
+                    aria-label="Increase contrast" aria-controls="contrast-value">
+                <span aria-hidden="true">+</span>
+            </button>
+        </div>
     </div>
 </div>
 ```
@@ -964,20 +1006,10 @@ User-adjustable brightness and contrast controls allow customization of how the 
 #### JavaScript Implementation
 
 ```javascript
-// Preview display settings state
-let previewBrightnessLevel = 3; // Default: Normal (1-5 scale)
-let previewContrastLevel = 3;   // Default: Normal (1-5 scale)
+let previewBrightnessLevel = 3;
+let previewContrastLevel = 3;
 
-// Brightness multipliers for each level (1-5)
-const BRIGHTNESS_MULTIPLIERS = {
-    1: 0.6,   // Very dim
-    2: 0.8,   // Dim
-    3: 1.0,   // Normal (default)
-    4: 1.2,   // Bright
-    5: 1.4    // Very bright
-};
-
-// Contrast settings: ambient/directional ratios and material adjustments
+const BRIGHTNESS_MULTIPLIERS = { 1: 0.6, 2: 0.8, 3: 1.0, 4: 1.2, 5: 1.4 };
 const CONTRAST_SETTINGS = {
     1: { ambientRatio: 1.4, directionalRatio: 0.6, specularIntensity: 0.3, shininessOffset: -80 },
     2: { ambientRatio: 1.2, directionalRatio: 0.8, specularIntensity: 0.6, shininessOffset: -40 },
@@ -986,38 +1018,79 @@ const CONTRAST_SETTINGS = {
     5: { ambientRatio: 0.6, directionalRatio: 1.4, specularIntensity: 1.6, shininessOffset: 80 }
 };
 
-// Level name mappings
-const brightnessLevelNames = {
-    1: 'Very Dim', 2: 'Dim', 3: 'Normal', 4: 'Bright', 5: 'Very Bright'
-};
-const contrastLevelNames = {
-    1: 'Very Low', 2: 'Low', 3: 'Normal', 4: 'High', 5: 'Very High'
-};
+const brightnessLevelNames = { 1: 'Very Dim', 2: 'Dim', 3: 'Normal', 4: 'Bright', 5: 'Very Bright' };
+const contrastLevelNames   = { 1: 'Very Low', 2: 'Low', 3: 'Normal', 4: 'High', 5: 'Very High' };
 
-// Update button display after level change
-function updateBrightnessButtonDisplay() {
-    const btn = document.getElementById('brightness-toggle');
-    const textSpan = btn.querySelector('.preview-toggle-text');
-    const levelName = brightnessLevelNames[previewBrightnessLevel];
-    textSpan.textContent = `${levelName} (${previewBrightnessLevel})`;
-    btn.setAttribute('aria-label',
-        `Current brightness: ${levelName} (${previewBrightnessLevel}). Click to cycle through brightness levels`);
+const clampPreviewLevel = level => Math.min(5, Math.max(1, parseInt(level, 10) || 3));
+
+function updatePreviewDisplaySettings() {
+    // Applies brightness/contrast multipliers to lights and mesh material.
+    // See implementation in templates/public index scripts for full logic.
 }
 
-// Click-through toggle: cycles 1 → 2 → 3 → 4 → 5 → 1 ...
-document.getElementById('brightness-toggle').addEventListener('click', () => {
-    const nextLevel = (previewBrightnessLevel % 5) + 1;
-    applyPreviewBrightness(nextLevel);
-    updateBrightnessButtonDisplay();
+function updateBrightnessStepper() {
+    const name = brightnessLevelNames[previewBrightnessLevel];
+    const percent = Math.round((BRIGHTNESS_MULTIPLIERS[previewBrightnessLevel] || 1) * 100);
+    const value = document.getElementById('brightness-value');
+    value.textContent = `${name}`;
+    value.setAttribute('title', `${percent}% of base lighting`);
+
+    const dec = document.getElementById('brightness-decrease');
+    const inc = document.getElementById('brightness-increase');
+    dec.disabled = previewBrightnessLevel <= 1;
+    inc.disabled = previewBrightnessLevel >= 5;
+    dec.setAttribute('aria-label', `Decrease brightness (current ${name})`);
+    inc.setAttribute('aria-label', `Increase brightness (current ${name})`);
+}
+
+function applyPreviewBrightness(level) {
+    previewBrightnessLevel = clampPreviewLevel(level);
+    updatePreviewDisplaySettings();
+    updateBrightnessStepper();
+}
+
+function updateContrastStepper() {
+    const name = contrastLevelNames[previewContrastLevel];
+    const ratios = CONTRAST_SETTINGS[previewContrastLevel];
+    const value = document.getElementById('contrast-value');
+    value.textContent = name;
+    value.setAttribute('title', `${ratios.ambientRatio}× ambient / ${ratios.directionalRatio}× directional`);
+
+    const dec = document.getElementById('contrast-decrease');
+    const inc = document.getElementById('contrast-increase');
+    dec.disabled = previewContrastLevel <= 1;
+    inc.disabled = previewContrastLevel >= 5;
+    dec.setAttribute('aria-label', `Decrease contrast (current ${name})`);
+    inc.setAttribute('aria-label', `Increase contrast (current ${name})`);
+}
+
+function applyPreviewContrast(level) {
+    previewContrastLevel = clampPreviewLevel(level);
+    updatePreviewDisplaySettings();
+    updateContrastStepper();
+}
+
+document.getElementById('brightness-decrease').addEventListener('click', () => {
+    if (previewBrightnessLevel > 1) applyPreviewBrightness(previewBrightnessLevel - 1);
+});
+document.getElementById('brightness-increase').addEventListener('click', () => {
+    if (previewBrightnessLevel < 5) applyPreviewBrightness(previewBrightnessLevel + 1);
+});
+document.getElementById('contrast-decrease').addEventListener('click', () => {
+    if (previewContrastLevel > 1) applyPreviewContrast(previewContrastLevel - 1);
+});
+document.getElementById('contrast-increase').addEventListener('click', () => {
+    if (previewContrastLevel < 5) applyPreviewContrast(previewContrastLevel + 1);
 });
 
-// Similar pattern for contrast toggle...
+updateBrightnessStepper();
+updateContrastStepper();
 ```
 
 #### CSS Styling
 
 ```css
-/* Preview Display Controls Container - Click-through button style */
+/* Preview Display Controls Container - Stepper style */
 .preview-display-controls {
     width: 100%;
     display: flex;
@@ -1033,6 +1106,19 @@ document.getElementById('brightness-toggle').addEventListener('click', () => {
     flex-wrap: wrap;
 }
 
+.preview-control-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+    flex-wrap: wrap;
+}
+
+.preview-control-label {
+    font-size: 0.85em;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
 .preview-controls-title {
     font-weight: 600;
     font-size: 0.9em;
@@ -1040,46 +1126,52 @@ document.getElementById('brightness-toggle').addEventListener('click', () => {
     white-space: nowrap;
 }
 
-/* Preview Toggle Button - Click-through style like Theme toggle */
-.preview-toggle-btn {
-    background: var(--bg-primary);
-    border: 2px solid var(--border-primary);
-    border-radius: 8px;
-    padding: 0.4em 0.8em;
-    font-size: 0.85em;
-    font-weight: 600;
-    color: var(--text-primary);
-    cursor: pointer;
+.preview-stepper {
     display: flex;
     align-items: center;
     gap: 0.4em;
-    transition: all 0.2s;
-    box-shadow: 0 2px 6px var(--shadow-light);
-    white-space: nowrap;
+    flex-wrap: wrap;
 }
 
-.preview-toggle-btn:hover {
-    background: var(--bg-secondary);
-    transform: translateY(-1px);
-    box-shadow: 0 3px 10px var(--shadow-medium);
+.preview-stepper .font-size-btn {
+    min-width: 2.5em;
+    padding: 0.4em 0.65em;
 }
 
-.preview-toggle-btn:focus {
-    outline: 3px solid var(--border-focus);
-    outline-offset: 2px;
+.preview-stepper-value {
+    min-width: 9.5em;
+    text-align: center;
 }
 
-/* High contrast mode - Preview toggle buttons */
-[data-theme="high-contrast"] .preview-toggle-btn {
-    background: #1a1a1a !important;
-    color: #ffff00 !important;
-    border: 2px solid #ffff00 !important;
+[data-theme="high-contrast"] .preview-controls-title,
+[data-theme="high-contrast"] .preview-control-label {
+    color: #02fe05 !important;
 }
 
-[data-theme="high-contrast"] .preview-toggle-btn:hover {
-    background: #ffff00 !important;
-    color: #000000 !important;
-    border: 2px solid #000000 !important;
+@media (max-width: 768px) {
+    .preview-display-controls {
+        padding: 0.5em;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .preview-control-group {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .preview-stepper {
+        width: 100%;
+    }
+
+    .preview-stepper .font-size-btn {
+        flex: 1;
+        min-width: unset;
+    }
+
+    .preview-stepper-value {
+        flex: 1 1 auto;
+    }
 }
 ```
 
@@ -1104,11 +1196,11 @@ if (typeof updatePreviewDisplaySettings === 'function') {
 
 #### Accessibility Features
 
-- **ARIA Labels**: Dynamic labels showing current level and next action (e.g., "Current brightness: Normal (3). Click to cycle through brightness levels")
-- **Screen Reader Announcements**: Level changes are announced (e.g., "Preview brightness set to bright")
-- **Keyboard Navigation**: Full keyboard support via native button behavior (Enter/Space to activate)
+- **ARIA Labels**: Dynamic labels on +/- buttons reflect current level and action (e.g., "Decrease brightness (current Normal)")
+- **Live Value Announcements**: Value displays use `role="status"` + `aria-live="polite"` to announce changes without duplicate overlays
+- **Keyboard Navigation**: Native buttons with disabled states at bounds; Enter/Space activates, Shift+Tab/Tab respects grouping
 - **Focus Indicators**: Clear 3px focus outlines with offset for visibility
-- **High Contrast Mode**: Yellow borders and text for visibility, inverted on hover
+- **High Contrast Mode**: Labels inherit high-contrast colors; buttons reuse font-size control styling that already meets WCAG AA
 
 #### Non-Persistence Policy
 
@@ -1116,6 +1208,111 @@ Brightness and contrast settings are **not persisted** across sessions. This is 
 - Settings reset to defaults (level 3) on page load
 - Provides consistent starting experience for all users
 - Users with specific needs can quickly adjust as needed
+
+### 3.9 WebGL Context Recovery
+
+The application implements robust WebGL context loss and recovery handling to ensure stability, especially on Safari/iOS where context loss may occur when tabs are backgrounded or when the system is under memory pressure.
+
+#### Feature Detection
+
+Before initializing the 3D viewer, the application checks for WebGL support:
+
+```javascript
+function checkWebGLSupport() {
+    try {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        return !!context;
+    } catch (e) {
+        return false;
+    }
+}
+```
+
+If WebGL is not available, a user-friendly error message is displayed:
+
+```html
+<div class="webgl-error" role="alert">
+    <strong>WebGL Not Available</strong>
+    <p>Your browser does not support WebGL, which is required for the 3D preview.
+    You can still generate and download STL files.</p>
+    <p>Try updating your browser or enabling hardware acceleration in your browser settings.</p>
+</div>
+```
+
+#### Context Loss Handling
+
+Event listeners are attached to the WebGL canvas to handle context loss and recovery:
+
+```javascript
+renderer.domElement.addEventListener('webglcontextlost', (event) => {
+    event.preventDefault(); // Allow recovery
+    console.warn('WebGL context lost');
+
+    // Show user-friendly message
+    const msg = document.createElement('div');
+    msg.id = 'webgl-recovery-msg';
+    msg.className = 'webgl-recovery';
+    msg.setAttribute('role', 'alert');
+    msg.innerHTML = `
+        <strong>3D Preview Paused</strong>
+        <p>The 3D viewer was interrupted. It will automatically recover.</p>
+    `;
+    viewer.appendChild(msg);
+}, false);
+
+renderer.domElement.addEventListener('webglcontextrestored', () => {
+    console.log('WebGL context restored');
+
+    // Remove recovery message
+    const msg = document.getElementById('webgl-recovery-msg');
+    if (msg) msg.remove();
+
+    // Re-initialize scene
+    reinitialize3DScene();
+
+    // Reload last STL if available
+    if (lastGeneratedSTLUrl) {
+        // Reload the STL mesh
+    }
+}, false);
+```
+
+#### Recovery CSS
+
+```css
+.webgl-error,
+.webgl-recovery {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-primary);
+    border-radius: 8px;
+    padding: 1.5em;
+    text-align: center;
+    max-width: 80%;
+    z-index: 20;
+}
+
+[data-theme="high-contrast"] .webgl-error,
+[data-theme="high-contrast"] .webgl-recovery {
+    background: #1a1a1a;
+    border-color: #ffff00;
+    color: #02fe05;
+}
+```
+
+#### Browser Compatibility
+
+| Browser | Context Loss Behavior | Recovery Support |
+|---------|----------------------|------------------|
+| Chrome | Rare (GPU reset) | ✅ Automatic |
+| Firefox | Rare | ✅ Automatic |
+| Safari Desktop | Occasional (tab backgrounding) | ✅ Automatic |
+| Safari iOS | Common (M3/M4 chips, memory pressure) | ✅ Automatic |
+| Edge | Rare (GPU reset) | ✅ Automatic |
 
 ---
 
@@ -1225,6 +1422,165 @@ button {
     user-select: none;
 }
 ```
+
+### 4.5 Toggle Button ARIA Requirements
+
+All toggle buttons (Info dropdown, Expert Mode toggle, and submenu toggles) implement proper ARIA attributes to communicate their state to screen readers.
+
+#### Required ARIA Attributes
+
+```html
+<!-- Info Toggle -->
+<button type="button" id="info-toggle" class="info-toggle-btn"
+        aria-expanded="false" aria-controls="info-content">
+    <span id="info-toggle-text">Directions:</span>
+    <span id="info-toggle-icon" aria-hidden="true">▼</span>
+</button>
+<div id="info-content" class="info-content" style="display: none;">
+    <!-- Content -->
+</div>
+
+<!-- Expert Mode Toggle -->
+<button type="button" id="expert-toggle" class="expert-toggle-btn"
+        aria-expanded="false" aria-controls="expert-settings">
+    <span id="expert-toggle-text">Show Expert Mode</span>
+    <span id="expert-toggle-icon" aria-hidden="true">▼</span>
+</button>
+<div id="expert-settings" class="expert-settings" style="display: none;">
+    <!-- Content -->
+</div>
+```
+
+#### Key ARIA Requirements
+
+| Attribute | Purpose | Values |
+|-----------|---------|--------|
+| `aria-expanded` | Indicates whether controlled element is expanded | `"true"` or `"false"` |
+| `aria-controls` | Links button to the element it controls | ID of controlled element |
+| `aria-hidden="true"` | Hides decorative icons from screen readers | Applied to icon spans |
+
+#### JavaScript State Management
+
+Toggle buttons must update `aria-expanded` dynamically when clicked:
+
+```javascript
+expertToggleBtn.addEventListener('click', () => {
+    const isVisible = expertSettings.style.display !== 'none';
+    expertSettings.style.display = isVisible ? 'none' : 'block';
+    expertToggleText.textContent = isVisible ? 'Show Expert Mode' : 'Hide Expert Mode';
+    expertToggleIcon.textContent = isVisible ? '▼' : '▲';
+    expertToggleBtn.classList.toggle('active', !isVisible);
+
+    // REQUIRED: Update ARIA state
+    expertToggleBtn.setAttribute('aria-expanded', String(!isVisible));
+
+    // Optional: Focus management when opening
+    if (!isVisible) {
+        const firstFocusable = expertSettings.querySelector(
+            'input, select, button, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (firstFocusable) {
+            setTimeout(() => firstFocusable.focus(), 100);
+        }
+    }
+});
+```
+
+#### Screen Reader Announcements
+
+When `aria-expanded` changes, screen readers automatically announce the new state:
+- "expanded" when `aria-expanded="true"`
+- "collapsed" when `aria-expanded="false"`
+
+### 4.6 Reduced Motion Support
+
+The application respects the user's operating system preference for reduced motion (`prefers-reduced-motion` media query) in compliance with WCAG 2.1 Success Criterion 2.3.3.
+
+#### CSS Implementation
+
+All animations and transitions are disabled when reduced motion is preferred:
+
+```css
+/* Reduced Motion Support - WCAG 2.1 Requirement */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    /* Specifically disable theme transition animations */
+    body,
+    .container,
+    button,
+    input,
+    select,
+    .preview-section,
+    .form-section {
+        transition: none !important;
+    }
+}
+```
+
+#### JavaScript Implementation
+
+The 3D preview animation loop also respects reduced motion preferences:
+
+```javascript
+// Check reduced motion preference
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+let animationEnabled = !prefersReducedMotion.matches;
+
+function animate() {
+    if (animationEnabled) {
+        requestAnimationFrame(animate);
+    }
+    controls && controls.update();
+    render();
+}
+
+function updateRenderingMode() {
+    animationEnabled = !prefersReducedMotion.matches;
+    if (!animationEnabled && controls) {
+        // Stop continuous animation loop, render on demand only
+        controls.addEventListener('change', () => {
+            render();
+        });
+    } else if (animationEnabled) {
+        // Resume continuous animation
+        animate();
+    }
+}
+
+prefersReducedMotion.addEventListener('change', updateRenderingMode);
+updateRenderingMode();
+```
+
+#### Affected Elements
+
+| Element Type | Normal Behavior | Reduced Motion Behavior |
+|--------------|----------------|-------------------------|
+| Theme transitions | 0.3s fade | Instant |
+| Button hover effects | Animated | Instant |
+| 3D preview rotation | Continuous animation loop | Render on user interaction only |
+| Scroll behavior | Smooth scrolling | Instant jump |
+
+#### How to Test
+
+**On Windows:**
+1. Open Settings → Accessibility → Visual effects
+2. Toggle "Animation effects" off
+
+**On macOS:**
+1. System Settings → Accessibility → Display
+2. Toggle "Reduce motion" on
+
+**On iOS:**
+1. Settings → Accessibility → Motion
+2. Toggle "Reduce Motion" on
 
 ---
 
@@ -1426,6 +1782,99 @@ See Section 1.3 for complete high contrast button specifications.
 }
 ```
 
+### 7.3 iOS Safe Area Handling
+
+The application implements comprehensive iOS safe area support to prevent content from being hidden under device notches, the Dynamic Island, or the iOS address bar.
+
+#### Viewport Meta Tag
+
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+```
+
+The `viewport-fit=cover` attribute allows the app to extend into safe area insets.
+
+#### CSS Safe Area Insets
+
+```css
+:root {
+    /* iOS Safe Area Support */
+    --vh: 1vh; /* Dynamic viewport height fallback */
+}
+
+body {
+    /* Prevent content from being hidden under notch/Dynamic Island */
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+}
+
+.form-section {
+    /* Ensure bottom buttons are accessible (not hidden behind iOS toolbar) */
+    padding-bottom: calc(1em + env(safe-area-inset-bottom));
+}
+```
+
+#### Dynamic Viewport Height Support
+
+iOS Safari's address bar can collapse/expand, changing the viewport height. The app handles this with both modern (`dvh`) and fallback (JavaScript) approaches:
+
+```css
+/* Dynamic viewport height for full-height layouts */
+@supports (height: 100dvh) {
+    .content-area {
+        min-height: 100dvh;
+    }
+}
+
+@supports not (height: 100dvh) {
+    .content-area {
+        min-height: calc(var(--vh, 1vh) * 100);
+    }
+}
+```
+
+#### JavaScript Viewport Height Handler
+
+For browsers that don't support `dvh`, JavaScript dynamically updates the `--vh` custom property:
+
+```javascript
+// Dynamic viewport height fix for iOS Safari (address bar handling)
+function setVH() {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+
+// Set on load and resize
+setVH();
+window.addEventListener('resize', setVH);
+window.addEventListener('orientationchange', setVH);
+
+// Also handle visualViewport if available (more accurate on mobile)
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', setVH);
+}
+```
+
+#### Safe Area Support Matrix
+
+| Device Feature | CSS Solution | Fallback |
+|----------------|-------------|----------|
+| iPhone notch | `env(safe-area-inset-top)` | None needed (graceful) |
+| Dynamic Island | `env(safe-area-inset-top)` | None needed (graceful) |
+| Bottom gesture bar | `env(safe-area-inset-bottom)` | None needed (graceful) |
+| Collapsing address bar | `100dvh` + JavaScript `--vh` | JavaScript only |
+
+#### Testing on iOS
+
+**Manual Testing Steps:**
+1. Open app on iPhone with notch (iPhone X+) or Dynamic Island (iPhone 14 Pro+)
+2. Verify top content is not hidden under notch/island
+3. Verify bottom buttons are fully accessible (not cut off)
+4. Scroll to bottom of form section and verify button row is visible
+5. Rotate to landscape and verify all content remains accessible
+6. Scroll up/down to collapse/expand address bar and verify layout adapts
+
 ---
 
 ## 8. Design Rationale
@@ -1527,6 +1976,9 @@ Low vision users benefit from enhanced depth perception:
 | 1.3 | 2025-12-08 | Added Section 3.7 (STL Preview Label) to clarify the preview panel's purpose; Added Section 3.8 (Preview Display Settings) documenting new brightness and contrast radio button controls for 3D preview customization |
 | 1.4 | 2025-12-08 | Fixed Expert Toggle button active state contrast ratio: Changed background from `var(--border-focus)` to darker blues (`#1e4976` for light mode, `#1e5a8a` for dark mode) to meet WCAG AA 4.5:1 contrast requirement with white text |
 | 1.5 | 2025-12-08 | **UI Enhancement:** (1) Moved STL Preview Label to top of preview panel as overlay with z-index for visibility; (2) Changed Brightness and Contrast controls from radio buttons to click-through toggle buttons (like Theme toggle) that cycle through levels 1→2→3→4→5→1 on each click |
+| 1.6 | 2026-01-05 | Replaced brightness/contrast click-through toggles with +/- stepper controls, added live value display, and refreshed accessibility guidance |
+| 1.7 | 2026-01-05 | Added critical warning section about HTML file locations — must edit `public/index.html` (served by Flask), not `templates/index.html` (legacy/not served) |
+| 1.8 | 2026-01-05 | **Cross-Browser UI Hardening:** Added Section 3.9 (WebGL Context Recovery), Section 4.5 (Toggle Button ARIA Requirements), Section 4.6 (Reduced Motion Support), and Section 7.3 (iOS Safe Area Handling) to document new accessibility and cross-browser compatibility features |
 
 ---
 
@@ -1534,7 +1986,7 @@ Low vision users benefit from enhanced depth perception:
 
 ### Verification Summary
 
-A comprehensive cross-check was performed between this specification document and the actual implementation in `templates/index.html`. The following items were verified:
+A comprehensive cross-check was performed between this specification document and the actual implementation in `public/index.html`. The following items were verified:
 
 ### ✅ Theme System (Section 1)
 

@@ -1,12 +1,12 @@
 # Codebase Audit and Renovation Plan
 
 **Created:** 2026-01-05
-**Updated:** 2026-01-05 (Validated and consolidated with Cursor plan)
+**Updated:** 2026-01-05
 **Purpose:** Comprehensive audit of the Braille STL Generator architecture and renovation plan to remove external dependencies and create a robust, low-maintenance deployment.
 
-**Status:** ✅ **VALIDATED** - Ready for implementation
+**Status:** ✅ **COMPLETED** - Implementation finished
 
-**Consolidated Plan:** See `.cursor/plans/remove_upstash_dependencies_99900762.plan.md` for the validated, actionable implementation plan with detailed line numbers and specific code changes.
+> **Note (2026-01-05):** This plan has been fully implemented. All Redis/Blob storage dependencies have been removed, deprecated endpoints return 410 Gone, and the `app/cache.py` file has been deleted. The application now uses a minimal backend + client-side generation architecture with zero external service dependencies.
 
 ---
 
@@ -369,9 +369,9 @@ Transform the application from a Flask+Redis deployment to a **static web applic
    - Remove `/lookup_stl` endpoint
    - Remove `/debug/blob_upload` endpoint
 
-2. **`app/cache.py`** — Delete or archive:
-   - This entire module is for Redis/Blob integration
-   - Can be deleted or moved to `app/legacy/`
+2. **`app/cache.py`** — ✅ DELETED:
+   - This entire module was for Redis/Blob integration
+   - Has been removed from the codebase
 
 3. **`requirements.txt`** — Simplify dependencies:
    ```
@@ -640,12 +640,12 @@ CORS: PRODUCTION_DOMAIN environment variable is NOT set!
 
 ## Appendix B: Files to Archive/Delete
 
-These files can be archived to `app/legacy/` or deleted:
+> **Note:** These files have been deleted as part of the cleanup.
 
-| File | Reason |
-|------|--------|
-| `app/cache.py` | Redis/Blob integration no longer needed |
-| `Vercel Runtime Logs/` | Diagnostic files, not needed in repo |
+| File | Status | Reason |
+|------|--------|--------|
+| `app/cache.py` | ✅ Deleted | Redis/Blob integration no longer needed |
+| `Vercel Runtime Logs/` | ✅ Deleted | Diagnostic files, not needed in repo |
 
 These endpoints can be removed from `backend.py`:
 
@@ -723,7 +723,7 @@ This audit has been **validated and consolidated** with the Cursor implementatio
    - Testing checklist created
    - Risk assessment completed
 
-**For implementation details, see:** `.cursor/plans/remove_upstash_dependencies_99900762.plan.md`
+**Implementation details:** See `backend.py` (deprecated endpoints), `requirements.txt` (minimal Vercel deps), and `requirements-dev.txt` (local dev/test deps).
 
 ### Final Validation Corrections (2026-01-05)
 

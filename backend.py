@@ -322,7 +322,6 @@ def list_liblouis_tables():
 #
 # For implementation details, see:
 # - docs/development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md
-# - .cursor/plans/remove_upstash_dependencies_99900762.plan.md
 # =============================================================================
 
 

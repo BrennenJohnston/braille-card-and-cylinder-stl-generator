@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -11,6 +11,24 @@
     <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
     <link rel="alternate icon" href="/favicon.ico" sizes="any">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+    <!-- Unsupported browser fallback - runs only if ES6 modules are not supported -->
+    <script nomodule>
+        document.addEventListener('DOMContentLoaded', function() {
+            var banner = document.createElement('div');
+            banner.id = 'unsupported-browser-banner';
+            banner.setAttribute('role', 'alert');
+            banner.innerHTML = [
+                '<div style="background:#fee2e2;border:2px solid #b91c1c;padding:1.5em;margin:1em;border-radius:8px;text-align:center;font-family:sans-serif;">',
+                '<strong style="color:#b91c1c;font-size:1.2em;">Browser Not Supported</strong>',
+                '<p style="margin:0.5em 0;">This application requires a modern browser with ES6 module support.</p>',
+                '<p style="margin:0.5em 0;">Please upgrade to the latest version of Chrome, Firefox, Safari, or Edge.</p>',
+                '</div>'
+            ].join('');
+            document.body.insertBefore(banner, document.body.firstChild);
+        });
+    </script>
+
     <style>
         /* WCAG 1.4.12 Text Spacing Support */
         * {
@@ -28,6 +46,9 @@
 
         /* Theme CSS Variables */
         :root {
+            /* iOS Safe Area Support */
+            --vh: 1vh; /* Dynamic viewport height fallback */
+
             /* Light mode colors */
             --bg-gradient-start: #e0e7ff;
             --bg-gradient-end: #f6f8fa;
@@ -260,6 +281,29 @@
         * {
             transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
             box-sizing: border-box; /* Ensure all elements include padding/borders in width */
+        }
+
+        /* Reduced Motion Support - WCAG 2.1 Requirement */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+
+            /* Specifically disable theme transition animations */
+            body,
+            .container,
+            button,
+            input,
+            select,
+            .preview-section,
+            .form-section {
+                transition: none !important;
+            }
         }
 
         /* Skip Link for Keyboard Navigation */
@@ -496,6 +540,10 @@
             align-items: flex-start; /* Align to top to prevent centering issues */
             justify-content: center;
             padding: 0; /* Remove padding to extend to browser edges */
+            /* iOS Safe Area Support - prevent content from being hidden under notch/Dynamic Island */
+            padding-top: env(safe-area-inset-top);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
             color: var(--text-primary);
             -webkit-text-size-adjust: 100%;
             -webkit-tap-highlight-color: transparent;
@@ -616,6 +664,19 @@
             overflow: visible; /* Allow content to be visible */
         }
 
+        /* Dynamic viewport height for full-height layouts (iOS Safari address bar handling) */
+        @supports (height: 100dvh) {
+            .content-area {
+                min-height: 100dvh;
+            }
+        }
+
+        @supports not (height: 100dvh) {
+            .content-area {
+                min-height: calc(var(--vh, 1vh) * 100);
+            }
+        }
+
         /* Left Column - Preview Section (45% width) */
         .preview-section {
             flex: 0 0 45%;
@@ -647,6 +708,8 @@
             -webkit-overflow-scrolling: touch;
             overflow-x: hidden; /* Prevent horizontal overflow */
             scrollbar-width: auto; /* Firefox standard scrollbar */
+            /* iOS Safe Area Support - ensure bottom buttons are accessible */
+            padding-bottom: calc(1em + env(safe-area-inset-bottom));
             scrollbar-color: #3182ce #e2e8f0; /* Firefox: blue thumb on light grey track */
             /* Distinct background for scrollable area */
             background: var(--bg-secondary);
@@ -881,6 +944,47 @@
             box-shadow: 0 8px 32px var(--shadow-medium);
         }
 
+        /* WebGL Error and Recovery Messages */
+        .webgl-error,
+        .webgl-recovery {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-primary);
+            border-radius: 8px;
+            padding: 1.5em;
+            text-align: center;
+            max-width: 80%;
+            z-index: 20;
+        }
+
+        .webgl-error strong,
+        .webgl-recovery strong {
+            color: var(--error-text, #b91c1c);
+            display: block;
+            margin-bottom: 0.5em;
+            font-size: 1.1em;
+        }
+
+        .webgl-error p,
+        .webgl-recovery p {
+            margin: 0.5em 0;
+        }
+
+        [data-theme="high-contrast"] .webgl-error,
+        [data-theme="high-contrast"] .webgl-recovery {
+            background: #1a1a1a;
+            border-color: #ffff00;
+            color: #02fe05;
+        }
+
+        [data-theme="high-contrast"] .webgl-error strong,
+        [data-theme="high-contrast"] .webgl-recovery strong {
+            color: #ffff00;
+        }
+
         /* Viewer Container - wraps viewer and overlay label */
         .viewer-container {
             position: relative;
@@ -920,112 +1024,102 @@
             color: #fdfe00;
         }
 
-        /* Preview Display Controls Container - Click-through button style */
+        /* Preview Display Controls Container - Bottom overlay inside viewer */
         .preview-display-controls {
-            width: 100%;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 15;
             display: flex;
             flex-direction: row;
             align-items: center;
-            justify-content: flex-start;
-            gap: 1em;
-            padding: 0.75em;
-            margin-top: 0.5em;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-primary);
-            border-radius: 8px;
-            flex-wrap: wrap;
-        }
-
-        .preview-controls-title {
-            font-weight: 600;
-            font-size: 0.9em;
-            color: var(--text-primary);
-            white-space: nowrap;
+            justify-content: center;
+            gap: 0.6em;
+            padding: 0.35em 0.5em;
+            background: rgba(var(--bg-secondary-rgb, 30, 41, 59), 0.85);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border-top: 1px solid var(--border-primary);
+            border-radius: 0 0 16px 16px;
+            flex-wrap: nowrap;
         }
 
         /* Preview Control Group (for each setting) */
         .preview-control-group {
             display: flex;
             align-items: center;
-            gap: 0.5em;
+            gap: 0.35em;
         }
 
         .preview-control-label {
-            font-size: 0.85em;
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-
-        /* Preview Toggle Button - Click-through style like Theme toggle */
-        .preview-toggle-btn {
-            background: var(--bg-primary);
-            border: 2px solid var(--border-primary);
-            border-radius: 8px;
-            padding: 0.4em 0.8em;
-            font-size: 0.85em;
+            font-size: 0.7em;
             font-weight: 600;
             color: var(--text-primary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 0.4em;
-            transition: all 0.2s;
-            box-shadow: 0 2px 6px var(--shadow-light);
             white-space: nowrap;
         }
 
-        .preview-toggle-btn:hover {
-            background: var(--bg-secondary);
-            transform: translateY(-1px);
-            box-shadow: 0 3px 10px var(--shadow-medium);
+        .preview-stepper {
+            display: flex;
+            align-items: center;
+            gap: 0.2em;
         }
 
-        .preview-toggle-btn:focus {
-            outline: 3px solid var(--border-focus);
-            outline-offset: 2px;
+        .preview-stepper-btn {
+            min-width: 1.6em !important;
+            min-height: 1.6em !important;
+            padding: 0.2em 0.35em !important;
+            font-size: 0.8em !important;
+            border-radius: 4px !important;
         }
 
-        .preview-toggle-icon {
-            font-size: 1.1em;
+        .preview-stepper-value {
+            min-width: 5.5em;
+            padding: 0.15em 0.3em !important;
+            font-size: 0.7em !important;
+            text-align: center;
+            border-radius: 4px !important;
         }
 
-        .preview-toggle-text {
-            font-size: 0.9em;
+        [data-theme="high-contrast"] .preview-display-controls {
+            background: rgba(0, 0, 0, 0.92) !important;
         }
 
-        /* High contrast mode - Preview toggle buttons */
-        [data-theme="high-contrast"] .preview-toggle-btn {
-            background: #1a1a1a !important;
-            color: #ffff00 !important;
-            border: 2px solid #ffff00 !important;
-        }
-
-        [data-theme="high-contrast"] .preview-toggle-btn:hover {
-            background: #ffff00 !important;
-            color: #000000 !important;
-            border: 2px solid #000000 !important;
-        }
-
-        [data-theme="high-contrast"] .preview-controls-title,
         [data-theme="high-contrast"] .preview-control-label {
             color: #02fe05 !important;
+        }
+
+        [data-theme="light"] .preview-display-controls {
+            background: rgba(248, 250, 252, 0.9);
         }
 
         /* Mobile optimization for preview controls */
         @media (max-width: 768px) {
             .preview-display-controls {
-                padding: 0.5em;
+                padding: 0.3em 0.4em;
+                gap: 0.4em;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .preview-control-group {
+                gap: 0.25em;
+            }
+
+            .preview-stepper-value {
+                min-width: 4.5em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .preview-display-controls {
                 flex-direction: column;
-                align-items: flex-start;
+                gap: 0.25em;
+                padding: 0.25em;
             }
 
             .preview-control-group {
                 width: 100%;
-                flex-wrap: wrap;
-            }
-
-            .preview-toggle-btn {
-                flex: 1;
                 justify-content: center;
             }
         }
@@ -2081,41 +2175,40 @@
                             </span>
                         </div>
                     </div>
+                    <!-- Preview Display Controls - Bottom overlay inside viewer -->
+                    <div class="preview-display-controls" role="group" aria-label="Preview display settings">
+                        <div class="preview-control-group">
+                            <span class="preview-control-label" id="brightness-label">Brightness:</span>
+                            <div class="preview-stepper" role="group" aria-labelledby="brightness-label brightness-value">
+                                <button type="button" id="brightness-decrease" class="font-size-btn preview-stepper-btn"
+                                        aria-label="Decrease brightness" aria-controls="brightness-value">
+                                    <span aria-hidden="true">−</span>
+                                </button>
+                                <span class="font-size-display preview-stepper-value" id="brightness-value" role="status" aria-live="polite">Normal</span>
+                                <button type="button" id="brightness-increase" class="font-size-btn preview-stepper-btn"
+                                        aria-label="Increase brightness" aria-controls="brightness-value">
+                                    <span aria-hidden="true">+</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="preview-control-group">
+                            <span class="preview-control-label" id="contrast-label">Contrast:</span>
+                            <div class="preview-stepper" role="group" aria-labelledby="contrast-label contrast-value">
+                                <button type="button" id="contrast-decrease" class="font-size-btn preview-stepper-btn"
+                                        aria-label="Decrease contrast" aria-controls="contrast-value">
+                                    <span aria-hidden="true">−</span>
+                                </button>
+                                <span class="font-size-display preview-stepper-value" id="contrast-value" role="status" aria-live="polite">Normal</span>
+                                <button type="button" id="contrast-increase" class="font-size-btn preview-stepper-btn"
+                                        aria-label="Increase contrast" aria-controls="contrast-value">
+                                    <span aria-hidden="true">+</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div id="viewer-instructions" class="sr-only">
                     To interact with the 3D preview: Use mouse drag to rotate, mouse wheel to zoom. Touch users: one finger to rotate, pinch to zoom. Keyboard users: the visual preview is supplementary; generated STL files contain the same geometry.
-                </div>
-
-                <!-- Preview Display Controls - Brightness and Contrast as click-through buttons -->
-                <div class="preview-display-controls" role="group" aria-labelledby="preview-controls-legend">
-                    <span id="preview-controls-legend" class="preview-controls-title">Preview Display Settings</span>
-
-                    <!-- Brightness Click-Through Button -->
-                    <div class="preview-control-group">
-                        <span class="preview-control-label">Brightness:</span>
-                        <button type="button" id="brightness-toggle" class="preview-toggle-btn"
-                                aria-label="Current brightness: Normal (3). Click to cycle through brightness levels"
-                                title="Click to cycle brightness: Very Dim → Dim → Normal → Bright → Very Bright">
-                            <span class="preview-toggle-icon" aria-hidden="true">☀</span>
-                            <span class="preview-toggle-text">Normal (3)</span>
-                        </button>
-                    </div>
-
-                    <!-- Contrast Click-Through Button -->
-                    <div class="preview-control-group">
-                        <span class="preview-control-label">Contrast:</span>
-                        <button type="button" id="contrast-toggle" class="preview-toggle-btn"
-                                aria-label="Current contrast: Normal (3). Click to cycle through contrast levels"
-                                title="Click to cycle contrast: Very Low → Low → Normal → High → Very High">
-                            <span class="preview-toggle-icon" aria-hidden="true">◐</span>
-                            <span class="preview-toggle-text">Normal (3)</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Action Button moved here -->
-                <div class="button-row" style="margin-top: 1em;">
-                    <button type="button" id="action-btn" class="generate-state" aria-label="Generate STL file from entered text" data-state="generate">Generate STL</button>
                 </div>
             </div>
 
@@ -2129,9 +2222,10 @@
                 </div>
 
                 <div class="info-dropdown">
-                    <button type="button" id="info-toggle" class="info-toggle-btn">
+                    <button type="button" id="info-toggle" class="info-toggle-btn"
+                            aria-expanded="false" aria-controls="info-content">
                         <span id="info-toggle-text">Directions:</span>
-                        <span id="info-toggle-icon">▼</span>
+                        <span id="info-toggle-icon" aria-hidden="true">▼</span>
                     </button>
                     <div id="info-content" class="info-content" style="display: none;">
                         <p><strong>Directions: Making a braille business card (beginner‑friendly)</strong></p>
@@ -2266,6 +2360,25 @@
                             <div id="dynamic-line-inputs">
                                 <!-- Line inputs will be dynamically generated here based on grid_rows value -->
                             </div>
+                            <!-- Capitalized Letters toggle -->
+                            <div class="line-input-mode-toggle" style="margin-top: 0.8em; display: flex; align-items: center; gap: 1em;" role="radiogroup" aria-labelledby="caps-toggle-label">
+                                <span id="caps-toggle-label" class="line-label" style="margin: 0;">Capitalized Letters:</span>
+                                <label style="display: inline-flex; align-items: center; gap: 0.4em;">
+                                    <input type="radio" name="capitalize_letters" value="enabled" id="capitalize_enabled" aria-describedby="caps-enabled-desc">
+                                    Enabled
+                                </label>
+                                <label style="display: inline-flex; align-items: center; gap: 0.4em;">
+                                    <input type="radio" name="capitalize_letters" value="disabled" id="capitalize_disabled" checked aria-describedby="caps-disabled-desc">
+                                    Disabled <span style="font-weight: normal; opacity: 0.85;">(recommended)</span>
+                                </label>
+                                <span id="caps-enabled-desc" class="sr-only">Preserve capital letters in braille translation, using indicator cells</span>
+                                <span id="caps-disabled-desc" class="sr-only">Convert text to lowercase before translation to save space on braille cells. Recommended for names and business cards.</span>
+                            </div>
+                            <!-- Capitalization warning (shown when caps disabled + uppercase detected) -->
+                            <div id="caps-warning" class="grade-note" role="status" aria-live="polite"
+                                 style="margin-top: 0.6em; color: #059669; display: none;">
+                                <strong>Note:</strong> Capital letters in your text will not be translated because "Capitalized Letters" is disabled. Enable it above if you need capitals in braille.
+                            </div>
                         </fieldset>
                     </div>
                     <!-- Language Selection -->
@@ -2333,6 +2446,12 @@
                             </div>
                         </fieldset>
                     </div>
+
+                    <!-- Generate STL Button -->
+                    <div class="button-row" style="margin-top: 1em; margin-bottom: 1em;">
+                        <button type="button" id="action-btn" class="generate-state" aria-label="Generate STL file from entered text" data-state="generate">Generate STL</button>
+                    </div>
+
                     <!-- Reset Settings menu box -->
                     <div class="grade-selection">
                         <fieldset>
@@ -2348,9 +2467,10 @@
 
 
                     <div class="expert-mode-toggle">
-                        <button type="button" id="expert-toggle" class="expert-toggle-btn">
+                        <button type="button" id="expert-toggle" class="expert-toggle-btn"
+                                aria-expanded="false" aria-controls="expert-settings">
                             <span id="expert-toggle-text">Show Expert Mode</span>
-                            <span id="expert-toggle-icon">▼</span>
+                            <span id="expert-toggle-icon" aria-hidden="true">▼</span>
                         </button>
                     </div>
 
@@ -2662,6 +2782,86 @@
         import * as THREE from '/static/three.module.js';
         import { STLLoader } from '/static/STLLoader.js';
         import { OrbitControls } from '/static/OrbitControls.js';
+
+        // Dynamic viewport height fix for iOS Safari (address bar handling)
+        function setVH() {
+            const vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+
+        // Set on load and resize
+        setVH();
+        window.addEventListener('resize', setVH);
+        window.addEventListener('orientationchange', setVH);
+
+        // Also handle visualViewport if available (more accurate on mobile)
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', setVH);
+        }
+
+        // Runtime capability checks
+        function checkBrowserCapabilities() {
+            const issues = [];
+
+            // Check Web Workers
+            if (typeof Worker === 'undefined') {
+                issues.push('Web Workers are not supported');
+            }
+
+            // Check WebAssembly
+            if (typeof WebAssembly === 'undefined') {
+                issues.push('WebAssembly is not supported');
+            }
+
+            // Check WebGL (will be checked again in init3D, but useful to warn early)
+            try {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (!context) {
+                    issues.push('WebGL is not supported');
+                }
+            } catch (e) {
+                issues.push('WebGL is not supported');
+            }
+
+            // Check Fetch API
+            if (typeof fetch === 'undefined') {
+                issues.push('Fetch API is not supported');
+            }
+
+            if (issues.length > 0) {
+                showCapabilityWarning(issues);
+                return false;
+            }
+            return true;
+        }
+
+        function showCapabilityWarning(issues) {
+            const errorDiv = document.getElementById('error-message');
+            if (errorDiv) {
+                errorDiv.innerHTML = `
+                    <strong>Limited Browser Support</strong>
+                    <p>Your browser is missing features required for full functionality:</p>
+                    <ul>${issues.map(i => '<li>' + i + '</li>').join('')}</ul>
+                    <p>Some features may not work. Please update your browser for the best experience.</p>
+                `;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        // Call early in initialization (after DOM is ready)
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                if (!checkBrowserCapabilities()) {
+                    console.warn('Browser capability check failed');
+                }
+            });
+        } else {
+            if (!checkBrowserCapabilities()) {
+                console.warn('Browser capability check failed');
+            }
+        }
+
         async function loadLanguageOptions() {
             const select = document.getElementById('language-table');
             if (!select) return;
@@ -3109,20 +3309,7 @@
         // ═══════════════════════════════════════════════════════════════════════════════
         // These controls adjust the visual appearance of the 3D STL preview only.
         // They do not affect the exported STL file or print results.
-        //
-        // Brightness: Adjusts the overall light intensity in the scene
-        //   - Level 1: Very dim (60% of base)
-        //   - Level 2: Dim (80% of base)
-        //   - Level 3: Normal (100% - default)
-        //   - Level 4: Bright (120% of base)
-        //   - Level 5: Very bright (140% of base)
-        //
-        // Contrast: Adjusts the ratio between ambient and directional lighting
-        //   - Level 1: Very low contrast (flat lighting)
-        //   - Level 2: Low contrast
-        //   - Level 3: Normal contrast (default)
-        //   - Level 4: High contrast
-        //   - Level 5: Very high contrast (dramatic lighting)
+        // Stepper buttons adjust the level without cycling past the min/max.
         // ═══════════════════════════════════════════════════════════════════════════════
 
         // Preview display settings state
@@ -3147,6 +3334,47 @@
             4: { ambientRatio: 0.8, directionalRatio: 1.2, specularIntensity: 1.3, shininessOffset: 40 },   // High contrast
             5: { ambientRatio: 0.6, directionalRatio: 1.4, specularIntensity: 1.6, shininessOffset: 80 }    // Very high contrast
         };
+
+        // Brightness and Contrast level names
+        const brightnessLevelNames = {
+            1: 'Very Dim',
+            2: 'Dim',
+            3: 'Normal',
+            4: 'Bright',
+            5: 'Very Bright'
+        };
+        const contrastLevelNames = {
+            1: 'Very Low',
+            2: 'Low',
+            3: 'Normal',
+            4: 'High',
+            5: 'Very High'
+        };
+
+        function clampPreviewLevel(level) {
+            return Math.min(5, Math.max(1, parseInt(level, 10) || 3));
+        }
+
+        function getBrightnessMeta(level) {
+            const clamped = clampPreviewLevel(level);
+            const multiplier = BRIGHTNESS_MULTIPLIERS[clamped] || 1.0;
+            return {
+                level: clamped,
+                name: brightnessLevelNames[clamped] || 'Normal',
+                percent: Math.round(multiplier * 100)
+            };
+        }
+
+        function getContrastMeta(level) {
+            const clamped = clampPreviewLevel(level);
+            const settings = CONTRAST_SETTINGS[clamped] || CONTRAST_SETTINGS[3];
+            const ratioText = `${settings.ambientRatio.toFixed(1)}× ambient / ${settings.directionalRatio.toFixed(1)}× directional`;
+            return {
+                level: clamped,
+                name: contrastLevelNames[clamped] || 'Normal',
+                ratioText
+            };
+        }
 
         // Function to update the 3D preview with current brightness and contrast settings
         function updatePreviewDisplaySettings() {
@@ -3235,95 +3463,99 @@
 
         // Apply brightness setting
         function applyPreviewBrightness(level) {
-            previewBrightnessLevel = parseInt(level, 10) || 3;
+            previewBrightnessLevel = clampPreviewLevel(level);
             updatePreviewDisplaySettings();
-
-            // Announce change to screen readers
-            const levelNames = { 1: 'very dim', 2: 'dim', 3: 'normal', 4: 'bright', 5: 'very bright' };
-            const announcement = document.createElement('div');
-            announcement.className = 'sr-only';
-            announcement.setAttribute('role', 'status');
-            announcement.setAttribute('aria-live', 'polite');
-            announcement.textContent = `Preview brightness set to ${levelNames[previewBrightnessLevel] || 'normal'}`;
-            document.body.appendChild(announcement);
-            setTimeout(() => announcement.remove(), 1000);
+            updateBrightnessStepper();
         }
 
         // Apply contrast setting
         function applyPreviewContrast(level) {
-            previewContrastLevel = parseInt(level, 10) || 3;
+            previewContrastLevel = clampPreviewLevel(level);
             updatePreviewDisplaySettings();
-
-            // Announce change to screen readers
-            const levelNames = { 1: 'very low', 2: 'low', 3: 'normal', 4: 'high', 5: 'very high' };
-            const announcement = document.createElement('div');
-            announcement.className = 'sr-only';
-            announcement.setAttribute('role', 'status');
-            announcement.setAttribute('aria-live', 'polite');
-            announcement.textContent = `Preview contrast set to ${levelNames[previewContrastLevel] || 'normal'}`;
-            document.body.appendChild(announcement);
-            setTimeout(() => announcement.remove(), 1000);
+            updateContrastStepper();
         }
 
-        // Brightness and Contrast level names and icons
-        const brightnessLevelNames = {
-            1: 'Very Dim',
-            2: 'Dim',
-            3: 'Normal',
-            4: 'Bright',
-            5: 'Very Bright'
-        };
-        const contrastLevelNames = {
-            1: 'Very Low',
-            2: 'Low',
-            3: 'Normal',
-            4: 'High',
-            5: 'Very High'
-        };
+        function updateBrightnessStepper() {
+            const meta = getBrightnessMeta(previewBrightnessLevel);
+            const valueEl = document.getElementById('brightness-value');
+            if (valueEl) {
+                valueEl.textContent = `${meta.name}`;
+                valueEl.setAttribute('title', `${meta.percent}% of base lighting (${meta.name.toLowerCase()})`);
+            }
 
-        // Function to update brightness button display
-        function updateBrightnessButtonDisplay() {
-            const btn = document.getElementById('brightness-toggle');
-            if (!btn) return;
-
-            const textSpan = btn.querySelector('.preview-toggle-text');
-            const levelName = brightnessLevelNames[previewBrightnessLevel] || 'Normal';
-
-            textSpan.textContent = `${levelName} (${previewBrightnessLevel})`;
-            btn.setAttribute('aria-label', `Current brightness: ${levelName} (${previewBrightnessLevel}). Click to cycle through brightness levels`);
+            const decreaseBtn = document.getElementById('brightness-decrease');
+            const increaseBtn = document.getElementById('brightness-increase');
+            if (decreaseBtn) {
+                decreaseBtn.disabled = meta.level <= 1;
+                decreaseBtn.setAttribute('aria-label', `Decrease brightness (current ${meta.name})`);
+            }
+            if (increaseBtn) {
+                increaseBtn.disabled = meta.level >= 5;
+                increaseBtn.setAttribute('aria-label', `Increase brightness (current ${meta.name})`);
+            }
         }
 
-        // Function to update contrast button display
-        function updateContrastButtonDisplay() {
-            const btn = document.getElementById('contrast-toggle');
-            if (!btn) return;
+        function updateContrastStepper() {
+            const meta = getContrastMeta(previewContrastLevel);
+            const valueEl = document.getElementById('contrast-value');
+            if (valueEl) {
+                valueEl.textContent = `${meta.name}`;
+                valueEl.setAttribute('title', meta.ratioText);
+            }
 
-            const textSpan = btn.querySelector('.preview-toggle-text');
-            const levelName = contrastLevelNames[previewContrastLevel] || 'Normal';
-
-            textSpan.textContent = `${levelName} (${previewContrastLevel})`;
-            btn.setAttribute('aria-label', `Current contrast: ${levelName} (${previewContrastLevel}). Click to cycle through contrast levels`);
+            const decreaseBtn = document.getElementById('contrast-decrease');
+            const increaseBtn = document.getElementById('contrast-increase');
+            if (decreaseBtn) {
+                decreaseBtn.disabled = meta.level <= 1;
+                decreaseBtn.setAttribute('aria-label', `Decrease contrast (current ${meta.name})`);
+            }
+            if (increaseBtn) {
+                increaseBtn.disabled = meta.level >= 5;
+                increaseBtn.setAttribute('aria-label', `Increase contrast (current ${meta.name})`);
+            }
         }
 
-        // Click-through brightness toggle: cycles 1 → 2 → 3 → 4 → 5 → 1 ...
-        document.getElementById('brightness-toggle').addEventListener('click', () => {
-            // Cycle to next level (1-5, wrapping around)
-            const nextLevel = (previewBrightnessLevel % 5) + 1;
-            applyPreviewBrightness(nextLevel);
-            updateBrightnessButtonDisplay();
-        });
+        const brightnessDecreaseBtn = document.getElementById('brightness-decrease');
+        if (brightnessDecreaseBtn) {
+            brightnessDecreaseBtn.addEventListener('click', () => {
+                if (previewBrightnessLevel > 1) {
+                    applyPreviewBrightness(previewBrightnessLevel - 1);
+                }
+            });
+        }
 
-        // Click-through contrast toggle: cycles 1 → 2 → 3 → 4 → 5 → 1 ...
-        document.getElementById('contrast-toggle').addEventListener('click', () => {
-            // Cycle to next level (1-5, wrapping around)
-            const nextLevel = (previewContrastLevel % 5) + 1;
-            applyPreviewContrast(nextLevel);
-            updateContrastButtonDisplay();
-        });
+        const brightnessIncreaseBtn = document.getElementById('brightness-increase');
+        if (brightnessIncreaseBtn) {
+            brightnessIncreaseBtn.addEventListener('click', () => {
+                if (previewBrightnessLevel < 5) {
+                    applyPreviewBrightness(previewBrightnessLevel + 1);
+                }
+            });
+        }
 
-        // Initialize button displays
-        updateBrightnessButtonDisplay();
-        updateContrastButtonDisplay();
+        const contrastDecreaseBtn = document.getElementById('contrast-decrease');
+        if (contrastDecreaseBtn) {
+            contrastDecreaseBtn.addEventListener('click', () => {
+                if (previewContrastLevel > 1) {
+                    applyPreviewContrast(previewContrastLevel - 1);
+                }
+            });
+        }
+
+        const contrastIncreaseBtn = document.getElementById('contrast-increase');
+        if (contrastIncreaseBtn) {
+            contrastIncreaseBtn.addEventListener('click', () => {
+                if (previewContrastLevel < 5) {
+                    applyPreviewContrast(previewContrastLevel + 1);
+                }
+            });
+        }
+
+        // Initialize displays and clamp defaults
+        previewBrightnessLevel = clampPreviewLevel(previewBrightnessLevel);
+        previewContrastLevel = clampPreviewLevel(previewContrastLevel);
+        updateBrightnessStepper();
+        updateContrastStepper();
 
         // Font size adjustment functionality
         const fontSizes = [75, 87.5, 100, 112.5, 125, 150, 175, 200];
@@ -3455,7 +3687,10 @@
                 if (input) {
                     // Remove existing listener to prevent duplicates
                     input.removeEventListener('input', resetToGenerateState);
-                    input.addEventListener('input', resetToGenerateState);
+                    input.addEventListener('input', () => {
+                        resetToGenerateState();
+                        updateCapsWarning();
+                    });
                 }
             }
 
@@ -3888,6 +4123,32 @@
             }
         }
 
+        // Helper function to apply capitalization setting to text before translation
+        function applyCapitalizationSetting(text) {
+            const capsEnabled = document.querySelector('input[name="capitalize_letters"]:checked')?.value === 'enabled';
+            return capsEnabled ? text : text.toLowerCase();
+        }
+
+        // Update the capitalization warning visibility based on toggle state and input content
+        function updateCapsWarning() {
+            const capsDisabled = document.querySelector('input[name="capitalize_letters"]:checked')?.value !== 'enabled';
+            const placementMode = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
+
+            let hasUppercase = false;
+            if (placementMode === 'manual') {
+                const lines = getDynamicLineValues();
+                hasUppercase = lines.some(line => line !== line.toLowerCase());
+            } else {
+                const autoTextValue = document.getElementById('auto-text')?.value || '';
+                hasUppercase = autoTextValue !== autoTextValue.toLowerCase();
+            }
+
+            const warning = document.getElementById('caps-warning');
+            if (warning) {
+                warning.style.display = (capsDisabled && hasUppercase) ? 'block' : 'none';
+            }
+        }
+
         // Initialize dynamic line inputs and listeners (force default 4 on first load)
         const gridRowsEl = document.getElementById('grid_rows');
         if (gridRowsEl) gridRowsEl.value = '4';
@@ -3971,12 +4232,12 @@
             }
 
             async function translateLen(text) {
-                const b = await translateWithLiblouis(text, 'g2', tableName);
+                const b = await translateWithLiblouis(applyCapitalizationSetting(text), 'g2', tableName);
                 return b.length;
             }
 
             async function translateText(text) {
-                return await translateWithLiblouis(text, 'g2', tableName);
+                return await translateWithLiblouis(applyCapitalizationSetting(text), 'g2', tableName);
             }
 
             let remaining = normalizeSpaces(src);
@@ -4106,6 +4367,7 @@
 
         placementRadios.forEach(r => r.addEventListener('change', () => {
             updatePlacementUI();
+            updateCapsWarning();
         }));
 
         // Update UI on relevant changes to show/compute warnings
@@ -4129,7 +4391,7 @@
             const src = (autoText?.value || '').trim();
             if (!src) return;
             try {
-                const braille = await translateWithLiblouis(src, 'g2', tableName);
+                const braille = await translateWithLiblouis(applyCapitalizationSetting(src), 'g2', tableName);
                 const totalCellsNeeded = braille.length;
                 const totalCellsAvailable = getTotalCellsAvailable();
                 if (totalCellsNeeded > totalCellsAvailable) {
@@ -4146,6 +4408,7 @@
             autoText.addEventListener('input', () => {
                 resetToGenerateState();
                 computeAutoOverflow();
+                updateCapsWarning();
             });
         }
 
@@ -4168,6 +4431,7 @@
                 'braille_prefs_combined_shape',
                 'braille_prefs_placement_mode',
                 'braille_prefs_indicator_shapes',
+                'braille_prefs_capitalize_letters',
                 'braille_prefs_expert_visible',
                 'braille_prefs_grid_columns',
                 'braille_prefs_grid_rows',
@@ -4220,6 +4484,12 @@
             const savedIndicator = readPersisted('braille_prefs_indicator_shapes');
             if (savedIndicator === '1' || savedIndicator === '0') {
                 const radio = document.querySelector(`input[name="indicator_shapes"][value="${savedIndicator}"]`);
+                if (radio) radio.checked = true;
+            }
+            // Capitalized Letters setting
+            const savedCaps = readPersisted('braille_prefs_capitalize_letters');
+            if (savedCaps === 'enabled' || savedCaps === 'disabled') {
+                const radio = document.querySelector(`input[name="capitalize_letters"][value="${savedCaps}"]`);
                 if (radio) radio.checked = true;
             }
             // Shape type
@@ -4340,6 +4610,18 @@
             // Indicator shapes (on/off)
             document.querySelectorAll('input[name="indicator_shapes"]').forEach(r => {
                 r.addEventListener('change', () => persistValue('braille_prefs_indicator_shapes', document.querySelector('input[name="indicator_shapes"]:checked').value));
+            });
+            // Capitalized Letters toggle
+            document.querySelectorAll('input[name="capitalize_letters"]').forEach(radio => {
+                radio.addEventListener('change', () => {
+                    persistValue('braille_prefs_capitalize_letters', document.querySelector('input[name="capitalize_letters"]:checked').value);
+                    resetToGenerateState();
+                    updateCapsWarning();
+                    // Recalculate overflow if in auto mode (caps affect cell count)
+                    if (document.querySelector('input[name="placement_mode"]:checked')?.value === 'auto') {
+                        computeAutoOverflow();
+                    }
+                });
             });
             // Shape type
             document.querySelectorAll('input[name="shape_type"]').forEach(r => {
@@ -4735,6 +5017,17 @@
             expertToggleText.textContent = isVisible ? 'Show Expert Mode' : 'Hide Expert Mode';
             expertToggleIcon.textContent = isVisible ? '▼' : '▲';
             expertToggleBtn.classList.toggle('active', !isVisible);
+            expertToggleBtn.setAttribute('aria-expanded', String(!isVisible));
+
+            // Optional: Focus management when opening
+            if (!isVisible) {
+                const firstFocusable = expertSettings.querySelector(
+                    'input, select, button, textarea, [tabindex]:not([tabindex="-1"])'
+                );
+                if (firstFocusable) {
+                    setTimeout(() => firstFocusable.focus(), 100);
+                }
+            }
         });
 
         // Dot shape radio buttons
@@ -4749,9 +5042,10 @@
         infoToggleBtn.addEventListener('click', () => {
             const isVisible = infoContent.style.display !== 'none';
             infoContent.style.display = isVisible ? 'none' : 'block';
-                                        infoToggleText.textContent = isVisible ? 'More Info' : 'Hide Information';
+            infoToggleText.textContent = isVisible ? 'More Info' : 'Hide Information';
             infoToggleIcon.textContent = isVisible ? '▼' : '▲';
             infoToggleBtn.classList.toggle('active', !isVisible);
+            infoToggleBtn.setAttribute('aria-expanded', String(!isVisible));
         });
 
         // Wire Expert submenus (expand/collapse)
@@ -4990,7 +5284,7 @@
                     if (lines[i].trim()) {
                         try {
                             const perLineTable = (document.getElementById(`line_lang_${i+1}`)?.value) || tableName;
-                            const braille = await translateWithLiblouis(lines[i].trim(), 'g2', perLineTable);
+                            const braille = await translateWithLiblouis(applyCapitalizationSetting(lines[i].trim()), 'g2', perLineTable);
                             const shorthand = brailleToComputerShorthand(braille);
                             previewHTML += `<div class="preview-line-success">
                                 <div><strong>Line ${i + 1}:</strong> "${lines[i].trim()}" → "${braille}"</div>
@@ -5051,7 +5345,31 @@
             braillePreview.style.display = 'block';
         });
 
+        // WebGL feature detection
+        function checkWebGLSupport() {
+            try {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                return !!context;
+            } catch (e) {
+                return false;
+            }
+        }
+
         function init3D() {
+            // Check WebGL support before initializing
+            if (!checkWebGLSupport()) {
+                viewer.innerHTML = `
+                    <div class="webgl-error" role="alert">
+                        <strong>WebGL Not Available</strong>
+                        <p>Your browser does not support WebGL, which is required for the 3D preview.
+                        You can still generate and download STL files.</p>
+                        <p>Try updating your browser or enabling hardware acceleration in your browser settings.</p>
+                    </div>
+                `;
+                return; // Skip rest of init3D
+            }
+
             // Mobile-optimized renderer settings
             const isMobile = window.innerWidth <= 768;
             renderer = new THREE.WebGLRenderer({
@@ -5066,6 +5384,51 @@
             const existingCanvas = viewer.querySelector('canvas');
             if (existingCanvas) viewer.removeChild(existingCanvas);
             viewer.appendChild(renderer.domElement);
+
+            // WebGL context loss/recovery handlers (Safari/iOS stability)
+            renderer.domElement.addEventListener('webglcontextlost', (event) => {
+                event.preventDefault(); // Allow recovery
+                console.warn('WebGL context lost');
+
+                // Show user-friendly message
+                if (!document.getElementById('webgl-recovery-msg')) {
+                    const msg = document.createElement('div');
+                    msg.id = 'webgl-recovery-msg';
+                    msg.className = 'webgl-recovery';
+                    msg.setAttribute('role', 'alert');
+                    msg.innerHTML = `
+                        <strong>3D Preview Paused</strong>
+                        <p>The 3D viewer was interrupted. It will automatically recover.</p>
+                    `;
+                    viewer.appendChild(msg);
+                }
+            }, false);
+
+            renderer.domElement.addEventListener('webglcontextrestored', () => {
+                console.log('WebGL context restored');
+
+                // Remove recovery message
+                const msg = document.getElementById('webgl-recovery-msg');
+                if (msg) msg.remove();
+
+                // Re-initialize scene
+                reinitialize3DScene();
+
+                // Reload last STL if available
+                if (lastGeneratedSTLUrl) {
+                    const loader = new STLLoader();
+                    loader.load(lastGeneratedSTLUrl, (geometry) => {
+                        if (mesh) scene.remove(mesh);
+                        const material = new THREE.MeshPhongMaterial({
+                            color: 0xaaaaaa,
+                            specular: 0x111111,
+                            shininess: 30
+                        });
+                        mesh = new THREE.Mesh(geometry, material);
+                        scene.add(mesh);
+                    });
+                }
+            }, false);
 
             // Get theme-appropriate colors with proper fallbacks
             const styles = getComputedStyle(document.documentElement);
@@ -5154,6 +5517,11 @@
             window.addEventListener('resize', onWindowResize, false);
         }
 
+        function reinitialize3DScene() {
+            // Rebuild lights and materials after context restore
+            update3DSceneColors();
+        }
+
         function onWindowResize() {
             const targetW = viewer.clientWidth;
             const targetH = viewer.clientHeight || 420;
@@ -5164,6 +5532,8 @@
         }
 
         function render() {
+            // Guard: only render if renderer is initialized
+            if (!renderer) return;
             renderer.render(scene, camera);
         }
 
@@ -5210,7 +5580,7 @@
                                 const perLineTable = (document.getElementById(`line_lang_${i+1}`)?.value) || tableName;
                                 perLineLanguageTables[i] = perLineTable;
                                 log.debug(`Translating line ${i + 1}: '${line}' to braille using table: ${perLineTable}...`);
-                                const brailleText = await translateWithLiblouis(line, 'g2', perLineTable);
+                                const brailleText = await translateWithLiblouis(applyCapitalizationSetting(line), 'g2', perLineTable);
                                 log.debug(`Line ${i + 1} translated: '${line}' → '${brailleText}'`);
                                 translatedLines.push(brailleText);
                             } catch (error) {
@@ -5680,11 +6050,35 @@
             });
         }
 
+        // Check reduced motion preference
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        let animationEnabled = !prefersReducedMotion.matches;
+
         function animate() {
-            requestAnimationFrame(animate);
+            // Guard: don't animate if renderer not initialized
+            if (!renderer) return;
+            if (animationEnabled) {
+                requestAnimationFrame(animate);
+            }
             controls && controls.update();
             render();
         }
+
+        function updateRenderingMode() {
+            animationEnabled = !prefersReducedMotion.matches;
+            if (!animationEnabled && controls) {
+                // Stop continuous animation loop, render on demand only
+                controls.addEventListener('change', () => {
+                    render();
+                });
+            } else if (animationEnabled) {
+                // Resume continuous animation
+                animate();
+            }
+        }
+
+        prefersReducedMotion.addEventListener('change', updateRenderingMode);
+        updateRenderingMode();
 
         // Initialize liblouis web worker and 3D viewer on page load
         let liblouisWorker = null;
@@ -5822,7 +6216,6 @@
 
             } catch (error) {
                 log.error('Failed to initialize liblouis worker:', error);
-
                 // Fallback: disable liblouis and show error message
                 log.debug('Web worker failed - disabling liblouis translation');
                 liblouisReady = false;

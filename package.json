@@ -1,6 +1,6 @@
 {
-  "name": "braille-stl-generator",
-  "version": "1.2.0",
+  "name": "braille-card-and-cylinder-stl-generator",
+  "version": "1.3.0",
   "description": "Web application for generating 3D-printable STL files for braille embossing plates and cylinders",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
@@ -32,7 +32,6 @@
     "liblouis"
   ],
   "dependencies": {
-    "@vercel/blob": "^2.0.0",
     "liblouis": "^0.4.0",
     "manifold-3d": "^2.5.1",
     "three-bvh-csg": "^0.0.17",

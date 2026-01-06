@@ -5,6 +5,16 @@
 
 ---
 
+## ⚠️ Architecture Update Notice (2026-01-05)
+
+This document was written for the **pre-2026 architecture** that included **Redis/Blob caching** and **server-side STL generation** (including `app/cache.py`).
+
+As of **2026-01-05**, those systems were removed and the backend is now a **minimal Flask app** focused on serving **`/geometry_spec`** for client-side generation. Some items below (Redis TLS, rate limiting, etc.) are therefore **historical** and may no longer apply.
+
+For current configuration, see:
+- `docs/security/ENVIRONMENT_VARIABLES.md`
+- `docs/development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md`
+
 ## What Was Done
 
 A comprehensive security audit identified **14 security issues** across the application. All issues have been **successfully addressed** through code fixes and configuration improvements.

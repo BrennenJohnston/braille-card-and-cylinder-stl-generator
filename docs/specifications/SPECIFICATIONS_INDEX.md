@@ -4,7 +4,7 @@
 
 This document serves as the **master index** for all core architecture specifications in the Braille Card and Cylinder STL Generator project. Each specification document provides comprehensive, in-depth technical documentation for a specific subsystem or feature.
 
-**Last Updated:** 2025-12-08
+**Last Updated:** 2026-01-05
 **Total Specification Documents:** 13
 
 ---
@@ -20,7 +20,7 @@ This document serves as the **master index** for all core architecture specifica
 - Font size adjustment system
 - STL preview panel (Three.js 3D viewer)
 - **STL Preview Label** — Clarifying label below the preview panel (Section 3.7)
-- **Preview Display Settings** — Brightness and contrast radio button controls (Section 3.8)
+- **Preview Display Settings** — Brightness and contrast stepper controls (Section 3.8)
 - Accessibility features (keyboard navigation, screen readers, ARIA)
 - Button state management
 - Layout responsiveness (desktop/mobile)
@@ -319,7 +319,7 @@ This document serves as the **master index** for all core architecture specifica
 |--------|---------|----------------------|
 | `app/validation.py` | Input validation | LIBLOUIS_TRANSLATION_CORE_SPECIFICATIONS (Section 8) |
 | `app/utils.py` | Utility functions | LIBLOUIS_TRANSLATION_CORE_SPECIFICATIONS (Section 9) |
-| `app/legacy/cache.py` | Archived caching logic (historical reference) | CACHING_SYSTEM_CORE_SPECIFICATIONS |
+| `app/cache.py` | _(Removed)_ Caching logic (was historical reference) | CACHING_SYSTEM_CORE_SPECIFICATIONS |
 | `app/exporters.py` | STL export utilities | STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS |
 | `app/models.py` | Data models | Referenced across multiple specs |
 | `app/geometry/*` | Geometry generation | Referenced across geometry-related specs |

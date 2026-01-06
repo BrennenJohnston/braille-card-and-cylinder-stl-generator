@@ -28,6 +28,7 @@ This document provides **comprehensive, in-depth specifications** for the "Enter
 4. [Manual Placement Mode](#4-manual-placement-mode)
 5. [Select Language Menu](#5-select-language-menu)
 6. [Per-Line Language Selection (Manual Mode)](#6-per-line-language-selection-manual-mode)
+   - 6.1 [Capitalized Letters Toggle](#61-capitalized-letters-toggle)
 7. [Translation Pipeline](#7-translation-pipeline)
 8. [Backend Request Structure](#8-backend-request-structure)
 9. [BANA Auto-Wrap Algorithm](#9-bana-auto-wrap-algorithm)
@@ -539,6 +540,179 @@ Line 2 Translation  [French — contracted (grade 2) ▼]  ← User changed
 Line 3 Translation  [German — uncontracted ▼]          ← User changed
 Line 4 Translation  [English (UEB) — uncontracted ▼]   ← Default
 ```
+
+---
+
+## 6.1. Capitalized Letters Toggle
+
+### Purpose
+
+The **Capitalized Letters** toggle allows users to control whether capital letters in the input text are preserved in braille translation or converted to lowercase before translation. This feature provides space-saving options for applications where capitalization is implicit (such as business cards).
+
+### Rationale
+
+In braille, capital letters require additional indicator cells (e.g., dot-6 prefix in UEB). For items like business cards where names are implicitly capitalized, this wastes valuable space. The toggle allows users to choose between:
+
+- **Disabled (default, recommended):** Convert text to lowercase before translation to save space by omitting capital indicators
+- **Enabled:** Preserve exact capitalization for cases where it matters
+
+**Important:** The user's input text remains unchanged in the UI. The lowercase conversion happens only at translation time when the setting is disabled.
+
+### UI Location
+
+The toggle is located **within the "Enter Text for Braille Translation" fieldset**, immediately after the dynamic line inputs container and before the closing `</fieldset>` tag. This places it below the text input area but within the same logical grouping, before the language selection.
+
+### HTML Structure
+
+**Source:** `public/index.html` (lines ~2363-2382)
+
+```html
+<!-- Capitalized Letters toggle -->
+<div class="line-input-mode-toggle" style="margin-top: 0.8em; display: flex; align-items: center; gap: 1em;" role="radiogroup" aria-labelledby="caps-toggle-label">
+    <span id="caps-toggle-label" class="line-label" style="margin: 0;">Capitalized Letters:</span>
+    <label style="display: inline-flex; align-items: center; gap: 0.4em;">
+        <input type="radio" name="capitalize_letters" value="enabled" id="capitalize_enabled" aria-describedby="caps-enabled-desc">
+        Enabled
+    </label>
+    <label style="display: inline-flex; align-items: center; gap: 0.4em;">
+        <input type="radio" name="capitalize_letters" value="disabled" id="capitalize_disabled" checked aria-describedby="caps-disabled-desc">
+        Disabled <span style="font-weight: normal; opacity: 0.85;">(recommended)</span>
+    </label>
+    <span id="caps-enabled-desc" class="sr-only">Preserve capital letters in braille translation, using indicator cells</span>
+    <span id="caps-disabled-desc" class="sr-only">Convert text to lowercase before translation to save space on braille cells. Recommended for names and business cards.</span>
+</div>
+```
+
+### Default State
+
+- **Default:** Disabled (recommended)
+- **Persistence:** Saved to `localStorage` key `braille_prefs_capitalize_letters`
+- **Values:** `'enabled'` or `'disabled'`
+
+### Contextual Warning Message
+
+A warning message appears when:
+1. The toggle is set to "Disabled", AND
+2. The user's input text contains uppercase letters
+
+**HTML Structure:**
+
+```html
+<div id="caps-warning" class="grade-note" role="status" aria-live="polite"
+     style="margin-top: 0.6em; color: #059669; display: none;">
+    <strong>Note:</strong> Capital letters in your text will not be translated because "Capitalized Letters" is disabled. Enable it above if you need capitals in braille.
+</div>
+```
+
+**Display Logic:**
+- Updates immediately on text input changes
+- Updates when switching between Auto/Manual placement modes
+- Updates when the toggle state changes
+- Hidden when toggle is "Enabled" or when no uppercase letters are present
+
+### JavaScript Implementation
+
+**Helper Functions** (`public/index.html` lines ~4122-4147):
+
+```javascript
+// Helper function to apply capitalization setting to text before translation
+function applyCapitalizationSetting(text) {
+    const capsEnabled = document.querySelector('input[name="capitalize_letters"]:checked')?.value === 'enabled';
+    return capsEnabled ? text : text.toLowerCase();
+}
+
+// Update the capitalization warning visibility based on toggle state and input content
+function updateCapsWarning() {
+    const capsDisabled = document.querySelector('input[name="capitalize_letters"]:checked')?.value !== 'enabled';
+    const placementMode = document.querySelector('input[name="placement_mode"]:checked')?.value || 'manual';
+
+    let hasUppercase = false;
+    if (placementMode === 'manual') {
+        const lines = getDynamicLineValues();
+        hasUppercase = lines.some(line => line !== line.toLowerCase());
+    } else {
+        const autoTextValue = document.getElementById('auto-text')?.value || '';
+        hasUppercase = autoTextValue !== autoTextValue.toLowerCase();
+    }
+
+    const warning = document.getElementById('caps-warning');
+    if (warning) {
+        warning.style.display = (capsDisabled && hasUppercase) ? 'block' : 'none';
+    }
+}
+```
+
+### Translation Integration Points
+
+The `applyCapitalizationSetting()` function is called at **5 translation points** before text is sent to liblouis:
+
+1. **Auto wrap: translateLen** (~line 4232) — For calculating braille cell count during auto-wrapping
+2. **Auto wrap: translateText** (~line 4237) — For translating text during auto-wrapping
+3. **Auto overflow warning** (~line 4390) — For calculating overflow in auto mode
+4. **Manual preview** (~line 5263) — For preview translation in manual mode
+5. **Manual generate** (~line 5559) — For final translation before STL generation
+
+**Important:** The transformation is **not** applied to `originalLines` or `originalForIndicators` variables, which must remain unchanged for filename generation and indicator marker logic.
+
+### Event Wiring
+
+**Toggle Change Events:**
+
+```javascript
+document.querySelectorAll('input[name="capitalize_letters"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        persistValue('braille_prefs_capitalize_letters', document.querySelector('input[name="capitalize_letters"]:checked').value);
+        resetToGenerateState();
+        updateCapsWarning();
+        // Recalculate overflow if in auto mode (caps affect cell count)
+        if (document.querySelector('input[name="placement_mode"]:checked')?.value === 'auto') {
+            computeAutoOverflow();
+        }
+    });
+});
+```
+
+**Text Input Events:**
+- Manual line inputs call `updateCapsWarning()` in `addInputChangeListeners()` function
+- Auto textarea input listener calls `updateCapsWarning()` after `computeAutoOverflow()`
+- Placement mode change handler calls `updateCapsWarning()` after `updatePlacementUI()`
+
+### Accessibility Compliance (WCAG 2.1 AA)
+
+| Requirement | Implementation |
+|-------------|----------------|
+| Radio group semantics | `role="radiogroup"` with `aria-labelledby="caps-toggle-label"` |
+| Option descriptions | `aria-describedby` pointing to `.sr-only` descriptions for each option |
+| Keyboard navigation | Native radio button behavior (Tab, Arrow keys, Space to select) |
+| Dynamic warning | `role="status"` with `aria-live="polite"` for screen reader announcements |
+| Color contrast | Green `#059669` meets 4.5:1 on light backgrounds; existing theme overrides handle dark/high-contrast modes |
+
+### State Persistence
+
+**Persistence Key:** `braille_prefs_capitalize_letters`
+
+**Restoration Logic** (`applyPersistedSettings()` function):
+
+```javascript
+const savedCaps = readPersisted('braille_prefs_capitalize_letters');
+if (savedCaps === 'enabled' || savedCaps === 'disabled') {
+    const radio = document.querySelector(`input[name="capitalize_letters"][value="${savedCaps}"]`);
+    if (radio) radio.checked = true;
+}
+```
+
+**Clear Persistence:** The key is included in the `clearAllPersistence()` function's key list.
+
+### Example Translation Behavior
+
+| Input Text | Toggle State | Resulting Braille | Notes |
+|------------|--------------|-------------------|-------|
+| "Hello" | Disabled | `⠓⠑⠇⠇⠕` | No capital indicator, lowercase translation |
+| "Hello" | Enabled | `⠠⠓⠑⠇⠇⠕` | Capital indicator (`⠠`) before "H" |
+| "HELLO" | Disabled | `⠓⠑⠇⠇⠕` | All lowercase, no indicators |
+| "HELLO" | Enabled | `⠠⠠⠓⠑⠇⠇⠕` | Double capital indicator for all-caps word |
+| "hello" | Disabled | `⠓⠑⠇⠇⠕` | Already lowercase, no change |
+| "hello" | Enabled | `⠓⠑⠇⠇⠕` | Already lowercase, no change |
 
 ---
 

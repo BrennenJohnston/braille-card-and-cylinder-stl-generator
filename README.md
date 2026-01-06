@@ -105,12 +105,18 @@ See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for detailed architecture.
 ### Running Tests
 
 ```bash
+# Install dev/test dependencies
+pip install -r requirements-dev.txt
+
 pytest
 ```
 
 ### Code Quality
 
 ```bash
+# Install dev/test dependencies (includes ruff)
+pip install -r requirements-dev.txt
+
 # Linting and formatting
 ruff check .
 ruff format .

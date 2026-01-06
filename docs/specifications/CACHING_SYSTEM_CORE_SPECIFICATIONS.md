@@ -27,11 +27,10 @@
 
 **For implementation details, see:**
 - [Codebase Audit and Renovation Plan](../development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md)
-- [Upstash Dependencies Removal Plan](.cursor/plans/remove_upstash_dependencies_99900762.plan.md)
 
-### What Was Archived
+### What Was Removed
 
-- `app/cache.py` → `app/legacy/cache.py` (moved for historical reference)
+- `app/cache.py` - Deleted (caching logic no longer needed)
 - Redis integration removed from `backend.py`
 - Blob storage integration removed from `backend.py`
 - Flask-Limiter removed entirely
@@ -54,11 +53,7 @@ This document provides **comprehensive, in-depth specifications** for the cachin
 6. **Cache Flow Diagrams** — Complete request/response flows for cache hits and misses
 7. **Environment Configuration** — Required environment variables and their purposes
 
-**Source Priority (Order of Correctness):**
-1. `app/legacy/cache.py` — Archived caching logic module (historical reference; previously `app/cache.py`)
-2. `backend.py` — Cache integration in API endpoints
-3. `app/models.py` — Data normalization for cache keys
-4. `wsgi.py` — Deployment environment detection
+**Note:** The original source files for the caching system have been removed. This document serves as historical reference only.
 
 ---
 
@@ -1487,4 +1482,4 @@ def verify_cache_key_determinism():
 
 *Document Version: 1.0*
 *Last Updated: 2024-12-06*
-*Source Priority: app/cache.py > backend.py > app/models.py > wsgi.py*
+*Source Priority (historical; caching removed 2026-01-05): app/cache.py (deleted) > backend.py (caching removed) > app/models.py > wsgi.py*

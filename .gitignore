@@ -48,10 +48,12 @@ node_modules/
 test_output.txt
 test_*.stl
 debug_*.stl
+git_results.txt
 
 # Local dev
 *.local
 .env
+tmp/
 tmp_geom_spec.py
 tmp_geom_spec_vercel.py
 tmp_spec_direct.py

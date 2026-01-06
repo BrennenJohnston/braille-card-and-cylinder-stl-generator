@@ -446,7 +446,6 @@ curl -X POST https://your-domain.vercel.app/geometry_spec \
 For details on the architecture changes:
 
 - [Codebase Audit and Renovation Plan](../development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md)
-- [Upstash Dependencies Removal Plan](.cursor/plans/remove_upstash_dependencies_99900762.plan.md)
 
 ---
 

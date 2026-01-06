@@ -20,4 +20,4 @@ This directory contains security-related documentation for the Braille STL Gener
 
 ---
 
-*Last updated: December 2024*
+*Last updated: January 2026*

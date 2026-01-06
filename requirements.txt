@@ -13,9 +13,8 @@
 # - Reduces deployment package size by ~80%
 # - Faster cold starts on Vercel
 #
-# For local development with full features (server-side generation):
-#   pip install -e .
-# This installs all dependencies from pyproject.toml including dev extras.
+# For local development/testing (includes optional heavy deps + tooling):
+#   pip install -r requirements-dev.txt
 #
 # See: docs/development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md
 

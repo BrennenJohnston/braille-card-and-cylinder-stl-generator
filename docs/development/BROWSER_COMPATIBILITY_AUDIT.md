@@ -286,20 +286,58 @@ The Braille Card and Cylinder STL Generator is **fully compatible** with all mod
 
 **Problem:** Safari may lose WebGL context when tab is backgrounded.
 
-**Solution Applied:** The app should handle context loss events (verify in `init3D()`).
+**Status:** ✅ **Fixed** (2026-01-05)
 
-**Recommendation:** Add explicit handlers if not present:
+**Solution Implemented:** The app now includes comprehensive WebGL context loss and recovery handlers:
 
 ```javascript
+// Feature detection before initialization
+function checkWebGLSupport() {
+    try {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        return !!context;
+    } catch (e) {
+        return false;
+    }
+}
+
+// Context loss handler
 renderer.domElement.addEventListener('webglcontextlost', (event) => {
-    event.preventDefault();
+    event.preventDefault(); // Allow recovery
+    console.warn('WebGL context lost');
+
     // Show user-friendly message
+    const msg = document.createElement('div');
+    msg.id = 'webgl-recovery-msg';
+    msg.className = 'webgl-recovery';
+    msg.setAttribute('role', 'alert');
+    msg.innerHTML = `
+        <strong>3D Preview Paused</strong>
+        <p>The 3D viewer was interrupted. It will automatically recover.</p>
+    `;
+    viewer.appendChild(msg);
 }, false);
 
+// Context restored handler
 renderer.domElement.addEventListener('webglcontextrestored', () => {
+    console.log('WebGL context restored');
+
+    // Remove recovery message
+    const msg = document.getElementById('webgl-recovery-msg');
+    if (msg) msg.remove();
+
     // Re-initialize scene
+    reinitialize3DScene();
+
+    // Reload last STL if available
+    if (lastGeneratedSTLUrl) {
+        // Reload the STL mesh
+    }
 }, false);
 ```
+
+**Impact:** Users now see a clear message during context loss and the app automatically recovers when context is restored.
 
 ### Issue 3: Custom Scrollbar Cross-Browser
 
@@ -358,15 +396,33 @@ renderer.domElement.addEventListener('webglcontextrestored', () => {
 
 ### Immediate Actions
 
-1. **Add Browser Detection Banner** (Low Priority)
-   - Show warning for IE/Legacy Edge users
-   - Suggest Chrome, Firefox, or Edge download
+1. ✅ **Add Browser Detection Banner** — **COMPLETED** (2026-01-05)
+   - Implemented `<script nomodule>` fallback for IE/Legacy Edge
+   - Runtime capability checks for Workers, WASM, WebGL, and Fetch API
+   - User-friendly error messages with actionable guidance
 
-2. **Add WebGL Context Loss Handlers** (Medium Priority)
-   - Verify handlers exist in `init3D()` function
-   - Show user-friendly message during recovery
+2. ✅ **Add WebGL Context Loss Handlers** — **COMPLETED** (2026-01-05)
+   - Handlers exist in `init3D()` function
+   - User-friendly messages during context loss and recovery
+   - Automatic scene re-initialization
 
-3. **Test on iOS 17/18 with M-series chips** (High Priority)
+3. ✅ **iOS Safe Area and Viewport Handling** — **COMPLETED** (2026-01-05)
+   - Added `viewport-fit=cover` to viewport meta tag
+   - Implemented `env(safe-area-inset-*)` CSS for notch/Dynamic Island
+   - Added dynamic viewport height support (`dvh` + JavaScript fallback)
+   - Prevents content from being hidden under iOS UI elements
+
+4. ✅ **Reduced Motion Accessibility** — **COMPLETED** (2026-01-05)
+   - Added `@media (prefers-reduced-motion: reduce)` CSS
+   - Disables all animations and transitions for motion-sensitive users
+   - 3D preview switches from continuous loop to on-demand rendering
+
+5. ✅ **Toggle Button ARIA Compliance** — **COMPLETED** (2026-01-05)
+   - All toggle buttons now have `aria-expanded` and `aria-controls`
+   - Dynamic state updates synchronized with visual state
+   - Focus management when opening panels
+
+6. **Test on iOS 17/18 with M-series chips** (High Priority)
    - Manually verify WebGL stability
    - Document any recurring issues
 
@@ -445,8 +501,48 @@ renderer.domElement.addEventListener('webglcontextrestored', () => {
 
 - [ ] Keyboard navigation (Tab, Enter, Space)
 - [ ] Screen reader (NVDA/JAWS/VoiceOver)
+  - [ ] Toggle buttons announce "expanded"/"collapsed" state
+  - [ ] Info toggle has proper ARIA labels
+  - [ ] Expert toggle has proper ARIA labels
 - [ ] High contrast mode visibility
 - [ ] Skip link functionality
+- [ ] Reduced motion preference
+  - [ ] Enable "Reduce motion" in OS settings
+  - [ ] Verify all animations are disabled
+  - [ ] Verify 3D preview only renders on interaction
+
+### Cross-Browser UI Hardening Tests (Added 2026-01-05)
+
+- [ ] **ARIA Toggle States**
+  - [ ] Info dropdown button has `aria-expanded` attribute
+  - [ ] Expert Mode button has `aria-expanded` attribute
+  - [ ] ARIA state updates when toggling
+  - [ ] Screen reader announces state changes
+
+- [ ] **WebGL Context Recovery**
+  - [ ] Unsupported browsers show "WebGL Not Available" message
+  - [ ] Safari: Background/foreground tab triggers recovery message
+  - [ ] Recovery message disappears after context restore
+  - [ ] Scene re-initializes correctly after recovery
+
+- [ ] **iOS Safe Area Support**
+  - [ ] iPhone with notch: Content not hidden under notch
+  - [ ] iPhone with Dynamic Island: Content not hidden under island
+  - [ ] Bottom buttons fully accessible (not cut off)
+  - [ ] Landscape mode: All content accessible
+  - [ ] Address bar collapse/expand: Layout adapts correctly
+
+- [ ] **Reduced Motion**
+  - [ ] Theme transitions are instant (no fade)
+  - [ ] Button hover effects are instant
+  - [ ] 3D preview: No continuous animation
+  - [ ] 3D preview: Renders on drag/zoom interaction
+
+- [ ] **Unsupported Browser Messaging**
+  - [ ] IE11: Shows "Browser Not Supported" banner
+  - [ ] Old Edge: Shows upgrade message
+  - [ ] Browsers without WebGL: Shows capability warning
+  - [ ] Browsers without WASM: Shows capability warning
 
 ---
 
@@ -455,6 +551,7 @@ renderer.domElement.addEventListener('webglcontextrestored', () => {
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2025-12-08 | Initial browser compatibility audit |
+| 1.1 | 2026-01-05 | **Cross-Browser UI Hardening Update:** Marked WebGL context loss as fixed, updated recommendations with completed implementations (browser detection, ARIA toggles, iOS safe areas, reduced motion), added comprehensive testing checklist for new features |
 
 ---
 

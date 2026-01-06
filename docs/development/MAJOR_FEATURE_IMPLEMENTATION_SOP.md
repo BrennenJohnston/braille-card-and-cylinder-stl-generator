@@ -962,7 +962,7 @@ applyThicknessPreset(presetToApply);
 | Change geometry | app/geometry/*.py | Relevant geometry spec (dots, spacing, etc.) |
 | Add API endpoint | backend.py | STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS.md |
 | Change validation | app/validation.py | SETTINGS_SCHEMA_CORE_SPECIFICATIONS.md |
-| Update cache key | app/cache.py | CACHING_SYSTEM_CORE_SPECIFICATIONS.md |
+| Update cache key | _(N/A - caching removed)_ | CACHING_SYSTEM_CORE_SPECIFICATIONS.md (archived) |
 
 ### When You Modify Specifications
 

@@ -15,7 +15,6 @@
 
 **For implementation details, see:**
 - [Codebase Audit and Renovation Plan](../development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md)
-- [Upstash Dependencies Removal Plan](.cursor/plans/remove_upstash_dependencies_99900762.plan.md)
 
 ---
 
@@ -158,9 +157,9 @@ Implementation:
 - Added GET lookup endpoint and frontend GET-first flow for negative plates
 
 ### 6.2 Pregeneration Strategy
-**Status: COMPLETE**
-- Identify common parameter combinations
-- Pregenerate and cache popular configurations via `scripts/pregenerate.py`
+**Status: ~~COMPLETE~~ → DEPRECATED (2026-01-05)**
+- The `scripts/pregenerate.py` helper was removed when Redis/Blob caching was removed.
+- Client-side generation does not require cache pre-warming.
 
 ## Phase 7: Monitoring and Analytics
 

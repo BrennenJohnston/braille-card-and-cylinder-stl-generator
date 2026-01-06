@@ -80,7 +80,7 @@
       "description": "Braille dot shape parameters for emboss and counter plates",
       "additionalProperties": true,
       "properties": {
-        "combined_shape": { "type": "string", "enum": ["rounded", "cone"], "default": "rounded", "description": "Controls both emboss and counter shape families" },
+        "combined_shape": { "type": "string", "enum": ["rounded", "cone"], "default": "cone", "description": "Controls both emboss and counter shape families" },
         "dot_shape": { "type": "string", "enum": ["rounded", "cone"], "description": "Compatibility alias for combined_shape" },
         "recess_shape": { "type": ["integer", "string"], "enum": [1, 2, "1", "2"], "default": 1, "description": "Counter plate recess type: 1=bowl, 2=cone" },
 

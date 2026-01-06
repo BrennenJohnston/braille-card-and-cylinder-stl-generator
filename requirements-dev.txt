@@ -9,17 +9,17 @@
 -r requirements.txt
 
 # Heavy geometry processing (optional - for local server-side generation)
-numpy==1.26.4
-trimesh==4.5.3
-shapely==2.0.6
-mapbox_earcut==1.0.2
-scipy==1.11.4              # For mesh.fix_normals() (fallback: unify_normals)
-matplotlib==3.8.0          # For character markers (fallback: rectangles)
-manifold3d==3.0.1          # Boolean operations (not available on Vercel)
+numpy==2.4.0
+trimesh==4.10.1
+shapely==2.1.2
+mapbox_earcut==2.0.0
+scipy==1.16.3              # For mesh.fix_normals() (fallback: unify_normals)
+matplotlib==3.10.8         # For character markers (fallback: rectangles)
+manifold3d==3.3.2          # Boolean operations (not available on Vercel)
 
 # Development tools
-pytest==7.4.3
-pytest-cov==4.1.0
-ruff==0.1.6                # Linting and formatting
-mypy==1.7.1                # Type checking
-pre-commit==3.5.0          # Git hooks
+pytest==9.0.2
+pytest-cov==7.0.0
+ruff==0.14.10              # Linting and formatting
+mypy==1.19.1               # Type checking
+pre-commit==4.5.1          # Git hooks

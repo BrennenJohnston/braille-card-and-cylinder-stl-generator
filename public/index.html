@@ -2521,12 +2521,12 @@
                                         <legend class="grade-label">Braille Dot Shape (Emboss and Counter)</legend>
                                         <div class="radio-group" role="radiogroup" aria-required="true">
                                             <label class="radio-option">
-                                                <input type="radio" name="combined_shape" value="rounded" checked aria-describedby="rounded-combined-desc">
+                                                <input type="radio" name="combined_shape" value="rounded" aria-describedby="rounded-combined-desc">
                                                 <span class="radio-text">Rounded</span>
                                             </label>
                                             <span id="rounded-combined-desc" class="sr-only">Creates rounded dome dots for emboss plate and spherical-cap bowl recess for counter plate</span>
                                             <label class="radio-option">
-                                                <input type="radio" name="combined_shape" value="cone" aria-describedby="cone-combined-desc">
+                                                <input type="radio" name="combined_shape" value="cone" checked aria-describedby="cone-combined-desc">
                                                 <span class="radio-text">Cone</span>
                                             </label>
                                             <span id="cone-combined-desc" class="sr-only">Creates cone frustum dots for emboss plate and conical frustum recess for counter plate</span>
@@ -2536,10 +2536,10 @@
 
                                 <!-- Hidden radio buttons for backend compatibility -->
                                 <div style="display: none;">
-                                    <input type="radio" name="dot_shape" value="rounded" checked>
-                                    <input type="radio" name="dot_shape" value="cone">
-                                    <input type="radio" name="recess_shape" value="1" checked>
-                                    <input type="radio" name="recess_shape" value="2">
+                                    <input type="radio" name="dot_shape" value="rounded">
+                                    <input type="radio" name="dot_shape" value="cone" checked>
+                                    <input type="radio" name="recess_shape" value="1">
+                                    <input type="radio" name="recess_shape" value="2" checked>
                                 </div>
 
                                 <!-- Indicator Shape toggle -->
@@ -3801,7 +3801,7 @@
             document.querySelectorAll('input[name="combined_shape"]').forEach(r => {
                 r.addEventListener('change', () => {
                     resetToGenerateState();
-                    const combinedVal = document.querySelector('input[name="combined_shape"]:checked')?.value || 'rounded';
+                    const combinedVal = document.querySelector('input[name="combined_shape"]:checked')?.value || 'cone';
                     const isRounded = combinedVal === 'rounded';
                     const isCone = combinedVal === 'cone';
 
@@ -3945,7 +3945,7 @@
             }
             // Recess controls always visible; toggle sub-groups by chosen recess
             const recessSel = document.getElementById('recess-shape-selection');
-            const recessValInit = document.querySelector('input[name="recess_shape"]:checked')?.value || '1';
+            const recessValInit = document.querySelector('input[name="recess_shape"]:checked')?.value || '2';
             const isBowl = recessValInit === '1';
             const isCone = recessValInit === '2';
             if (recessSel) recessSel.style.display = '';
@@ -4505,7 +4505,7 @@
                 if (radio) radio.checked = true;
             }
             // Combined shape - initialize based on saved dot shape or default to rounded
-            const savedCombined = readPersisted('braille_prefs_combined_shape') || savedDot || 'rounded';
+            const savedCombined = readPersisted('braille_prefs_combined_shape') || savedDot || 'cone';
             if (savedCombined === 'cone' || savedCombined === 'rounded') {
                 const radio = document.querySelector(`input[name="combined_shape"][value="${savedCombined}"]`);
                 if (radio) radio.checked = true;
@@ -4634,7 +4634,7 @@
             // Combined shape (new primary control)
             document.querySelectorAll('input[name="combined_shape"]').forEach(r => {
                 r.addEventListener('change', () => {
-                    const val = document.querySelector('input[name="combined_shape"]:checked')?.value || 'rounded';
+                    const val = document.querySelector('input[name="combined_shape"]:checked')?.value || 'cone';
                     persistValue('braille_prefs_combined_shape', val);
                     // Also persist the individual values for backend compatibility
                     persistValue('braille_prefs_dot_shape', val);
@@ -4689,7 +4689,7 @@
             // Recess shape radio persistence (now handled by combined shape)
             document.querySelectorAll('input[name="recess_shape"]').forEach(r => {
                 r.addEventListener('change', () => {
-                    const val = document.querySelector('input[name="recess_shape"]:checked')?.value || '1';
+                    const val = document.querySelector('input[name="recess_shape"]:checked')?.value || '2';
                     persistValue('braille_prefs_recess_shape', val);
                 });
             });
@@ -5678,14 +5678,14 @@
                 bowl_counter_dot_base_diameter: document.getElementById('bowl_counter_dot_base_diameter')?.value || '1.6',
                 // Back-compat: provide unified base diameter reflecting current recess selection
                 counter_dot_base_diameter: (() => {
-                    const recessVal = document.querySelector('input[name="recess_shape"]:checked')?.value || '1';
+                    const recessVal = document.querySelector('input[name="recess_shape"]:checked')?.value || '2';
                     if (recessVal === '1') return (document.getElementById('bowl_counter_dot_base_diameter')?.value || '1.6');
                     if (recessVal === '0') return (document.getElementById('hemi_counter_dot_base_diameter')?.value || '1.6');
                     return (document.getElementById('cone_counter_dot_base_diameter')?.value || '1.6');
                 })(),
                 counter_dot_depth: document.getElementById('counter_dot_depth')?.value || '0.6',
                 use_bowl_recess: (document.querySelector('input[name="recess_shape"]:checked')?.value === '1') ? 1 : 0,
-                recess_shape: parseInt(document.querySelector('input[name="recess_shape"]:checked')?.value || '1'),
+                recess_shape: parseInt(document.querySelector('input[name="recess_shape"]:checked')?.value || '2'),
                 // Cone parameters
                 cone_counter_dot_base_diameter: document.getElementById('cone_counter_dot_base_diameter')?.value || '1.6',
                 cone_counter_dot_height: document.getElementById('cone_counter_dot_height')?.value || '0.8',
@@ -5697,7 +5697,7 @@
                 braille_y_adjust: document.getElementById('braille_y_adjust').value,
                 // Rounded dome settings (optional)
                 use_rounded_dots: (document.querySelector('input[name="dot_shape"]:checked')?.value === 'rounded') ? 1 : 0,
-                dot_shape: document.querySelector('input[name="dot_shape"]:checked')?.value || 'rounded',
+                dot_shape: document.querySelector('input[name="dot_shape"]:checked')?.value || 'cone',
                 // Legacy fallbacks retained for backend compatibility
                 rounded_dot_diameter: document.getElementById('rounded_dot_dome_diameter')?.value || '1.5',
                 rounded_dot_height: document.getElementById('rounded_dot_dome_height')?.value || '0.6',

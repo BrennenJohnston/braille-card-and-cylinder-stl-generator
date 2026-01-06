@@ -261,7 +261,7 @@ class CardSettings:
 
         # Map dot_shape to use_rounded_dots for backend compatibility
         try:
-            dot_shape = kwargs.get('dot_shape', 'rounded')
+            dot_shape = kwargs.get('dot_shape', 'cone')
             if dot_shape == 'rounded':
                 self.use_rounded_dots = 1
             elif dot_shape == 'cone':

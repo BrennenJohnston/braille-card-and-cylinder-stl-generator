@@ -47,7 +47,7 @@ jobs:
     - name: Start test server
       run: |
         python backend.py &
-        echo "Waiting for server to start..."
+        echo "Waiting for server to start on port 5001..."
         for i in {1..30}; do
           if curl -s http://localhost:5001/ > /dev/null 2>&1; then
             echo "Server is ready!"
@@ -63,6 +63,7 @@ jobs:
         fi
       env:
         FLASK_ENV: development
+        PORT: 5001
 
     - name: Setup Node.js for Lighthouse
       uses: actions/setup-node@v4

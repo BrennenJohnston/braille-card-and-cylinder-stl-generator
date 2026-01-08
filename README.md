@@ -19,6 +19,17 @@ A web application that generates 3D-printable STL files for braille embossing pl
 - **Configurable Parameters** — Adjust dot dimensions, spacing, and surface settings
 - **Zero-Maintenance Deployment** — No external services, no expiring caches, no secrets to manage
 
+## 🖥️ OpenSCAD Version (Offline Alternative)
+
+Want to work offline or integrate with existing CAD workflows? Check out the **standalone OpenSCAD version**:
+
+| | Web App (this repo) | OpenSCAD Version |
+|---|---------------------|------------------|
+| **Repository** | You're here! | [braille-stl-generator-openscad](https://github.com/BrennenJohnston/braille-stl-generator-openscad) |
+| **Translation** | Automatic (liblouis) | Manual ([Branah.com](https://www.branah.com/braille-translator)) |
+| **Runtime** | Browser | Local OpenSCAD app |
+| **Best For** | Quick generation, no install | Offline use, parametric control, batch processing |
+
 ## Zero-Maintenance Architecture
 
 v2.0.0 is designed for **"deploy once, run forever"** operation:

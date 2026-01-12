@@ -9,7 +9,7 @@ requires-python = ">=3.12"
 # Client-side CSG handles all heavy computation
 dependencies = [
     "flask==2.3.3",
-    "flask-cors==4.0.0",
+    "flask-cors==6.0.2",
 ]
 
 # OPTIONAL DEPENDENCIES FOR LOCAL DEVELOPMENT

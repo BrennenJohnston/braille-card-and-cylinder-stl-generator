@@ -23,7 +23,7 @@ dev = [
     "shapely==2.0.6",
     "mapbox_earcut==2.0.0",
     "scipy==1.17.0",        # For mesh.fix_normals()
-    "matplotlib==3.8.0",    # For character markers
+    "matplotlib==3.10.8",    # For character markers
     "manifold3d==3.0.1",    # Boolean operations
 
     # Development tools

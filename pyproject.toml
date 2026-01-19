@@ -27,7 +27,7 @@ dev = [
     "manifold3d==3.0.1",    # Boolean operations
 
     # Development tools
-    "pytest==7.4.3",
+    "pytest==9.0.2",
     "pytest-cov==7.0.0",
     "ruff==0.14.10",
     "mypy==1.7.1",
@@ -35,7 +35,7 @@ dev = [
 ]
 
 test = [
-    "pytest==7.4.3",
+    "pytest==9.0.2",
     "pytest-cov==7.0.0",
 ]
 

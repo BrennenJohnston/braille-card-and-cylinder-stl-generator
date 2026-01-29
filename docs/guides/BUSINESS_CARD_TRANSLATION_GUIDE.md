@@ -112,11 +112,11 @@ If an email must span two lines:
 **Example:**
 
 ```
-harry@a"
+harry@"
 hogwarts.edu
 ```
 
-(The `"` represents the continuation indicator, dot 5)
+(The `"` at line end represents the continuation indicator, dot 5)
 
 ### Web Addresses
 
@@ -193,7 +193,7 @@ harry@hogwarts.edu
 ```
 ,harry ,potter
 hogwarts school
-harry@a"
+harry@"
 hogwarts.edu
 ```
 
@@ -268,7 +268,7 @@ cell: +64 3 027 864 536
 ```
 ,timaru ,brlwks
 ,jody ,day
-cell3 "+#64 #3
+cell "+#64.3"
 #027.864.536
 ```
 
@@ -308,13 +308,15 @@ Use contracted braille only when:
 
 ### Official Standards
 
+- [BANA Position Statements and Fact Sheets](https://www.brailleauthority.org/bana-position-statements-and-fact-sheets) — includes the official Business Cards Fact Sheet
+- [Business Cards Fact Sheet (PDF)](https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf) — official BANA guidance (approved March 2024)
 - [BANA Braille Signage Guidelines](https://www.brailleauthority.org/braille-signage-guidelines)
 - [BANA Size and Spacing of Braille Characters](https://www.brailleauthority.org/size-and-spacing-braille-characters)
 - [The Rules of Unified English Braille (ICEB)](https://iceb.org/ueb.html)
 
 ### Acknowledgments
 
-Business card guidance is based on *Guidelines for Brailling Business Cards* published by the Braille Authority of North America (BANA).
+Business card guidance is adapted from the [*Business Cards Fact Sheet*](https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf) (approved March 2024) published by the Braille Authority of North America (BANA).
 
 Braille translation powered by [liblouis](http://liblouis.org/).
 

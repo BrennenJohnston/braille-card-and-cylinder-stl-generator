@@ -317,11 +317,11 @@ Cylinder, negative (counter, bowl recess):
 
 ---
 
-## 9. AI Model Development Guidelines
+## 9. Development Guidelines
 
-This section provides explicit instructions for AI assistants operating on this codebase when prompts request changes.
+This section provides explicit instructions for developers working on this codebase when implementing changes.
 
-### Change Workflow for AI Models
+### Change Workflow for Developers
 
 When asked to modify settings, defaults, UI controls, or core features:
 
@@ -383,4 +383,4 @@ Before completing any task involving settings:
 ## 10. Document History
 
 - 2025-12-06 — Initial creation. Consolidated settings schema across specs; added high-level JSON Schema, normalization and validation rules, and examples.
-- 2025-12-06 — Added AI Model Development Guidelines (Section 9); added `cache_version` field to schema; added default values to schema properties.
+- 2025-12-06 — Added Development Guidelines (Section 9); added `cache_version` field to schema; added default values to schema properties.

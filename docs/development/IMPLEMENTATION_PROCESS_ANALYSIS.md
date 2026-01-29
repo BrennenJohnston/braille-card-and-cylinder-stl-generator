@@ -35,7 +35,7 @@ This document analyzes the implementation process for the Card Thickness Preset 
 2. Values were incorrect (didn't match expected preset values)
 3. Functionality appeared broken
 
-### AI Model's Implementation Path
+### Implementation Path
 
 #### Phase 1: Investigation (30 minutes)
 
@@ -388,7 +388,7 @@ Reading SETTINGS_SCHEMA_CORE_SPECIFICATIONS.md revealed that all 26 parameters a
 **Codified As:**
 - SOP Phase 2: Specification Consultation (MANDATORY)
 - "The Golden Rule" in SOP Section 1
-- AI Model Guidelines in SETTINGS_SCHEMA_CORE_SPECIFICATIONS.md
+- Development Guidelines in SETTINGS_SCHEMA_CORE_SPECIFICATIONS.md
 
 ### Lesson 2: Verify File Consistency Systematically
 
@@ -471,7 +471,7 @@ localStorage might be unavailable (private browsing), requiring try-catch blocks
 
 ## Recommendations for Future Implementations
 
-### For AI Assistants
+### For Contributors
 
 1. **Always read this SOP first** before implementing major features
 2. **Create TODO list immediately** to track progress

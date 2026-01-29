@@ -1,3 +1,22 @@
+<!--
+╔════════════════════════════════════════════════════════════════════════════╗
+║ DEPRECATED - DO NOT EDIT                                                   ║
+║                                                                            ║
+║ This file is maintained for backward compatibility only.                   ║
+║ The authoritative source of truth is: public/index.html                    ║
+║                                                                            ║
+║ All new features, bug fixes, and accessibility improvements should be      ║
+║ made in public/index.html. This file may be removed in a future release.   ║
+║                                                                            ║
+║ Missing features in this file (present in public/index.html):              ║
+║ - viewport-fit=cover for iOS notch support                                 ║
+║ - --vh CSS variable for mobile viewport handling                           ║
+║ - safe-area-inset-* CSS for edge-to-edge displays                         ║
+║ - nomodule fallback script for older browsers                              ║
+║ - prefers-reduced-motion CSS and JS                                        ║
+║ - WebGL context loss recovery                                              ║
+╚════════════════════════════════════════════════════════════════════════════╝
+-->
 <!-- VERSION: 2024-12-19-revised -->
 <!DOCTYPE html>
 <html lang="en">
@@ -561,6 +580,8 @@
             justify-content: space-between;
             margin-bottom: 1.5em;
             width: 100%;
+            flex-wrap: wrap; /* Allow wrapping when space is tight */
+            gap: 1rem; /* Add gap for when items wrap */
         }
 
         .title-section h1 {
@@ -600,11 +621,15 @@
             justify-content: flex-end;
             gap: 0.8rem;
             margin-left: 1rem;
-            flex-wrap: nowrap;
+            flex-wrap: wrap; /* Allow wrapping to prevent overflow on all screen sizes */
+            flex-shrink: 1; /* Allow shrinking when needed */
+            min-width: 0; /* Allow shrinking below content size */
         }
         /* Ensure theme toggle appears before font-size controls (to the left) */
-        .accessibility-controls-top .theme-toggle-section { order: 0; }
-        .accessibility-controls-top .font-size-controls { order: 1; }
+        .accessibility-controls-top .theme-toggle-section { order: 0; flex-shrink: 0; }
+        .accessibility-controls-top .font-size-controls { order: 1; flex-shrink: 0; }
+        .accessibility-controls-top .github-link { order: 2; flex-shrink: 0; }
+        .accessibility-controls-top .btn-help { order: 3; flex-shrink: 0; }
 
         /* Content Area - Two Column Layout */
         .content-area {
@@ -1055,6 +1080,38 @@
         .info-panel p {
             margin: 0.3em 0;
         }
+
+        /* Link styling for info-panel - Light theme */
+        .info-panel a {
+            color: #2563eb; /* Blue-600 for good contrast on light backgrounds */
+            text-decoration: underline;
+            transition: color 0.15s ease;
+        }
+        .info-panel a:hover {
+            color: #1d4ed8; /* Blue-700 for hover state */
+        }
+        .info-panel a:focus {
+            outline: 2px solid var(--border-focus);
+            outline-offset: 2px;
+        }
+
+        /* Link styling for info-panel - Dark theme */
+        [data-theme="dark"] .info-panel a {
+            color: #93c5fd; /* Blue-300 - light blue for contrast on dark gray (#374151) */
+        }
+        [data-theme="dark"] .info-panel a:hover {
+            color: #bfdbfe; /* Blue-200 - lighter on hover */
+        }
+
+        /* Link styling for info-panel - High contrast theme */
+        [data-theme="high-contrast"] .info-panel a {
+            color: #00ffff; /* Cyan for high visibility */
+            text-decoration: underline;
+        }
+        [data-theme="high-contrast"] .info-panel a:hover {
+            color: #ffff00; /* Yellow on hover */
+        }
+
         .grade-selection {
             background: var(--bg-secondary);
             border: 1px solid var(--border-primary);
@@ -1848,6 +1905,23 @@
             font-size: 1.2em;
         }
 
+        /* Medium screens - intermediate breakpoint for controls wrapping */
+        @media (max-width: 1024px) {
+            .accessibility-controls-top {
+                gap: 0.6rem;
+            }
+            
+            .theme-label-box {
+                padding: 0.5em 0.8em;
+                font-size: 0.85em;
+            }
+            
+            .theme-toggle-btn {
+                padding: 0.5em 0.8em;
+                font-size: 0.85em;
+            }
+        }
+
         /* Mobile title section optimization */
         @media (max-width: 768px) {
             .title-section {
@@ -1875,20 +1949,30 @@
             .accessibility-controls-top {
                 margin-left: 0;
                 align-items: center;
-                flex-wrap: wrap; /* Prevent controls from overflowing horizontally */
+                flex-wrap: wrap; /* Allow controls to wrap horizontally */
                 justify-content: center;
+                gap: 0.5rem;
+                width: 100%; /* Full width on mobile */
             }
 
             .theme-toggle-section {
-                flex-direction: column;
+                flex-direction: row; /* Keep horizontal on mobile */
                 align-items: center;
                 gap: 0.5em;
                 margin-left: 0;
+                flex-wrap: wrap;
+                justify-content: center;
             }
 
             .theme-label-box {
                 font-size: 0.85em;
                 min-height: 2.2em;
+            }
+            
+            /* Ensure buttons don't overflow on mobile */
+            .github-link,
+            .btn-help {
+                padding: 0.4rem 0.6rem;
             }
         }
 

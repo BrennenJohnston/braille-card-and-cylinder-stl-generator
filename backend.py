@@ -105,9 +105,11 @@ def set_security_headers(response):
         return response
 
     # CSP: Allow client-side CSG workers and Manifold WASM CDNs
+    # NOTE: 'wasm-unsafe-eval' is preferred over 'unsafe-eval' for WASM-only code execution
+    # Both are included for backward compatibility with older browsers (Chrome <97, Firefox <102)
     csp_directives = [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: cdn.jsdelivr.net unpkg.com",
+        "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' 'unsafe-eval' blob: cdn.jsdelivr.net unpkg.com",
         "worker-src 'self' blob:",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
@@ -201,6 +203,32 @@ def serve_static(filename):
         resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
         resp.headers['Access-Control-Max-Age'] = '86400'  # 24 hours
         return resp
+
+    # === SECURITY: Defense-in-depth path traversal protection ===
+    # (Flask's send_from_directory has protections, but explicit checks are safer)
+
+    # 1. Reject obvious traversal attempts (.. sequences)
+    if '..' in filename:
+        logger.warning(f'Path traversal attempt blocked: {filename}')
+        return jsonify({'error': 'Invalid path'}), 400
+
+    # 2. Reject absolute paths
+    if filename.startswith('/') or filename.startswith('\\'):
+        logger.warning(f'Absolute path attempt blocked: {filename}')
+        return jsonify({'error': 'Invalid path'}), 400
+
+    # 3. Reject null bytes (path truncation attack vector)
+    if '\x00' in filename:
+        logger.warning('Null byte injection attempt blocked')
+        return jsonify({'error': 'Invalid path'}), 400
+
+    # 4. Normalize and verify path stays within static directory
+    static_dir = os.path.abspath(os.path.join(app.root_path, 'static'))
+    requested_path = os.path.normpath(os.path.join(static_dir, filename))
+    if not requested_path.startswith(static_dir + os.sep) and requested_path != static_dir:
+        logger.warning(f'Path escape attempt blocked: {filename} -> {requested_path}')
+        return jsonify({'error': 'Invalid path'}), 400
+    # === END SECURITY ===
 
     try:
         # Serve the file

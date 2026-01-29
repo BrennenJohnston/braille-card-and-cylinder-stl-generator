@@ -124,7 +124,49 @@ async function initializeLiblouis() {
 // Handle messages from main thread
 self.onmessage = async function(e) {
     const { id, type, data } = e.data;
-    
+
+    // === SECURITY: Message validation (defense against malformed messages) ===
+    // Allowlist of valid message types
+    const ALLOWED_TYPES = ['init', 'translate'];
+    if (!type || !ALLOWED_TYPES.includes(type)) {
+        self.postMessage({
+            id: id,
+            type: 'error',
+            result: { success: false, error: 'Invalid message type: ' + type }
+        });
+        return;
+    }
+
+    // Validate message id exists
+    if (id === undefined || id === null) {
+        self.postMessage({
+            type: 'error',
+            result: { success: false, error: 'Missing message id' }
+        });
+        return;
+    }
+
+    // For 'translate' type, validate data object structure
+    if (type === 'translate') {
+        if (!data || typeof data !== 'object') {
+            self.postMessage({
+                id: id,
+                type: 'translate',
+                result: { success: false, error: 'Invalid translate data: expected an object' }
+            });
+            return;
+        }
+        if (!data.text && data.text !== '') {
+            self.postMessage({
+                id: id,
+                type: 'translate',
+                result: { success: false, error: 'Missing required field: text' }
+            });
+            return;
+        }
+    }
+    // === END SECURITY VALIDATION ===
+
     try {
         switch (type) {
             case 'init':

@@ -1167,7 +1167,7 @@ sphere_center_z = plate_thickness - (R - depth)
 
 | Date | Version | Author | Changes |
 |------|---------|--------|---------|
-| 2024-12-06 | 1.0 | AI Assistant | Initial comprehensive specification |
+| 2024-12-06 | 1.0 | Contributor | Initial comprehensive specification |
 
 ---
 

@@ -1058,6 +1058,49 @@ function exportToSTL(geometry) {
 self.onmessage = function(event) {
     const { type, spec, requestId } = event.data;
 
+    // === SECURITY: Message validation (defense against malformed messages) ===
+    // Allowlist of valid message types
+    const ALLOWED_TYPES = ['generate', 'ping'];
+    if (!type || !ALLOWED_TYPES.includes(type)) {
+        self.postMessage({
+            type: 'error',
+            requestId: requestId,
+            error: 'Invalid message type: ' + type
+        });
+        return;
+    }
+
+    // Validate requestId exists for all messages
+    if (requestId === undefined || requestId === null) {
+        self.postMessage({
+            type: 'error',
+            error: 'Missing requestId in message'
+        });
+        return;
+    }
+
+    // For 'generate' type, validate spec object structure
+    if (type === 'generate') {
+        if (!spec || typeof spec !== 'object') {
+            self.postMessage({
+                type: 'error',
+                requestId: requestId,
+                error: 'Invalid spec: expected an object'
+            });
+            return;
+        }
+        // Validate required spec fields
+        if (!spec.shape_type || !spec.plate_type) {
+            self.postMessage({
+                type: 'error',
+                requestId: requestId,
+                error: 'Missing required spec fields: shape_type and plate_type are required'
+            });
+            return;
+        }
+    }
+    // === END SECURITY VALIDATION ===
+
     // Check if initialization failed
     if (initError) {
         self.postMessage({

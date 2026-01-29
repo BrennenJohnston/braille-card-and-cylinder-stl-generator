@@ -609,6 +609,8 @@
             justify-content: space-between;
             margin-bottom: 1.5em;
             width: 100%;
+            flex-wrap: wrap; /* Allow wrapping when space is tight */
+            gap: 1rem; /* Add gap for when items wrap */
         }
 
         .title-section h1 {
@@ -648,11 +650,15 @@
             justify-content: flex-end;
             gap: 0.8rem;
             margin-left: 1rem;
-            flex-wrap: nowrap;
+            flex-wrap: wrap; /* Allow wrapping to prevent overflow on all screen sizes */
+            flex-shrink: 1; /* Allow shrinking when needed */
+            min-width: 0; /* Allow shrinking below content size */
         }
         /* Ensure theme toggle appears before font-size controls (to the left) */
-        .accessibility-controls-top .theme-toggle-section { order: 0; }
-        .accessibility-controls-top .font-size-controls { order: 1; }
+        .accessibility-controls-top .theme-toggle-section { order: 0; flex-shrink: 0; }
+        .accessibility-controls-top .font-size-controls { order: 1; flex-shrink: 0; }
+        .accessibility-controls-top .github-link { order: 2; flex-shrink: 0; }
+        .accessibility-controls-top .btn-help { order: 3; flex-shrink: 0; }
 
         /* Content Area - Two Column Layout */
         .content-area {
@@ -1159,6 +1165,38 @@
         .info-panel p {
             margin: 0.3em 0;
         }
+
+        /* Link styling for info-panel - Light theme */
+        .info-panel a {
+            color: #2563eb; /* Blue-600 for good contrast on light backgrounds */
+            text-decoration: underline;
+            transition: color 0.15s ease;
+        }
+        .info-panel a:hover {
+            color: #1d4ed8; /* Blue-700 for hover state */
+        }
+        .info-panel a:focus {
+            outline: 2px solid var(--border-focus);
+            outline-offset: 2px;
+        }
+
+        /* Link styling for info-panel - Dark theme */
+        [data-theme="dark"] .info-panel a {
+            color: #93c5fd; /* Blue-300 - light blue for contrast on dark gray (#374151) */
+        }
+        [data-theme="dark"] .info-panel a:hover {
+            color: #bfdbfe; /* Blue-200 - lighter on hover */
+        }
+
+        /* Link styling for info-panel - High contrast theme */
+        [data-theme="high-contrast"] .info-panel a {
+            color: #00ffff; /* Cyan for high visibility */
+            text-decoration: underline;
+        }
+        [data-theme="high-contrast"] .info-panel a:hover {
+            color: #ffff00; /* Yellow on hover */
+        }
+
         .grade-selection {
             background: var(--bg-secondary);
             border: 1px solid var(--border-primary);
@@ -1942,6 +1980,23 @@
             font-size: 1.2em;
         }
 
+        /* Medium screens - intermediate breakpoint for controls wrapping */
+        @media (max-width: 1024px) {
+            .accessibility-controls-top {
+                gap: 0.6rem;
+            }
+            
+            .theme-label-box {
+                padding: 0.5em 0.8em;
+                font-size: 0.85em;
+            }
+            
+            .theme-toggle-btn {
+                padding: 0.5em 0.8em;
+                font-size: 0.85em;
+            }
+        }
+
         /* Mobile title section optimization */
         @media (max-width: 768px) {
             .title-section {
@@ -1969,20 +2024,30 @@
             .accessibility-controls-top {
                 margin-left: 0;
                 align-items: center;
-                flex-wrap: wrap; /* Prevent controls from overflowing horizontally */
+                flex-wrap: wrap; /* Allow controls to wrap horizontally */
                 justify-content: center;
+                gap: 0.5rem;
+                width: 100%; /* Full width on mobile */
             }
 
             .theme-toggle-section {
-                flex-direction: column;
+                flex-direction: row; /* Keep horizontal on mobile */
                 align-items: center;
                 gap: 0.5em;
                 margin-left: 0;
+                flex-wrap: wrap;
+                justify-content: center;
             }
 
             .theme-label-box {
                 font-size: 0.85em;
                 min-height: 2.2em;
+            }
+            
+            /* Ensure buttons don't overflow on mobile */
+            .github-link,
+            .btn-help {
+                padding: 0.4rem 0.6rem;
             }
         }
 
@@ -2106,6 +2171,410 @@
             background: var(--bg-primary);
         }
         /* High contrast maintains theme variables already set */
+
+        /* ============================================
+           GITHUB LINK BUTTON STYLES
+           ============================================ */
+        .github-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.8rem;
+            border: 2px solid var(--border-primary);
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: transform 0.15s ease, background-color 0.15s ease;
+            min-height: 44px; /* Touch target */
+        }
+
+        .github-link:hover {
+            transform: scale(1.03);
+            background: var(--bg-tertiary);
+        }
+
+        .github-link:focus {
+            outline: 3px solid var(--border-focus);
+            outline-offset: 2px;
+        }
+
+        .github-icon {
+            flex-shrink: 0;
+        }
+
+        /* Hide label on small screens */
+        @media (max-width: 480px) {
+            .github-label {
+                display: none;
+            }
+            .github-link {
+                padding: 0.4rem;
+            }
+        }
+
+        /* ============================================
+           HELP BUTTON STYLES
+           ============================================ */
+        .btn-help {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.8rem;
+            border: 2px solid var(--border-primary);
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.15s ease, background-color 0.15s ease;
+            min-height: 44px;
+        }
+
+        .btn-help:hover {
+            transform: scale(1.03);
+            background: var(--bg-tertiary);
+        }
+
+        .btn-help:focus {
+            outline: 3px solid var(--border-focus);
+            outline-offset: 2px;
+        }
+
+        /* High Contrast Mode overrides for GitHub & Help buttons */
+        [data-theme="high-contrast"] .github-link,
+        [data-theme="high-contrast"] .btn-help {
+            border-color: #ffff00;
+            background: #000;
+            color: #02fe05;
+        }
+
+        [data-theme="high-contrast"] .github-link:hover,
+        [data-theme="high-contrast"] .btn-help:hover {
+            background: #1a1a1a;
+        }
+
+        [data-theme="high-contrast"] .github-link:focus,
+        [data-theme="high-contrast"] .btn-help:focus {
+            outline-color: #ff00ff;
+        }
+
+        /* ============================================
+           MODAL BASE STYLES
+           ============================================ */
+        .modal {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.hidden {
+            display: none;
+        }
+
+        .modal-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            position: relative;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            box-shadow: 0 4px 20px var(--shadow-medium);
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-large {
+            width: 90%;
+            max-width: 800px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-primary);
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 4px;
+            color: var(--text-primary);
+        }
+
+        .modal-close:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .modal-close:focus {
+            outline: 3px solid var(--border-focus);
+            outline-offset: 2px;
+        }
+
+        .modal-body {
+            padding: 1rem 1.5rem;
+            overflow-y: auto;
+            flex: 1;
+            color: var(--text-primary);
+        }
+
+        /* Modal link styling - Light theme */
+        .modal-body a {
+            color: #2563eb; /* Blue-600 for good contrast */
+            text-decoration: underline;
+            transition: color 0.15s ease;
+        }
+        .modal-body a:hover {
+            color: #1d4ed8; /* Blue-700 for hover */
+        }
+        .modal-body a:focus {
+            outline: 2px solid var(--border-focus);
+            outline-offset: 2px;
+        }
+
+        /* Modal link styling - Dark theme */
+        [data-theme="dark"] .modal-body a {
+            color: #93c5fd; /* Blue-300 - 6:1+ contrast on dark backgrounds */
+        }
+        [data-theme="dark"] .modal-body a:hover {
+            color: #bfdbfe; /* Blue-200 - lighter on hover */
+        }
+
+        /* Modal link styling - High contrast theme */
+        [data-theme="high-contrast"] .modal-body a {
+            color: #00ffff; /* Cyan for high visibility */
+        }
+        [data-theme="high-contrast"] .modal-body a:hover {
+            color: #ffff00; /* Yellow on hover */
+        }
+
+        /* ============================================
+           HELP MODAL TAB STYLES
+           ============================================ */
+        .help-tabs {
+            display: flex;
+            gap: 0.25rem;
+            border-bottom: 2px solid var(--border-primary);
+            margin-bottom: 1rem;
+            overflow-x: auto;
+        }
+
+        .help-tab {
+            background: none;
+            border: none;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            white-space: nowrap;
+        }
+
+        .help-tab:hover {
+            color: var(--text-primary);
+        }
+
+        .help-tab[aria-selected="true"] {
+            color: var(--border-focus);
+            border-bottom-color: var(--border-focus);
+        }
+
+        .help-tab:focus {
+            outline: 3px solid var(--border-focus);
+            outline-offset: -3px;
+        }
+
+        .help-panel {
+            line-height: 1.6;
+        }
+
+        .help-panel[hidden] {
+            display: none;
+        }
+
+        .help-panel h3 {
+            margin-top: 0;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+
+        .help-panel h4 {
+            margin-top: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .help-panel p {
+            margin: 0.5rem 0;
+        }
+
+        .help-panel ul, .help-panel ol {
+            margin: 0.5rem 0;
+            padding-left: 1.5em;
+        }
+
+        .help-panel li {
+            margin: 0.3rem 0;
+        }
+
+        /* ============================================
+           HELP PANEL CONTENT STYLES
+           ============================================ */
+        .help-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        .help-table th,
+        .help-table td {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-primary);
+            text-align: left;
+        }
+
+        .help-table th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+        }
+
+        .help-table tr:nth-child(even) {
+            background: var(--bg-secondary);
+        }
+
+        .example-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .example-box pre {
+            background: var(--bg-tertiary);
+            padding: 0.75rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: monospace;
+            font-size: 0.9rem;
+            margin: 0.5rem 0;
+        }
+
+        /* Inline link button style */
+        .btn-link {
+            background: none;
+            border: none;
+            color: #2563eb; /* Blue-600 for light theme - 4.7:1 contrast on white */
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: inherit;
+            padding: 0;
+        }
+
+        .btn-link:hover {
+            color: #1d4ed8; /* Blue-700 for hover */
+        }
+
+        .btn-link:focus {
+            outline: 2px solid var(--border-focus);
+            outline-offset: 2px;
+        }
+
+        /* Dark theme btn-link - higher contrast for dark backgrounds */
+        [data-theme="dark"] .btn-link {
+            color: #93c5fd; /* Blue-300 - 6:1+ contrast on dark gray */
+        }
+        [data-theme="dark"] .btn-link:hover {
+            color: #bfdbfe; /* Blue-200 - lighter on hover */
+        }
+
+        /* ============================================
+           HIGH CONTRAST MODE - MODAL
+           ============================================ */
+        [data-theme="high-contrast"] .modal-content {
+            background: #000;
+            border: 2px solid #ffff00;
+        }
+
+        [data-theme="high-contrast"] .modal-header {
+            border-color: #ffff00;
+        }
+
+        [data-theme="high-contrast"] .modal-close {
+            color: #02fe05;
+        }
+
+        [data-theme="high-contrast"] .modal-close:hover {
+            background: #1a1a1a;
+        }
+
+        [data-theme="high-contrast"] .help-tabs {
+            border-color: #ffff00;
+        }
+
+        [data-theme="high-contrast"] .help-tab {
+            color: #02fe05;
+        }
+
+        [data-theme="high-contrast"] .help-tab[aria-selected="true"] {
+            color: #ffff00;
+            border-bottom-color: #ffff00;
+        }
+
+        [data-theme="high-contrast"] .help-table th,
+        [data-theme="high-contrast"] .help-table td {
+            border-color: #ffff00;
+        }
+
+        [data-theme="high-contrast"] .example-box {
+            border-color: #00ffff;
+        }
+
+        [data-theme="high-contrast"] .btn-link {
+            color: #00ffff;
+        }
+
+        /* ============================================
+           RESPONSIVE - MODAL
+           ============================================ */
+        @media (max-width: 600px) {
+            .modal-content {
+                width: 95%;
+                max-height: 95vh;
+            }
+            
+            .help-tabs {
+                flex-wrap: nowrap;
+            }
+            
+            .help-tab {
+                font-size: 0.85rem;
+                padding: 0.6rem 0.75rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -2153,6 +2622,33 @@
                         <span class="theme-text">High Contrast</span>
                     </button>
                 </div>
+
+                <!-- GitHub Link Button -->
+                <a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator"
+                   class="btn btn-sm github-link"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   aria-label="View source code on GitHub (opens in new tab)"
+                   title="View on GitHub">
+                    <svg class="github-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    <span class="github-label">GitHub</span>
+                </a>
+
+                <!-- Help Button -->
+                <button type="button"
+                        id="helpModalBtn"
+                        class="btn btn-sm btn-help"
+                        aria-label="Open help guide and business card tips"
+                        title="Help & Guide">
+                    <svg class="btn-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="11" x2="12" y2="16"></line>
+                        <circle cx="12" cy="7.5" r="1" fill="currentColor" stroke="none"></circle>
+                    </svg>
+                    <span class="btn-text">Help</span>
+                </button>
             </div>
         </div>
 
@@ -2215,118 +2711,20 @@
             <!-- Right Column - Form Controls Section (55% width) -->
             <div class="form-section" role="region" aria-label="Braille Card Configuration">
                 <div class="info-panel">
-                    <p><strong>What Does This Program Do?:</strong></p>
-                    <p>Generates custom braille "plates" to use in a 3D printable Business Card Braille Embosser {Link to Project Here}. Default plate sizes are for standard 3.5″ × 2″ business cards.</p>
-                    <p><strong>Where Do I Start?:</strong></p>
-                    <p>Read the directions in the "More Info" dropdown menu below:</p>
+                    <p><strong>What Does This Program Do?</strong></p>
+                    <p>Generates custom braille embossing plates for standard 3.5″ × 2″ business cards. 
+                       <a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator" target="_blank" rel="noopener noreferrer">View on GitHub</a>
+                    </p>
+                    
+                    <p><strong>Where Do I Start?</strong></p>
+                    <p>
+                        <button type="button" class="btn-link" onclick="window.openHelpModal('quickstart')">
+                            Open the Help Guide →
+                        </button>
+                    </p>
                 </div>
 
-                <div class="info-dropdown">
-                    <button type="button" id="info-toggle" class="info-toggle-btn"
-                            aria-expanded="false" aria-controls="info-content">
-                        <span id="info-toggle-text">Directions:</span>
-                        <span id="info-toggle-icon" aria-hidden="true">▼</span>
-                    </button>
-                    <div id="info-content" class="info-content" style="display: none;">
-                        <p><strong>Directions: Making a braille business card (beginner‑friendly)</strong></p>
-                        <p><strong>Quick start</strong></p>
-                        <ol style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li>Type your info under <strong>Enter Text for Braille Translation</strong>.</li>
-                            <li>Set <strong>Placement Mode</strong> to <strong>Auto Placement</strong> (recommended).</li>
-                            <li>Click <strong>Preview Braille Translation</strong>. Fix any warnings.</li>
-                            <li>Click <strong>Generate STL</strong>, review the 3D preview, then <strong>Download STL</strong>.</li>
-                            <li>Switch <strong>Select Plate to Generate</strong> to <strong>Universal Counter Plate</strong> and <strong>Download STL</strong> again.</li>
-                        </ol>
-
-                        <p><strong>What to include (tiny space = tough choices)</strong></p>
-                        <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li>Aim for <strong>4 short lines</strong>, about <strong>13 braille cells per line</strong>.</li>
-                            <li>Suggested layout:
-                                <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                                    <li>Line 1: Your name</li>
-                                    <li>Line 2: Organization/company (optional if clear in email/web)</li>
-                                    <li>Line 3: Phone number</li>
-                                    <li>Line 4: Email address</li>
-                                </ul>
-                            </li>
-                            <li>If space runs out: shorten organization words (e.g., “Amer” for “American”), drop job title, or use lowercase to remove braille capitalization markers.</li>
-                        </ul>
-
-                        <p><strong>Smart formatting for tight space (BANA‑aligned)</strong></p>
-                        <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li><strong>Phone:</strong> Enter like <em>123.456.7890</em> (use periods; no parentheses) to minimize numeric markers.</li>
-                            <li><strong>Email:</strong> If it must wrap, split after punctuation (at, dot, hyphen). Avoid splitting inside a syllable. Start the next line at the left.</li>
-                            <li><strong>Web:</strong> If it must wrap, split after punctuation (colon, period, slash). Avoid splitting inside a syllable. Start the next line at the left.</li>
-                            <li><strong>Names:</strong> If a long name won’t fit, remove capitals (type lowercase), remove middle initial, or use a first initial plus surname.</li>
-                            <li><strong>Grade choice:</strong> Keep <em>English (UEB) — uncontracted (grade 1)</em> for clarity. Use contracted (grade 2) only if you absolutely need to save space.</li>
-                        </ul>
-
-                        <p><strong>Using the controls (match these labels in the app)</strong></p>
-                        <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li><strong>Placement Mode:</strong>
-                                <em>Auto Placement</em> wraps text to fit cells with BANA‑aware warnings; <em>Manual Placement</em> lets you set each line yourself.
-                            </li>
-                            <li><strong>Select Language:</strong> Use <em>English (UEB) — uncontracted (grade 1)</em> unless you know you need something else.</li>
-                            <li><strong>Select Plate to Generate:</strong> Make the <em>Embossing Plate</em> first, then the <em>Universal Counter Plate</em>.</li>
-                            <li><strong>Preview Braille Translation:</strong> Shows your braille lines and a helpful shorthand of contractions; address any warnings before generating STLs.</li>
-                            <li><strong>Expert Mode (only if needed):</strong>
-                                <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                                    <li><em>Number of Braille Cells (Characters):</em> Keep <strong>13</strong> with indicators On.</li>
-                                    <li><em>Number of Braille Lines:</em> <strong>4</strong> is typical.</li>
-                                    <li><em>Indicator Shapes:</em> Keep <strong>On</strong> so users can feel row start/end; it reserves 2 cells per row.</li>
-                                    <li><em>Card size and spacing:</em> Defaults target standard 3.5″ × 2″ cards; adjust only if your cards differ.</li>
-                                    <li><em>Dot dimensions:</em> Leave defaults unless embossing is too shallow or too sharp.</li>
-                                </ul>
-                            </li>
-                            <li><strong>Reset Settings:</strong> Restores sensible defaults.</li>
-                        </ul>
-
-                        <p><strong>Fitting within limits</strong></p>
-                        <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li>A “cell” is one braille character space. Your per‑row limit is shown in <em>Number of Braille Cells (Characters)</em>.</li>
-                            <li>With indicators On, standard cards typically fit <strong>13 cells × 4 lines</strong>.</li>
-                            <li>If you see an unsplittable word warning, shorten the word, switch to Manual Placement, or trim other content.</li>
-                        </ul>
-
-                        <p><strong>Generating and printing</strong></p>
-                        <ol style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li><strong>Generate STL</strong> for the selected plate and review the 3D preview.</li>
-                            <li><strong>Download STL</strong> for the <em>Embossing Plate</em>, then repeat for the <em>Universal Counter Plate</em>.</li>
-                            <li>Print both plates. Reuse the counter plate; you only need to print it once.</li>
-                            <li>Embossing tip: Press firmly and evenly with the card centered. Test on a spare card first.</li>
-                        </ol>
-
-                        <p><strong>Common fixes if text won’t fit</strong></p>
-                        <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li>Use lowercase to remove capitalization indicators.</li>
-                            <li>Abbreviate organization words.</li>
-                            <li>Stick with Grade 1 (uncontracted) unless you must switch to Grade 2 (contracted) to save space.</li>
-                            <li>Prioritize the essentials: name + one contact (phone or email).</li>
-                        </ul>
-
-                        <p><strong>Acknowledgements:</strong></p>
-                        <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li>Powered by <a href="https://liblouis.io/" target="_blank" rel="noopener noreferrer" style="color: #3182ce; text-decoration: none;" aria-label="Liblouis website (opens in new window)"><strong>Liblouis</strong></a>, an open-source professional braille translator.</li>
-                            <li>Extra thanks to <strong>Tobi Weinberg</strong> for the substantial time and effort he volunteered to help start this project and see it through.</li>
-                        </ul>
-
-                        <details style="margin-top: 1em;">
-                            <summary style="cursor: pointer; font-weight: 700; font-size: 1.1em;">Accessibility Statement</summary>
-                            <p style="margin-top: 0.5em;">This application conforms to WCAG 2.1 Level AA.</p>
-                            <p><strong>Features:</strong></p>
-                            <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                                <li>High contrast mode for low vision users</li>
-                                <li>Adjustable font sizes (75% to 200%)</li>
-                                <li>Keyboard navigation support</li>
-                                <li>Screen reader compatible</li>
-                            </ul>
-                            <p><strong>Known Limitations:</strong></p>
-                            <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                                <li>3D preview requires mouse/touch for rotation</li>
-                            </ul>
-                        </details>
-                    </div>
-                </div>
+                
 
                 <form id="braille-form" aria-labelledby="main-heading">
                     <!-- Text Input Section moved into form (separate scrollable pane) -->
@@ -3671,10 +4069,6 @@
         const expertToggleIcon = document.getElementById('expert-toggle-icon');
         const braillePreview = document.getElementById('braille-preview');
         const previewContent = document.getElementById('preview-content');
-        const infoToggleBtn = document.getElementById('info-toggle');
-        const infoContent = document.getElementById('info-content');
-        const infoToggleText = document.getElementById('info-toggle-text');
-        const infoToggleIcon = document.getElementById('info-toggle-icon');
 
 
 
@@ -5038,15 +5432,7 @@
         });
 
         // Removed redundant toggle-dot-shape button
-
-        infoToggleBtn.addEventListener('click', () => {
-            const isVisible = infoContent.style.display !== 'none';
-            infoContent.style.display = isVisible ? 'none' : 'block';
-            infoToggleText.textContent = isVisible ? 'More Info' : 'Hide Information';
-            infoToggleIcon.textContent = isVisible ? '▼' : '▲';
-            infoToggleBtn.classList.toggle('active', !isVisible);
-            infoToggleBtn.setAttribute('aria-expanded', String(!isVisible));
-        });
+        // Info dropdown has been removed (replaced by Help modal)
 
         // Wire Expert submenus (expand/collapse)
         (function initExpertSubmenus() {
@@ -5635,18 +6021,49 @@
 
                 // Check if any translation errors occurred
                 if (translationErrors.length > 0) {
-                    let errorMessage = '<strong>Translation failed for the following lines:</strong><br><br>';
-                    translationErrors.forEach(err => {
-                        errorMessage += `Line ${err.line}: "${err.text}"<br>`;
-                    });
-                    errorMessage += '<br><strong>Please check your text and try again.</strong><br><br>';
-                    errorMessage += 'Common issues include:<br>';
-                    errorMessage += '• Special characters that cannot be translated<br>';
-                    errorMessage += '• Text that is incompatible with the selected braille table<br>';
-                    errorMessage += '• System errors during translation<br><br>';
-                    errorMessage += '<em>The STL file was not generated to prevent producing incorrect braille.</em>';
+                    // SECURITY: Use safe DOM building instead of innerHTML to prevent XSS
+                    // User text (err.text) could contain malicious HTML
+                    errorText.textContent = ''; // Clear existing content
 
-                    errorText.innerHTML = errorMessage;  // Use innerHTML for HTML formatting
+                    // Header
+                    const header = document.createElement('strong');
+                    header.textContent = 'Translation failed for the following lines:';
+                    errorText.appendChild(header);
+                    errorText.appendChild(document.createElement('br'));
+                    errorText.appendChild(document.createElement('br'));
+
+                    // Error details - use textContent to escape any HTML in user input
+                    translationErrors.forEach(err => {
+                        const lineText = document.createTextNode(`Line ${err.line}: "${err.text}"`);
+                        errorText.appendChild(lineText);
+                        errorText.appendChild(document.createElement('br'));
+                    });
+
+                    errorText.appendChild(document.createElement('br'));
+
+                    // Instruction text
+                    const instruction = document.createElement('strong');
+                    instruction.textContent = 'Please check your text and try again.';
+                    errorText.appendChild(instruction);
+                    errorText.appendChild(document.createElement('br'));
+                    errorText.appendChild(document.createElement('br'));
+
+                    // Common issues list
+                    errorText.appendChild(document.createTextNode('Common issues include:'));
+                    errorText.appendChild(document.createElement('br'));
+                    errorText.appendChild(document.createTextNode('• Special characters that cannot be translated'));
+                    errorText.appendChild(document.createElement('br'));
+                    errorText.appendChild(document.createTextNode('• Text that is incompatible with the selected braille table'));
+                    errorText.appendChild(document.createElement('br'));
+                    errorText.appendChild(document.createTextNode('• System errors during translation'));
+                    errorText.appendChild(document.createElement('br'));
+                    errorText.appendChild(document.createElement('br'));
+
+                    // Footer note
+                    const footer = document.createElement('em');
+                    footer.textContent = 'The STL file was not generated to prevent producing incorrect braille.';
+                    errorText.appendChild(footer);
+
                     errorDiv.style.display = 'flex';
                     errorDiv.className = 'error-message';
 
@@ -6569,6 +6986,368 @@
         }
 
 
+        // ============================================
+        // HELP MODAL FUNCTIONALITY
+        // ============================================
+
+        /**
+         * Help Modal Manager
+         * Handles opening, closing, focus trapping, and tab navigation
+         */
+        (function initHelpModal() {
+            const modal = document.getElementById('helpModal');
+            const openBtn = document.getElementById('helpModalBtn');
+            const closeBtn = document.getElementById('helpModalClose');
+            const overlay = document.getElementById('helpModalOverlay');
+            const tabs = document.querySelectorAll('.help-tab');
+            const panels = document.querySelectorAll('.help-panel');
+            
+            let previouslyFocusedElement = null;
+
+            // Open modal
+            function openHelpModal(initialTab = 'quickstart') {
+                if (!modal) return;
+                
+                previouslyFocusedElement = document.activeElement;
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden'; // Prevent background scroll
+                
+                // Switch to requested tab
+                switchHelpTab(`tab-${initialTab}`);
+                
+                // Focus first tab or close button
+                const firstTab = document.getElementById(`tab-${initialTab}`);
+                if (firstTab) {
+                    setTimeout(() => firstTab.focus(), 50);
+                } else if (closeBtn) {
+                    closeBtn.focus();
+                }
+            }
+
+            // Close modal
+            function closeHelpModal() {
+                if (!modal) return;
+                
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+                
+                // Restore focus to trigger element
+                if (previouslyFocusedElement) {
+                    previouslyFocusedElement.focus();
+                }
+            }
+
+            // Tab switching
+            function switchHelpTab(tabId) {
+                tabs.forEach(tab => {
+                    const isActive = tab.id === tabId;
+                    tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                    tab.setAttribute('tabindex', isActive ? '0' : '-1');
+                });
+
+                panels.forEach(panel => {
+                    const associatedTab = document.querySelector(`[aria-controls="${panel.id}"]`);
+                    if (associatedTab && associatedTab.id === tabId) {
+                        panel.hidden = false;
+                    } else {
+                        panel.hidden = true;
+                    }
+                });
+            }
+
+            // Focus trap - keep focus inside modal
+            function trapFocus(event) {
+                if (!modal || modal.classList.contains('hidden')) return;
+                
+                const focusableElements = modal.querySelectorAll(
+                    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+                );
+                const firstElement = focusableElements[0];
+                const lastElement = focusableElements[focusableElements.length - 1];
+
+                if (event.key === 'Tab') {
+                    if (event.shiftKey) {
+                        // Shift+Tab: if on first element, go to last
+                        if (document.activeElement === firstElement) {
+                            event.preventDefault();
+                            lastElement.focus();
+                        }
+                    } else {
+                        // Tab: if on last element, go to first
+                        if (document.activeElement === lastElement) {
+                            event.preventDefault();
+                            firstElement.focus();
+                        }
+                    }
+                }
+            }
+
+            // Keyboard navigation for tabs (arrow keys)
+            function handleTabKeyboard(event) {
+                const currentTab = event.target;
+                if (!currentTab.classList.contains('help-tab')) return;
+
+                const tabArray = Array.from(tabs);
+                const currentIndex = tabArray.indexOf(currentTab);
+                let newIndex;
+
+                switch (event.key) {
+                    case 'ArrowRight':
+                    case 'ArrowDown':
+                        event.preventDefault();
+                        newIndex = (currentIndex + 1) % tabArray.length;
+                        break;
+                    case 'ArrowLeft':
+                    case 'ArrowUp':
+                        event.preventDefault();
+                        newIndex = (currentIndex - 1 + tabArray.length) % tabArray.length;
+                        break;
+                    case 'Home':
+                        event.preventDefault();
+                        newIndex = 0;
+                        break;
+                    case 'End':
+                        event.preventDefault();
+                        newIndex = tabArray.length - 1;
+                        break;
+                    default:
+                        return;
+                }
+
+                const newTab = tabArray[newIndex];
+                switchHelpTab(newTab.id);
+                newTab.focus();
+            }
+
+            // Event listeners
+            if (openBtn) {
+                openBtn.addEventListener('click', () => openHelpModal());
+            }
+
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeHelpModal);
+            }
+
+            if (overlay) {
+                overlay.addEventListener('click', closeHelpModal);
+            }
+
+            // Escape key to close
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+                    closeHelpModal();
+                }
+            });
+
+            // Focus trap
+            document.addEventListener('keydown', trapFocus);
+
+            // Tab clicks
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => switchHelpTab(tab.id));
+                tab.addEventListener('keydown', handleTabKeyboard);
+            });
+
+            // Expose for other scripts (e.g., info panel "Learn more" link, inline tab switching)
+            window.openHelpModal = openHelpModal;
+            window.switchHelpTab = switchHelpTab;
+        })();
+
     </script>
+
+    <!-- Help Modal -->
+    <div class="modal hidden" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
+        <div class="modal-overlay" id="helpModalOverlay"></div>
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 id="helpModalTitle">Help & Guide</h2>
+                <button type="button" class="modal-close" id="helpModalClose" aria-label="Close help guide">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body help-modal-body">
+                <!-- Tab Navigation -->
+                <div class="help-tabs" role="tablist" aria-label="Help sections">
+                    <button class="help-tab" role="tab" aria-selected="true" aria-controls="helpPanelQuickStart" id="tab-quickstart" tabindex="0">Quick Start</button>
+                    <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelBusinessCard" id="tab-businesscard" tabindex="-1">Business Card Choices</button>
+                    <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelFormatting" id="tab-formatting" tabindex="-1">Formatting Rules</button>
+                    <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelExamples" id="tab-examples" tabindex="-1">Examples</button>
+                    <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelResources" id="tab-resources" tabindex="-1">Resources</button>
+                </div>
+
+                <!-- Tab Panels -->
+                <div class="help-panels">
+                    <!-- Quick Start Panel -->
+                    <div class="help-panel" role="tabpanel" aria-labelledby="tab-quickstart" id="helpPanelQuickStart">
+                        <h3>Making a Braille Business Card</h3>
+                        
+                        <h4>Quick Start Steps</h4>
+                        <ol>
+                            <li>Type your info under <strong>Enter Text for Braille Translation</strong>.</li>
+                            <li>Set <strong>Placement Mode</strong> to <strong>Auto Placement</strong> (recommended).</li>
+                            <li>Click <strong>Preview Braille Translation</strong>. Fix any warnings.</li>
+                            <li>Click <strong>Generate STL</strong>, review the 3D preview, then <strong>Download STL</strong>.</li>
+                            <li>Switch <strong>Select Plate to Generate</strong> to <strong>Universal Counter Plate</strong> and <strong>Download STL</strong> again.</li>
+                        </ol>
+
+                        <h4>What to Include</h4>
+                        <p>Standard business cards fit <strong>~4 lines of braille with ~13-14 cells per line</strong>. Suggested layout:</p>
+                        <ul>
+                            <li><strong>Line 1:</strong> Your name</li>
+                            <li><strong>Line 2:</strong> Organization/company (optional if clear in email)</li>
+                            <li><strong>Line 3:</strong> Phone number</li>
+                            <li><strong>Line 4:</strong> Email address</li>
+                        </ul>
+                        
+                        <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-businesscard')">Learn more about choosing what to include →</button></p>
+                    </div>
+
+                    <!-- Business Card Choices Panel -->
+                    <div class="help-panel" role="tabpanel" aria-labelledby="tab-businesscard" id="helpPanelBusinessCard" hidden>
+                        <h3>Choosing What to Include</h3>
+                        
+                        <p>Braille takes more space than print. A standard business card can only fit about <strong>4 lines with 13-14 braille cells each</strong>. You'll need to prioritize.</p>
+
+                        <h4>Priority Guide</h4>
+                        <table class="help-table">
+                            <thead>
+                                <tr><th>Element</th><th>Priority</th><th>Notes</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>Name</td><td>Essential</td><td>Almost always include</td></tr>
+                                <tr><td>Organization</td><td>High</td><td>Can omit if in email/web address</td></tr>
+                                <tr><td>Phone</td><td>High</td><td>Pick phone OR email if space tight</td></tr>
+                                <tr><td>Email</td><td>High</td><td>Often most useful contact method</td></tr>
+                                <tr><td>Website</td><td>Medium</td><td>Include if essential; can omit</td></tr>
+                                <tr><td>Job Title</td><td>Low</td><td>Usually omitted for space</td></tr>
+                                <tr><td>Mailing Address</td><td>Low</td><td>Usually omitted — too long</td></tr>
+                                <tr><td>Fax</td><td>Low</td><td>Usually omitted</td></tr>
+                            </tbody>
+                        </table>
+
+                        <h4>If It Doesn't Fit</h4>
+                        <p>Try these strategies in order (from BANA guidelines):</p>
+                        <ol>
+                            <li><strong>Remove capitalization indicators</strong> — Type in lowercase to save ~1 cell per capital</li>
+                            <li><strong>Remove middle initial</strong> from your name</li>
+                            <li><strong>Use first initial only</strong> — "J. Smith" instead of "Jane Smith"</li>
+                            <li><strong>Abbreviate common words</strong> — "Lib" for Library, "Amer" for American, "Nat" for National</li>
+                            <li><strong>Omit organization</strong> if it appears in your email/web address</li>
+                            <li><strong>Use fold-over card stock</strong> for more space (doubles available area)</li>
+                        </ol>
+
+                        <h4>Final Check</h4>
+                        <p>Ask yourself: <em>"Can someone identify me and contact me with just this information?"</em> If yes, you're done!</p>
+                        
+                        <p><a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/blob/main/docs/guides/BUSINESS_CARD_TRANSLATION_GUIDE.md" target="_blank" rel="noopener noreferrer">Read the full guide (opens in new tab) →</a></p>
+                    </div>
+
+                    <!-- Formatting Rules Panel -->
+                    <div class="help-panel" role="tabpanel" aria-labelledby="tab-formatting" id="helpPanelFormatting" hidden>
+                        <h3>Formatting for Maximum Space</h3>
+
+                        <h4>Phone Numbers</h4>
+                        <p><strong>Best practice:</strong> Use periods as separators: <code>123.456.7890</code></p>
+                        <ul>
+                            <li>Periods preserve number groupings without extra braille markers</li>
+                            <li>Remove parentheses — they waste space</li>
+                            <li>The numeric indicator (#) is kept at the start</li>
+                        </ul>
+                        <p><strong>Example:</strong> <code>(123) 456-7890</code> → Enter as <code>123.456.7890</code></p>
+
+                        <h4>Email Addresses</h4>
+                        <p>If an email must wrap to a second line:</p>
+                        <ol>
+                            <li><strong>Best:</strong> Split after punctuation (@, period, hyphen)</li>
+                            <li><strong>OK:</strong> Split between syllables</li>
+                            <li><strong>Avoid:</strong> Splitting in the middle of a syllable</li>
+                        </ol>
+                        <p>The continuation indicator (dot 5) should appear at the end of the first line. Start the continuation at cell 1.</p>
+
+                        <h4>Web Addresses</h4>
+                        <p>Same rules as email. Split after punctuation first (colon, period, slash).</p>
+                        <p><strong>Tip:</strong> Omit "https://" or "www." if the domain is clear without it.</p>
+
+                        <h4>Capitalization</h4>
+                        <p>Each capital letter in braille adds a capitalization indicator (1 extra cell). To save space:</p>
+                        <ul>
+                            <li>Type in lowercase: "jane smith" instead of "Jane Smith"</li>
+                            <li>Braille readers understand this is for space efficiency</li>
+                        </ul>
+                    </div>
+
+                    <!-- Examples Panel -->
+                    <div class="help-panel" role="tabpanel" aria-labelledby="tab-examples" id="helpPanelExamples" hidden>
+                        <h3>Real-World Examples</h3>
+                        <p>These examples are from BANA guidelines, showing common scenarios and solutions.</p>
+
+                        <h4>Example 1: Organization in Email</h4>
+                        <div class="example-box">
+                            <p><strong>Print card:</strong></p>
+                            <pre>Harry Potter
+Hogwarts School
+harry@hogwarts.edu</pre>
+                            <p><strong>Strategy:</strong> Omit capitals from organization (it's in the email). Wrap email after @.</p>
+                            <p><strong>Result:</strong> 4 lines, fits perfectly.</p>
+                        </div>
+
+                        <h4>Example 2: Long Name</h4>
+                        <div class="example-box">
+                            <p><strong>Print card:</strong></p>
+                            <pre>Liesel A. Schimmelfennig
+US Army Corps of Engineers</pre>
+                            <p><strong>Strategy:</strong> Name spans 2 lines. Omit organization (it's in email). Omit phone if needed.</p>
+                        </div>
+
+                        <h4>Example 3: Nickname Option</h4>
+                        <div class="example-box">
+                            <p><strong>Print card:</strong></p>
+                            <pre>Francine (Fran) Rikard
+Albuquerque AC</pre>
+                            <p><strong>Strategy:</strong> Client chose nickname "Fran" to preserve capital indicators on name.</p>
+                        </div>
+
+                        <p><a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/blob/main/docs/guides/BUSINESS_CARD_TRANSLATION_GUIDE.md#examples" target="_blank" rel="noopener noreferrer">See more examples in the full guide →</a></p>
+                    </div>
+
+                    <!-- Resources Panel -->
+                    <div class="help-panel" role="tabpanel" aria-labelledby="tab-resources" id="helpPanelResources" hidden>
+                        <h3>Resources & Credits</h3>
+
+                        <h4>Official Standards</h4>
+                        <ul>
+                            <li><a href="https://www.brailleauthority.org/braille-signage-guidelines" target="_blank" rel="noopener noreferrer">BANA Braille Signage Guidelines</a></li>
+                            <li><a href="https://www.brailleauthority.org/size-and-spacing-braille-characters" target="_blank" rel="noopener noreferrer">BANA Size and Spacing of Braille Characters</a></li>
+                            <li><a href="https://iceb.org/ueb.html" target="_blank" rel="noopener noreferrer">The Rules of Unified English Braille (ICEB)</a></li>
+                        </ul>
+
+                        <h4>This Application</h4>
+                        <ul>
+                            <li><a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
+                            <li><a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/blob/main/docs/guides/BUSINESS_CARD_TRANSLATION_GUIDE.md" target="_blank" rel="noopener noreferrer">Full Business Card Translation Guide</a></li>
+                            <li><a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/blob/main/README.md" target="_blank" rel="noopener noreferrer">Project Documentation</a></li>
+                        </ul>
+
+                        <h4>For Complex Cases</h4>
+                        <p>For professional or complex business cards, consider working with a <strong>UEB-certified transcriber</strong>. They can help with:</p>
+                        <ul>
+                            <li>International phone numbers</li>
+                            <li>Multiple languages</li>
+                            <li>Technical credentials or post-nominal letters</li>
+                            <li>Large organizations with formal naming requirements</li>
+                        </ul>
+
+                        <h4>Acknowledgments</h4>
+                        <p>Business card guidance is based on the <em>Guidelines for Brailling Business Cards</em> published by the Braille Authority of North America (BANA).</p>
+                        <p>Braille translation powered by <a href="http://liblouis.org/" target="_blank" rel="noopener noreferrer">liblouis</a>.</p>
+                        <p>Extra thanks to <strong>Tobi Weinberg</strong> for the substantial time and effort he volunteered to help start this project and see it through.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

@@ -1,0 +1,32 @@
+# Minimal dependencies for Vercel serverless deployment
+#
+# ARCHITECTURE CHANGE (2026-01-05):
+# ===================================
+# Server-side STL generation removed to eliminate Redis/Blob dependencies.
+# Heavy packages (numpy, trimesh, shapely, scipy, matplotlib, manifold3d) removed.
+#
+# RATIONALE:
+# - Client-side CSG handles all boolean operations in the browser
+#   (BVH-CSG for cards, Manifold WASM for cylinders)
+# - Server only provides lightweight JSON geometry specs via /geometry_spec
+# - Eliminates 14-day Upstash Redis inactivity failure mode
+# - Reduces deployment package size by ~80%
+# - Faster cold starts on Vercel
+#
+# For local development/testing (includes optional heavy deps + tooling):
+#   pip install -r requirements-dev.txt
+#
+# See: docs/development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md
+
+# Core web framework (REQUIRED)
+flask==2.3.3
+flask-cors==4.0.0
+
+# REMOVED (2026-01-05):
+# Flask-Limiter==3.8.0       # Rate limiting (Vercel provides DDoS protection)
+# redis==5.0.7               # Redis client (caused Upstash archived DB failures)
+# requests==2.32.3           # HTTP client (only used for blob upload)
+# numpy==1.26.4              # Only used by server-side STL generation
+# trimesh==4.5.3             # Only used by server-side STL generation
+# shapely==2.0.6             # Only used by server-side STL generation
+# mapbox_earcut==1.0.2       # Only used by server-side STL generation

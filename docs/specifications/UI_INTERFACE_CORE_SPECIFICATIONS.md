@@ -9,6 +9,7 @@ This document provides **comprehensive, in-depth specifications** for all UI int
 3. **STL Preview Panel** — Three.js 3D viewer configuration and theme-aware rendering
 4. **Accessibility Features** — Keyboard navigation, screen reader support, focus indicators
 5. **User Preference Handling** — Session-based settings (non-persistent by design)
+6. **Help Modal System** — Accessible tabbed help with BANA business card guidance
 
 **Source Priority (Order of Correctness):**
 1. `backend.py` — Primary authoritative source for server-side logic
@@ -22,10 +23,25 @@ This document provides **comprehensive, in-depth specifications** for all UI int
 
 **There are TWO `index.html` files in this project. You MUST edit the correct one:**
 
-| File | Purpose | Served by Flask? |
-|------|---------|------------------|
-| **`public/index.html`** | **PRODUCTION FILE — Edit this one!** | ✅ YES |
-| `templates/index.html` | Legacy/backup file — NOT served | ❌ NO |
+| File | Purpose | Served by Flask? | Status |
+|------|---------|------------------|--------|
+| **`public/index.html`** | **PRODUCTION FILE — Edit this one!** | ✅ YES | **ACTIVE** |
+| `templates/index.html` | Legacy/backup file — NOT served | ❌ NO | **⛔ DEPRECATED** |
+
+### `templates/index.html` Deprecation Notice (2026-01-28)
+
+The `templates/index.html` file is **officially deprecated** and should not be edited. It is missing critical features present in `public/index.html`:
+
+| Missing Feature | Purpose |
+|----------------|---------|
+| `viewport-fit=cover` | iOS notch support |
+| `--vh` CSS variable | Mobile viewport handling |
+| `safe-area-inset-*` CSS | Edge-to-edge display support |
+| `nomodule` fallback script | Older browser compatibility |
+| `prefers-reduced-motion` CSS/JS | Motion accessibility |
+| WebGL context loss recovery | Graphics stability |
+
+**This file may be removed in a future release.**
 
 **Why this matters:**
 - The Flask backend (`backend.py`) serves `public/index.html` via `send_from_directory('public', 'index.html')`
@@ -96,7 +112,17 @@ def index_explicit():
    - 7.1 [Desktop Two-Column Layout](#71-desktop-two-column-layout)
    - 7.2 [Mobile Stacked Layout](#72-mobile-stacked-layout)
    - 7.3 [iOS Safe Area Handling](#73-ios-safe-area-handling)
-8. [Design Rationale](#8-design-rationale)
+8. [Help Modal System](#8-help-modal-system)
+   - 8.1 [Overview](#81-overview)
+   - 8.2 [Modal Structure](#82-modal-structure)
+   - 8.3 [Tab Panels](#83-tab-panels)
+   - 8.4 [Accessibility Features](#84-accessibility-features)
+   - 8.5 [JavaScript API](#85-javascript-api)
+   - 8.6 [Trigger Buttons](#86-trigger-buttons)
+   - 8.7 [CSS Classes](#87-css-classes)
+   - 8.8 [High Contrast Mode](#88-high-contrast-mode)
+   - 8.9 [Related Documentation](#89-related-documentation)
+9. [Design Rationale](#9-design-rationale)
 
 ---
 
@@ -1877,7 +1903,108 @@ if (window.visualViewport) {
 
 ---
 
-## 8. Design Rationale
+## 8. Help Modal System
+
+### 8.1 Overview
+
+The Help Modal provides BANA-aligned business card guidance and application help through an accessible tabbed interface.
+
+**Location:** `public/index.html` (added January 2026)
+
+### 8.2 Modal Structure
+
+```html
+<div class="modal hidden" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
+    <div class="modal-overlay" id="helpModalOverlay"></div>
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h2 id="helpModalTitle">Help & Guide</h2>
+            <button class="modal-close" id="helpModalClose" aria-label="Close help guide">...</button>
+        </div>
+        <div class="modal-body help-modal-body">
+            <div class="help-tabs" role="tablist">...</div>
+            <div class="help-panels">...</div>
+        </div>
+    </div>
+</div>
+```
+
+### 8.3 Tab Panels
+
+| Tab ID | Panel ID | Content |
+|--------|----------|---------|
+| `tab-quickstart` | `helpPanelQuickStart` | Getting started steps, basic layout |
+| `tab-businesscard` | `helpPanelBusinessCard` | BANA priority guide, space-saving strategies |
+| `tab-formatting` | `helpPanelFormatting` | Phone, email, web, name formatting tips |
+| `tab-examples` | `helpPanelExamples` | Real-world BANA examples |
+| `tab-resources` | `helpPanelResources` | Links to standards, credits |
+
+### 8.4 Accessibility Features
+
+| Feature | Implementation |
+|---------|----------------|
+| Focus Trap | Tab/Shift+Tab cycles within modal |
+| Keyboard Navigation | Arrow keys navigate tabs, Escape closes modal |
+| ARIA Roles | `role="dialog"`, `aria-modal="true"`, `role="tablist/tab/tabpanel"` |
+| Focus Restoration | Returns focus to trigger element on close |
+| Screen Reader | `aria-labelledby`, `aria-selected`, `aria-controls` |
+
+### 8.5 JavaScript API
+
+```javascript
+// Open modal (default: quickstart tab)
+window.openHelpModal('quickstart');
+
+// Open modal to specific tab
+window.openHelpModal('businesscard');
+
+// Switch tabs programmatically
+window.switchHelpTab('tab-formatting');
+```
+
+### 8.6 Trigger Buttons
+
+**Location:** `.accessibility-controls-top` in title section
+
+| Button | ID | Action |
+|--------|-----|--------|
+| GitHub Link | — | Opens GitHub repo in new tab |
+| Help Button | `helpModalBtn` | Opens Help Modal |
+| Info Panel Link | — | Calls `window.openHelpModal('quickstart')` |
+
+### 8.7 CSS Classes
+
+| Class | Purpose |
+|-------|---------|
+| `.modal` | Fixed full-screen overlay container |
+| `.modal.hidden` | Hides modal (display: none) |
+| `.modal-overlay` | Semi-transparent backdrop |
+| `.modal-content` | Modal dialog box |
+| `.modal-large` | Width: 90%, max-width: 800px |
+| `.help-tabs` | Tab navigation container |
+| `.help-tab` | Individual tab button |
+| `.help-panel` | Tab panel content |
+| `.help-table` | Styled table for help content |
+| `.example-box` | Styled example container |
+
+### 8.8 High Contrast Mode
+
+| Element | High Contrast Style |
+|---------|---------------------|
+| Modal background | `#000` with `#ffff00` border |
+| Tab text | `#02fe05` (green) |
+| Active tab | `#ffff00` (yellow) with yellow bottom border |
+| Links | `#00ffff` (cyan) |
+| Table borders | `#ffff00` (yellow) |
+
+### 8.9 Related Documentation
+
+- [BUSINESS_CARD_TRANSLATION_GUIDE.md](../guides/BUSINESS_CARD_TRANSLATION_GUIDE.md) — Full in-depth guide linked from modal
+- [ADA_ACCESSIBILITY_VALIDATION_SOP.md](../development/ADA_ACCESSIBILITY_VALIDATION_SOP.md) — Accessibility testing procedures
+
+---
+
+## 9. Design Rationale
 
 ### Why Dark Mode as Default
 

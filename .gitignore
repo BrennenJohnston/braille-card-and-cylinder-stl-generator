@@ -70,7 +70,7 @@ Vercel Runtime Logs/
 # OpenSCAD version (work in progress - to be revisited)
 OpenSCAD/
 
-# AI Coding Assistants (tool-agnostic)
+# Coding assistant tooling (tool-agnostic)
 .cursor/
 .cursorrules
 .github/copilot/
@@ -79,3 +79,6 @@ OpenSCAD/
 .tabnine/
 .aider*
 .continue/
+
+.vercel
+.env*.local

@@ -1602,6 +1602,49 @@ function getGeometryData(manifold) {
 self.onmessage = async function(event) {
     const { type, spec, requestId } = event.data;
 
+    // === SECURITY: Message validation (defense against malformed messages) ===
+    // Allowlist of valid message types
+    const ALLOWED_TYPES = ['generate', 'ping', 'init_check'];
+    if (!type || !ALLOWED_TYPES.includes(type)) {
+        self.postMessage({
+            type: 'error',
+            requestId: requestId,
+            error: 'Invalid message type: ' + type
+        });
+        return;
+    }
+
+    // Validate requestId exists for all messages
+    if (requestId === undefined || requestId === null) {
+        self.postMessage({
+            type: 'error',
+            error: 'Missing requestId in message'
+        });
+        return;
+    }
+
+    // For 'generate' type, validate spec object structure
+    if (type === 'generate') {
+        if (!spec || typeof spec !== 'object') {
+            self.postMessage({
+                type: 'error',
+                requestId: requestId,
+                error: 'Invalid spec: expected an object'
+            });
+            return;
+        }
+        // Validate required spec fields
+        if (!spec.shape_type || !spec.plate_type) {
+            self.postMessage({
+                type: 'error',
+                requestId: requestId,
+                error: 'Missing required spec fields: shape_type and plate_type are required'
+            });
+            return;
+        }
+    }
+    // === END SECURITY VALIDATION ===
+
     console.log('Manifold CSG Worker: Received message type:', type, 'requestId:', requestId);
 
     // Handle init_check type for verifying worker readiness

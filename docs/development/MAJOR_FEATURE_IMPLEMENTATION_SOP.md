@@ -5,7 +5,7 @@
 This document provides a standardized roadmap for implementing major features in the Braille Card and Cylinder STL Generator. It captures the proven workflow established during the Card Thickness Preset System implementation (2025-12-07) and ensures consistency, completeness, and quality for all future feature additions.
 
 **Target Audience:**
-- AI coding assistants
+- Contributors
 - Junior developers
 - Senior developers implementing large features
 - Code reviewers
@@ -1007,11 +1007,11 @@ All specifications in `docs/specifications/` are relevant depending on the featu
 **Created**: 2025-12-07
 **Purpose**: Standard Operating Procedure for implementing major features in the Braille STL Generator
 **Status**: ✅ Complete
-**Target Audience**: AI assistants, junior developers, senior developers
+**Target Audience**: Contributors, junior developers, senior developers
 
 ---
 
-## Appendix A: Quick Start Guide for AI Assistants
+## Appendix A: Quick Start Guide for Contributors
 
 When a user requests a new major feature:
 

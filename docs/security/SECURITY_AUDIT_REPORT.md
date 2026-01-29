@@ -17,6 +17,64 @@ For current configuration, see:
 - `docs/security/ENVIRONMENT_VARIABLES.md`
 - `docs/development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md`
 
+---
+
+## ✅ Security Hardening Update (2026-01-28)
+
+The following security improvements were implemented as part of the compatibility hardening plan:
+
+### 1. Worker Message Validation (Defense against malformed message attacks)
+
+**Files Modified:**
+- `static/workers/csg-worker.js`
+- `static/workers/csg-worker-manifold.js`
+- `static/liblouis-worker.js`
+
+**Improvements:**
+- Added message type allowlisting (rejects unknown message types)
+- Added required field validation (requestId/id must be present)
+- Added spec object structure validation for 'generate' type messages
+- All invalid messages now return proper error responses
+
+### 2. innerHTML XSS Prevention
+
+**File Modified:** `public/index.html` (translation error display)
+
+**Improvement:**
+- Replaced `innerHTML` with safe DOM building using `textContent` and `createElement`
+- User-provided error text (`err.text`) is now properly escaped
+- Prevents potential script injection in error messages
+
+### 3. Backend Path Traversal Hardening
+
+**File Modified:** `backend.py` (`serve_static()` function)
+
+**Improvements:**
+- Added explicit validation rejecting `..` sequences
+- Added validation rejecting absolute paths
+- Added null byte injection protection
+- Added path normalization with directory escape detection
+- All blocked attempts are logged for monitoring
+
+### 4. CSP Enhancement
+
+**File Modified:** `backend.py` (security headers)
+
+**Improvement:**
+- Added `'wasm-unsafe-eval'` directive alongside `'unsafe-eval'`
+- Modern browsers (Chrome 97+, Firefox 102+) will use the more restrictive `wasm-unsafe-eval`
+- Maintains backward compatibility for older browsers
+
+### 5. Legacy File Deprecation
+
+**File Modified:** `templates/index.html`
+
+**Improvement:**
+- Added prominent deprecation notice documenting missing security/accessibility features
+- Points developers to `public/index.html` as the authoritative source
+
+---
+
 ## Executive Summary
 
 This comprehensive security audit examined the Braille STL Generator application for potential vulnerabilities across all layers: backend (Python/Flask), frontend (HTML/JavaScript), infrastructure (Vercel deployment), dependencies, and data handling. The application demonstrates **strong security practices overall** with multiple defense layers, though several areas require attention before production release.

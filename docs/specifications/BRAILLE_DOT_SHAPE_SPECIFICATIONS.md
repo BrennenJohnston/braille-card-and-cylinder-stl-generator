@@ -927,9 +927,9 @@ geometry = createConeFrustum(topRadius, baseRadius, height);
 - **Python backend**: `build_counter_plate_cone()` correctly builds inverted frustum geometry
 
 **Impact Assessment:** LOW
-- Card counter plates are typically generated server-side using Python `build_counter_plate_*()` functions
-- The `/geometry_spec` endpoint for cards with cone recesses is rarely used
+- Card counter plates with cone recesses are rarely used (most use hemisphere or bowl)
 - Cylinder cone recesses work correctly
+- (Note: Server-side generation was removed in v2.0.0; all generation is now client-side)
 
 **Potential Fix:**
 Either:

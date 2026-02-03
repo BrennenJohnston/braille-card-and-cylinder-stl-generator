@@ -18,6 +18,7 @@ from app.utils import braille_to_dots, get_logger
 # Import validation from app.validation
 from app.validation import (
     validate_braille_lines,
+    validate_line_lengths,
     validate_lines,
     validate_original_lines,
     validate_settings,
@@ -502,6 +503,14 @@ def geometry_spec():
             return jsonify({'error': 'Invalid shape_type. Must be "card" or "cylinder"'}), 400
 
         settings = CardSettings(**settings_data)
+
+        # SAFETY-CRITICAL: Validate line lengths BEFORE geometry extraction
+        # This prevents silent truncation (S0 bug) where characters exceeding
+        # grid_columns were silently dropped in geometry_spec.py
+        if plate_type == 'positive':
+            grid_columns = int(settings_data.get('grid_columns', 18))
+            indicator_shapes = int(settings_data.get('indicator_shapes', 0))
+            validate_line_lengths(lines, grid_columns, shape_type, indicator_shapes)
 
         # Extract geometry spec
         if shape_type == 'card':

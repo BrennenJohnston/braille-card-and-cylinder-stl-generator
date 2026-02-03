@@ -313,7 +313,7 @@ Cylinder, negative (counter, bowl recess):
 - Indicators: `RECESS_INDICATOR_SPECIFICATIONS.md`
 - Export & Download: `STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS.md`
 - Caching: `CACHING_SYSTEM_CORE_SPECIFICATIONS.md`
-- Manifold WASM: `MANIFOLD_WASM_IMPLEMENTATION.md`
+- Manifold WASM: `MANIFOLD_CYLINDER_FIX.md` (in docs/development/)
 
 ---
 

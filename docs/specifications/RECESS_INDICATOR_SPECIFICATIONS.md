@@ -777,8 +777,8 @@ When implementing or modifying indicator code, verify:
 
 ## Related Documentation
 
-- `CLIENT_SIDE_CSG_DOCUMENTATION.md` - Overall CSG architecture
-- `MANIFOLD_WASM_IMPLEMENTATION.md` - Manifold integration for mesh repair
-- `MANIFOLD_CYLINDER_FIX.md` - Manifold-based cylinder generation
+- `CLIENT_SIDE_CSG_DOCUMENTATION.md` - Overall CSG architecture (in docs/development/)
+- `MANIFOLD_CYLINDER_FIX.md` - Manifold integration and cylinder generation (in docs/development/)
+- `MANIFOLD_WORKER_VALIDATION.md` - Worker validation against specs (in docs/development/)
 - `EMBOSSING_PLATE_RECESS_FIX.md` - Fix for embossing plate recesses
 - `geometry_spec.py` - Geometry specification extraction (authoritative parameter source)

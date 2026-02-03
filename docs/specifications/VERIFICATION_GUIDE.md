@@ -46,13 +46,14 @@ curl http://localhost:5001/health
 
 # Expected: {"status": "ok"}
 
-# Generate a simple card
-curl -X POST http://localhost:5001/generate_braille_stl \
+# Get geometry specification (v2.0.0 - STL generation is client-side only)
+curl -X POST http://localhost:5001/geometry_spec \
   -H "Content-Type: application/json" \
-  -d "{\"lines\": [\"⠁\", \"\", \"\", \"\"], \"plate_type\": \"positive\", \"shape_type\": \"card\", \"grade\": \"g1\", \"settings\": {\"card_width\": 85, \"card_height\": 55}}" \
-  --output test_card.stl
+  -d "{\"lines\": [\"⠁\", \"\", \"\", \"\"], \"plate_type\": \"positive\", \"shape_type\": \"card\", \"grade\": \"g1\", \"settings\": {\"card_width\": 85, \"card_height\": 55}}"
 
-# Expected: test_card.stl file created
+# Expected: JSON geometry specification (client sends this to CSG worker for STL generation)
+
+# Note: The deprecated /generate_braille_stl endpoint returns 410 Gone
 ```
 
 ### 4. Verify Test Files
@@ -64,7 +65,7 @@ dir tests\
 
 # Check app structure
 dir app\
-# Should see: __init__.py, models.py, api.py, cache.py, exporters.py, utils.py, geometry\
+# Should see: __init__.py, models.py, api.py, exporters.py, utils.py, geometry\, geometry_spec.py, validation.py
 
 dir app\geometry\
 # Should see: Multiple .py files for geometry operations

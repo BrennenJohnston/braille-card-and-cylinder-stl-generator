@@ -28,12 +28,12 @@ By participating in this project, you agree to maintain a respectful and inclusi
 1. **Fork the repository** on GitHub
 2. **Clone your fork** locally:
    ```bash
-   git clone https://github.com/YOUR-USERNAME/braille-card-and-cylinder-stl-generator.git
+   git clone https://github.com/<YOUR-USERNAME>/braille-card-and-cylinder-stl-generator.git
    cd braille-card-and-cylinder-stl-generator
    ```
 3. **Add upstream remote**:
    ```bash
-   git remote add upstream https://github.com/ORIGINAL-OWNER/braille-card-and-cylinder-stl-generator.git
+   git remote add upstream https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator.git
    ```
 
 ## Development Setup

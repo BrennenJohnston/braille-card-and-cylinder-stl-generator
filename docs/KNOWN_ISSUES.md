@@ -55,7 +55,7 @@ The server now only provides lightweight JSON geometry specifications via the `/
 
 If you encounter issues:
 
-1. Check the [GitHub Issues](https://github.com/your-username/braille-card-and-cylinder-stl-generator/issues) for existing reports
+1. Check the [GitHub Issues](https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/issues) for existing reports
 2. Create a new issue with:
    - Clear description of the problem
    - Steps to reproduce
@@ -64,4 +64,4 @@ If you encounter issues:
 
 ---
 
-*Last updated: 2026-01-05*
+*Last updated: 2026-02-02*

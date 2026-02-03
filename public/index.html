@@ -3715,22 +3715,26 @@
         let previewContrastLevel = 3;   // Default: Normal (1-5 scale)
 
         // Brightness multipliers for each level (1-5)
+        // Recalibrated 2026-02-02: Stakeholder feedback indicated old "Very Bright" (1.4×)
+        // appeared as visually "Normal". New scale centers 1.4× as Normal with extended range.
         const BRIGHTNESS_MULTIPLIERS = {
-            1: 0.6,   // Very dim
-            2: 0.8,   // Dim
-            3: 1.0,   // Normal (default)
-            4: 1.2,   // Bright
-            5: 1.4    // Very bright
+            1: 0.7,   // Very dim (reduced visibility for low-light environments)
+            2: 1.0,   // Dim (old Normal baseline)
+            3: 1.4,   // Normal (default) - recalibrated from old Very Bright
+            4: 1.9,   // Bright (new extended range)
+            5: 2.5    // Very bright (new maximum for high visibility needs)
         };
 
         // Contrast settings: [ambient_ratio, directional_ratio, specular_intensity, shininess_offset]
         // Lower ambient + higher directional = higher contrast
+        // Recalibrated 2026-02-02: Stakeholder feedback indicated old "Very High" settings
+        // appeared as visually "Normal". New scale centers old level 5 as Normal with extended range.
         const CONTRAST_SETTINGS = {
-            1: { ambientRatio: 1.4, directionalRatio: 0.6, specularIntensity: 0.3, shininessOffset: -80 },  // Very low contrast
-            2: { ambientRatio: 1.2, directionalRatio: 0.8, specularIntensity: 0.6, shininessOffset: -40 },  // Low contrast
-            3: { ambientRatio: 1.0, directionalRatio: 1.0, specularIntensity: 1.0, shininessOffset: 0 },    // Normal (default)
-            4: { ambientRatio: 0.8, directionalRatio: 1.2, specularIntensity: 1.3, shininessOffset: 40 },   // High contrast
-            5: { ambientRatio: 0.6, directionalRatio: 1.4, specularIntensity: 1.6, shininessOffset: 80 }    // Very high contrast
+            1: { ambientRatio: 1.0, directionalRatio: 1.0, specularIntensity: 0.6, shininessOffset: -40 },  // Very low contrast (flatter lighting)
+            2: { ambientRatio: 0.8, directionalRatio: 1.2, specularIntensity: 1.0, shininessOffset: 20 },   // Low contrast
+            3: { ambientRatio: 0.6, directionalRatio: 1.4, specularIntensity: 1.6, shininessOffset: 80 },   // Normal (default) - recalibrated from old Very High
+            4: { ambientRatio: 0.4, directionalRatio: 1.7, specularIntensity: 2.2, shininessOffset: 150 },  // High contrast (new extended range)
+            5: { ambientRatio: 0.25, directionalRatio: 2.0, specularIntensity: 2.8, shininessOffset: 220 }  // Very high contrast (maximum definition)
         };
 
         // Brightness and Contrast level names
@@ -4382,6 +4386,10 @@
             const rowsOnCylinder = Math.floor(height / lineSpacing);
 
             // Get total cells needed from text
+            // NOTE: This uses raw text length as an approximation for preview.
+            // The actual braille length may differ (contractions can expand text).
+            // The authoritative check at generation time uses translated braille length
+            // and will block if the actual braille exceeds capacity (PR-7 safety gate).
             const lines = getDynamicLineValues();
             let totalCellsNeeded = 0;
             lines.forEach(line => {
@@ -6005,6 +6013,25 @@
                             // Update originalLines to reflect the per-line source segments
                             originalLines = wrap.textLines;
                             if (wrap.warnings && wrap.warnings.length) {
+                                // SAFETY-CRITICAL: Check if any warning indicates truncation (S0 silent data loss)
+                                // Truncation warnings contain "extra content was not placed" per banaAutoWrap() at line ~4736
+                                const isTruncationWarning = wrap.warnings.some(w => 
+                                    w.includes('extra content was not placed') || 
+                                    w.includes('exceeds available rows')
+                                );
+                                
+                                if (isTruncationWarning) {
+                                    // BLOCK GENERATION - truncation is S0 (silent data loss)
+                                    // User must reduce text or increase rows/columns
+                                    errorText.textContent = wrap.warnings.join(' ') + 
+                                        ' Generation blocked to prevent incorrect braille output. Please reduce text or increase rows/columns.';
+                                    errorDiv.style.display = 'flex';
+                                    errorDiv.className = 'error-message';
+                                    resetToGenerateState();
+                                    return;
+                                }
+                                
+                                // Non-truncation warnings (e.g., grade notes) - display but don't block
                                 errorText.textContent = wrap.warnings.join(' ');
                                 errorDiv.style.display = 'flex';
                                 errorDiv.className = 'grade-note';
@@ -6018,6 +6045,32 @@
                 }
                 log.debug('Original lines:', lines);
                 log.debug('Translated lines:', translatedLines);
+
+                // PR-10: Translation Receipt Logging (for debugging incorrect braille reports)
+                // This structured receipt enables post-incident analysis of translation issues
+                const translationReceipt = {
+                    timestamp: new Date().toISOString(),
+                    placementMode: placementMode,
+                    normalizedInput: originalLines,
+                    perRowSourceSegments: placementMode === 'auto' 
+                        ? (typeof wrap !== 'undefined' && wrap?.textLines) || lines 
+                        : lines,
+                    tableName: tableName,
+                    perLineLanguageTables: perLineLanguageTables,
+                    brailleLines: translatedLines,
+                    truncated: placementMode === 'auto' 
+                        ? (typeof wrap !== 'undefined' && wrap?.warnings?.some(w => w.includes('not placed'))) || false
+                        : false,
+                    omittedContent: placementMode === 'auto' 
+                        ? (typeof wrap !== 'undefined' && wrap?.warnings?.find(w => w.includes('not placed'))) || null
+                        : null,
+                    settings: {
+                        grid_columns: parseInt(document.getElementById('grid_columns').value),
+                        grid_rows: parseInt(document.getElementById('grid_rows').value),
+                        shape_type: document.querySelector('input[name="shape_type"]:checked')?.value || 'card',
+                    },
+                };
+                log.debug('Translation receipt:', JSON.stringify(translationReceipt, null, 2));
 
                 // Check if any translation errors occurred
                 if (translationErrors.length > 0) {
@@ -6149,21 +6202,26 @@
             }
 
             // Validate braille character limits AFTER translation
+            // SAFETY-CRITICAL: Apply column check to ALL modes (PR-9 defense-in-depth)
+            // Previously, auto mode bypassed this check trusting banaAutoWrap().
+            // Now we validate all modes to catch any wrapping bugs before backend.
             const gridColumnsValue = parseInt(document.getElementById('grid_columns').value);
             const indicatorsOn = document.querySelector('input[name="indicator_shapes"]:checked')?.value === '1';
             if (plateType === 'positive') {
                 const availableColumns = gridColumnsValue;
-                // In auto mode, we already wrapped by row capacity; skip line-specific error.
-                if (placementMode === 'manual') {
-                    for (let i = 0; i < translatedLines.length; i++) {
-                        const brailleLine = translatedLines[i];
-                        if (brailleLine && brailleLine.length > availableColumns) {
-                            const over = brailleLine.length - availableColumns;
-                            errorText.textContent = `Line ${i + 1} exceeds ${availableColumns} available braille cells by ${over} cells after translation. Please shorten your text.`;
-                            errorDiv.style.display = 'flex';
-                            errorDiv.className = 'error-message';
-                            return;
-                        }
+                // Check ALL modes for column overflow (defense-in-depth)
+                for (let i = 0; i < translatedLines.length; i++) {
+                    const brailleLine = translatedLines[i];
+                    if (brailleLine && brailleLine.length > availableColumns) {
+                        const over = brailleLine.length - availableColumns;
+                        const modeNote = placementMode === 'auto' 
+                            ? ' This may indicate a wrapping bug - please report this issue.'
+                            : '';
+                        errorText.textContent = `Line ${i + 1} exceeds ${availableColumns} available braille cells by ${over} cells after translation. Please shorten your text.${modeNote}`;
+                        errorDiv.style.display = 'flex';
+                        errorDiv.className = 'error-message';
+                        resetToGenerateState();
+                        return;
                     }
                 }
             } else {
@@ -6180,10 +6238,13 @@
                 }
             }
 
-            // Show loading message
-            errorText.textContent = plateType === 'positive' ? 'Translating text to braille...' : 'Generating counter plate...';
-            errorDiv.style.display = 'flex';
-            errorDiv.className = 'error-message info';
+            // Show loading message (but don't overwrite blocking errors)
+            // SAFETY: Do not overwrite truncation or other blocking errors
+            if (!(errorDiv.classList.contains('error-message') && !errorDiv.classList.contains('info'))) {
+                errorText.textContent = plateType === 'positive' ? 'Translating text to braille...' : 'Generating counter plate...';
+                errorDiv.style.display = 'flex';
+                errorDiv.className = 'error-message info';
+            }
 
             // Get shape type and recess shape to determine if we need the long-wait warning
             const shapeTypeElGen = document.querySelector('input[name="shape_type"]:checked');
@@ -6215,6 +6276,33 @@
                     polygonal_cutout_sides: document.getElementById('cylinder_polygonal_cutout_sides')?.value || '12',
                     seam_offset_deg: document.getElementById('seam_offset_deg')?.value || '355'
                 };
+                
+                // SAFETY-CRITICAL (PR-7): Block generation if cylinder text exceeds capacity
+                // This uses translated braille length, not raw text length like the preview warning
+                // Preview warning may under-warn when contractions expand text
+                if (plateType === 'positive') {
+                    const diameter = parseFloat(cylinderParams.diameter_mm);
+                    const height = parseFloat(cylinderParams.height_mm);
+                    const cellSpacing = parseFloat(settings.cell_spacing);
+                    const lineSpacing = parseFloat(settings.line_spacing);
+                    const circumference = Math.PI * diameter;
+                    const cellsPerRow = Math.floor(circumference / cellSpacing);
+                    const rowsOnCylinder = Math.floor(height / lineSpacing);
+                    const totalCellsAvailable = cellsPerRow * rowsOnCylinder;
+                    
+                    // Calculate total braille cells needed from translated lines
+                    const totalCellsNeeded = translatedLines.reduce((sum, line) => sum + (line ? line.length : 0), 0);
+                    
+                    if (totalCellsNeeded > totalCellsAvailable) {
+                        const overflow = totalCellsNeeded - totalCellsAvailable;
+                        errorText.textContent = `Cylinder overflow: text requires ${totalCellsNeeded} braille cells but cylinder can fit ${totalCellsAvailable} cells (overflow: ${overflow} cells). ` +
+                            'Generation blocked to prevent incorrect braille output. Please reduce text or increase cylinder dimensions.';
+                        errorDiv.style.display = 'flex';
+                        errorDiv.className = 'error-message';
+                        resetToGenerateState();
+                        return;
+                    }
+                }
             }
 
             // Debug: Log the settings being sent
@@ -6252,9 +6340,12 @@
 
             try {
                 // Update loading message for client-side generation
-                errorText.textContent = 'Generating 3D model (client-side CSG)...';
-                errorDiv.style.display = 'flex';
-                errorDiv.className = 'error-message info';
+                // SAFETY: Do not overwrite truncation or other blocking errors
+                if (!(errorDiv.classList.contains('error-message') && !errorDiv.classList.contains('info'))) {
+                    errorText.textContent = 'Generating 3D model (client-side CSG)...';
+                    errorDiv.style.display = 'flex';
+                    errorDiv.className = 'error-message info';
+                }
 
                 // Generate STL using client-side CSG worker
                 const stlData = await generateSTLClientSide({

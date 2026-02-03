@@ -50,4 +50,4 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for contribution guidelines.
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*

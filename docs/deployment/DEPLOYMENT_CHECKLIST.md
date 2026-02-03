@@ -1,191 +1,172 @@
-# Deployment Checklist - Braille Card Generator
+# Deployment Checklist - Braille Card Generator v2.0.0
 
-## Pre-Deployment Security & Configuration
+> **Zero-Maintenance Architecture:** v2.0.0 requires no external services. Deploy once, run forever.
 
-### ✅ Security Measures Implemented
-- [x] Rate limiting (10 requests/minute per IP)
-- [x] Input validation and sanitization
+## Architecture Overview
+
+| Component | v1.x | v2.0.0 |
+|-----------|------|--------|
+| External Services | Redis + Blob Storage | **None** |
+| STL Generation | Server-side | **100% Client-side** |
+| Server Dependencies | ~15 packages | **2 packages** (Flask, Flask-CORS) |
+| Required Secrets | 5+ | **None** (all optional) |
+
+## Pre-Deployment Checklist
+
+### Security Measures (Built-In)
+
+- [x] Input validation and sanitization (100KB request limit)
 - [x] Security headers (CSP, XSS protection, etc.)
 - [x] Path traversal protection
-- [x] Request size limits (1MB max)
 - [x] Error handling that doesn't expose sensitive information
-- [x] Debug code and test endpoints removed
+- [x] Minimal server attack surface (only serves JSON specs and static files)
+- [x] No secrets required (Vercel handles DDoS protection)
 
-### ⚠️ Required Configuration Before Deployment
+### Environment Variables
 
-#### 1. Environment Variables
-Set these environment variables in your deployment platform:
+All environment variables are **optional** in v2.0.0:
 
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `SECRET_KEY` | No | Flask session key (not used in stateless backend) |
+| `FLASK_ENV` | No | Set to `production` for production mode |
+| `PRODUCTION_DOMAIN` | No | Custom domain for CORS (Vercel domains allowed by default) |
+| `LOG_LEVEL` | No | Logging verbosity (default: INFO) |
+
+**Generate a secret key (if needed):**
 ```bash
-# Required - Generate a strong secret key
-SECRET_KEY=your-super-secure-secret-key-here
-
-# Optional - Set to 'production' for production environment
-FLASK_ENV=production
-
-# Optional - For enhanced logging
-LOG_LEVEL=INFO
+python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-#### 2. CORS Origins
-Update `backend.py` allowed origins:
-```python
-allowed_origins = [
-    'https://your-actual-vercel-domain.vercel.app',  # Replace with your domain
-    'https://your-custom-domain.com'  # Add custom domain if any
-]
-```
+### CORS Configuration
 
-#### 3. Security Headers CSP
-Review and update Content Security Policy in `backend.py` if needed:
-- Currently allows Google Fonts
-- Restricts script sources to self + inline
-- Update if you add additional external resources
+CORS is configured automatically:
+- Vercel preview/production domains are allowed
+- Custom domain via `PRODUCTION_DOMAIN` environment variable
+- No code changes needed
 
-### 🔒 Production Security Checklist
+## Deployment Steps (Vercel)
 
-#### Before Going Live:
-- [ ] Generate and set a strong SECRET_KEY (use `python -c "import secrets; print(secrets.token_urlsafe(32))"`)
-- [ ] Update CORS origins with your actual domain(s)
-- [ ] Verify all test endpoints are removed
-- [ ] Confirm debug mode is disabled
-- [ ] Test rate limiting works
-- [ ] Verify error messages don't expose sensitive info
-- [ ] Check that file upload limits are appropriate
-- [ ] Test with various input edge cases
-- [ ] Verify accessibility in production environment
-
-#### Domain & SSL:
-- [ ] Secure domain name chosen
-- [ ] SSL certificate configured (automatic with Vercel)
-- [ ] HTTPS redirect enabled
-- [ ] Security headers working (test with securityheaders.com)
-
-#### Monitoring & Logging:
-- [ ] Error logging configured
-- [ ] Set up monitoring for unusual traffic patterns
-- [ ] Configure alerts for error rates
-- [ ] Monitor file generation times and server resources
-
-### 🚀 Deployment Steps
-
-#### For Vercel:
-1. Push code to GitHub repository
+### 1. Connect Repository
+1. Push code to GitHub
 2. Connect repository to Vercel
-3. Set environment variables in Vercel dashboard
-4. Deploy and test
+3. Select framework preset: **Other**
 
-> Note: `wsgi.py` imports `app` from `backend.py` for Vercel serverless.
-> Use `requirements.txt` for the Install step to reduce footprint.
-> Add a `.vercelignore` to exclude build artifacts and large `third_party/` assets; keep `static/liblouis/`.
+### 2. Configure Build
+Vercel auto-detects Python from `requirements.txt`:
+- Install Command: `pip install -r requirements.txt`
+- Build Command: (none)
+- Output Directory: (none)
 
-#### Environment Variables in Vercel:
-1. Go to Project Settings > Environment Variables
-2. Add `SECRET_KEY` with a secure random value
-3. Add `FLASK_ENV=production`
-4. Deploy
+### 3. Deploy
+Click Deploy. No environment variables required!
 
-### 🧪 Post-Deployment Testing
+**Optional:** Add `PRODUCTION_DOMAIN` if using a custom domain.
 
-#### Functionality Tests:
-- [ ] Generate embossing plate STL
-- [ ] Generate counter plate STL
-- [ ] Test with various languages
-- [ ] Verify braille translation works
+## Post-Deployment Testing
+
+### Functionality Tests
+- [ ] Generate embossing plate STL (card shape)
+- [ ] Generate counter plate STL (card shape)
+- [ ] Generate embossing cylinder STL
+- [ ] Generate counter cylinder STL
+- [ ] Test braille translation preview
+- [ ] Test multiple languages
 - [ ] Test expert mode parameters
-- [ ] Test accessibility features
+- [ ] Test accessibility features (keyboard navigation, screen reader)
 - [ ] Test mobile responsiveness
 
-#### Security Tests:
+### Security Tests
 - [ ] Attempt XSS injection in text inputs
-- [ ] Test rate limiting by making rapid requests
 - [ ] Try malformed JSON requests
 - [ ] Test file path traversal attempts
 - [ ] Verify error handling doesn't leak info
-- [ ] Test with very large inputs
-- [ ] Check security headers with online tools
+- [ ] Test with very large inputs (should reject > 100KB)
+- [ ] Check security headers at [securityheaders.com](https://securityheaders.com)
 
-#### Performance Tests:
-- [ ] STL generation time under load
-- [ ] Frontend load times
-- [ ] Mobile performance
-- [ ] Test with slow network conditions
+### Performance Tests
+- [ ] STL generation time (client-side, typically < 5s)
+- [ ] Frontend load time (target: < 3s on desktop)
+- [ ] Mobile performance (test on actual devices)
+- [ ] Manifold WASM loading (first load ~2-3s)
 
-### 📊 Monitoring Recommendations
+## Endpoints
 
-#### Key Metrics to Monitor:
-- Request rate and patterns
-- Error rates by endpoint
-- STL generation times
-- Memory usage during mesh operations
-- Failed translation attempts
+### Active Endpoints
 
-#### Alert Thresholds:
-- Error rate > 5%
-- Request rate > 100/minute from single IP
-- Generation time > 30 seconds
-- Memory usage > 80%
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/` | GET | Serve main UI |
+| `/health` | GET | Health check |
+| `/liblouis/tables` | GET | List braille translation tables |
+| `/geometry_spec` | POST | Get geometry specification (JSON) |
+| `/static/<path>` | GET | Serve static files |
 
-### 🛡️ Ongoing Security Maintenance
+### Deprecated Endpoints (Return 410 Gone)
 
-#### Regular Tasks:
-- [ ] Update dependencies monthly
-- [ ] Review error logs weekly
-- [ ] Monitor for new security vulnerabilities
-- [ ] Check for unusual usage patterns
-- [ ] Update security headers as needed
-- [ ] Review and rotate SECRET_KEY annually
+| Endpoint | Removed |
+|----------|---------|
+| `/generate_braille_stl` | 2026-01-05 (use client-side generation) |
+| `/generate_counter_plate_stl` | 2026-01-05 (use client-side generation) |
+| `/lookup_stl` | 2026-01-05 (cache removed) |
 
-#### Dependency Updates:
-```bash
-# Check for updates
-pip list --outdated
+## Monitoring
 
-# Update requirements
-pip freeze > requirements.txt
-```
+### Key Metrics
+- Health endpoint response time (`/health`)
+- Translation table loading (`/liblouis/tables`)
+- Geometry spec response time (`/geometry_spec`)
 
-### 🆘 Incident Response
+### What You Don't Need to Monitor
+- Redis/cache health (removed)
+- Blob storage quotas (removed)
+- Server-side STL generation times (removed)
+- Rate limiting (handled by Vercel)
 
-#### If Security Issue Detected:
-1. Immediately disable affected functionality
-2. Investigate scope of issue
-3. Update code and redeploy
-4. Monitor for continued issues
-5. Document incident and prevention measures
+## Troubleshooting
 
-#### If Performance Issues:
-1. Check server metrics
-2. Review recent changes
-3. Scale resources if needed
-4. Optimize code if necessary
-5. Add monitoring if gaps found
+### Common Issues
 
-### 📝 Documentation
+**"Manifold worker not available" on mobile:**
+- This is expected on first load. WASM loads lazily.
+- User can refresh if timeout occurs.
 
-#### Keep Updated:
-- [ ] README.md with current feature list
-- [ ] API documentation if applicable
-- [ ] User guide for accessibility features
-- [ ] Developer setup instructions
-- [ ] Deployment process documentation
+**STL generation fails:**
+- Check browser console for JavaScript errors
+- Verify WASM is loading from CDN
+- Try a different browser
+
+**Translation preview empty:**
+- Check liblouis tables are serving
+- Verify `/liblouis/tables` returns JSON
+
+### Getting Help
+
+1. Check [Known Issues](../KNOWN_ISSUES.md)
+2. Check browser console for errors
+3. Open GitHub issue with reproduction steps
+
+## Rollback
+
+To rollback to a previous deployment on Vercel:
+1. Go to Deployments tab
+2. Click on previous deployment
+3. Click "Promote to Production"
+
+## Final Checklist
+
+- [ ] Deployment successful (no build errors)
+- [ ] Health check responds (`/health`)
+- [ ] Main UI loads
+- [ ] Card STL generation works
+- [ ] Cylinder STL generation works
+- [ ] Braille translation works
+- [ ] Mobile tested
+- [ ] Accessibility tested
+
+**✅ Ready for Public Use!**
 
 ---
 
-## Final Pre-Launch Checklist
-
-- [ ] All security measures tested
-- [ ] Environment variables set
-- [ ] CORS origins updated
-- [ ] Dependencies up to date
-- [ ] Error handling tested
-- [ ] Rate limiting tested
-- [ ] Accessibility tested
-- [ ] Mobile responsiveness tested
-- [ ] Security headers verified
-- [ ] Performance benchmarked
-- [ ] Monitoring configured
-- [ ] Documentation updated
-- [ ] Incident response plan ready
-
-**✅ Ready for Public Launch!**
+*Last updated: 2026-02-02*
+*Architecture: v2.0.0 Zero-Maintenance*

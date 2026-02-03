@@ -23,10 +23,10 @@ If you discover a security vulnerability, please report it privately:
 This application implements:
 
 - Input validation and sanitization
-- Rate limiting (Flask-Limiter)
 - Content Security Policy (CSP) headers
 - Environment variable protection
-- Secure cookie settings
+- Minimal server attack surface (client-side STL generation)
+- No external service dependencies (no secrets to compromise)
 
 For detailed security documentation, see [docs/security/](docs/security/).
 
@@ -34,10 +34,10 @@ For detailed security documentation, see [docs/security/](docs/security/).
 
 | Version | Supported          |
 | ------- | ------------------ |
+| 2.0.x   | :white_check_mark: |
 | 1.3.x   | :white_check_mark: |
 | 1.2.x   | :white_check_mark: |
-| 1.1.x   | :white_check_mark: |
-| < 1.1   | :x:                |
+| < 1.2   | :x:                |
 
 ## Security Audit Reports
 

@@ -4,7 +4,9 @@
 
 This document serves as the **master index** for all core architecture specifications in the Braille Card and Cylinder STL Generator project. Each specification document provides comprehensive, in-depth technical documentation for a specific subsystem or feature.
 
-**Last Updated:** 2026-01-05
+> **v2.0.0 Architecture (2026-01-05):** This project uses a **100% client-side STL generation** architecture. Server-side STL generation was removed. The caching system (Redis + Vercel Blob) was also removed. See [CODEBASE_AUDIT_AND_RENOVATION_PLAN.md](../development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md) for migration details.
+
+**Last Updated:** 2026-02-02
 **Total Specification Documents:** 13
 
 ---
@@ -258,7 +260,7 @@ This document serves as the **master index** for all core architecture specifica
 
 ## Supporting Architecture Documentation
 
-### [CLIENT_SIDE_CSG_DOCUMENTATION.md](./CLIENT_SIDE_CSG_DOCUMENTATION.md)
+### [CLIENT_SIDE_CSG_DOCUMENTATION.md](../development/CLIENT_SIDE_CSG_DOCUMENTATION.md)
 **Purpose:** High-level architecture overview of client-side CSG system
 **Covers:**
 - Why client-side CSG (Vercel compatibility, no timeouts)
@@ -267,13 +269,13 @@ This document serves as the **master index** for all core architecture specifica
 - Bundle size impact (~215 KB)
 - Browser compatibility
 
-### [MANIFOLD_WASM_IMPLEMENTATION.md](./MANIFOLD_WASM_IMPLEMENTATION.md)
-**Purpose:** Implementation details for Manifold 3D mesh repair
+### [MANIFOLD_CYLINDER_FIX.md](../development/MANIFOLD_CYLINDER_FIX.md)
+**Purpose:** Implementation details for Manifold WASM cylinder generation
 **Covers:**
-- CDN-based loading strategy
-- Mesh repair integration
-- Error handling and graceful degradation
-- Performance characteristics
+- Dual-worker architecture (three-bvh-csg for cards, Manifold for cylinders)
+- CDN-based WASM loading strategy
+- Mobile compatibility with lazy loading
+- Guaranteed manifold output for cylinders
 - Testing checklist
 
 ## Development Process Documentation
@@ -354,7 +356,7 @@ This document serves as the **master index** for all core architecture specifica
 |--------|---------|---------------|---------------|
 | `static/liblouis-worker.js` | Braille translation | All | LIBLOUIS_TRANSLATION_CORE_SPECIFICATIONS (Section 3) |
 | `static/workers/csg-worker.js` | CSG operations (three-bvh-csg) | **Cards only** | STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS (Section 4), CLIENT_SIDE_CSG_DOCUMENTATION |
-| `static/workers/csg-worker-manifold.js` | CSG with Manifold WASM | **Cylinders only** | MANIFOLD_CYLINDER_FIX, MANIFOLD_WASM_IMPLEMENTATION |
+| `static/workers/csg-worker-manifold.js` | CSG with Manifold WASM | **Cylinders only** | MANIFOLD_CYLINDER_FIX, MANIFOLD_WORKER_VALIDATION |
 
 **Coverage:** 3/3 workers documented (100%)
 
@@ -515,7 +517,7 @@ All specifications include sections on known issues, edge cases, and workarounds
 **For client-side generation:**
 1. CLIENT_SIDE_CSG_DOCUMENTATION
 2. STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS
-3. MANIFOLD_WASM_IMPLEMENTATION
+3. MANIFOLD_CYLINDER_FIX
 
 ---
 

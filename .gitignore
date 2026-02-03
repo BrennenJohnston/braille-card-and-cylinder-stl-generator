@@ -44,6 +44,10 @@ Thumbs.db
 # Node
 node_modules/
 
+# Playwright
+playwright-report/
+test-results/
+
 # Testing
 test_output.txt
 test_*.stl

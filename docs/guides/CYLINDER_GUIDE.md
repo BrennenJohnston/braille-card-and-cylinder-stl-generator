@@ -2,15 +2,35 @@
 
 This guide helps you create braille labels for cylindrical surfaces using the Braille STL Generator.
 
-## Quick Reference
+## First: Decide What to Include
 
-| Parameter | What It Controls |
-|-----------|------------------|
-| Outer Diameter | The diameter of the object you're labeling (in mm) |
-| Cylinder Height | How tall the braille surface will be |
-| Wall Thickness | Thickness of the cylinder wall |
-| Polygon Cutout | Number of flat sides for the inner shape |
-| Seam Offset | Rotates where the seam (gap) appears |
+> **The most important decision:** Braille takes far more space than print. You cannot include everything — you must prioritize.
+
+Before measuring your container or adjusting settings, answer this question:
+
+**"What is the minimum information someone needs to identify this item or contact me?"**
+
+### Space Reality
+
+A typical cylinder (75mm diameter) fits approximately **4 rows with 13-14 cells each**. This is much less than you might expect.
+
+### Content Priority (BANA Guidelines)
+
+| Information | Priority | Guidance |
+|-------------|----------|----------|
+| **Primary identifier** | Essential | What this item IS (e.g., "Cinnamon", "Jane Smith") |
+| **One contact method** | Essential | Phone OR email — pick one |
+| Organization | High | Include only if it identifies you; omit if in email |
+| Secondary details | Low | Usually omit — won't fit |
+
+### If It Doesn't Fit
+
+1. **Disable capitalization** — Saves ~1 cell per capital (default in this app)
+2. **Abbreviate** — "Nat" for National, "Lib" for Library
+3. **Remove redundant info** — If organization is in email, omit it
+4. **Simplify** — "J. Smith" instead of "Jane Smith"
+
+---
 
 ## Common Use Cases
 
@@ -19,6 +39,16 @@ Braille cylinders are commonly used for:
 - **Container labels:** Spice jars, medicine bottles, storage containers
 - **Identification:** Water bottles, travel mugs, personal items
 - **Educational tools:** Learning aids, classroom materials
+
+## Cylinder Parameters
+
+| Parameter | What It Controls |
+|-----------|------------------|
+| Outer Diameter | The diameter of the object you're labeling (in mm) |
+| Cylinder Height | How tall the braille surface will be |
+| Wall Thickness | Thickness of the cylinder wall |
+| Polygon Cutout | Number of flat sides for the inner shape |
+| Seam Offset | Rotates where the seam (gap) appears |
 
 ## Measuring Your Container
 

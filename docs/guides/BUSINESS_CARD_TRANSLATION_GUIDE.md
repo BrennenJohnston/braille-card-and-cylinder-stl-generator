@@ -4,6 +4,12 @@
 
 This guide helps you create effective braille business cards using the Braille STL Generator. It follows guidance from the Braille Authority of North America (BANA).
 
+## The Most Important Decision
+
+> **Before using any tool:** Decide what information to include. Braille takes far more space than print — you cannot include everything from your print card.
+>
+> **The test:** *"Can someone identify me and contact me with just this information?"* If yes, you have enough. If no, add the minimum needed — nothing more.
+
 ## Quick Reference
 
 | Constraint | Value |

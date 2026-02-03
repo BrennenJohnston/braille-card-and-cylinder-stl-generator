@@ -2717,10 +2717,11 @@
                     </p>
                     <p style="font-size: 0.9em; color: #6b7280;"><em>Note: Cylinder shapes are currently available. Flat cards are temporarily disabled.</em></p>
                     
-                    <p><strong>Where Do I Start?</strong></p>
+                    <p><strong>First Step: Decide What to Include</strong></p>
+                    <p>Braille space is limited. Not everything from print will fit.</p>
                     <p>
-                        <button type="button" class="btn-link" onclick="window.openHelpModal('quickstart')">
-                            Open the Help Guide →
+                        <button type="button" class="btn-link" onclick="window.openHelpModal('whattoinclude')">
+                            Help me choose what to include →
                         </button>
                     </p>
                 </div>
@@ -7097,7 +7098,7 @@
             let previouslyFocusedElement = null;
 
             // Open modal
-            function openHelpModal(initialTab = 'quickstart') {
+            function openHelpModal(initialTab = 'whattoinclude') {
                 if (!modal) return;
                 
                 previouslyFocusedElement = document.activeElement;
@@ -7263,10 +7264,10 @@
             <div class="modal-body help-modal-body">
                 <!-- Tab Navigation -->
                 <div class="help-tabs" role="tablist" aria-label="Help sections">
-                    <button class="help-tab" role="tab" aria-selected="true" aria-controls="helpPanelQuickStart" id="tab-quickstart" tabindex="0">Quick Start</button>
-                    <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelCylinder" id="tab-cylinder" tabindex="-1">Cylinder Guide</button>
-                    <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelBusinessCard" id="tab-businesscard" tabindex="-1">Flat Card Guide</button>
-                    <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelFormatting" id="tab-formatting" tabindex="-1">Formatting Rules</button>
+                    <button class="help-tab" role="tab" aria-selected="true" aria-controls="helpPanelWhatToInclude" id="tab-whattoinclude" tabindex="0">What to Include</button>
+                    <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelFormatting" id="tab-formatting" tabindex="-1">Formatting</button>
+                    <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelHowToUse" id="tab-howtouse" tabindex="-1">How to Use</button>
+                    <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelCylinder" id="tab-cylinder" tabindex="-1">Cylinders</button>
                     <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelExpertMode" id="tab-expertmode" tabindex="-1">Expert Mode</button>
                     <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelExamples" id="tab-examples" tabindex="-1">Examples</button>
                     <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelResources" id="tab-resources" tabindex="-1">Resources</button>
@@ -7274,37 +7275,66 @@
 
                 <!-- Tab Panels -->
                 <div class="help-panels">
-                    <!-- Quick Start Panel -->
-                    <div class="help-panel" role="tabpanel" aria-labelledby="tab-quickstart" id="helpPanelQuickStart">
-                        <h3>Quick Start Guide</h3>
+                    <!-- What to Include Panel (BANA-focused content selection) -->
+                    <div class="help-panel" role="tabpanel" aria-labelledby="tab-whattoinclude" id="helpPanelWhatToInclude">
+                        <h3>Choosing What to Include</h3>
                         
-                        <div class="help-notice" style="background: #f0f9ff; border-left: 4px solid #0284c7; padding: 0.75em 1em; margin-bottom: 1em; border-radius: 4px;">
-                            <strong>Current Status:</strong> Cylinder shapes are available. Flat business cards are temporarily disabled while we improve that feature.
+                        <div class="help-notice" style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 0.75em 1em; margin-bottom: 1em; border-radius: 4px;">
+                            <strong>The most important decision:</strong> Braille takes far more space than print. You cannot include everything — you must prioritize.
                         </div>
-                        
-                        <h4>Quick Start Steps</h4>
+
+                        <h4>The Core Question</h4>
+                        <p style="font-size: 1.1em; font-style: italic; margin: 1em 0; padding: 0.5em; background: #f8fafc; border-radius: 4px;">
+                            "Can someone <strong>identify me</strong> and <strong>contact me</strong> with just this information?"
+                        </p>
+                        <p>If yes, you have enough. If no, add the minimum needed — nothing more.</p>
+
+                        <h4>Space Reality</h4>
+                        <p>Typical braille surfaces fit approximately <strong>4 rows with 11-14 cells each</strong>. A standard print business card has far more information than this allows.</p>
+
+                        <h4>Priority Guide (BANA Guidelines)</h4>
+                        <table class="help-table">
+                            <thead>
+                                <tr><th>Information</th><th>Priority</th><th>Guidance</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><strong>Name</strong></td><td>Essential</td><td>Almost always include — this identifies you</td></tr>
+                                <tr><td><strong>One contact method</strong></td><td>Essential</td><td>Phone OR email — pick the one most useful to your audience</td></tr>
+                                <tr><td>Organization</td><td>High</td><td>Include if it identifies you; omit if it appears in your email/web address</td></tr>
+                                <tr><td>Second contact method</td><td>Medium</td><td>Only if space allows after essentials</td></tr>
+                                <tr><td>Website</td><td>Medium</td><td>Only if critical to your work</td></tr>
+                                <tr><td>Job title</td><td>Low</td><td>Usually omitted — rarely essential for contact</td></tr>
+                                <tr><td>Mailing address</td><td>Low</td><td>Almost always omitted — too long</td></tr>
+                                <tr><td>Fax number</td><td>Low</td><td>Usually omitted</td></tr>
+                            </tbody>
+                        </table>
+
+                        <h4>If It Doesn't Fit</h4>
+                        <p>Apply these strategies in order (per BANA guidelines):</p>
                         <ol>
-                            <li>Type your info under <strong>Enter Text for Braille Translation</strong>.</li>
-                            <li>Set <strong>Placement Mode</strong> to <strong>Auto Placement</strong>.</li>
-                            <li>Click <strong>Show Expert Mode</strong> to expand advanced options, then click <strong>Preview Braille Translation</strong>. Fix any warnings.</li>
-                            <li>Click <strong>Generate STL</strong>, review the 3D preview, then <strong>Download STL</strong>.</li>
-                            <li>Switch <strong>Select Plate to Generate</strong> to <strong>Universal Counter Plate</strong> and <strong>Download STL</strong> again.</li>
+                            <li><strong>Disable capitalization</strong> — Saves ~1 cell per capital letter (this app does it by default)</li>
+                            <li><strong>Remove middle initial</strong> — "Jane Smith" instead of "Jane M. Smith"</li>
+                            <li><strong>Use first initial only</strong> — "J. Smith" instead of "Jane Smith"</li>
+                            <li><strong>Abbreviate common words</strong> — "Lib" for Library, "Nat" for National, "Univ" for University</li>
+                            <li><strong>Omit organization</strong> — If it appears in your email domain, readers will see it there</li>
+                            <li><strong>Choose one contact method</strong> — Email alone is often sufficient</li>
                         </ol>
 
-                        <h4>Cylinder Use Cases</h4>
-                        <p>Braille cylinders are commonly used for:</p>
+                        <h4>Common Mistakes</h4>
                         <ul>
-                            <li><strong>Container labels:</strong> Spice jars, medicine bottles, storage containers</li>
-                            <li><strong>Identification:</strong> Water bottles, travel mugs, personal items</li>
-                            <li><strong>Educational tools:</strong> Learning aids, classroom materials</li>
+                            <li><strong>Including everything from the print version</strong> — This will not fit. Prioritize ruthlessly.</li>
+                            <li><strong>Keeping job titles</strong> — These rarely help someone contact you.</li>
+                            <li><strong>Full addresses</strong> — A single address line can consume 2-3 rows.</li>
                         </ul>
                         
-                        <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-cylinder')">Learn more about cylinder settings →</button></p>
+                        <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-formatting')">How to format your chosen content →</button></p>
                     </div>
 
                     <!-- Cylinder Guide Panel -->
                     <div class="help-panel" role="tabpanel" aria-labelledby="tab-cylinder" id="helpPanelCylinder" hidden>
                         <h3>Cylinder Guide</h3>
+                        
+                        <p><strong>First:</strong> Decide <button type="button" class="btn-link" onclick="window.switchHelpTab('tab-whattoinclude')">what information to include</button>. Cylinder space is limited just like cards.</p>
                         
                         <p>Cylinders let you create braille labels that wrap around curved surfaces like bottles, jars, and containers.</p>
 
@@ -7346,53 +7376,54 @@
                         <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-formatting')">Formatting tips for cylinder text →</button></p>
                     </div>
 
-                    <!-- Flat Card Guide Panel (formerly Business Card Choices) -->
-                    <div class="help-panel" role="tabpanel" aria-labelledby="tab-businesscard" id="helpPanelBusinessCard" hidden>
-                        <h3>Flat Card Guide</h3>
+                    <!-- How to Use Panel (tool mechanics) -->
+                    <div class="help-panel" role="tabpanel" aria-labelledby="tab-howtouse" id="helpPanelHowToUse" hidden>
+                        <h3>How to Use This Tool</h3>
                         
-                        <div class="help-notice" style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 0.75em 1em; margin-bottom: 1em; border-radius: 4px;">
-                            <strong>Temporarily Disabled:</strong> Flat business card generation is currently disabled while we improve this feature. The guidance below is preserved for when the feature returns.
+                        <div class="help-notice" style="background: #f0f9ff; border-left: 4px solid #0284c7; padding: 0.75em 1em; margin-bottom: 1em; border-radius: 4px;">
+                            <strong>Before you begin:</strong> Decide what information to include using the <button type="button" class="btn-link" onclick="window.switchHelpTab('tab-whattoinclude')" style="font-weight: bold;">What to Include</button> guide. The tool cannot help you if you try to include too much.
                         </div>
-                        
-                        <p>Braille takes more space than print. A standard business card can only fit about <strong>4 lines with 13-14 braille cells each</strong>. You'll need to prioritize.</p>
 
-                        <h4>Priority Guide</h4>
-                        <table class="help-table">
-                            <thead>
-                                <tr><th>Element</th><th>Priority</th><th>Notes</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr><td>Name</td><td>Essential</td><td>Almost always include</td></tr>
-                                <tr><td>Organization</td><td>High</td><td>Can omit if in email/web address</td></tr>
-                                <tr><td>Phone</td><td>High</td><td>Pick phone OR email if space tight</td></tr>
-                                <tr><td>Email</td><td>High</td><td>Often most useful contact method</td></tr>
-                                <tr><td>Website</td><td>Medium</td><td>Include if essential; can omit</td></tr>
-                                <tr><td>Job Title</td><td>Low</td><td>Usually omitted for space</td></tr>
-                                <tr><td>Mailing Address</td><td>Low</td><td>Usually omitted — too long</td></tr>
-                                <tr><td>Fax</td><td>Low</td><td>Usually omitted</td></tr>
-                            </tbody>
-                        </table>
-
-                        <h4>If It Doesn't Fit</h4>
-                        <p>Try these strategies in order (from BANA guidelines):</p>
+                        <h4>Step-by-Step</h4>
                         <ol>
-                            <li><strong>Remove capitalization indicators</strong> — Type in lowercase to save ~1 cell per capital</li>
-                            <li><strong>Remove middle initial</strong> from your name</li>
-                            <li><strong>Use first initial only</strong> — "J. Smith" instead of "Jane Smith"</li>
-                            <li><strong>Abbreviate common words</strong> — "Lib" for Library, "Amer" for American, "Nat" for National</li>
-                            <li><strong>Omit organization</strong> if it appears in your email/web address</li>
-                            <li><strong>Use fold-over card stock</strong> for more space (doubles available area)</li>
+                            <li><strong>Enter your text</strong> in the "Enter Text for Braille Translation" area. Use only the essential information you've selected.</li>
+                            <li><strong>Set Placement Mode</strong> to "Auto Placement" (handles line wrapping automatically).</li>
+                            <li><strong>Preview your translation:</strong> Click "Show Expert Mode", then click "Preview Braille Translation". Fix any warnings about length or characters.</li>
+                            <li><strong>Generate the STL:</strong> Click "Generate STL" and review the 3D preview.</li>
+                            <li><strong>Download both plates:</strong>
+                                <ul>
+                                    <li>Download the embossing plate STL</li>
+                                    <li>Switch "Select Plate to Generate" to "Universal Counter Plate"</li>
+                                    <li>Download again for the counter plate</li>
+                                </ul>
+                            </li>
                         </ol>
 
-                        <h4>Final Check</h4>
-                        <p>Ask yourself: <em>"Can someone identify me and contact me with just this information?"</em> If yes, you're done!</p>
+                        <h4>Current Availability</h4>
+                        <p><strong>Cylinder shapes</strong> are available for labeling bottles, jars, and containers.</p>
+                        <p><em>Flat business cards are temporarily disabled while we improve that feature.</em></p>
+
+                        <h4>Key Settings</h4>
+                        <table class="help-table">
+                            <thead>
+                                <tr><th>Setting</th><th>Recommendation</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><strong>Placement Mode</strong></td><td>Auto Placement (handles wrapping)</td></tr>
+                                <tr><td><strong>Capitalized Letters</strong></td><td>Disabled (default) — saves space</td></tr>
+                                <tr><td><strong>Language</strong></td><td>English (UEB) uncontracted — clearest for names/contact info</td></tr>
+                            </tbody>
+                        </table>
                         
-                        <p><a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/blob/main/docs/guides/BUSINESS_CARD_TRANSLATION_GUIDE.md" target="_blank" rel="noopener noreferrer">Read the full guide (opens in new tab) →</a></p>
+                        <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-cylinder')">Cylinder-specific settings →</button></p>
+                        <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-expertmode')">Advanced options in Expert Mode →</button></p>
                     </div>
 
                     <!-- Formatting Rules Panel -->
                     <div class="help-panel" role="tabpanel" aria-labelledby="tab-formatting" id="helpPanelFormatting" hidden>
-                        <h3>Formatting for Maximum Space</h3>
+                        <h3>Formatting Your Content</h3>
+                        
+                        <p>Once you've decided <button type="button" class="btn-link" onclick="window.switchHelpTab('tab-whattoinclude')">what to include</button>, format it to maximize space efficiency.</p>
 
                         <h4>Phone Numbers</h4>
                         <p><strong>Best practice:</strong> Use periods as separators: <code>123.456.7890</code></p>

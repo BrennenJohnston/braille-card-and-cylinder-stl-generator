@@ -341,3 +341,82 @@ def validate_original_lines(original_lines: Any) -> bool:
             )
 
     return True
+
+
+def validate_line_lengths(
+    lines: list[str],
+    grid_columns: int,
+    shape_type: str,
+    indicator_shapes: int = 0,
+) -> bool:
+    """
+    Validate that braille lines do not exceed available grid columns.
+
+    SAFETY-CRITICAL: This function prevents silent truncation (S0 bug).
+    Backend geometry extraction previously silently dropped characters
+    exceeding grid_columns. This validation fails closed instead.
+
+    Args:
+        lines: List of braille text lines
+        grid_columns: Total grid columns (including reserved columns)
+        shape_type: 'card' or 'cylinder'
+        indicator_shapes: 1 if indicators enabled, 0 otherwise
+
+    Returns:
+        True if all lines fit within available columns
+
+    Raises:
+        ValidationError: If any line exceeds available columns
+    """
+    if shape_type == 'cylinder':
+        # Cylinders reserve 2 columns for indicators (triangle at col 0, character at col 1)
+        reserved = 2 if indicator_shapes else 0
+        available_columns = max(0, grid_columns - reserved)
+    else:
+        # Cards: all grid_columns are available for braille
+        # (indicators are placed separately, not subtracted from text columns)
+        available_columns = grid_columns
+
+    errors = []
+
+    for i, line in enumerate(lines):
+        if not line:
+            continue
+
+        # Count actual characters (braille cells)
+        line_length = len(line.strip()) if shape_type == 'cylinder' else len(line)
+
+        if line_length > available_columns:
+            errors.append(
+                {
+                    'line_number': i + 1,
+                    'line_length': line_length,
+                    'available_columns': available_columns,
+                    'overflow': line_length - available_columns,
+                }
+            )
+
+    if errors:
+        error_messages = []
+        for err in errors[:5]:  # Show first 5 errors
+            error_messages.append(
+                f'Line {err["line_number"]} contains {err["line_length"]} characters '
+                f'but grid allows {err["available_columns"]}. '
+                f'Overflow: {err["overflow"]} character(s).'
+            )
+
+        if len(errors) > 5:
+            error_messages.append(f'... and {len(errors) - 5} more line(s) with overflow.')
+
+        raise ValidationError(
+            'Braille text exceeds available columns. Reduce text or increase grid columns.\n'
+            + '\n'.join(error_messages),
+            {
+                'shape_type': shape_type,
+                'grid_columns': grid_columns,
+                'available_columns': available_columns,
+                'errors': errors,
+            },
+        )
+
+    return True

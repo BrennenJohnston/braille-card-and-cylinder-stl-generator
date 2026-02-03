@@ -1089,9 +1089,9 @@ const validDomeRadius = (dome_radius && dome_radius > 0) ? dome_radius : Math.ma
 - `geometry_spec.py` → `_create_dot_spec()` with `shape_type='cone'` → returns `type: 'standard'`
 - CSG workers create frustum without radii swap
 
-**Why Low Priority:** Card counter plates are typically generated server-side using Python `build_counter_plate_cone()` which correctly handles orientation.
+**Why Low Priority:** This only affects card cone recesses, which are rarely used. Most users use hemisphere or bowl recesses for counter plates.
 
-**Workaround:** Use server-side generation for card cone recesses.
+**Workaround:** Use hemisphere or bowl recess shapes for card counter plates. (Server-side generation was removed in v2.0.0.)
 
 ### Issue 2: Dome-Frustum Junction Visibility
 

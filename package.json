@@ -17,11 +17,14 @@
   },
   "homepage": "https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator#readme",
   "engines": {
-    "node": ">=18.0.0",
+    "node": ">=20.0.0",
     "npm": ">=9.0.0"
   },
   "scripts": {
-    "test": "echo \"No JS tests configured\" && exit 0"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "keywords": [
     "braille",
@@ -36,5 +39,9 @@
     "manifold-3d": "^2.5.1",
     "three-bvh-csg": "^0.0.17",
     "three-mesh-bvh": "^0.9.7"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.18",
+    "@playwright/test": "^1.58.0"
   }
 }

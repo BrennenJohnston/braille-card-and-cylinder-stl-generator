@@ -115,9 +115,9 @@ For test input "test test" with 4 rows:
 
 ## Related Documentation
 
-- `RECESS_INDICATOR_SPECIFICATIONS.md` - Complete specification for all indicator types
-- `MANIFOLD_WASM_IMPLEMENTATION.md` - Manifold integration details
-- `MANIFOLD_CYLINDER_FIX.md` - Manifold-based cylinder generation
+- `RECESS_INDICATOR_SPECIFICATIONS.md` - Complete specification for all indicator types (in docs/specifications/)
+- `MANIFOLD_CYLINDER_FIX.md` - Manifold integration and cylinder generation
+- `MANIFOLD_WORKER_VALIDATION.md` - Worker validation against specifications
 
 ## Version History
 

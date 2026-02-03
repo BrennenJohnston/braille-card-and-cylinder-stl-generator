@@ -974,13 +974,15 @@ The `/generate_braille_stl` endpoint still exists in `backend.py` but is **not c
 
 ## 10. Counter Plate Caching
 
-### Cache Strategy
+> **⚠️ ARCHIVED (2026-01-05):** This caching system has been **REMOVED**. Counter plates are now generated client-side along with all other STL files. The content below is preserved for historical reference only. See [CACHING_SYSTEM_CORE_SPECIFICATIONS.md](./CACHING_SYSTEM_CORE_SPECIFICATIONS.md) for full details.
 
-Counter plates (negative) are deterministic based on grid settings only, not text content. This enables aggressive caching:
+### Historical Cache Strategy
+
+Counter plates (negative) were deterministic based on grid settings only, not text content. This enabled aggressive caching:
 
 1. **Cache Key:** Hash of grid settings (rows, columns, spacing, dot shape)
-2. **Storage:** Vercel Blob storage
-3. **Response:** Redirect to cached Blob URL
+2. **Storage:** Vercel Blob storage (REMOVED)
+3. **Response:** Redirect to cached Blob URL (REMOVED)
 
 ### Cache Key Generation
 
@@ -1211,14 +1213,16 @@ async function handleGenerationError(error) {
 | Large | 150-250 | 12-16 | 15-30 seconds | ~200-350 MB |
 | Very Large | 300+ | 16+ | 30-60 seconds | ~350-500 MB |
 
-### Server-Side Generation Times
+### Server-Side Generation Times (Historical)
 
-| Model Size | Time (Cold Start) | Time (Warm) |
-|------------|-------------------|-------------|
-| Small | 5-10 seconds | 2-3 seconds |
-| Medium | 10-20 seconds | 5-10 seconds |
-| Large | 20-40 seconds | 10-20 seconds |
-| Very Large | May timeout | 20-40 seconds |
+> **Note:** Server-side STL generation was **removed in v2.0.0**. All generation now happens client-side.
+
+~~| Model Size | Time (Cold Start) | Time (Warm) |~~
+~~|------------|-------------------|-------------|~~
+~~| Small | 5-10 seconds | 2-3 seconds |~~
+~~| Medium | 10-20 seconds | 5-10 seconds |~~
+~~| Large | 20-40 seconds | 10-20 seconds |~~
+~~| Very Large | May timeout | 20-40 seconds |~~
 
 ### Bundle Sizes
 
@@ -1257,33 +1261,35 @@ All generation methods must produce geometrically identical results:
 
 ### Verification Tests
 
-```python
-# Verify client and server produce identical geometry
-def test_geometry_consistency():
-    # Generate via geometry_spec
-    spec = extract_card_geometry_spec(lines, settings, ...)
+```javascript
+// Verify geometry spec produces valid STL
+async function test_geometry_consistency() {
+    // Generate geometry spec
+    const spec = await fetch('/geometry_spec', {
+        method: 'POST',
+        body: JSON.stringify(settings)
+    }).then(r => r.json());
 
-    # Generate server-side
-    server_stl = generate_braille_stl(lines, settings, ...)
+    // Send to appropriate worker
+    const worker = spec.shape_type === 'cylinder' ? manifoldWorker : standardWorker;
+    const stl = await worker.generate(spec);
 
-    # Send spec to worker, get client-side STL
-    client_stl = worker.generate(spec)
-
-    # Compare vertex counts (should be similar)
-    assert abs(count_vertices(server_stl) - count_vertices(client_stl)) < 100
-
-    # Compare bounding boxes (should be identical)
-    assert bounding_box(server_stl) == bounding_box(client_stl)
+    // Verify STL is valid
+    assert(stl.byteLength > 0, 'STL has content');
+    assert(validateSTLHeader(stl), 'Valid STL header');
+    assert(getTriangleCount(stl) > 0, 'Has triangles');
+}
 ```
 
-### Known Differences
+### Worker Differences
 
-| Aspect | Client-Side | Server-Side | Impact |
-|--------|-------------|-------------|--------|
-| Triangle count | May vary | May vary | None (mesh equivalence) |
-| Vertex order | May differ | May differ | None |
-| Normal calculation | Auto | Auto | None |
-| Manifold repair | Optional | Not applied | Mesh quality |
+| Aspect | Standard Worker (Cards) | Manifold Worker (Cylinders) |
+|--------|------------------------|----------------------------|
+| Library | three-bvh-csg | Manifold WASM |
+| Triangle count | May vary | Optimized |
+| Manifold guarantee | No | Yes |
+| Bundle size | ~200 KB | ~2.5 MB (CDN) |
+| Best for | Flat geometry | Curved surfaces |
 
 ---
 
@@ -1305,23 +1311,23 @@ def test_geometry_consistency():
 ### STL Won't Generate
 
 1. Check browser console for errors
-2. Verify worker initialized: `console.log(workerReady)`
-3. Try disabling client-side: `useClientSideCSG = false`
-4. Check network tab for `/geometry_spec` failures
+2. Verify worker initialized: `console.log(workerReady)` or `console.log(manifoldWorkerReady)`
+3. Check network tab for `/geometry_spec` failures
+4. Try hard refresh (Ctrl+Shift+R)
 
 ### Generated STL is Invalid
 
 1. Import into slicer, check for errors
-2. Try with Manifold repair enabled
-3. Compare with server-generated version
-4. Check for non-manifold edges
+2. For cylinders, verify Manifold worker is being used (guaranteed manifold output)
+3. Check for non-manifold edges in slicer
+4. Try a different browser
 
 ### Generation is Slow
 
 1. Check model complexity (dot count)
 2. Close other browser tabs
-3. Try server-side for large models
-4. Check browser memory usage
+3. Check browser memory usage
+4. For first cylinder generation, WASM loading adds 2-3 seconds
 
 ### Worker Fails to Initialize
 

@@ -101,23 +101,38 @@ def braille_to_dots(braille_char: str) -> list:
     2 5
     3 6
 
+    SAFETY-CRITICAL (Defense-in-Depth):
+    This function raises ValueError for non-braille characters to prevent
+    silent data loss. While validate_braille_lines() blocks non-braille
+    for positive plates before this runs, this provides defense-in-depth
+    against direct API calls or future code paths that skip validation.
+
     Args:
         braille_char: Single braille Unicode character
 
     Returns:
         List of 6 integers (0 or 1) representing dot pattern
+
+    Raises:
+        ValueError: If character is not a valid braille Unicode character
+                   (except space and empty, which return empty cell)
     """
     # Braille Unicode block starts at U+2800
     # Each braille character is represented by 8 bits (dots 1-8)
     if not braille_char or braille_char == ' ':
-        return [0, 0, 0, 0, 0, 0]  # Empty cell
+        return [0, 0, 0, 0, 0, 0]  # Empty cell - valid representation of blank
 
     # Get the Unicode code point
     code_point = ord(braille_char)
 
     # Check if it's in the braille Unicode block (U+2800 to U+28FF)
     if code_point < 0x2800 or code_point > 0x28FF:
-        return [0, 0, 0, 0, 0, 0]  # Not a braille character
+        # SAFETY: Fail closed instead of returning empty dots
+        # This prevents silent data loss if validation is bypassed
+        raise ValueError(
+            f"Invalid braille character: '{braille_char}' (U+{code_point:04X}). "
+            f'Expected braille Unicode range U+2800 to U+28FF.'
+        )
 
     # Extract the dot pattern (bits 0-7 for dots 1-8)
     # The bit order is dot 1, 2, 3, 4, 5, 6, 7, 8

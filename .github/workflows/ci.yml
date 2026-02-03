@@ -169,3 +169,7 @@ jobs:
       with:
         root: public/
         format: text
+        # Ignore CSS env() function errors - these are valid CSS Environment Variables
+        # (CSS Environment Variables Module Level 1) for iOS safe area support, but the
+        # W3C validator doesn't recognize modern CSS features
+        extra: --ignore-re "CSS:.*env\\(safe-area-inset"

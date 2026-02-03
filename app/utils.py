@@ -131,7 +131,7 @@ def braille_to_dots(braille_char: str) -> list:
         # This prevents silent data loss if validation is bypassed
         raise ValueError(
             f"Invalid braille character: '{braille_char}' (U+{code_point:04X}). "
-            f"Expected braille Unicode range U+2800 to U+28FF."
+            f'Expected braille Unicode range U+2800 to U+28FF.'
         )
 
     # Extract the dot pattern (bits 0-7 for dots 1-8)

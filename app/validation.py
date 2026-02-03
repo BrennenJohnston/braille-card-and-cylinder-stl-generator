@@ -400,9 +400,9 @@ def validate_line_lengths(
         error_messages = []
         for err in errors[:5]:  # Show first 5 errors
             error_messages.append(
-                f"Line {err['line_number']} contains {err['line_length']} characters "
-                f"but grid allows {err['available_columns']}. "
-                f"Overflow: {err['overflow']} character(s)."
+                f'Line {err["line_number"]} contains {err["line_length"]} characters '
+                f'but grid allows {err["available_columns"]}. '
+                f'Overflow: {err["overflow"]} character(s).'
             )
 
         if len(errors) > 5:

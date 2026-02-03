@@ -217,7 +217,9 @@ def test_validation_card_column_overflow(client):
     data = response.get_json()
     assert 'error' in data
     # Error message should mention the overflow
-    assert 'column' in data['error'].lower() or 'overflow' in data['error'].lower() or 'exceeds' in data['error'].lower()
+    assert (
+        'column' in data['error'].lower() or 'overflow' in data['error'].lower() or 'exceeds' in data['error'].lower()
+    )
 
 
 def test_validation_cylinder_column_overflow(client):
@@ -242,7 +244,9 @@ def test_validation_cylinder_column_overflow(client):
 
     response = client.post('/geometry_spec', json=payload, headers={'Content-Type': 'application/json'})
 
-    assert response.status_code == 400, f'Expected 400 for cylinder overflow, got {response.status_code}: {response.data}'
+    assert response.status_code == 400, (
+        f'Expected 400 for cylinder overflow, got {response.status_code}: {response.data}'
+    )
     data = response.get_json()
     assert 'error' in data
 
@@ -261,7 +265,11 @@ def test_validation_cylinder_no_indicators_overflow(client):
         'plate_type': 'positive',
         'shape_type': 'cylinder',
         'grade': 'g1',
-        'settings': {'grid_rows': 4, 'grid_columns': 4, 'indicator_shapes': 0},  # No indicators, all 4 columns available
+        'settings': {
+            'grid_rows': 4,
+            'grid_columns': 4,
+            'indicator_shapes': 0,
+        },  # No indicators, all 4 columns available
         'cylinder_params': {'diameter': 60.0, 'height': 40.0, 'wall_thickness': 2.0, 'seam_offset_deg': 0.0},
     }
 
@@ -375,7 +383,7 @@ def test_braille_to_dots_unicode_outside_braille_range_raises():
     """Test that Unicode characters outside braille range raise ValueError."""
     # Unicode character just before braille block
     with pytest.raises(ValueError):
-        braille_to_dots('\u27FF')  # U+27FF is just before U+2800
+        braille_to_dots('\u27ff')  # U+27FF is just before U+2800
 
     # Unicode character just after braille block
     with pytest.raises(ValueError):

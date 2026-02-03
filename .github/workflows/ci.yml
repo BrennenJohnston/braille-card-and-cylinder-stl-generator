@@ -171,4 +171,4 @@ jobs:
         format: text
         # Skip CSS validation - the W3C validator doesn't recognize modern CSS features
         # like env() for iOS safe area support (CSS Environment Variables Module Level 1)
-        css: false
+        extra: --also-check-css false

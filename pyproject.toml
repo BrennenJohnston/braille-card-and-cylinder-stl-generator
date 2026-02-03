@@ -8,8 +8,8 @@ requires-python = ">=3.12"
 # Server only provides lightweight JSON geometry specs
 # Client-side CSG handles all heavy computation
 dependencies = [
-    "flask==2.3.3",
-    "flask-cors==4.0.0",
+    "flask==3.1.2",
+    "flask-cors==6.0.2",
 ]
 
 # OPTIONAL DEPENDENCIES FOR LOCAL DEVELOPMENT
@@ -18,25 +18,25 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     # Geometry processing (server-side generation)
-    "numpy==2.4.0",
+    "numpy==2.4.1",
     "trimesh==4.5.3",
-    "shapely==2.0.6",
+    "shapely==2.1.2",
     "mapbox_earcut==2.0.0",
-    "scipy==1.11.4",        # For mesh.fix_normals()
-    "matplotlib==3.8.0",    # For character markers
-    "manifold3d==3.0.1",    # Boolean operations
+    "scipy==1.17.0",        # For mesh.fix_normals()
+    "matplotlib==3.10.8",    # For character markers
+    "manifold3d==3.3.2",    # Boolean operations
 
     # Development tools
-    "pytest==7.4.3",
-    "pytest-cov==4.1.0",
-    "ruff==0.14.10",
+    "pytest==9.0.2",
+    "pytest-cov==7.0.0",
+    "ruff==0.14.13",
     "mypy==1.7.1",
     "pre-commit==3.5.0",
 ]
 
 test = [
-    "pytest==7.4.3",
-    "pytest-cov==4.1.0",
+    "pytest==9.0.2",
+    "pytest-cov==7.0.0",
 ]
 
 # REMOVED FROM PRODUCTION (2026-01-05):

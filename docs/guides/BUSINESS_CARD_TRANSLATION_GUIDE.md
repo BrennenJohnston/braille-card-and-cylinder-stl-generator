@@ -1,5 +1,7 @@
 # Business Card Braille Translation Guide
 
+> **Note:** Flat business card generation is currently **temporarily disabled** while we improve this feature. This guide is preserved for when the feature returns. In the meantime, see [CYLINDER_GUIDE.md](CYLINDER_GUIDE.md) for creating braille cylinders (labels, containers).
+
 This guide helps you create effective braille business cards using the Braille STL Generator. It follows guidance from the Braille Authority of North America (BANA).
 
 ## Quick Reference
@@ -284,13 +286,30 @@ Consider consulting a **UEB-certified transcriber** for:
 
 ## Using the Application
 
+### Important: Preview Before Generating
+
+The **Preview Braille Translation** button is located inside **Expert Mode**. To access it:
+
+1. Click **Show Expert Mode** on the main page
+2. Click **Preview Braille Translation** at the top of the Expert Mode panel
+3. Review any warnings about text length or character issues
+
+### Capitalized Letters Toggle
+
+The **Capitalized Letters** toggle controls how capitals are handled:
+
+- **Disabled (default):** Text is automatically converted to lowercase before translation. You can type normally — capitals are converted for you.
+- **Enabled:** Capital letters are preserved, adding indicator cells to the braille output.
+
+**Why disable capitals?** Saves approximately 1 braille cell per capital letter. Braille readers understand this is standard practice for space-limited applications.
+
 ### Recommended Settings
 
 | Setting | Recommended Value | Reason |
 |---------|-------------------|--------|
 | Placement Mode | Auto Placement | Handles wrapping automatically |
 | Language | English (UEB) — uncontracted (grade 1) | Clearer for names and contact info |
-| Capitalized Letters | Disabled | Saves space (recommended) |
+| Capitalized Letters | Disabled | Saves space (default; recommended) |
 | Braille Cells | 13 | Standard with indicators |
 | Braille Lines | 4 | Standard card |
 | Indicator Shapes | On | Helps readers find row start/end |
@@ -318,7 +337,7 @@ Use contracted braille only when:
 
 Business card guidance is adapted from the [*Business Cards Fact Sheet*](https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf) (approved March 2024) published by the Braille Authority of North America (BANA).
 
-Braille translation powered by [liblouis](http://liblouis.org/).
+Braille translation powered by [liblouis](https://liblouis.io/).
 
 ---
 

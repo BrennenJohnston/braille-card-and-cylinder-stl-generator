@@ -112,7 +112,7 @@ async function translateToBraille(text, grade) {
 ## 📚 **Resources**
 
 - [Liblouis JS Build Repository](https://github.com/liblouis/js-build)
-- [Liblouis Official Documentation](https://liblouis.org/)
+- [Liblouis Official Documentation](https://liblouis.io/)
 - [Vercel Python Documentation](https://vercel.com/docs/functions/serverless-functions/runtimes/python)
 - [UEB Braille Standards](https://www.brailleauthority.org/ueb.html)
 

@@ -2712,9 +2712,10 @@
             <div class="form-section" role="region" aria-label="Braille Card Configuration">
                 <div class="info-panel">
                     <p><strong>What Does This Program Do?</strong></p>
-                    <p>Generates custom braille embossing plates for standard 3.5″ × 2″ business cards. 
+                    <p>Generates custom braille embossing plates for cylinders (labels, containers) and flat cards. 
                        <a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator" target="_blank" rel="noopener noreferrer">View on GitHub</a>
                     </p>
+                    <p style="font-size: 0.9em; color: #6b7280;"><em>Note: Cylinder shapes are currently available. Flat cards are temporarily disabled.</em></p>
                     
                     <p><strong>Where Do I Start?</strong></p>
                     <p>
@@ -7263,8 +7264,10 @@
                 <!-- Tab Navigation -->
                 <div class="help-tabs" role="tablist" aria-label="Help sections">
                     <button class="help-tab" role="tab" aria-selected="true" aria-controls="helpPanelQuickStart" id="tab-quickstart" tabindex="0">Quick Start</button>
-                    <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelBusinessCard" id="tab-businesscard" tabindex="-1">Business Card Choices</button>
+                    <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelCylinder" id="tab-cylinder" tabindex="-1">Cylinder Guide</button>
+                    <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelBusinessCard" id="tab-businesscard" tabindex="-1">Flat Card Guide</button>
                     <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelFormatting" id="tab-formatting" tabindex="-1">Formatting Rules</button>
+                    <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelExpertMode" id="tab-expertmode" tabindex="-1">Expert Mode</button>
                     <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelExamples" id="tab-examples" tabindex="-1">Examples</button>
                     <button class="help-tab" role="tab" aria-selected="false" aria-controls="helpPanelResources" id="tab-resources" tabindex="-1">Resources</button>
                 </div>
@@ -7273,32 +7276,83 @@
                 <div class="help-panels">
                     <!-- Quick Start Panel -->
                     <div class="help-panel" role="tabpanel" aria-labelledby="tab-quickstart" id="helpPanelQuickStart">
-                        <h3>Making a Braille Business Card</h3>
+                        <h3>Quick Start Guide</h3>
+                        
+                        <div class="help-notice" style="background: #f0f9ff; border-left: 4px solid #0284c7; padding: 0.75em 1em; margin-bottom: 1em; border-radius: 4px;">
+                            <strong>Current Status:</strong> Cylinder shapes are available. Flat business cards are temporarily disabled while we improve that feature.
+                        </div>
                         
                         <h4>Quick Start Steps</h4>
                         <ol>
                             <li>Type your info under <strong>Enter Text for Braille Translation</strong>.</li>
-                            <li>Set <strong>Placement Mode</strong> to <strong>Auto Placement</strong> (recommended).</li>
-                            <li>Click <strong>Preview Braille Translation</strong>. Fix any warnings.</li>
+                            <li>Set <strong>Placement Mode</strong> to <strong>Auto Placement</strong>.</li>
+                            <li>Click <strong>Show Expert Mode</strong> to expand advanced options, then click <strong>Preview Braille Translation</strong>. Fix any warnings.</li>
                             <li>Click <strong>Generate STL</strong>, review the 3D preview, then <strong>Download STL</strong>.</li>
                             <li>Switch <strong>Select Plate to Generate</strong> to <strong>Universal Counter Plate</strong> and <strong>Download STL</strong> again.</li>
                         </ol>
 
-                        <h4>What to Include</h4>
-                        <p>Standard business cards fit <strong>~4 lines of braille with ~13-14 cells per line</strong>. Suggested layout:</p>
+                        <h4>Cylinder Use Cases</h4>
+                        <p>Braille cylinders are commonly used for:</p>
                         <ul>
-                            <li><strong>Line 1:</strong> Your name</li>
-                            <li><strong>Line 2:</strong> Organization/company (optional if clear in email)</li>
-                            <li><strong>Line 3:</strong> Phone number</li>
-                            <li><strong>Line 4:</strong> Email address</li>
+                            <li><strong>Container labels:</strong> Spice jars, medicine bottles, storage containers</li>
+                            <li><strong>Identification:</strong> Water bottles, travel mugs, personal items</li>
+                            <li><strong>Educational tools:</strong> Learning aids, classroom materials</li>
                         </ul>
                         
-                        <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-businesscard')">Learn more about choosing what to include →</button></p>
+                        <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-cylinder')">Learn more about cylinder settings →</button></p>
                     </div>
 
-                    <!-- Business Card Choices Panel -->
+                    <!-- Cylinder Guide Panel -->
+                    <div class="help-panel" role="tabpanel" aria-labelledby="tab-cylinder" id="helpPanelCylinder" hidden>
+                        <h3>Cylinder Guide</h3>
+                        
+                        <p>Cylinders let you create braille labels that wrap around curved surfaces like bottles, jars, and containers.</p>
+
+                        <h4>Key Cylinder Parameters</h4>
+                        <table class="help-table">
+                            <thead>
+                                <tr><th>Parameter</th><th>What It Controls</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><strong>Outer Diameter</strong></td><td>The diameter of the object you're labeling (in mm). Measure around the widest part where the label will go.</td></tr>
+                                <tr><td><strong>Cylinder Height</strong></td><td>How tall the braille surface will be. This determines how many rows of braille can fit.</td></tr>
+                                <tr><td><strong>Wall Thickness</strong></td><td>Thickness of the cylinder wall. Thicker = sturdier but uses more material.</td></tr>
+                                <tr><td><strong>Polygon Cutout</strong></td><td>Number of flat sides for the inner shape. Higher numbers = smoother curve but larger file size.</td></tr>
+                                <tr><td><strong>Seam Offset</strong></td><td>Rotates where the "seam" (gap) in the cylinder appears. Adjust so the seam doesn't interrupt your text.</td></tr>
+                            </tbody>
+                        </table>
+
+                        <h4>Measuring Your Container</h4>
+                        <ol>
+                            <li><strong>Outer diameter:</strong> Wrap a string around the container, mark where it meets, then measure the string. Divide by 3.14159 (π) to get diameter.</li>
+                            <li><strong>Height:</strong> Measure the flat area where braille will go. Leave margin at top and bottom.</li>
+                        </ol>
+
+                        <h4>Text Capacity</h4>
+                        <p>The number of braille cells that fit depends on your cylinder's circumference:</p>
+                        <ul>
+                            <li>Standard braille cell width is ~2.5mm</li>
+                            <li>A 75mm diameter cylinder (235mm circumference) fits approximately <strong>13-14 cells per row</strong></li>
+                            <li>Larger diameter = more cells per row</li>
+                        </ul>
+
+                        <h4>Tips for Best Results</h4>
+                        <ul>
+                            <li><strong>Print orientation:</strong> Print cylinders standing upright for best dot quality</li>
+                            <li><strong>Test fit:</strong> Print a small section first to verify the diameter matches your container</li>
+                            <li><strong>Seam placement:</strong> Rotate the seam to the back or between words</li>
+                        </ul>
+                        
+                        <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-formatting')">Formatting tips for cylinder text →</button></p>
+                    </div>
+
+                    <!-- Flat Card Guide Panel (formerly Business Card Choices) -->
                     <div class="help-panel" role="tabpanel" aria-labelledby="tab-businesscard" id="helpPanelBusinessCard" hidden>
-                        <h3>Choosing What to Include</h3>
+                        <h3>Flat Card Guide</h3>
+                        
+                        <div class="help-notice" style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 0.75em 1em; margin-bottom: 1em; border-radius: 4px;">
+                            <strong>Temporarily Disabled:</strong> Flat business card generation is currently disabled while we improve this feature. The guidance below is preserved for when the feature returns.
+                        </div>
                         
                         <p>Braille takes more space than print. A standard business card can only fit about <strong>4 lines with 13-14 braille cells each</strong>. You'll need to prioritize.</p>
 
@@ -7363,11 +7417,62 @@
                         <p><strong>Tip:</strong> Omit "https://" or "www." if the domain is clear without it.</p>
 
                         <h4>Capitalization</h4>
-                        <p>Each capital letter in braille adds a capitalization indicator (1 extra cell). To save space:</p>
+                        <p>Each capital letter in braille adds a capitalization indicator (1 extra cell). The <strong>Capitalized Letters</strong> toggle controls how capitals are handled:</p>
                         <ul>
-                            <li>Type in lowercase: "jane smith" instead of "Jane Smith"</li>
-                            <li>Braille readers understand this is for space efficiency</li>
+                            <li><strong>Disabled (default):</strong> Text is automatically converted to lowercase before translation. You can type normally — capitals are converted for you.</li>
+                            <li><strong>Enabled:</strong> Capital letters are preserved, adding indicator cells to the braille output.</li>
                         </ul>
+                        <p><strong>Why disable capitals?</strong> Saves approximately 1 braille cell per capital letter. Braille readers understand this is standard practice for space-limited applications like labels and business cards.</p>
+                    </div>
+
+                    <!-- Expert Mode Guide Panel -->
+                    <div class="help-panel" role="tabpanel" aria-labelledby="tab-expertmode" id="helpPanelExpertMode" hidden>
+                        <h3>Expert Mode Guide</h3>
+                        
+                        <p>Expert Mode provides fine-grained control over braille generation. Click <strong>Show Expert Mode</strong> on the main page to access these options.</p>
+
+                        <h4>What's Inside Expert Mode</h4>
+                        
+                        <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 0.75em 1em; margin-bottom: 1em; border-radius: 4px;">
+                            <strong>Important:</strong> The <strong>Preview Braille Translation</strong> button is located at the top of Expert Mode. Use it to verify your text before generating STL files.
+                        </div>
+
+                        <table class="help-table">
+                            <thead>
+                                <tr><th>Submenu</th><th>What It Controls</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Shape Selection</strong></td>
+                                    <td>Output shape (cylinder/card), braille dot shape (rounded/cone), and indicator markers on/off</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Braille Spacing</strong></td>
+                                    <td>Number of cells per row, number of rows, cell spacing, line spacing, dot spacing, and X/Y positioning adjustments</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Braille Dot Adjustments</strong></td>
+                                    <td>Dot dimensions (diameter, height, tip size), recess dimensions for counter plates, and indicator dot sizes</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Surface Dimensions</strong></td>
+                                    <td>Cylinder parameters (diameter, height, wall thickness, polygon sides, seam offset) or card dimensions</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h4>When to Use Expert Mode</h4>
+                        <ul>
+                            <li><strong>Preview translations:</strong> Always preview before generating to catch warnings about text length or character issues</li>
+                            <li><strong>Custom cylinder sizes:</strong> Adjust diameter and height to match your specific container</li>
+                            <li><strong>Fine-tune spacing:</strong> Modify cell and line spacing for non-standard applications</li>
+                            <li><strong>Printer calibration:</strong> Adjust dot dimensions if your 3D printer produces dots that are too large or small</li>
+                        </ul>
+
+                        <h4>Default Values</h4>
+                        <p>The default settings follow BANA (Braille Authority of North America) guidelines and work well for most applications. Only modify if you have specific requirements or need to calibrate for your printer.</p>
+                        
+                        <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-resources')">See BANA resources →</button></p>
                     </div>
 
                     <!-- Examples Panel -->
@@ -7433,7 +7538,7 @@ Albuquerque AC</pre>
 
                         <h4>Acknowledgments</h4>
                         <p>Business card guidance is based on the <em>Guidelines for Brailling Business Cards</em> published by the Braille Authority of North America (BANA).</p>
-                        <p>Braille translation powered by <a href="http://liblouis.org/" target="_blank" rel="noopener noreferrer">liblouis</a>.</p>
+                        <p>Braille translation powered by <a href="https://liblouis.io/" target="_blank" rel="noopener noreferrer">liblouis</a>.</p>
                         <p>Extra thanks to <strong>Tobi Weinberg</strong> for the substantial time and effort he volunteered to help start this project and see it through.</p>
                     </div>
                 </div>

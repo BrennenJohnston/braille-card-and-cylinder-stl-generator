@@ -2,7 +2,7 @@
 
 ## Document Purpose
 
-This document provides **comprehensive, in-depth specifications** for all Surface Dimensions controls available in the application UI. It serves as an authoritative reference for future development by documenting:
+This document specifies all Surface Dimensions controls available in the application UI. It serves as an authoritative reference for future development by documenting:
 
 1. **UI Controls** — The input fields and their intended behaviors
 2. **Parameter Processing** — How values flow from UI through backend systems

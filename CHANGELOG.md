@@ -5,175 +5,120 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - 2026-01-06
+## [2.1.0] - 2026-02-16
 
-### 🎯 Zero-Maintenance Stable Release
-
-This major release represents the most stable and reliable version of the Braille STL Generator, optimized for **zero-maintenance deployment**. No external services (Redis, Blob storage) required — just deploy and forget.
-
-#### Why v2.0.0?
-
-After extensive production testing, we've achieved a "deploy once, run forever" architecture:
-- **No Redis dependency** — Eliminated Upstash Redis that would archive after 14 days of inactivity
-- **No Blob storage** — Removed Vercel Blob dependency completely
-- **100% client-side generation** — All heavy computation runs in the browser
-- **Minimal server footprint** — Flask serves only static files and lightweight JSON geometry specs
-
-### Added
-- **Full Dependency Updates** — All GitHub Actions, npm, and pip packages updated to latest stable versions
-- **Python 3.13 Support** — Updated all dev dependencies for Python 3.13 compatibility
-- **Reliable CI Pipeline** — Health check loop keeps Lighthouse accessibility audits stable
+Documentation overhaul. Rewrote all project docs to remove AI-generated language and match the tone of a small, single-maintainer open-source project.
 
 ### Changed
-- **Default Braille Dot Shape** — Cone shape for improved print quality and tactile readability
-- **Simplified Architecture** — Server only provides geometry specifications; all CSG operations run client-side
-- **GitHub Actions** — Updated to checkout@v6, setup-python@v6, setup-node@v6, html5validator-action@v8.0.0
-- **NPM Dependencies** — three-mesh-bvh updated to 0.9.4
-- **Dev Dependencies** — numpy 2.4.0, scipy 1.16.3, ruff 0.14.10, pytest 9.0.2, and more
+- Rewrote README, CONTRIBUTING, SECURITY, CHANGELOG, PROJECT_STRUCTURE, and RELEASING
+- Rewrote all docs in docs/security/, docs/deployment/, and docs/development/
+- Trimmed ENVIRONMENT_VARIABLES.md, KNOWN_ISSUES.md, and the specifications index
+- Cleaned up "comprehensive", "robust", and other AI patterns across specification files
+- Cut MAJOR_FEATURE_IMPLEMENTATION_SOP from 1000+ lines to a practical 70-line checklist
+- Updated bug report template and GitHub repository metadata
 
 ### Removed
-- **Upstash Redis** — Caching dependency removed (caused deployment failures after inactivity)
-- **Vercel Blob Storage** — Blob storage dependency removed (no longer needed)
-- **Server-side STL generation** — Completely removed in favor of client-side generation
-- **Flask-Limiter** — Rate limiting removed (Vercel provides DDoS protection)
-- **requests library** — HTTP client removed (was only used for blob upload)
+- docs/development/IMPLEMENTATION_PROCESS_ANALYSIS.md (530-line AI self-review with no value for contributors)
+
+---
+
+## [2.0.0] - 2026-01-06
+
+Major architecture change: removed all external service dependencies. The server is now a minimal Flask app that serves geometry specs — all STL generation happens in the browser.
+
+### Why v2.0.0
+
+- Removed Upstash Redis (free tier archives after 14 days of inactivity, breaking the app)
+- Removed Vercel Blob storage (no longer needed)
+- Moved all STL generation to client-side Web Workers
+- Server now only needs Flask and Flask-CORS
+
+### Added
+- Python 3.13 support
+- Health check loop in CI for stable Lighthouse audits
+- Updated all GitHub Actions, npm, and pip packages to latest stable versions
+
+### Changed
+- Default braille dot shape is now cone (better print quality and tactile feel)
+- Server only provides geometry specs; all CSG operations run client-side
+- GitHub Actions updated to checkout@v6, setup-python@v6, setup-node@v6
+- three-mesh-bvh updated to 0.9.4
+
+### Removed
+- Upstash Redis dependency
+- Vercel Blob storage dependency
+- Server-side STL generation
+- Flask-Limiter (Vercel handles DDoS protection)
+- requests library (was only used for blob upload)
 
 ### Fixed
-- **CI Pipeline** — Fixed PORT environment variable (5001) for Flask server in CI
-- **CI Pipeline** — Replaced fixed sleep with health check loop for reliable Lighthouse audits
-- **Documentation** — Full cleanup and refresh for public release
-
-### Technical Highlights
-
-| Metric | Before (v1.x) | After (v2.0.0) |
-|--------|---------------|----------------|
-| External Services | 2 (Redis, Blob) | 0 |
-| Server Dependencies | ~15 packages | 2 packages (Flask, Flask-CORS) |
-| Cold Start Time | ~5s | <1s |
-| Maintenance Required | Weekly checks | None |
-| Deployment Complexity | Environment variables, secrets | Deploy and forget |
+- CI pipeline PORT variable for Flask server
+- Replaced fixed sleep with health check loop in CI
 
 ---
 
 ## [1.3.0] - 2025-12-09
 
-### 🏛️ Community Infrastructure & License Update
-
-This release establishes GitHub community standards and changes to a noncommercial license.
+GitHub community infrastructure and license change.
 
 ### Changed
-- **LICENSE** — Changed from MIT to PolyForm Noncommercial License 1.0.0 (no commercial use permitted)
-- **Dependencies** — Synchronized `requirements.txt` and `requirements-dev.txt` with dev dependencies
+- License changed from MIT to PolyForm Noncommercial 1.0.0
 
 ### Added
-- **GitHub Actions CI** — Automated testing, linting, Lighthouse accessibility audits, and W3C HTML validation
-- **Issue Templates** — Bug report and feature request templates
-- **Pull Request Template** — Standardized PR description format
-- **Dependabot** — Automated dependency updates for pip and npm
-- **SECURITY.md** — Security policy with vulnerability reporting guidelines
-- **CODE_OF_CONDUCT.md** — Contributor Covenant Code of Conduct v2.0
-- **lighthouserc.json** — Lighthouse CI configuration for accessibility testing
-- **package.json** — Node.js configuration for Lighthouse CI
-- **.vercelignore** — Exclude unnecessary files from Vercel deployments
+- GitHub Actions CI (testing, linting, Lighthouse accessibility audits, W3C validation)
+- Issue and PR templates
+- Dependabot for pip and npm
+- SECURITY.md, CODE_OF_CONDUCT.md
+- lighthouserc.json, package.json, .vercelignore
 
 ### Fixed
-- **CI** — Lighthouse CI configuration for accessibility audits
-- **CI** — Added `manifold3d` and `scipy` to dev dependencies for STL generation tests
-- **CI** — Set `FLASK_ENV=development` for pytest runs
-- **CI** — Synchronized ruff version between pre-commit and CI workflow
-- **CI** — Corrected requirements filename reference
-- **CI** — Use specific version tag for html5validator-action
-- **Vercel** — Reduced serverless function size under 250 MB limit
+- Various CI configuration issues (manifold3d deps, FLASK_ENV, ruff version sync, requirements filename, html5validator version)
+- Reduced Vercel serverless function size under 250 MB limit
 
 ### Removed
-- Removed AI tool-specific plan files and references from repository
+- AI tool-specific plan files
 
 ---
 
 ## [1.2.0] - 2024-12-08
 
-### 📚 Documentation Release
-
-This release adds industry-standard documentation to the project.
+Documentation release.
 
 ### Added
-- **LICENSE** — PolyForm Noncommercial License 1.0.0 (no commercial use permitted)
-- **CHANGELOG.md** — Release history following Keep a Changelog format
-- **CONTRIBUTING.md** — Complete contribution guidelines
+- LICENSE (PolyForm Noncommercial 1.0.0)
+- CHANGELOG.md
+- CONTRIBUTING.md
 
 ### Changed
-- **README.md** — Added version/license/Python/accessibility badges
-- **README.md** — Added Contributing, Changelog, and License sections
-- **.gitignore** — Added OpenSCAD/ directory exclusion
+- README updated with badges and new sections
+- .gitignore updated with OpenSCAD exclusion
 
 ---
 
 ## [1.1.0] - 2024-12-08
 
-### Features & Fixes
 - Mobile compatibility improvements (lazy WASM loading)
 - Dead code cleanup (~680 lines removed)
-- ADA Accessibility Validation SOP
 - WCAG 2.1 Level AA compliance verified
 
 ---
 
 ## [1.0.0] - 2024-09-27
 
-### 🎉 First Stable Release
-
-This marks the first stable release of the Braille STL Generator, a web application
-for generating 3D-printable STL files for braille embossing plates and cylinders.
+First stable release.
 
 ### Features
-
-#### Core Functionality
-- **Braille Text Translation** — Automatic translation using liblouis with support for Grade 1 and Grade 2 braille
-- **Multi-Language Support** — 50+ translation tables for various languages and braille codes
-- **Dual Shape Support** — Generate flat business card plates or cylindrical objects
-- **Real-Time 3D Preview** — Interactive Three.js visualization before download
-- **STL Export** — Download ready-to-print 3D models
-
-#### Client-Side Generation
-- **Browser-Based CSG** — STL generation runs entirely in the browser using three-bvh-csg
-- **Manifold WASM Integration** — High-performance cylinder generation via WebAssembly
-- **Lazy WASM Loading** — Improved mobile compatibility with on-demand module loading
-- **Server Fallback** — Automatic fallback to server-side generation when needed
-
-#### Customization Options
-- **Configurable Dimensions** — Adjust card/cylinder size, thickness, and margins
-- **Braille Dot Parameters** — Fine-tune dot height, diameter, and spacing
-- **Embossing Plates** — Generate both positive and negative plates for embossing
-- **Recess Indicators** — Optional visual markers for plate orientation
-
-#### User Interface
-- **Responsive Design** — Works on desktop and mobile devices
-- **Dark Mode Support** — Automatic theme based on system preference
-- **Accessible Interface** — WCAG 2.1 Level AA compliant
-- **Translation Preview** — Real-time braille preview before generation
-
-### Technical Highlights
-
-- **Python 3.12** — Modern Python with full type hints
-- **Flask Backend** — Lightweight web framework
-- **Vercel Deployment** — Production-ready serverless deployment
-- **Full Test Suite** — pytest with smoke and golden tests
-- **Pre-commit Hooks** — Automated code quality with ruff
-- **Security Hardened** — Rate limiting, input validation, CSP headers
-
-### Documentation
-
-- Complete API documentation
-- Technical specifications for all subsystems
-- Deployment guides for Vercel
-- Security documentation and environment variable reference
-- ADA Accessibility Validation SOP
+- Braille text translation via liblouis (Grade 1 and Grade 2, 50+ language tables)
+- Flat business card plates and cylindrical objects
+- Real-time 3D preview with Three.js
+- Client-side STL generation with three-bvh-csg and Manifold WASM
+- Configurable dimensions, dot parameters, and embossing plate options
+- Responsive UI with dark mode and WCAG 2.1 AA accessibility
+- Vercel deployment with Flask backend
 
 ### Acknowledgments
 
-Thanks to **Tobi Weinberg** for kick-starting the project.
-
-Based on [tobiwg/braile-card-generator](https://github.com/tobiwg/braile-card-generator).
+Thanks to Tobi Weinberg for kick-starting the project. Based on [tobiwg/braile-card-generator](https://github.com/tobiwg/braile-card-generator).
 
 ---
 
@@ -185,9 +130,10 @@ Based on [tobiwg/braile-card-generator](https://github.com/tobiwg/braile-card-ge
 - Batch processing
 - OpenSCAD export option
 
+[2.1.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v2.1.0
 [2.0.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v2.0.0
 [1.3.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v1.3.0
 [1.2.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v1.2.0
 [1.1.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v1.1.0
 [1.0.0]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/releases/tag/v1.0.0
-[Unreleased]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/compare/v2.1.0...HEAD

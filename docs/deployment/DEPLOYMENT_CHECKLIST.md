@@ -1,172 +1,79 @@
-# Deployment Checklist - Braille Card Generator v2.0.0
+# Deployment Checklist
 
-> **Zero-Maintenance Architecture:** v2.0.0 requires no external services. Deploy once, run forever.
+## What you need
 
-## Architecture Overview
+v2.0.0 has no external service dependencies. The server is Flask serving static files and one JSON endpoint. All STL generation happens in the browser.
 
-| Component | v1.x | v2.0.0 |
-|-----------|------|--------|
-| External Services | Redis + Blob Storage | **None** |
-| STL Generation | Server-side | **100% Client-side** |
-| Server Dependencies | ~15 packages | **2 packages** (Flask, Flask-CORS) |
-| Required Secrets | 5+ | **None** (all optional) |
+| Component | What's required |
+|-----------|----------------|
+| External services | None |
+| Server dependencies | Flask, Flask-CORS |
+| Required secrets | None (all env vars are optional) |
 
-## Pre-Deployment Checklist
+## Deploying to Vercel
 
-### Security Measures (Built-In)
+### 1. Connect and deploy
 
-- [x] Input validation and sanitization (100KB request limit)
-- [x] Security headers (CSP, XSS protection, etc.)
-- [x] Path traversal protection
-- [x] Error handling that doesn't expose sensitive information
-- [x] Minimal server attack surface (only serves JSON specs and static files)
-- [x] No secrets required (Vercel handles DDoS protection)
+1. Push code to GitHub
+2. Connect the repo to Vercel (framework preset: **Other**)
+3. Deploy
 
-### Environment Variables
+No environment variables are required. Vercel auto-detects Python from `requirements.txt`.
 
-All environment variables are **optional** in v2.0.0:
+### 2. Optional configuration
 
-| Variable | Required | Purpose |
-|----------|----------|---------|
-| `SECRET_KEY` | No | Flask session key (not used in stateless backend) |
-| `FLASK_ENV` | No | Set to `production` for production mode |
-| `PRODUCTION_DOMAIN` | No | Custom domain for CORS (Vercel domains allowed by default) |
-| `LOG_LEVEL` | No | Logging verbosity (default: INFO) |
+| Variable | Purpose |
+|----------|---------|
+| `SECRET_KEY` | Flask session key (backend is stateless, so this is optional) |
+| `FLASK_ENV` | Set to `production` for strict security mode |
+| `PRODUCTION_DOMAIN` | Your domain for CORS (Vercel domains are allowed by default) |
+| `LOG_LEVEL` | Logging verbosity (default: INFO) |
 
-**Generate a secret key (if needed):**
+Generate a secret key if you want one:
+
 ```bash
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-### CORS Configuration
+## Post-deployment testing
 
-CORS is configured automatically:
-- Vercel preview/production domains are allowed
-- Custom domain via `PRODUCTION_DOMAIN` environment variable
-- No code changes needed
+### Functionality
+- [ ] Main UI loads
+- [ ] Cylinder STL generation works (embossing + counter)
+- [ ] Braille translation preview works
+- [ ] Multiple languages work
+- [ ] Expert mode parameters work
+- [ ] Keyboard navigation and screen reader work
+- [ ] Mobile layout is usable
 
-## Deployment Steps (Vercel)
+### Security
+- [ ] XSS payloads in text inputs are escaped
+- [ ] Malformed JSON returns an error, not a crash
+- [ ] Oversized requests (>100KB) are rejected
+- [ ] Security headers present (check with `curl -I`)
 
-### 1. Connect Repository
-1. Push code to GitHub
-2. Connect repository to Vercel
-3. Select framework preset: **Other**
+### Endpoints
 
-### 2. Configure Build
-Vercel auto-detects Python from `requirements.txt`:
-- Install Command: `pip install -r requirements.txt`
-- Build Command: (none)
-- Output Directory: (none)
+| Endpoint | Method | Expected |
+|----------|--------|----------|
+| `/` | GET | Main UI |
+| `/health` | GET | `{"status": "ok"}` |
+| `/liblouis/tables` | GET | JSON list of tables |
+| `/geometry_spec` | POST | JSON geometry spec |
 
-### 3. Deploy
-Click Deploy. No environment variables required!
-
-**Optional:** Add `PRODUCTION_DOMAIN` if using a custom domain.
-
-## Post-Deployment Testing
-
-### Functionality Tests
-- [ ] Generate embossing plate STL (card shape)
-- [ ] Generate counter plate STL (card shape)
-- [ ] Generate embossing cylinder STL
-- [ ] Generate counter cylinder STL
-- [ ] Test braille translation preview
-- [ ] Test multiple languages
-- [ ] Test expert mode parameters
-- [ ] Test accessibility features (keyboard navigation, screen reader)
-- [ ] Test mobile responsiveness
-
-### Security Tests
-- [ ] Attempt XSS injection in text inputs
-- [ ] Try malformed JSON requests
-- [ ] Test file path traversal attempts
-- [ ] Verify error handling doesn't leak info
-- [ ] Test with very large inputs (should reject > 100KB)
-- [ ] Check security headers at [securityheaders.com](https://securityheaders.com)
-
-### Performance Tests
-- [ ] STL generation time (client-side, typically < 5s)
-- [ ] Frontend load time (target: < 3s on desktop)
-- [ ] Mobile performance (test on actual devices)
-- [ ] Manifold WASM loading (first load ~2-3s)
-
-## Endpoints
-
-### Active Endpoints
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/` | GET | Serve main UI |
-| `/health` | GET | Health check |
-| `/liblouis/tables` | GET | List braille translation tables |
-| `/geometry_spec` | POST | Get geometry specification (JSON) |
-| `/static/<path>` | GET | Serve static files |
-
-### Deprecated Endpoints (Return 410 Gone)
-
-| Endpoint | Removed |
-|----------|---------|
-| `/generate_braille_stl` | 2026-01-05 (use client-side generation) |
-| `/generate_counter_plate_stl` | 2026-01-05 (use client-side generation) |
-| `/lookup_stl` | 2026-01-05 (cache removed) |
-
-## Monitoring
-
-### Key Metrics
-- Health endpoint response time (`/health`)
-- Translation table loading (`/liblouis/tables`)
-- Geometry spec response time (`/geometry_spec`)
-
-### What You Don't Need to Monitor
-- Redis/cache health (removed)
-- Blob storage quotas (removed)
-- Server-side STL generation times (removed)
-- Rate limiting (handled by Vercel)
+Old endpoints (`/generate_braille_stl`, `/generate_counter_plate_stl`, `/lookup_stl`) return 410 Gone.
 
 ## Troubleshooting
 
-### Common Issues
-
 **"Manifold worker not available" on mobile:**
-- This is expected on first load. WASM loads lazily.
-- User can refresh if timeout occurs.
+Expected on first load — WASM loads lazily. Refresh if it times out.
 
 **STL generation fails:**
-- Check browser console for JavaScript errors
-- Verify WASM is loading from CDN
-- Try a different browser
+Check the browser console. Usually a WASM loading issue. Try a different browser.
 
-**Translation preview empty:**
-- Check liblouis tables are serving
-- Verify `/liblouis/tables` returns JSON
-
-### Getting Help
-
-1. Check [Known Issues](../KNOWN_ISSUES.md)
-2. Check browser console for errors
-3. Open GitHub issue with reproduction steps
+**Translation preview is empty:**
+Check that `/liblouis/tables` returns JSON. The liblouis tables may not be serving.
 
 ## Rollback
 
-To rollback to a previous deployment on Vercel:
-1. Go to Deployments tab
-2. Click on previous deployment
-3. Click "Promote to Production"
-
-## Final Checklist
-
-- [ ] Deployment successful (no build errors)
-- [ ] Health check responds (`/health`)
-- [ ] Main UI loads
-- [ ] Card STL generation works
-- [ ] Cylinder STL generation works
-- [ ] Braille translation works
-- [ ] Mobile tested
-- [ ] Accessibility tested
-
-**✅ Ready for Public Use!**
-
----
-
-*Last updated: 2026-02-02*
-*Architecture: v2.0.0 Zero-Maintenance*
+In the Vercel dashboard: go to Deployments, find the last working deployment, click "Promote to Production."

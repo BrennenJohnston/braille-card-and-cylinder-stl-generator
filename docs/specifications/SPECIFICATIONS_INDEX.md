@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document serves as the **master index** for all core architecture specifications in the Braille Card and Cylinder STL Generator project. Each specification document provides comprehensive, in-depth technical documentation for a specific subsystem or feature.
+Index of all specification documents for the Braille Card and Cylinder STL Generator. Each document covers one subsystem or feature in detail.
 
 > **v2.0.0 Architecture (2026-01-05):** This project uses a **100% client-side STL generation** architecture. Server-side STL generation was removed. The caching system (Redis + Vercel Blob) was also removed. See [CODEBASE_AUDIT_AND_RENOVATION_PLAN.md](../development/CODEBASE_AUDIT_AND_RENOVATION_PLAN.md) for migration details.
 
@@ -285,7 +285,7 @@ This document serves as the **master index** for all core architecture specifica
 **Status:** ✅ Complete (Created 2025-12-07)
 **Covers:**
 - 6-phase implementation workflow (Investigation → Specification → Implementation → Documentation → Verification → Finalization)
-- Comprehensive checklists for each phase
+- Detailed checklists for each phase
 - Case study: Card Thickness Preset System implementation
 - Common pitfalls and how to avoid them
 - File change impact matrix
@@ -366,7 +366,7 @@ This document serves as the **master index** for all core architecture specifica
 
 ## Coordinate System Documentation
 
-**Status:** ✅ Comprehensively documented
+**Status:** ✅ Fully documented
 
 | System | Up Axis | Documentation |
 |--------|---------|---------------|
@@ -665,7 +665,7 @@ Section Reference: SURFACE_DIMENSIONS_SPECIFICATIONS.md (Section 2.1)
 | 2025-12-06 | Enhanced SETTINGS_SCHEMA with Development Guidelines; added cache_version field |
 | 2025-12-07 | Added CARD_THICKNESS_PRESET_SPECIFICATIONS.md documenting new Card Thickness Preset System (0.3mm/0.4mm layer height presets); updated UI/UX coverage; incremented total spec count to 13 |
 | 2025-12-07 | Updated CARD_THICKNESS_PRESET_SPECIFICATIONS.md v1.3: Added "Custom" radio button with auto-detection when parameters deviate from presets |
-| 2025-12-07 | Added MAJOR_FEATURE_IMPLEMENTATION_SOP.md - Standard Operating Procedure for implementing major features; documents 6-phase workflow with comprehensive checklists, case study, and development best practices |
+| 2025-12-07 | Added MAJOR_FEATURE_IMPLEMENTATION_SOP.md - Standard Operating Procedure for implementing major features; documents 6-phase workflow with detailed checklists, case study, and development best practices |
 | 2024-12-07 | Added Bug 7 (Cylinder rounded dot floating) to Known Issues as FIXED; fix applied in csg-worker-manifold.js |
 | 2025-12-08 | Updated UI_INTERFACE_CORE_SPECIFICATIONS.md v1.3: Added STL Preview Label (Section 3.7) and Preview Display Settings with brightness/contrast controls (Section 3.8) |
 | 2025-12-08 | **BUG FIX:** Manifold worker integration completed. Frontend now uses dual-worker architecture: csg-worker.js for cards, csg-worker-manifold.js for cylinders (guarantees manifold output). Updated Web Worker Coverage section. |

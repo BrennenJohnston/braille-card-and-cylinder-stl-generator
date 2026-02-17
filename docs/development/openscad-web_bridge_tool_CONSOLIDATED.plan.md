@@ -5,7 +5,6 @@ last_validated: 2026-01-12
 validated_by: Claude Opus 4.5
 status: consolidated_plan
 supersedes:
-  - "C:\\Users\\WATAP\\.cursor\\plans\\openscad-web_bridge_tool_303c433e.plan.md"
   - "docs/development/openscad-web_bridge_tool_303c433e.plan.md"
 inputs:
   - "Example OpenSCAD project: universal_cuff_utensil_holder.scad"
@@ -282,6 +281,5 @@ This file is an **excellent v1 test case** because it exercises all major Custom
 ## Related files in this workspace
 
 - `docs/development/openscad-web_bridge_tool_303c433e.plan.md` — earlier version (superseded)
-- `C:\Users\WATAP\.cursor\plans\openscad-web_bridge_tool_303c433e.plan.md` — Cursor plans copy (superseded)
 - `C:\Users\WATAP\Documents\github\braille-stl-generator-openscad\` — OpenSCAD version of braille tool (reference for validation patterns)
 

@@ -1,6 +1,6 @@
 {
   "name": "braille-card-and-cylinder-stl-generator",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Web application for generating 3D-printable STL files for braille embossing plates and cylinders",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",

@@ -2,7 +2,7 @@
 
 ## Document Purpose
 
-This document provides **comprehensive, in-depth specifications** for the "Enter Text for Braille Translation" text input system and the "Select Language" menu in the application. It serves as an authoritative reference for future development by documenting:
+This document specifies the "Enter Text for Braille Translation" text input system and the "Select Language" menu in the application. It serves as an authoritative reference for future development by documenting:
 
 1. **Placement Mode System** — Auto Placement vs Manual Placement toggle and behaviors
 2. **Auto Placement Mode** — BANA-aware word wrapping algorithm and UI

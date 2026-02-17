@@ -1,44 +1,34 @@
 # Security Policy
 
-## Reporting a Vulnerability
+## Reporting a vulnerability
 
-If you discover a security vulnerability, please report it privately:
+If you find a security vulnerability, please report it privately:
 
 1. **Do not** open a public issue
-2. Email security details to the repository maintainer through GitHub
-3. Include:
-   - Description of the vulnerability
-   - Steps to reproduce
-   - Potential impact
-   - Suggested fix (if available)
+2. Email the maintainer through GitHub
+3. Include a description, steps to reproduce, potential impact, and a suggested fix if you have one
 
-## Response Timeline
+## Response timeline
 
-- **Acknowledgment**: Within 48 hours
-- **Initial Assessment**: Within 7 days
-- **Fix & Disclosure**: Coordinated with reporter
+- **Acknowledgment:** within 48 hours
+- **Initial assessment:** within 7 days
+- **Fix and disclosure:** coordinated with reporter
 
-## Security Measures
-
-This application implements:
+## What's in place
 
 - Input validation and sanitization
-- Content Security Policy (CSP) headers
-- Environment variable protection
+- Content Security Policy headers
 - Minimal server attack surface (client-side STL generation)
 - No external service dependencies (no secrets to compromise)
+- Path traversal protection on static file serving
 
-For detailed security documentation, see [docs/security/](docs/security/).
+For details, see [docs/security/](docs/security/).
 
-## Supported Versions
+## Supported versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 2.0.x   | :white_check_mark: |
-| 1.3.x   | :white_check_mark: |
-| 1.2.x   | :white_check_mark: |
-| < 1.2   | :x:                |
-
-## Security Audit Reports
-
-See [docs/security/SECURITY_AUDIT_REPORT.md](docs/security/SECURITY_AUDIT_REPORT.md) for comprehensive audit findings.
+| Version | Supported |
+|---------|-----------|
+| 2.0.x | Yes |
+| 1.3.x | Yes |
+| 1.2.x | Yes |
+| < 1.2 | No |

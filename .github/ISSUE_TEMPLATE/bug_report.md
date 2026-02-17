@@ -24,7 +24,7 @@ What actually happens?
 ## Environment
 - Browser: [e.g., Chrome 120, Firefox 121]
 - OS: [e.g., Windows 11, macOS 14]
-- Application Version: [e.g., 1.2.0]
+- Application Version: [e.g., 2.1.0]
 
 ## Screenshots
 If applicable, add screenshots.

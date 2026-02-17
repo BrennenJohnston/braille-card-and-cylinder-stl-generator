@@ -2,7 +2,7 @@
 
 ## Document Purpose
 
-This document provides **comprehensive, in-depth specifications** for the core translation process that converts user input text to braille using the **Liblouis** open-source braille translation library. It serves as an authoritative reference for future development by documenting:
+This document specifies the core translation process that converts user input text to braille using the **Liblouis** open-source braille translation library. It serves as an authoritative reference for future development by documenting:
 
 1. **Translation Architecture** — Client-side translation via Web Worker with WASM backend
 2. **Liblouis Integration** — Library initialization, table loading, and translation execution
@@ -1256,7 +1256,7 @@ All geometry modules correctly import and use the canonical function:
 
 ## 14. Cross-System Compliance Verification
 
-This section documents the comprehensive cross-check of all systems that use the Liblouis translation process.
+This section documents the cross-check of all systems that use the Liblouis translation process.
 
 ### Systems Using Braille Unicode Validation
 

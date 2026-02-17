@@ -2,7 +2,7 @@
 
 ## Document Purpose
 
-This document provides **comprehensive, in-depth specifications** for the Braille Translation Preview feature in the application. It serves as an authoritative reference for future development by documenting:
+This document specifies the Braille Translation Preview feature in the application. It serves as an authoritative reference for future development by documenting:
 
 1. **UI Controls** — The preview button, display container, and their behaviors
 2. **Translation Pipeline** — How text flows from input through liblouis to Unicode braille

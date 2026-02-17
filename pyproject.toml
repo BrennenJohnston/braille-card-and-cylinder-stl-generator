@@ -29,7 +29,7 @@ dev = [
     # Development tools
     "pytest==9.0.2",
     "pytest-cov==7.0.0",
-    "ruff==0.14.13",
+    "ruff==0.15.1",
     "mypy==1.19.1",
     "pre-commit==3.5.0",
 ]

@@ -20,6 +20,6 @@ manifold3d==3.3.2          # Boolean operations (not available on Vercel)
 # Development tools
 pytest==9.0.2
 pytest-cov==7.0.0
-ruff==0.14.13              # Linting and formatting
+ruff==0.15.1              # Linting and formatting
 mypy==1.19.1               # Type checking
 pre-commit==4.5.1          # Git hooks

@@ -5,7 +5,8 @@ Quick links to help you find what you need.
 ## Getting Started
 
 - **New to the project?** Read the main [README](../README.md)
-- **Making business cards?** See the [Business Card Translation Guide](guides/BUSINESS_CARD_TRANSLATION_GUIDE.md)
+- **Creating cylinder labels?** See the [Cylinder Guide](guides/CYLINDER_GUIDE.md) — covers spice jars, medicine bottles, water bottles, and more
+- **Making business cards?** See the [Business Card Translation Guide](guides/BUSINESS_CARD_TRANSLATION_GUIDE.md) (flat cards temporarily disabled)
 - **Deploying?** Check the [Deployment Checklist](deployment/DEPLOYMENT_CHECKLIST.md)
 
 ## Documentation Index
@@ -14,7 +15,8 @@ Quick links to help you find what you need.
 
 Practical how-to guides for common tasks.
 
-- [Business Card Translation Guide](guides/BUSINESS_CARD_TRANSLATION_GUIDE.md) — Choosing what to braille, formatting tips
+- [Cylinder Guide](guides/CYLINDER_GUIDE.md) — Measuring containers, worked examples, cylinder parameters
+- [Business Card Translation Guide](guides/BUSINESS_CARD_TRANSLATION_GUIDE.md) — Choosing what to braille, formatting tips (flat cards temporarily disabled)
 
 ### Specifications
 

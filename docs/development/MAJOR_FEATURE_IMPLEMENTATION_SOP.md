@@ -2,7 +2,7 @@
 
 ## Document Purpose
 
-This document provides a standardized roadmap for implementing major features in the Braille Card and Cylinder STL Generator. It captures the proven workflow established during the Card Thickness Preset System implementation (2025-12-07) and ensures consistency, completeness, and quality for all future feature additions.
+This document provides a standardized roadmap for implementing major features in the Braille Card and Cylinder STL Generator. It captures the proven workflow established during the Card Thickness Preset System implementation (2025-12-07) and maintains consistency, completeness, and quality for all future feature additions.
 
 **Target Audience:**
 - Contributors
@@ -444,7 +444,7 @@ Example: `CARD_THICKNESS_PRESET_SPECIFICATIONS.md`
 
 **Writing Guidelines:**
 
-1. **Be Comprehensive**: Include every detail
+1. **Be Thorough**: Include every detail
 2. **Use Code Examples**: Show actual implementation code
 3. **Include Tables**: For parameter lists, comparisons
 4. **Add Diagrams**: ASCII art for flow charts
@@ -662,7 +662,7 @@ grep -r "parameter_name" app/
    - No linter warnings
 
 2. **Documentation Quality:**
-   - Comprehensive specifications
+   - Complete specifications
    - Clear examples
    - Accurate code references
    - Up-to-date cross-references
@@ -804,7 +804,7 @@ applyThicknessPreset(presetToApply);
 ### Key Success Factors
 
 1. **Specification-First Approach**: Reading specs prevented introducing new bugs
-2. **Comprehensive Documentation**: Future developers have complete reference
+2. **Complete Documentation**: Future developers have a full reference
 3. **Consistency Verification**: Both HTML files remain in sync
 4. **Proper Error Handling**: Feature degrades gracefully
 5. **Testing Guidance**: User knows exactly how to verify fixes
@@ -999,7 +999,7 @@ All specifications in `docs/specifications/` are relevant depending on the featu
 
 | Date | Version | Changes |
 |------|---------|---------|
-| 2025-12-07 | 1.0 | Initial creation. Documented standardized process for implementing major features based on Card Thickness Preset System case study. Includes 6-phase workflow, comprehensive checklists, pitfall avoidance, and file change impact matrix. |
+| 2025-12-07 | 1.0 | Initial creation. Documented standardized process for implementing major features based on Card Thickness Preset System case study. Includes 6-phase workflow, detailed checklists, pitfall avoidance, and file change impact matrix. |
 
 ---
 
@@ -1062,7 +1062,7 @@ Save this template for quick specification creation:
 ## 2. [Core Content Sections]
 
 ## 10. Verification Checklist
-[Comprehensive checklist]
+[Full checklist]
 
 ## 11. Related Specifications
 [Links to related docs]

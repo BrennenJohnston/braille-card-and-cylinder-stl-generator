@@ -2,7 +2,7 @@
 
 ## Document Purpose
 
-This document provides **comprehensive, in-depth specifications** for the STL export and download system in the Braille Card and Cylinder STL Generator application. It serves as an authoritative reference for future development by documenting:
+This document specifies the STL export and download system in the Braille Card and Cylinder STL Generator application. It serves as a reference for future development by documenting:
 
 1. **Generation Architecture** — Client-side CSG (exclusive method, no fallback)
 2. **Geometry Specification Format** — JSON structure sent to CSG workers
@@ -159,7 +159,7 @@ try {
 
 ### No Feature Flag
 
-Server-side fallback has been intentionally disabled. There is no feature flag to toggle between methods. This ensures:
+Server-side fallback has been intentionally disabled. There is no feature flag to toggle between methods. This guarantees:
 - Consistent behavior across all users
 - Bugs are surfaced immediately (not hidden by fallback)
 - The correct generation path is always used

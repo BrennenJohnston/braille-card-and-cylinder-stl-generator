@@ -2,7 +2,7 @@
 
 ## Document Purpose
 
-This document provides **comprehensive, in-depth specifications** for all UI interface core logic and accessibility features in the Braille Card and Cylinder STL Generator application. It serves as an authoritative reference for future development by documenting:
+This document provides **in-depth specifications** for all UI interface core logic and accessibility features in the Braille Card and Cylinder STL Generator application. It serves as an authoritative reference for future development by documenting:
 
 1. **Theme System** — Dark mode, light mode, and high contrast mode implementations
 2. **Font Size Adjustment** — Accessibility scaling system
@@ -1237,7 +1237,7 @@ Brightness and contrast settings are **not persisted** across sessions. This is 
 
 ### 3.9 WebGL Context Recovery
 
-The application implements robust WebGL context loss and recovery handling to ensure stability, especially on Safari/iOS where context loss may occur when tabs are backgrounded or when the system is under memory pressure.
+The application implements resilient WebGL context loss and recovery handling for stability, especially on Safari/iOS where context loss may occur when tabs are backgrounded or when the system is under memory pressure.
 
 #### Feature Detection
 
@@ -1810,7 +1810,7 @@ See Section 1.3 for complete high contrast button specifications.
 
 ### 7.3 iOS Safe Area Handling
 
-The application implements comprehensive iOS safe area support to prevent content from being hidden under device notches, the Dynamic Island, or the iOS address bar.
+The application implements full iOS safe area support to prevent content from being hidden under device notches, the Dynamic Island, or the iOS address bar.
 
 #### Viewport Meta Tag
 
@@ -2113,7 +2113,7 @@ Low vision users benefit from enhanced depth perception:
 
 ### Verification Summary
 
-A comprehensive cross-check was performed between this specification document and the actual implementation in `public/index.html`. The following items were verified:
+A full cross-check was performed between this specification document and the actual implementation in `public/index.html`. The following items were verified:
 
 ### ✅ Theme System (Section 1)
 

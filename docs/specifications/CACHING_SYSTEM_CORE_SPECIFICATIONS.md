@@ -43,7 +43,7 @@
 
 ## Historical Document Purpose (Pre-2026-01-05)
 
-This document provides **comprehensive, in-depth specifications** for the caching system that **was** used to enable efficient STL generation and delivery on serverless platforms (Vercel). It serves as an historical reference by documenting:
+This document provides **in-depth specifications** for the caching system that **was** used for efficient STL generation and delivery on serverless platforms (Vercel). It serves as an historical reference by documenting:
 
 1. **Architecture Overview** — Content-addressable caching with Vercel Blob storage
 2. **Cache Key Generation** — Deterministic hashing for geometry-based cache lookups
@@ -544,7 +544,7 @@ def _blob_upload(cache_key: str, stl_bytes: bytes, logger=None) -> str:
 | `x-vercel-cache-control-max-age` | `{max_age}` | Set CDN cache duration |
 | `content-type` | `application/octet-stream` | Binary STL data |
 
-**Critical:** `x-vercel-blob-add-random-suffix: 0` ensures the filename remains exactly `stl/{cache_key}.stl` without random suffixes, enabling content-addressable storage.
+**Critical:** `x-vercel-blob-add-random-suffix: 0` ensures the filename remains exactly `stl/{cache_key}.stl` without random suffixes, allowing content-addressable storage.
 
 ### Two-Stage Upload Strategy
 
@@ -1165,7 +1165,7 @@ def cache_stats():
 **Rationale:**
 - Counter plates contain no user-specific content
 - Geometry is deterministic and non-sensitive
-- Public access enables CDN caching
+- Public access allows CDN caching
 
 **Risk Mitigation:**
 - No personally identifiable information in counter plates
@@ -1277,7 +1277,7 @@ async def test_cache_round_trip():
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0 | 2024-12-06 | Initial comprehensive specification document |
+| 1.0 | 2024-12-06 | Initial specification document |
 
 ---
 

@@ -20,9 +20,9 @@ After extensive production testing, we've achieved a "deploy once, run forever" 
 - **Minimal server footprint** — Flask serves only static files and lightweight JSON geometry specs
 
 ### Added
-- **Comprehensive Dependency Updates** — All GitHub Actions, npm, and pip packages updated to latest stable versions
+- **Full Dependency Updates** — All GitHub Actions, npm, and pip packages updated to latest stable versions
 - **Python 3.13 Support** — Updated all dev dependencies for Python 3.13 compatibility
-- **Robust CI Pipeline** — Health check loop ensures reliable Lighthouse accessibility audits
+- **Reliable CI Pipeline** — Health check loop keeps Lighthouse accessibility audits stable
 
 ### Changed
 - **Default Braille Dot Shape** — Cone shape for improved print quality and tactile readability
@@ -41,7 +41,7 @@ After extensive production testing, we've achieved a "deploy once, run forever" 
 ### Fixed
 - **CI Pipeline** — Fixed PORT environment variable (5001) for Flask server in CI
 - **CI Pipeline** — Replaced fixed sleep with health check loop for reliable Lighthouse audits
-- **Documentation** — Comprehensive cleanup and refresh for public release
+- **Documentation** — Full cleanup and refresh for public release
 
 ### Technical Highlights
 
@@ -99,7 +99,7 @@ This release adds industry-standard documentation to the project.
 ### Added
 - **LICENSE** — PolyForm Noncommercial License 1.0.0 (no commercial use permitted)
 - **CHANGELOG.md** — Release history following Keep a Changelog format
-- **CONTRIBUTING.md** — Comprehensive contribution guidelines
+- **CONTRIBUTING.md** — Complete contribution guidelines
 
 ### Changed
 - **README.md** — Added version/license/Python/accessibility badges
@@ -157,7 +157,7 @@ for generating 3D-printable STL files for braille embossing plates and cylinders
 - **Python 3.12** — Modern Python with full type hints
 - **Flask Backend** — Lightweight web framework
 - **Vercel Deployment** — Production-ready serverless deployment
-- **Comprehensive Testing** — pytest suite with smoke and golden tests
+- **Full Test Suite** — pytest with smoke and golden tests
 - **Pre-commit Hooks** — Automated code quality with ruff
 - **Security Hardened** — Rate limiting, input validation, CSP headers
 

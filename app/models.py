@@ -255,9 +255,9 @@ class CardSettings:
             self.use_bowl_recess = int(getattr(self, 'use_bowl_recess', 0))
         # Normalize recess_shape (0=hemi,1=bowl,2=cone)
         try:
-            self.recess_shape = int(float(kwargs.get('recess_shape', getattr(self, 'recess_shape', 1))))
+            self.recess_shape = int(float(kwargs.get('recess_shape', getattr(self, 'recess_shape', 2))))
         except Exception:
-            self.recess_shape = int(getattr(self, 'recess_shape', 1))
+            self.recess_shape = int(getattr(self, 'recess_shape', 2))
 
         # Map dot_shape to use_rounded_dots for backend compatibility
         try:

@@ -277,6 +277,68 @@
             border: 2px solid #000000 !important; /* Black border on hover */
         }
 
+        /* Help modal notice boxes — theme-aware */
+        .help-notice-warning {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 0.75em 1em;
+            margin-bottom: 1em;
+            border-radius: 4px;
+        }
+
+        .help-notice-info {
+            background: #f0f9ff;
+            border-left: 4px solid #0284c7;
+            padding: 0.75em 1em;
+            margin-bottom: 1em;
+            border-radius: 4px;
+        }
+
+        .help-quote-block {
+            font-size: 1.1em;
+            font-style: italic;
+            margin: 1em 0;
+            padding: 0.5em;
+            background: #f8fafc;
+            border-radius: 4px;
+        }
+
+        /* Help modal notices — dark mode overrides */
+        [data-theme="dark"] .help-notice-warning {
+            background: #451a03;
+            border-left-color: #d97706;
+            color: #fde68a;
+        }
+
+        [data-theme="dark"] .help-notice-info {
+            background: #1e3a5f;
+            border-left-color: #38bdf8;
+            color: #bae6fd;
+        }
+
+        [data-theme="dark"] .help-quote-block {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+
+        /* Help modal notices — high-contrast overrides */
+        [data-theme="high-contrast"] .help-notice-warning {
+            background: #000000;
+            border-left: 4px solid #ffff00;
+            color: #02fe05;
+        }
+
+        [data-theme="high-contrast"] .help-notice-info {
+            background: #000000;
+            border-left: 4px solid #00ffff;
+            color: #02fe05;
+        }
+
+        [data-theme="high-contrast"] .help-quote-block {
+            background: #1a1a1a;
+            color: #02fe05;
+        }
+
         /* Apply transition to theme changes */
         * {
             transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
@@ -331,13 +393,14 @@
         /* Font Size Controls */
         .font-size-controls {
             display: flex;
-            align-items: center;
+            align-items: center; /* Vertically center buttons within stretched height */
             gap: 0.3rem;
             background: var(--bg-primary);
             border: 2px solid var(--border-primary);
             border-radius: 8px;
-            padding: 0.4em 0.6em;
+            padding: 0 0.5em;
             box-shadow: 0 2px 8px var(--shadow-light);
+            box-sizing: border-box;
         }
 
         .font-size-btn {
@@ -381,9 +444,10 @@
             font-size: 0.85em;
             font-weight: 600;
             color: var(--text-primary);
-            min-width: 3.5em;
+            min-width: 4.5em;
             text-align: center;
             user-select: none;
+            white-space: nowrap;
         }
 
 
@@ -533,14 +597,14 @@
 
         body {
             background: transparent; /* Inherit gradient from html */
-            min-height: 100vh; /* Minimum viewport height, can grow if needed */
+            height: 100vh; /* Lock to viewport — no outer scrollbar */
             font-family: 'Inter', system-ui, Arial, sans-serif;
             margin: 0;
             display: flex;
-            align-items: flex-start; /* Align to top to prevent centering issues */
+            align-items: stretch;
             justify-content: center;
-            padding: 0; /* Remove padding to extend to browser edges */
-            /* iOS Safe Area Support - prevent content from being hidden under notch/Dynamic Island */
+            padding: 0;
+            /* iOS Safe Area Support */
             padding-top: env(safe-area-inset-top);
             padding-left: env(safe-area-inset-left);
             padding-right: env(safe-area-inset-right);
@@ -549,68 +613,69 @@
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
             box-sizing: border-box;
-            overflow-x: hidden;
-            overflow-y: auto; /* Allow scrolling if content overflows */
+            overflow: hidden; /* No outer scrollbar */
             overscroll-behavior: none;
         }
 
         /* Mobile-specific body adjustments */
         @media (max-width: 768px) {
             body {
-                padding: 0; /* Remove padding on mobile too */
+                padding: 0;
+                height: auto; /* Allow natural scrolling on mobile */
                 min-height: 100vh;
-                overflow-y: auto; /* Allow scrolling on mobile if needed */
+                overflow-y: auto;
                 overflow-x: hidden;
-                align-items: flex-start; /* Align to top on mobile */
+                align-items: flex-start;
             }
         }
 
         .main-layout {
             display: flex;
             flex-direction: column;
-            gap: 2em;
+            gap: 0.75em;
             background: var(--bg-primary);
-            border-radius: 0; /* Remove border radius to extend to edges */
-            box-shadow: none; /* Remove shadow since we're edge-to-edge */
-            padding: 2.5em;
+            border-radius: 0;
+            box-shadow: none;
+            padding: 1em 1.5em;
             width: 100%;
-            min-height: 100vh; /* Minimum full viewport height, can grow if needed */
+            height: 100vh; /* Lock to viewport */
             margin: 0;
-            overflow-y: auto; /* Allow main scroll if content overflows */
-            overflow-x: hidden;
+            overflow: hidden; /* No scroll — panels handle their own */
             box-sizing: border-box;
         }
 
         /* Mobile layout optimization */
         @media (max-width: 768px) {
             .main-layout {
-                padding: 1.5em;
-                border-radius: 0; /* Remove border radius on mobile too */
-                gap: 1.5em;
-                box-shadow: none; /* Remove shadow on mobile too */
-                min-height: 100vh; /* Minimum full height on mobile */
-                overflow-y: auto; /* Allow main scroll on mobile if needed */
+                padding: 1em;
+                border-radius: 0;
+                gap: 0.75em;
+                box-shadow: none;
+                height: auto; /* Allow natural scrolling on mobile */
+                min-height: 100vh;
+                overflow-y: auto;
                 overflow-x: hidden;
             }
         }
 
         @media (max-width: 480px) {
             .main-layout {
-                padding: 1em;
-                border-radius: 0; /* Remove border radius on small mobile too */
-                gap: 1em;
+                padding: 0.75em;
+                border-radius: 0;
+                gap: 0.5em;
             }
         }
 
-        /* Title Section - Full Width at Top */
+        /* Title Section - Compact top bar */
         .title-section {
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             justify-content: space-between;
-            margin-bottom: 1.5em;
+            margin-bottom: 0;
             width: 100%;
-            flex-wrap: wrap; /* Allow wrapping when space is tight */
-            gap: 1rem; /* Add gap for when items wrap */
+            flex-shrink: 0; /* Never shrink the header */
+            flex-wrap: wrap;
+            gap: 0.5rem;
         }
 
         .title-section h1 {
@@ -642,17 +707,17 @@
             color: #fd01fc !important; /* Bright violet for high contrast mode */
         }
 
-        /* Top Accessibility Controls */
+        /* Top Accessibility Controls — settings toolbar, right-aligned on desktop */
         .accessibility-controls-top {
             display: flex;
             flex-direction: row;
-            align-items: center;
-            justify-content: flex-end;
+            align-items: stretch; /* All toolbar items match the tallest (44px) */
+            justify-content: flex-end; /* Push items to right edge */
             gap: 0.8rem;
             margin-left: 1rem;
-            flex-wrap: wrap; /* Allow wrapping to prevent overflow on all screen sizes */
-            flex-shrink: 1; /* Allow shrinking when needed */
-            min-width: 0; /* Allow shrinking below content size */
+            flex-wrap: wrap;
+            flex: 1 1 auto; /* Grow to fill available width so flex-end reaches right edge */
+            min-width: 0;
         }
         /* Ensure theme toggle appears before font-size controls (to the left) */
         .accessibility-controls-top .theme-toggle-section { order: 0; flex-shrink: 0; }
@@ -660,67 +725,46 @@
         .accessibility-controls-top .github-link { order: 2; flex-shrink: 0; }
         .accessibility-controls-top .btn-help { order: 3; flex-shrink: 0; }
 
-        /* Content Area - Two Column Layout */
+        /* Content Area - Two Column Layout, fills remaining viewport */
         .content-area {
             display: flex;
-            gap: 2.5em;
+            gap: 1.5em;
             width: 100%;
-            flex: 1; /* Take remaining space after title */
-            min-height: 0; /* Allow shrinking for scrolling to work */
-            overflow: visible; /* Allow content to be visible */
+            flex: 1; /* Fill all remaining space after title */
+            min-height: 0; /* Critical for flex children to shrink and scroll */
+            overflow: hidden; /* Panels handle their own overflow */
+            align-items: stretch; /* Both columns fill full height */
         }
 
-        /* Dynamic viewport height for full-height layouts (iOS Safari address bar handling) */
-        @supports (height: 100dvh) {
-            .content-area {
-                min-height: 100dvh;
-            }
-        }
-
-        @supports not (height: 100dvh) {
-            .content-area {
-                min-height: calc(var(--vh, 1vh) * 100);
-            }
-        }
-
-        /* Left Column - Preview Section (45% width) */
+        /* Left Column - Preview Section (equal width, mirror-symmetric) */
         .preview-section {
-            flex: 0 0 45%;
+            flex: 1;
             display: flex;
             flex-direction: column;
-            align-items: flex-start;
-            justify-content: flex-start;
-            /* Make left column independently scrollable without collapsing viewer */
-            max-height: none;
+            align-items: center;
+            justify-content: center; /* Vertically center preview box */
             min-height: 0;
-            overflow-y: visible;
+            overflow: hidden;
+        }
+
+        /* Right Column - Form Section (equal width, mirror-symmetric, scrollable) */
+        .form-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            min-width: 0;
+            min-height: 0;
+            overflow-y: auto; /* The only scrollbar on the page */
             -webkit-overflow-scrolling: touch;
             overflow-x: hidden;
-            padding-right: 1em; /* Add padding to prevent cutoff */
-        }
-
-        /* Right Column - Form Section (55% width) */
-        .form-section {
-            flex: 0 0 calc(55% - 2em); /* Subtract padding to prevent overflow */
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            min-width: 320px;
-            max-width: calc(55% - 2em); /* Prevent form from extending past background */
-            /* Make right column independently scrollable - separate from left column */
-            max-height: calc(100vh - 10em); /* Account for main-layout padding (5em) and title section (~5em) */
-            min-height: 0;
-            overflow-y: scroll; /* Enable scrolling for right column menu boxes */
-            -webkit-overflow-scrolling: touch;
-            overflow-x: hidden; /* Prevent horizontal overflow */
-            scrollbar-width: auto; /* Firefox standard scrollbar */
-            /* iOS Safe Area Support - ensure bottom buttons are accessible */
-            padding-bottom: calc(1em + env(safe-area-inset-bottom));
-            scrollbar-color: #3182ce #e2e8f0; /* Firefox: blue thumb on light grey track */
-            /* Distinct background for scrollable area */
+            scrollbar-width: auto;
+            padding-bottom: calc(0.6em + env(safe-area-inset-bottom));
+            scrollbar-color: #3182ce #e2e8f0;
             background: var(--bg-secondary);
             border-radius: 12px;
-            padding: 1.2em;
+            padding: 0.8em;
+            font-size: 0.85em; /* Match preview panel label font size */
             border: 1px solid var(--border-secondary);
             box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
         }
@@ -863,23 +907,16 @@
                 background: var(--bg-secondary);
                 border: 1px solid var(--border-primary);
                 border-radius: 12px;
-                padding: 1.2em;
+                padding: 0.8em;
                 box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
             }
         }
 
-        /* Desktop layout - sticky left preview, separate right column scrolling */
+        /* Desktop layout - both columns stretch to equal height */
         @media (min-width: 769px) {
-            .preview-section {
-                position: sticky;
-                top: 0;
-                align-self: flex-start; /* ensure sticky positions relative to content area */
-            }
+            /* preview-section: no align-self override; inherits stretch from .content-area */
 
-            /* Ensure right column scrolling is properly configured for desktop */
             .form-section {
-                max-height: calc(100vh - 10em); /* Account for main-layout padding and title section */
-                overflow-y: scroll;
                 position: relative; /* For scroll indicator positioning */
             }
 
@@ -899,24 +936,25 @@
 
         #viewer {
             width: 100%;
-            min-width: 0; /* Avoid forcing horizontal scroll on very small devices */
+            min-width: 0;
             max-width: 100%;
-            height: calc(100vh - 16em); /* Adjust for new layout spacing */
+            flex: 1; /* Fill available height from parent */
+            min-height: 200px; /* Prevent collapsing on small screens */
             border-radius: 18px;
             border: 2px solid var(--border-primary);
             background: var(--bg-tertiary);
             box-shadow: 0 4px 24px var(--shadow-light);
             display: flex;
-            align-items: center; /* vertically center canvas */
-            justify-content: center; /* horizontally center canvas */
-            margin: 0 0 1.5em 0;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
             transition: box-shadow 0.2s;
             touch-action: pan-x pan-y pinch-zoom;
             -webkit-user-select: none;
             user-select: none;
-            overflow: hidden; /* Ensure content doesn't overflow rounded corners */
-            box-sizing: border-box; /* Include border in size calculation */
-            position: relative; /* Create positioning context for overlay */
+            overflow: hidden;
+            box-sizing: border-box;
+            position: relative;
         }
 
         /* Canvas should fill the content box and be clipped by the rounded frame */
@@ -995,6 +1033,10 @@
         .viewer-container {
             position: relative;
             width: 100%;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0; /* Allow flex shrinking */
         }
 
         /* STL Preview Label - Overlay at top of viewer */
@@ -1157,9 +1199,9 @@
             background: var(--bg-secondary);
             border: 1px solid var(--border-primary);
             border-radius: 8px;
-            padding: 1em;
-            margin-bottom: 1.5em;
-            font-size: 0.9em;
+            padding: 0.75em;
+            margin-bottom: 0.75em;
+            font-size: 0.95em;
             color: var(--text-secondary);
         }
         .info-panel p {
@@ -1201,15 +1243,15 @@
             background: var(--bg-secondary);
             border: 1px solid var(--border-primary);
             border-radius: 8px;
-            padding: 1em;
-            margin-bottom: 1.5em;
+            padding: 0.75em;
+            margin-bottom: 0.75em;
         }
 
         /* Mobile grade selection optimization */
         @media (max-width: 768px) {
             .grade-selection {
-                padding: 1.2em;
-                margin-bottom: 1.2em;
+                padding: 0.8em;
+                margin-bottom: 0.8em;
             }
         }
         .radio-group {
@@ -1540,9 +1582,9 @@
 
         .button-row {
             display: flex;
-            gap: 1em;
+            gap: 0.6em;
             align-items: center;
-            margin-bottom: 1em;
+            margin-bottom: 0.6em;
             flex-wrap: wrap;
         }
 
@@ -1621,7 +1663,7 @@
             background: var(--bg-secondary);
             border: 1px solid var(--border-secondary);
             border-radius: 8px;
-            padding: 0.6em 1em;
+            padding: 0.5em 0.75em;
             font-size: 0.9em;
             font-weight: 600;
             color: var(--text-secondary);
@@ -1671,7 +1713,7 @@
             background: var(--bg-secondary);
             border: 1px solid var(--border-secondary);
             border-radius: 8px;
-            padding: 0.8em 1.2em;
+            padding: 0.5em 0.75em;
             width: 100%;
             font-weight: 600;
             color: var(--text-primary);
@@ -1694,14 +1736,14 @@
         }
 
         .expert-settings {
-            margin-top: 1.5em;
-            padding-top: 1.5em;
+            margin-top: 0.75em;
+            padding-top: 0.75em;
             border-top: 1px solid var(--border-primary);
         }
 
         /* Ensure Expert Mode inputs are properly spaced and visible */
         .expert-settings .grade-selection {
-            margin-bottom: 1em;
+            margin-bottom: 0.6em;
         }
 
         .expert-settings input[type="number"] {
@@ -1716,24 +1758,24 @@
             color: var(--text-primary);
         }
         .expert-mode-toggle {
-            margin-top: 1em;
+            margin-top: 0.6em;
             text-align: center;
         }
         .expert-settings {
-            margin-top: 1.5em;
-            padding-top: 1.5em;
+            margin-top: 0.75em;
+            padding-top: 0.75em;
             border-top: 1px solid var(--border-primary);
         }
 
         .info-dropdown {
-            margin-bottom: 1.5em;
+            margin-bottom: 0.75em;
         }
 
         .info-toggle-btn {
             background: var(--bg-secondary);
             border: 1px solid var(--border-primary);
             border-radius: 8px;
-            padding: 0.8em 1em;
+            padding: 0.5em 0.75em;
             font-size: 0.95em;
             font-weight: 600;
             color: var(--text-secondary);
@@ -1768,9 +1810,9 @@
             background: var(--bg-secondary);
             border: 1px solid var(--border-primary);
             border-radius: 8px;
-            padding: 1em;
-            margin-top: 0.5em;
-            font-size: 0.9em;
+            padding: 0.75em;
+            margin-top: 0.4em;
+            font-size: 0.95em;
             color: var(--text-secondary);
         }
 
@@ -1825,14 +1867,14 @@
             }
 
             .info-panel, .info-content {
-                padding: 1.2em;
+                padding: 0.8em;
                 font-size: 0.95em;
             }
 
             .info-toggle-btn, .expert-toggle-btn {
-                padding: 1em;
-                font-size: 1em;
-                min-height: 48px;
+                padding: 0.6em 0.75em;
+                font-size: 0.95em;
+                min-height: 44px;
             }
 
             #error-message {
@@ -1923,7 +1965,7 @@
         /* Theme Toggle Section */
         .theme-toggle-section {
             display: flex;
-            align-items: center;
+            align-items: stretch; /* Children match parent height */
             gap: 0.8em;
             margin-left: 0;
         }
@@ -1932,14 +1974,13 @@
             background: var(--bg-secondary);
             border: 1px solid var(--border-primary);
             border-radius: 8px;
-            padding: 0.6em 1em;
+            padding: 0 0.8em;
             font-size: 0.9em;
             color: var(--text-secondary);
             white-space: nowrap;
             display: flex;
-            align-items: center;
+            align-items: center; /* Vertically center text within stretched height */
             gap: 0.3em;
-            min-height: 2.5em;
             box-sizing: border-box;
         }
 
@@ -1953,16 +1994,17 @@
             background: var(--bg-primary);
             border: 2px solid var(--border-primary);
             border-radius: 8px;
-            padding: 0.6em 1em;
+            padding: 0 0.8em;
             font-size: 0.9em;
             font-weight: 600;
             color: var(--text-primary);
             cursor: pointer;
             display: flex;
-            align-items: center;
+            align-items: center; /* Vertically center content within stretched height */
             gap: 0.5em;
             transition: all 0.2s;
             box-shadow: 0 2px 8px var(--shadow-light);
+            box-sizing: border-box;
         }
 
         .theme-toggle-btn:hover {
@@ -1987,12 +2029,12 @@
             }
             
             .theme-label-box {
-                padding: 0.5em 0.8em;
+                padding: 0 0.6em;
                 font-size: 0.85em;
             }
             
             .theme-toggle-btn {
-                padding: 0.5em 0.8em;
+                padding: 0 0.6em;
                 font-size: 0.85em;
             }
         }
@@ -2023,7 +2065,7 @@
 
             .accessibility-controls-top {
                 margin-left: 0;
-                align-items: center;
+                align-items: stretch; /* All items same height on mobile too */
                 flex-wrap: wrap; /* Allow controls to wrap horizontally */
                 justify-content: center;
                 gap: 0.5rem;
@@ -2032,7 +2074,7 @@
 
             .theme-toggle-section {
                 flex-direction: row; /* Keep horizontal on mobile */
-                align-items: center;
+                align-items: stretch; /* Children match parent height */
                 gap: 0.5em;
                 margin-left: 0;
                 flex-wrap: wrap;
@@ -2041,7 +2083,6 @@
 
             .theme-label-box {
                 font-size: 0.85em;
-                min-height: 2.2em;
             }
             
             /* Ensure buttons don't overflow on mobile */
@@ -2124,15 +2165,15 @@
             margin-top: 0.25em;
         }
 
-        /* Section Title Styling - Larger Font for All Themes */
+        /* Section Title Styling - Scaled for compact form layout */
         .info-panel strong,
         .info-panel p strong {
-            font-size: 1.3em !important;
+            font-size: 1.1em !important;
             font-weight: 700 !important;
         }
 
         #info-toggle-text {
-            font-size: 1.2em !important;
+            font-size: 1.05em !important;
             font-weight: 600 !important;
         }
 
@@ -2140,12 +2181,12 @@
             font-weight: 600;
             color: var(--text-primary);
             display: block;
-            margin-bottom: 0.8em;
-            font-size: 1.2em !important; /* Increased from 0.9em */
+            margin-bottom: 0.5em;
+            font-size: 1.05em !important;
         }
 
         .expert-toggle-btn #expert-toggle-text {
-            font-size: 1.2em !important;
+            font-size: 1.05em !important;
             font-weight: 600 !important;
         }
 
@@ -2179,7 +2220,7 @@
             display: inline-flex;
             align-items: center;
             gap: 0.4rem;
-            padding: 0.4rem 0.8rem;
+            padding: 0 0.8rem;
             border: 2px solid var(--border-primary);
             border-radius: 6px;
             background: var(--bg-secondary);
@@ -2188,7 +2229,8 @@
             font-size: 0.9rem;
             font-weight: 500;
             transition: transform 0.15s ease, background-color 0.15s ease;
-            min-height: 44px; /* Touch target */
+            min-height: 44px; /* Touch target — reference height for all toolbar items */
+            box-sizing: border-box;
         }
 
         .github-link:hover {
@@ -2222,7 +2264,7 @@
             display: inline-flex;
             align-items: center;
             gap: 0.4rem;
-            padding: 0.4rem 0.8rem;
+            padding: 0 0.8rem;
             border: 2px solid var(--border-primary);
             border-radius: 6px;
             background: var(--bg-secondary);
@@ -2231,7 +2273,8 @@
             font-weight: 500;
             cursor: pointer;
             transition: transform 0.15s ease, background-color 0.15s ease;
-            min-height: 44px;
+            min-height: 44px; /* Touch target — reference height for all toolbar items */
+            box-sizing: border-box;
         }
 
         .btn-help:hover {
@@ -2374,17 +2417,17 @@
            ============================================ */
         .help-tabs {
             display: flex;
-            gap: 0.25rem;
+            gap: 0.15rem;
             border-bottom: 2px solid var(--border-primary);
-            margin-bottom: 1rem;
-            overflow-x: auto;
+            margin-bottom: 0.75rem;
+            flex-wrap: nowrap;
         }
 
         .help-tab {
             background: none;
             border: none;
-            padding: 0.75rem 1rem;
-            font-size: 0.95rem;
+            padding: 0.5rem 0.5rem;
+            font-size: 0.8rem;
             font-weight: 500;
             color: var(--text-tertiary);
             cursor: pointer;
@@ -2408,7 +2451,8 @@
         }
 
         .help-panel {
-            line-height: 1.6;
+            line-height: 1.5;
+            font-size: 0.9rem;
         }
 
         .help-panel[hidden] {
@@ -2417,7 +2461,7 @@
 
         .help-panel h3 {
             margin-top: 0;
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.5rem;
             color: var(--text-primary);
         }
 
@@ -2483,6 +2527,19 @@
             margin: 0.5rem 0;
         }
 
+        /* Per-tab authoritative citation footers */
+        .help-tab-sources {
+            margin-top: 1.5em;
+            padding-top: 0.75em;
+            border-top: 1px solid var(--border-primary, #e5e7eb);
+            font-size: 0.85em;
+            opacity: 0.85;
+        }
+
+        .help-tab-sources p {
+            margin: 0.25em 0;
+        }
+
         /* Inline link button style */
         .btn-link {
             background: none;
@@ -2501,6 +2558,10 @@
         .btn-link:focus {
             outline: 2px solid var(--border-focus);
             outline-offset: 2px;
+        }
+
+        .btn-link-bold {
+            font-weight: bold;
         }
 
         /* Dark theme btn-link - higher contrast for dark backgrounds */
@@ -2553,6 +2614,11 @@
             border-color: #00ffff;
         }
 
+        [data-theme="high-contrast"] .help-tab-sources {
+            border-top-color: #ffff00;
+            opacity: 1;
+        }
+
         [data-theme="high-contrast"] .btn-link {
             color: #00ffff;
         }
@@ -2571,8 +2637,8 @@
             }
             
             .help-tab {
-                font-size: 0.85rem;
-                padding: 0.6rem 0.75rem;
+                font-size: 0.7rem;
+                padding: 0.4rem 0.35rem;
             }
         }
     </style>
@@ -2596,14 +2662,14 @@
                 <!-- Font Size Controls -->
                 <div class="font-size-controls" role="group" aria-label="Font size adjustment">
                     <button id="font-decrease" class="font-size-btn" aria-label="Decrease font size" title="Decrease font size">
-                        <span aria-hidden="true">A-</span>
+                        <span aria-hidden="true">−</span>
                         <span class="sr-only">Decrease font size</span>
                     </button>
                     <span class="font-size-display" role="status" aria-live="polite" aria-atomic="true">
                         <span id="current-font-size">100</span>%
                     </span>
                     <button id="font-increase" class="font-size-btn" aria-label="Increase font size" title="Increase font size">
-                        <span aria-hidden="true">A+</span>
+                        <span aria-hidden="true">+</span>
                         <span class="sr-only">Increase font size</span>
                     </button>
                     <button id="font-reset" class="font-size-btn reset-btn" aria-label="Reset font size to default" title="Reset font size to default">
@@ -2640,7 +2706,7 @@
                 <button type="button"
                         id="helpModalBtn"
                         class="btn btn-sm btn-help"
-                        aria-label="Open help guide and business card tips"
+                        aria-label="Open help guide"
                         title="Help & Guide">
                     <svg class="btn-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <circle cx="12" cy="12" r="10"></circle>
@@ -4908,7 +4974,7 @@
                 const radio = document.querySelector(`input[name="dot_shape"][value="${savedDot}"]`);
                 if (radio) radio.checked = true;
             }
-            // Combined shape - initialize based on saved dot shape or default to rounded
+            // Combined shape - initialize based on saved dot shape or default to cone
             const savedCombined = readPersisted('braille_prefs_combined_shape') || savedDot || 'cone';
             if (savedCombined === 'cone' || savedCombined === 'rounded') {
                 const radio = document.querySelector(`input[name="combined_shape"][value="${savedCombined}"]`);
@@ -4980,13 +5046,12 @@
                     if (el) el.value = v;
                 }
             });
-            // Restore recess shape selection (default to Bowl when no saved value)
+            // Restore recess shape selection from saved value only.
+            // When no saved value exists, trust the combined_shape handler above
+            // which already set the correct recess_shape (cone="2", rounded="1").
             const savedRecessShape = readPersisted('braille_prefs_recess_shape');
             if (savedRecessShape === '0' || savedRecessShape === '1' || savedRecessShape === '2') {
                 const r = document.querySelector(`input[name="recess_shape"][value="${savedRecessShape}"]`);
-                if (r) r.checked = true;
-            } else {
-                const r = document.querySelector('input[name="recess_shape"][value="1"]');
                 if (r) r.checked = true;
             }
             // grid_columns handled last to avoid preserve conversion
@@ -7279,12 +7344,14 @@
                     <div class="help-panel" role="tabpanel" aria-labelledby="tab-whattoinclude" id="helpPanelWhatToInclude">
                         <h3>Choosing What to Include</h3>
                         
-                        <div class="help-notice" style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 0.75em 1em; margin-bottom: 1em; border-radius: 4px;">
+                        <div class="help-notice help-notice-warning">
                             <strong>The most important decision:</strong> Braille takes far more space than print. You cannot include everything — you must prioritize.
                         </div>
 
+                        <p><em>This guidance applies to both <strong>cylinders</strong> (jars, bottles, containers) and <strong>flat cards</strong> (business cards). The space constraints and prioritization strategies are the same for both shapes.</em></p>
+
                         <h4>The Core Question</h4>
-                        <p style="font-size: 1.1em; font-style: italic; margin: 1em 0; padding: 0.5em; background: #f8fafc; border-radius: 4px;">
+                        <p class="help-quote-block">
                             "Can someone <strong>identify me</strong> and <strong>contact me</strong> with just this information?"
                         </p>
                         <p>If yes, you have enough. If no, add the minimum needed — nothing more.</p>
@@ -7328,6 +7395,10 @@
                         </ul>
                         
                         <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-formatting')">How to format your chosen content →</button></p>
+
+                        <div class="help-tab-sources">
+                            <p><small><strong>Source:</strong> Adapted from the <a href="https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf" target="_blank" rel="noopener noreferrer">BANA <em>Business Cards Fact Sheet</em></a> (approved March 2024).</small></p>
+                        </div>
                     </div>
 
                     <!-- Cylinder Guide Panel -->
@@ -7374,14 +7445,18 @@
                         </ul>
                         
                         <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-formatting')">Formatting tips for cylinder text →</button></p>
+
+                        <div class="help-tab-sources">
+                            <p><small><strong>Source:</strong> Adapted from <a href="https://www.brailleauthority.org/size-and-spacing-braille-characters" target="_blank" rel="noopener noreferrer">BANA <em>Size and Spacing of Braille Characters</em></a>.</small></p>
+                        </div>
                     </div>
 
                     <!-- How to Use Panel (tool mechanics) -->
                     <div class="help-panel" role="tabpanel" aria-labelledby="tab-howtouse" id="helpPanelHowToUse" hidden>
                         <h3>How to Use This Tool</h3>
                         
-                        <div class="help-notice" style="background: #f0f9ff; border-left: 4px solid #0284c7; padding: 0.75em 1em; margin-bottom: 1em; border-radius: 4px;">
-                            <strong>Before you begin:</strong> Decide what information to include using the <button type="button" class="btn-link" onclick="window.switchHelpTab('tab-whattoinclude')" style="font-weight: bold;">What to Include</button> guide. The tool cannot help you if you try to include too much.
+                        <div class="help-notice help-notice-info">
+                            <strong>Before you begin:</strong> Decide what information to include using the <button type="button" class="btn-link btn-link-bold" onclick="window.switchHelpTab('tab-whattoinclude')">What to Include</button> guide. The tool cannot help you if you try to include too much.
                         </div>
 
                         <h4>Step-by-Step</h4>
@@ -7454,6 +7529,10 @@
                             <li><strong>Enabled:</strong> Capital letters are preserved, adding indicator cells to the braille output.</li>
                         </ul>
                         <p><strong>Why disable capitals?</strong> Saves approximately 1 braille cell per capital letter. Braille readers understand this is standard practice for space-limited applications like labels and business cards.</p>
+
+                        <div class="help-tab-sources">
+                            <p><small><strong>Source:</strong> Adapted from the <a href="https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf" target="_blank" rel="noopener noreferrer">BANA <em>Business Cards Fact Sheet</em></a> (approved March 2024).</small></p>
+                        </div>
                     </div>
 
                     <!-- Expert Mode Guide Panel -->
@@ -7464,7 +7543,7 @@
 
                         <h4>What's Inside Expert Mode</h4>
                         
-                        <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 0.75em 1em; margin-bottom: 1em; border-radius: 4px;">
+                        <div class="help-notice help-notice-warning">
                             <strong>Important:</strong> The <strong>Preview Braille Translation</strong> button is located at the top of Expert Mode. Use it to verify your text before generating STL files.
                         </div>
 
@@ -7504,6 +7583,10 @@
                         <p>The default settings follow BANA (Braille Authority of North America) guidelines and work well for most applications. Only modify if you have specific requirements or need to calibrate for your printer.</p>
                         
                         <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-resources')">See BANA resources →</button></p>
+
+                        <div class="help-tab-sources">
+                            <p><small><strong>Source:</strong> Default values follow <a href="https://www.brailleauthority.org/size-and-spacing-braille-characters" target="_blank" rel="noopener noreferrer">BANA <em>Size and Spacing of Braille Characters</em></a>.</small></p>
+                        </div>
                     </div>
 
                     <!-- Examples Panel -->
@@ -7540,7 +7623,43 @@ l.schimmelfennig@usace.army</pre>
                             <p><strong>Result:</strong> Shorter name leaves room for more contact info.</p>
                         </div>
 
-                        <p><a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/blob/main/docs/guides/BUSINESS_CARD_TRANSLATION_GUIDE.md#worked-examples" target="_blank" rel="noopener noreferrer">See more examples in the full guide →</a></p>
+                        <h4>Cylinder Examples</h4>
+
+                        <h4>Example 4: Spice Jar Label</h4>
+                        <div class="example-box">
+                            <p><strong>Goal:</strong> Label a spice jar (diameter ~55mm) so it can be identified by touch.</p>
+                            <p><strong>Decision:</strong> A single word is all that's needed — just the spice name.</p>
+                            <p><strong>Type:</strong></p>
+                            <pre>cinnamon</pre>
+                            <p><strong>Result:</strong> 1 row, fits easily. Cylinder diameter set to 55mm.</p>
+                        </div>
+
+                        <h4>Example 5: Medicine Bottle</h4>
+                        <div class="example-box">
+                            <p><strong>Goal:</strong> Label a prescription bottle (diameter ~40mm) with drug name and dosage.</p>
+                            <p><strong>Decision:</strong> Two key pieces of info — the medication name and dosage. Abbreviate to fit the smaller circumference (~9 cells per row).</p>
+                            <p><strong>Type:</strong></p>
+                            <pre>amoxicillin
+500mg</pre>
+                            <p><strong>Result:</strong> 2 rows. Name may wrap depending on cell count; abbreviate to "amox 500mg" on a very small bottle.</p>
+                        </div>
+
+                        <h4>Example 6: Water Bottle ID Tag</h4>
+                        <div class="example-box">
+                            <p><strong>Goal:</strong> Identify a personal water bottle (diameter ~75mm) at a shared workplace.</p>
+                            <p><strong>Decision:</strong> Name plus one contact method. Omit organization — not needed to identify a personal item.</p>
+                            <p><strong>Type:</strong></p>
+                            <pre>j. smith
+555.867.5309</pre>
+                            <p><strong>Result:</strong> 2 rows on a 75mm cylinder (~13 cells per row). Initials save space.</p>
+                        </div>
+
+                        <p><a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/blob/main/docs/guides/BUSINESS_CARD_TRANSLATION_GUIDE.md#worked-examples" target="_blank" rel="noopener noreferrer">See more business card examples in the full guide →</a></p>
+                        <p><a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/blob/main/docs/guides/CYLINDER_GUIDE.md#worked-examples" target="_blank" rel="noopener noreferrer">See more cylinder examples in the full guide →</a></p>
+
+                        <div class="help-tab-sources">
+                            <p><small><strong>Sources:</strong> Business card examples adapted from the <a href="https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf" target="_blank" rel="noopener noreferrer">BANA <em>Business Cards Fact Sheet</em></a>. Cylinder examples based on <a href="https://www.brailleauthority.org/size-and-spacing-braille-characters" target="_blank" rel="noopener noreferrer">BANA <em>Size and Spacing of Braille Characters</em></a>.</small></p>
+                        </div>
                     </div>
 
                     <!-- Resources Panel -->
@@ -7549,14 +7668,17 @@ l.schimmelfennig@usace.army</pre>
 
                         <h4>Official Standards</h4>
                         <ul>
-                            <li><a href="https://www.brailleauthority.org/braille-signage-guidelines" target="_blank" rel="noopener noreferrer">BANA Braille Signage Guidelines</a></li>
+                            <li><a href="https://www.brailleauthority.org/bana-position-statements-and-fact-sheets" target="_blank" rel="noopener noreferrer">BANA Position Statements and Fact Sheets</a></li>
+                            <li><a href="https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf" target="_blank" rel="noopener noreferrer">BANA <em>Business Cards Fact Sheet</em> (PDF, approved March 2024)</a></li>
                             <li><a href="https://www.brailleauthority.org/size-and-spacing-braille-characters" target="_blank" rel="noopener noreferrer">BANA Size and Spacing of Braille Characters</a></li>
+                            <li><a href="https://www.brailleauthority.org/braille-signage-guidelines" target="_blank" rel="noopener noreferrer">BANA Braille Signage Guidelines</a></li>
                             <li><a href="https://iceb.org/ueb.html" target="_blank" rel="noopener noreferrer">The Rules of Unified English Braille (ICEB)</a></li>
                         </ul>
 
                         <h4>This Application</h4>
                         <ul>
                             <li><a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
+                            <li><a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/blob/main/docs/guides/CYLINDER_GUIDE.md" target="_blank" rel="noopener noreferrer">Full Cylinder Guide</a></li>
                             <li><a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/blob/main/docs/guides/BUSINESS_CARD_TRANSLATION_GUIDE.md" target="_blank" rel="noopener noreferrer">Full Business Card Translation Guide</a></li>
                             <li><a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/blob/main/README.md" target="_blank" rel="noopener noreferrer">Project Documentation</a></li>
                         </ul>
@@ -7571,7 +7693,7 @@ l.schimmelfennig@usace.army</pre>
                         </ul>
 
                         <h4>Acknowledgments</h4>
-                        <p>Business card guidance is based on the <em>Guidelines for Brailling Business Cards</em> published by the Braille Authority of North America (BANA).</p>
+                        <p>Business card guidance is adapted from the <a href="https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf" target="_blank" rel="noopener noreferrer"><em>Business Cards Fact Sheet</em></a> (approved March 2024) published by the Braille Authority of North America (BANA).</p>
                         <p>Braille translation powered by <a href="https://liblouis.io/" target="_blank" rel="noopener noreferrer">liblouis</a>.</p>
                         <p>Extra thanks to <strong>Tobi Weinberg</strong> for the substantial time and effort he volunteered to help start this project and see it through.</p>
                     </div>

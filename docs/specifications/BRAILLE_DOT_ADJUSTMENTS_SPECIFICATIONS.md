@@ -2,7 +2,7 @@
 
 ## Document Purpose
 
-This document provides **comprehensive, in-depth specifications** for all Braille Dot Adjustment controls available in the application UI. It serves as an authoritative reference for future development by documenting:
+This document specifies all Braille Dot Adjustment controls available in the application UI. It serves as a reference for future development by documenting:
 
 1. **UI Controls** — The radio dials, input fields, and their intended behaviors
 2. **Named Parts of Braille Dots** — Anatomical terminology for each shape component
@@ -976,7 +976,7 @@ defaults = {
     'rounded_dot_dome_height': 0.6,      # mm
 
     # Counter plate general
-    'recess_shape': 1,                   # 0=hemi, 1=bowl, 2=cone
+    'recess_shape': 2,                   # 0=hemi, 1=bowl, 2=cone
 
     # Hemisphere recess
     'hemi_counter_dot_base_diameter': 1.6,  # mm
@@ -1167,7 +1167,7 @@ sphere_center_z = plate_thickness - (R - depth)
 
 | Date | Version | Author | Changes |
 |------|---------|--------|---------|
-| 2024-12-06 | 1.0 | Contributor | Initial comprehensive specification |
+| 2024-12-06 | 1.0 | Contributor | Initial specification |
 
 ---
 

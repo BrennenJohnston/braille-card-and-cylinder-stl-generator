@@ -133,7 +133,7 @@ const useManifolWorker = shapeType === 'cylinder' && manifoldWorkerReady;
 - Known limitations
 - Debugging commands
 
-### 8. ✅ Comprehensive Documentation
+### 8. ✅ Complete Documentation
 **Files Created**:
 1. `CLIENT_SIDE_CSG_DOCUMENTATION.md` - Full architecture guide
 2. `CLIENT_SIDE_CSG_TEST_PLAN.md` - Testing procedures
@@ -326,7 +326,7 @@ function batchUnion(geometries, batchSize = 32) {
 
 ### vs. manifold3d WASM
 
-- **Edge case robustness**: three-bvh-csg may produce non-manifold results occasionally
+- **Edge case reliability**: three-bvh-csg may produce non-manifold results occasionally
 - **Numerical precision**: manifold3d has better floating-point handling
 - **Performance**: three-bvh-csg is ~2-5x slower than manifold3d
 
@@ -344,7 +344,7 @@ function batchUnion(geometries, batchSize = 32) {
 4. ✅ **Performance**: Acceptable for typical models (< 30 sec)
 5. ✅ **Bundle Size**: Reasonable impact (~200-300 KB, 60-80 KB gzipped)
 6. ✅ **Bug Fixed**: CSG worker now properly integrated into frontend
-7. ✅ **Documentation**: Comprehensive guides provided and updated
+7. ✅ **Documentation**: Full guides provided and updated
 8. ✅ **Testing**: Test plan and procedures documented
 
 ---
@@ -415,7 +415,7 @@ The client-side CSG implementation is **production-ready** and provides signific
 - ✅ Faster iteration for users
 - ✅ Minimal bundle size impact
 - ✅ Clear error handling (no silent fallbacks)
-- ✅ Comprehensive documentation
+- ✅ Complete documentation
 
 The implementation follows best practices and provides a solid foundation for future improvements.
 

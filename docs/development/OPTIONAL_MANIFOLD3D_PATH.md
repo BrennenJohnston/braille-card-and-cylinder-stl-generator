@@ -1,12 +1,12 @@
 # Optional: Client-Side manifold3d Path
 
-This document outlines how to add client-side manifold3d (WASM) as an additional CSG engine for maximum robustness, at the cost of a larger bundle size (~2-3 MB).
+This document outlines how to add client-side manifold3d (WASM) as an additional CSG engine for watertight mesh output, at the cost of a larger bundle size (~2-3 MB).
 
 ## Why Add manifold3d?
 
 ### Advantages Over three-bvh-csg
 - **Guaranteed manifold output**: Always produces watertight meshes
-- **Better edge case handling**: More robust for complex geometry
+- **Better edge case handling**: More reliable with complex geometry
 - **Numerical precision**: Better handling of floating-point edge cases
 - **Proven reliability**: Used in production CAD applications
 
@@ -38,7 +38,7 @@ Create `static/workers/csg-worker-manifold.js`:
 
 ```javascript
 /**
- * CSG Worker using manifold3d (WASM) for maximum robustness
+ * CSG Worker using manifold3d (WASM) for guaranteed watertight output
  */
 
 import Module from '/static/vendor/manifold-3d/manifold.js';
@@ -346,7 +346,7 @@ document.getElementById('csg-engine').addEventListener('change', (e) => {
 ### 5. Cascade Fallback Strategy
 
 Recommended fallback order:
-1. **manifold3d** (if selected and available) - Maximum robustness
+1. **manifold3d** (if selected and available) - Guaranteed watertight output
 2. **three-bvh-csg** - Fast and lightweight
 3. **Server** - Final fallback
 

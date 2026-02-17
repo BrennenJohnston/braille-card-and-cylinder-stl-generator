@@ -78,10 +78,12 @@ Open http://localhost:5001 in your browser.
 
 1. Enter text (up to 4 lines)
 2. Select braille translation table and grade
-3. Choose shape type (card or cylinder)
-4. Configure dimensions and dot parameters as needed
+3. Configure cylinder dimensions for your container (flat cards are temporarily disabled)
+4. Configure dot parameters as needed
 5. Click Generate to create STL files
 6. Download and 3D print
+
+**Tip:** Click the **Help** button in the app for guidance on choosing what to include, formatting, and worked examples.
 
 ## Project Structure
 
@@ -159,6 +161,13 @@ ruff format .
 The project uses pre-commit hooks for consistent code quality.
 
 ## Documentation
+
+### User Guides
+
+- [Cylinder Guide](docs/guides/CYLINDER_GUIDE.md) — Measuring containers, cylinder parameters, and worked examples
+- [Business Card Translation Guide](docs/guides/BUSINESS_CARD_TRANSLATION_GUIDE.md) — Choosing what to braille, formatting tips (flat cards temporarily disabled)
+
+### Technical Reference
 
 - [Project Structure](PROJECT_STRUCTURE.md) — Architecture overview
 - [Specifications Index](docs/specifications/SPECIFICATIONS_INDEX.md) — Technical specifications

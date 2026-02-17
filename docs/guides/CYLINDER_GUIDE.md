@@ -193,12 +193,112 @@ Access these by clicking **Show Expert Mode**:
 - Adjust dot parameters in Expert Mode → Braille Dot Adjustments
 - This is printer-specific calibration
 
-## Resources
+## Worked Examples
 
-- [BANA Size and Spacing of Braille Characters](https://www.brailleauthority.org/size-and-spacing-braille-characters)
-- [BUSINESS_CARD_TRANSLATION_GUIDE.md](BUSINESS_CARD_TRANSLATION_GUIDE.md) — Guidance for flat cards (when re-enabled)
+These examples show **what to type** into the application for common cylinder use cases.
+
+### Example 1: Spice Jar Label
+
+**Goal:** Label a spice jar (diameter ~55mm) so it can be identified by touch.
+
+**Container measurement:** Circumference ~173mm ÷ π ≈ 55mm diameter → approximately 9-10 cells per row.
+
+**Decision:** A single word is all that's needed — just the spice name.
+
+**What to type:**
+```
+cinnamon
+```
+
+**Settings:**
+| Setting | Value |
+|---------|-------|
+| Outer Diameter | 55mm |
+| Placement Mode | Auto Placement |
+| Capitalized Letters | Disabled |
+
+**Result:** 1 row, fits easily. For longer spice names (e.g., "cardamom"), abbreviate if needed.
 
 ---
 
-*Document Version: 1.0*
+### Example 2: Medicine Bottle
+
+**Goal:** Label a prescription bottle (diameter ~40mm) with drug name and dosage.
+
+**Container measurement:** Circumference ~126mm ÷ π ≈ 40mm diameter → approximately 9 cells per row.
+
+**Decision:** Two key pieces — medication name and dosage. The small circumference means the name may wrap to a second row.
+
+**What to type:**
+```
+amoxicillin
+500mg
+```
+
+**Settings:**
+| Setting | Value |
+|---------|-------|
+| Outer Diameter | 40mm |
+| Placement Mode | Auto Placement |
+| Capitalized Letters | Disabled |
+
+**Result:** 2-3 rows. "amoxicillin" wraps because it exceeds 9 cells per row. For a very small bottle, abbreviate to "amox 500mg" on one line.
+
+---
+
+### Example 3: Water Bottle ID Tag
+
+**Goal:** Identify a personal water bottle (diameter ~75mm) at a shared workplace.
+
+**Container measurement:** Circumference ~235mm ÷ π ≈ 75mm diameter → approximately 13-14 cells per row.
+
+**Decision:** Name plus one contact method. Omit organization — not needed to identify a personal item.
+
+**What to type:**
+```
+j. smith
+555.867.5309
+```
+
+**Settings:**
+| Setting | Value |
+|---------|-------|
+| Outer Diameter | 75mm |
+| Placement Mode | Auto Placement |
+| Capitalized Letters | Disabled |
+
+**Result:** 2 rows on a 75mm cylinder. Using initial "J." instead of full first name saves cells. Phone formatted with periods per BANA guidance.
+
+---
+
+### Notes on These Examples
+
+- **Capitalized Letters disabled (default):** The app converts text to lowercase automatically.
+- **Grade 1 uncontracted:** These examples assume Grade 1 (uncontracted) braille, which is clearest for labels.
+- **Measure first, then type:** Always measure your container and check the text capacity table above before entering text.
+
+---
+
+## Resources & Credits
+
+### Official Standards
+
+- [BANA Position Statements and Fact Sheets](https://www.brailleauthority.org/bana-position-statements-and-fact-sheets) — includes the official Business Cards Fact Sheet
+- [BANA Size and Spacing of Braille Characters](https://www.brailleauthority.org/size-and-spacing-braille-characters) — primary reference for cylinder dot dimensions and spacing
+- [BANA Braille Signage Guidelines](https://www.brailleauthority.org/braille-signage-guidelines)
+- [The Rules of Unified English Braille (ICEB)](https://iceb.org/ueb.html)
+
+### Related Guides
+
+- [BUSINESS_CARD_TRANSLATION_GUIDE.md](BUSINESS_CARD_TRANSLATION_GUIDE.md) — Guidance for flat cards (when re-enabled)
+
+### Acknowledgments
+
+Cylinder guidance follows [BANA Size and Spacing of Braille Characters](https://www.brailleauthority.org/size-and-spacing-braille-characters). Content selection guidance adapted from the [*Business Cards Fact Sheet*](https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf) (approved March 2024).
+
+Braille translation powered by [liblouis](https://liblouis.io/).
+
+---
+
+*Document Version: 1.1*
 *Last Updated: February 2026*

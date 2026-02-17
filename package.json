@@ -38,7 +38,7 @@
     "liblouis": "^0.4.0",
     "manifold-3d": "^2.5.1",
     "three-bvh-csg": "^0.0.17",
-    "three-mesh-bvh": "^0.9.7"
+    "three-mesh-bvh": "^0.9.8"
   },
   "devDependencies": {
     "vitest": "^4.0.18",

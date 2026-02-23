@@ -8,7 +8,7 @@ requires-python = ">=3.12"
 # Server only provides lightweight JSON geometry specs
 # Client-side CSG handles all heavy computation
 dependencies = [
-    "flask==3.1.2",
+    "flask==3.1.3",
     "flask-cors==6.0.2",
 ]
 

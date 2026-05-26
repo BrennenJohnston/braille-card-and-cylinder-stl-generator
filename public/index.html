@@ -2027,12 +2027,12 @@
             .accessibility-controls-top {
                 gap: 0.6rem;
             }
-            
+
             .theme-label-box {
                 padding: 0 0.6em;
                 font-size: 0.85em;
             }
-            
+
             .theme-toggle-btn {
                 padding: 0 0.6em;
                 font-size: 0.85em;
@@ -2084,7 +2084,7 @@
             .theme-label-box {
                 font-size: 0.85em;
             }
-            
+
             /* Ensure buttons don't overflow on mobile */
             .github-link,
             .btn-help {
@@ -2631,11 +2631,11 @@
                 width: 95%;
                 max-height: 95vh;
             }
-            
+
             .help-tabs {
                 flex-wrap: nowrap;
             }
-            
+
             .help-tab {
                 font-size: 0.7rem;
                 padding: 0.4rem 0.35rem;
@@ -2778,11 +2778,11 @@
             <div class="form-section" role="region" aria-label="Braille Card Configuration">
                 <div class="info-panel">
                     <p><strong>What Does This Program Do?</strong></p>
-                    <p>Generates custom braille embossing plates for cylinders (labels, containers) and flat cards. 
+                    <p>Generates custom braille embossing plates for cylinders (labels, containers) and flat cards.
                        <a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator" target="_blank" rel="noopener noreferrer">View on GitHub</a>
                     </p>
                     <p style="font-size: 0.9em; color: #6b7280;"><em>Note: Cylinder shapes are currently available. Flat cards are temporarily disabled.</em></p>
-                    
+
                     <p><strong>First Step: Decide What to Include</strong></p>
                     <p>Braille space is limited. Not everything from print will fit.</p>
                     <p>
@@ -2792,7 +2792,7 @@
                     </p>
                 </div>
 
-                
+
 
                 <form id="braille-form" aria-labelledby="main-heading">
                     <!-- Text Input Section moved into form (separate scrollable pane) -->
@@ -6082,22 +6082,22 @@
                             if (wrap.warnings && wrap.warnings.length) {
                                 // SAFETY-CRITICAL: Check if any warning indicates truncation (S0 silent data loss)
                                 // Truncation warnings contain "extra content was not placed" per banaAutoWrap() at line ~4736
-                                const isTruncationWarning = wrap.warnings.some(w => 
-                                    w.includes('extra content was not placed') || 
+                                const isTruncationWarning = wrap.warnings.some(w =>
+                                    w.includes('extra content was not placed') ||
                                     w.includes('exceeds available rows')
                                 );
-                                
+
                                 if (isTruncationWarning) {
                                     // BLOCK GENERATION - truncation is S0 (silent data loss)
                                     // User must reduce text or increase rows/columns
-                                    errorText.textContent = wrap.warnings.join(' ') + 
+                                    errorText.textContent = wrap.warnings.join(' ') +
                                         ' Generation blocked to prevent incorrect braille output. Please reduce text or increase rows/columns.';
                                     errorDiv.style.display = 'flex';
                                     errorDiv.className = 'error-message';
                                     resetToGenerateState();
                                     return;
                                 }
-                                
+
                                 // Non-truncation warnings (e.g., grade notes) - display but don't block
                                 errorText.textContent = wrap.warnings.join(' ');
                                 errorDiv.style.display = 'flex';
@@ -6119,16 +6119,16 @@
                     timestamp: new Date().toISOString(),
                     placementMode: placementMode,
                     normalizedInput: originalLines,
-                    perRowSourceSegments: placementMode === 'auto' 
-                        ? (typeof wrap !== 'undefined' && wrap?.textLines) || lines 
+                    perRowSourceSegments: placementMode === 'auto'
+                        ? (typeof wrap !== 'undefined' && wrap?.textLines) || lines
                         : lines,
                     tableName: tableName,
                     perLineLanguageTables: perLineLanguageTables,
                     brailleLines: translatedLines,
-                    truncated: placementMode === 'auto' 
+                    truncated: placementMode === 'auto'
                         ? (typeof wrap !== 'undefined' && wrap?.warnings?.some(w => w.includes('not placed'))) || false
                         : false,
-                    omittedContent: placementMode === 'auto' 
+                    omittedContent: placementMode === 'auto'
                         ? (typeof wrap !== 'undefined' && wrap?.warnings?.find(w => w.includes('not placed'))) || null
                         : null,
                     settings: {
@@ -6281,7 +6281,7 @@
                     const brailleLine = translatedLines[i];
                     if (brailleLine && brailleLine.length > availableColumns) {
                         const over = brailleLine.length - availableColumns;
-                        const modeNote = placementMode === 'auto' 
+                        const modeNote = placementMode === 'auto'
                             ? ' This may indicate a wrapping bug - please report this issue.'
                             : '';
                         errorText.textContent = `Line ${i + 1} exceeds ${availableColumns} available braille cells by ${over} cells after translation. Please shorten your text.${modeNote}`;
@@ -6343,7 +6343,7 @@
                     polygonal_cutout_sides: document.getElementById('cylinder_polygonal_cutout_sides')?.value || '12',
                     seam_offset_deg: document.getElementById('seam_offset_deg')?.value || '355'
                 };
-                
+
                 // SAFETY-CRITICAL (PR-7): Block generation if cylinder text exceeds capacity
                 // This uses translated braille length, not raw text length like the preview warning
                 // Preview warning may under-warn when contractions expand text
@@ -6356,10 +6356,10 @@
                     const cellsPerRow = Math.floor(circumference / cellSpacing);
                     const rowsOnCylinder = Math.floor(height / lineSpacing);
                     const totalCellsAvailable = cellsPerRow * rowsOnCylinder;
-                    
+
                     // Calculate total braille cells needed from translated lines
                     const totalCellsNeeded = translatedLines.reduce((sum, line) => sum + (line ? line.length : 0), 0);
-                    
+
                     if (totalCellsNeeded > totalCellsAvailable) {
                         const overflow = totalCellsNeeded - totalCellsAvailable;
                         errorText.textContent = `Cylinder overflow: text requires ${totalCellsNeeded} braille cells but cylinder can fit ${totalCellsAvailable} cells (overflow: ${overflow} cells). ` +
@@ -6574,12 +6574,15 @@
                     camera.lookAt(cylCam.target.x, cylCam.target.y, cylCam.target.z);
 
                     // Recreate controls so internal up-vector transform matches camera.up
-                    if (controls) controls.dispose();
+                    if (controls) {
+                        detachOnDemandRenderListener();
+                        controls.dispose();
+                    }
                     controls = new OrbitControls(camera, renderer.domElement);
                     controls.target.set(cylCam.target.x, cylCam.target.y, cylCam.target.z);
                     // Reapply standard control settings
                     {   const isMobile = window.innerWidth <= 768;
-                        controls.enableDamping = true;
+                        controls.enableDamping = animationEnabled;
                         controls.dampingFactor = 0.05;
                         controls.rotateSpeed = isMobile ? 0.5 : 1.0;
                         controls.zoomSpeed = isMobile ? 0.8 : 1.2;
@@ -6588,6 +6591,7 @@
                     }
                     // Panning orthogonal to world up for Z-up scenes
                     controls.screenSpacePanning = false;
+                    if (!animationEnabled) attachOnDemandRenderListener();
 
                     camera.updateProjectionMatrix();
                 } else {
@@ -6598,11 +6602,14 @@
                     camera.up.set(cardCam.up.x, cardCam.up.y, cardCam.up.z);
                     camera.lookAt(cardCam.target.x, cardCam.target.y, cardCam.target.z);
                     // Recreate controls to ensure correct up-vector mapping when switching back to Y-up
-                    if (controls) controls.dispose();
+                    if (controls) {
+                        detachOnDemandRenderListener();
+                        controls.dispose();
+                    }
                     controls = new OrbitControls(camera, renderer.domElement);
                     controls.target.set(cardCam.target.x, cardCam.target.y, cardCam.target.z);
                     {   const isMobile = window.innerWidth <= 768;
-                        controls.enableDamping = true;
+                        controls.enableDamping = animationEnabled;
                         controls.dampingFactor = 0.05;
                         controls.rotateSpeed = isMobile ? 0.5 : 1.0;
                         controls.zoomSpeed = isMobile ? 0.8 : 1.2;
@@ -6610,6 +6617,7 @@
                         controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
                     }
                     controls.screenSpacePanning = true;
+                    if (!animationEnabled) attachOnDemandRenderListener();
                     camera.updateProjectionMatrix();
                 }
 
@@ -6639,15 +6647,49 @@
             render();
         }
 
+        // Render-on-demand listener handle so we can attach idempotently and
+        // remove it cleanly when motion preferences change at runtime.
+        let onDemandRenderListener = null;
+
+        function attachOnDemandRenderListener() {
+            // Idempotent: if controls don't exist yet, or listener is already
+            // attached to the current controls instance, do nothing.
+            if (!controls) return;
+            if (onDemandRenderListener && onDemandRenderListener.target === controls) return;
+            // If a previous listener is bound to a stale (disposed) controls
+            // instance, drop the reference; the disposed object is GC'd anyway.
+            const handler = () => render();
+            controls.addEventListener('change', handler);
+            onDemandRenderListener = { target: controls, handler };
+        }
+
+        function detachOnDemandRenderListener() {
+            if (onDemandRenderListener && onDemandRenderListener.target) {
+                try {
+                    onDemandRenderListener.target.removeEventListener('change', onDemandRenderListener.handler);
+                } catch (_) { /* controls may already be disposed */ }
+            }
+            onDemandRenderListener = null;
+        }
+
         function updateRenderingMode() {
             animationEnabled = !prefersReducedMotion.matches;
-            if (!animationEnabled && controls) {
-                // Stop continuous animation loop, render on demand only
-                controls.addEventListener('change', () => {
+            if (!animationEnabled) {
+                // Stop continuous animation loop, render on demand only.
+                // Damping requires a continuous rAF loop to settle, so disable
+                // it in reduced-motion mode for snappier on-demand updates.
+                if (controls) {
+                    controls.enableDamping = false;
+                    attachOnDemandRenderListener();
+                    // Render once so the current camera state is visible even
+                    // before the user interacts.
                     render();
-                });
-            } else if (animationEnabled) {
-                // Resume continuous animation
+                }
+            } else {
+                // Resume continuous animation; the rAF loop will drive renders,
+                // so the on-demand listener is unnecessary (and would double-render).
+                detachOnDemandRenderListener();
+                if (controls) controls.enableDamping = true;
                 animate();
             }
         }
@@ -6981,6 +7023,14 @@
             if (cylinder) cylinder.checked = true;
 
             init3D();
+            // Re-evaluate motion preference now that `controls` exists. On the
+            // first call (above, before init3D), `controls` was undefined so
+            // the on-demand 'change' listener could not be attached. Without
+            // this second call, users with `prefers-reduced-motion: reduce`
+            // (e.g. Windows 11 → Accessibility → Visual effects → Animation
+            // effects: Off) would see the OrbitControls camera state update
+            // internally on drag but the canvas would never repaint.
+            updateRenderingMode();
             animate();
         });
 
@@ -7159,20 +7209,20 @@
             const overlay = document.getElementById('helpModalOverlay');
             const tabs = document.querySelectorAll('.help-tab');
             const panels = document.querySelectorAll('.help-panel');
-            
+
             let previouslyFocusedElement = null;
 
             // Open modal
             function openHelpModal(initialTab = 'whattoinclude') {
                 if (!modal) return;
-                
+
                 previouslyFocusedElement = document.activeElement;
                 modal.classList.remove('hidden');
                 document.body.style.overflow = 'hidden'; // Prevent background scroll
-                
+
                 // Switch to requested tab
                 switchHelpTab(`tab-${initialTab}`);
-                
+
                 // Focus first tab or close button
                 const firstTab = document.getElementById(`tab-${initialTab}`);
                 if (firstTab) {
@@ -7185,10 +7235,10 @@
             // Close modal
             function closeHelpModal() {
                 if (!modal) return;
-                
+
                 modal.classList.add('hidden');
                 document.body.style.overflow = '';
-                
+
                 // Restore focus to trigger element
                 if (previouslyFocusedElement) {
                     previouslyFocusedElement.focus();
@@ -7216,7 +7266,7 @@
             // Focus trap - keep focus inside modal
             function trapFocus(event) {
                 if (!modal || modal.classList.contains('hidden')) return;
-                
+
                 const focusableElements = modal.querySelectorAll(
                     'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
                 );
@@ -7340,10 +7390,17 @@
 
                 <!-- Tab Panels -->
                 <div class="help-panels">
+                    <!--
+                        BANA-quoted blocks below — DO NOT EDIT.
+                        Verbatim from the BANA Business Cards Fact Sheet (approved March 2024).
+                        Source of truth: docs/guides/_bana_business_cards_verified_source.md
+                        If BANA publishes a revision, update the verified-source file first,
+                        then propagate to this panel, templates/index.html, and the Business Card Guide.
+                    -->
                     <!-- What to Include Panel (BANA-focused content selection) -->
                     <div class="help-panel" role="tabpanel" aria-labelledby="tab-whattoinclude" id="helpPanelWhatToInclude">
                         <h3>Choosing What to Include</h3>
-                        
+
                         <div class="help-notice help-notice-warning">
                             <strong>The most important decision:</strong> Braille takes far more space than print. You cannot include everything — you must prioritize.
                         </div>
@@ -7356,57 +7413,67 @@
                         </p>
                         <p>If yes, you have enough. If no, add the minimum needed — nothing more.</p>
 
-                        <h4>Space Reality</h4>
-                        <p>Typical braille surfaces fit approximately <strong>4 rows with 11-14 cells each</strong>. A standard print business card has far more information than this allows.</p>
+                        <h4>Space (BANA, verbatim)</h4>
+                        <blockquote>
+                            "The typical business card stock used in the United States and Canada can accommodate 4 lines of braille with 13 or 14 cells each, depending on the equipment used to produce the cards. One strategy that can help is to use the fold-over style of business card stock that effectively doubles the writing surface of the card. In any event, there is usually far more print on the card than will fit in braille no matter how it is produced."
+                        </blockquote>
 
-                        <h4>Priority Guide (BANA Guidelines)</h4>
-                        <table class="help-table">
-                            <thead>
-                                <tr><th>Information</th><th>Priority</th><th>Guidance</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr><td><strong>Name</strong></td><td>Essential</td><td>Almost always include — this identifies you</td></tr>
-                                <tr><td><strong>One contact method</strong></td><td>Essential</td><td>Phone OR email — pick the one most useful to your audience</td></tr>
-                                <tr><td>Organization</td><td>High</td><td>Include if it identifies you; omit if it appears in your email/web address</td></tr>
-                                <tr><td>Second contact method</td><td>Medium</td><td>Only if space allows after essentials</td></tr>
-                                <tr><td>Website</td><td>Medium</td><td>Only if critical to your work</td></tr>
-                                <tr><td>Job title</td><td>Low</td><td>Usually omitted — rarely essential for contact</td></tr>
-                                <tr><td>Mailing address</td><td>Low</td><td>Almost always omitted — too long</td></tr>
-                                <tr><td>Fax number</td><td>Low</td><td>Usually omitted</td></tr>
-                            </tbody>
-                        </table>
-
-                        <h4>If It Doesn't Fit</h4>
-                        <p>Apply these strategies in order (per BANA guidelines):</p>
-                        <ol>
-                            <li><strong>Disable capitalization</strong> — Saves ~1 cell per capital letter (this app does it by default)</li>
-                            <li><strong>Remove middle initial</strong> — "Jane Smith" instead of "Jane M. Smith"</li>
-                            <li><strong>Use first initial only</strong> — "J. Smith" instead of "Jane Smith"</li>
-                            <li><strong>Abbreviate common words</strong> — "Lib" for Library, "Nat" for National, "Univ" for University</li>
-                            <li><strong>Omit organization</strong> — If it appears in your email domain, readers will see it there</li>
-                            <li><strong>Choose one contact method</strong> — Email alone is often sufficient</li>
-                        </ol>
-
-                        <h4>Common Mistakes</h4>
+                        <h4>What BANA lists as candidate elements</h4>
+                        <p>BANA lists nine elements typically found on a print card; expect most to be cut:</p>
                         <ul>
-                            <li><strong>Including everything from the print version</strong> — This will not fit. Prioritize ruthlessly.</li>
-                            <li><strong>Keeping job titles</strong> — These rarely help someone contact you.</li>
-                            <li><strong>Full addresses</strong> — A single address line can consume 2-3 rows.</li>
+                            <li>name</li>
+                            <li>job title</li>
+                            <li>organization/company</li>
+                            <li>mailing address</li>
+                            <li>phone</li>
+                            <li>fax</li>
+                            <li>cell</li>
+                            <li>e-mail address</li>
+                            <li>website</li>
                         </ul>
-                        
+                        <p><em>"There may be other elements as well, but those will almost certainly have to be omitted."</em></p>
+
+                        <h4>BANA's typical four-line layout</h4>
+                        <ul>
+                            <li>first line: name</li>
+                            <li>second line: organization/company</li>
+                            <li>third line: phone number</li>
+                            <li>fourth line: e-mail address</li>
+                        </ul>
+                        <p><em>"The format of these lines should be planned considering the entire card, not just one line at a time."</em></p>
+
+                        <h4>If the name does not fit (BANA, verbatim)</h4>
+                        <blockquote>
+                            "In most cases, the person's name is essential. If the name will not fit on a 13- or 14-cell line, one option is to remove the capital indicators. If it still does not fit, remove the middle initial, if there is one. If it still will not fit, use an initial for the person's first name. Another option, if space is available, is to continue the person's name onto a second braille line beginning in cell 1."
+                        </blockquote>
+
+                        <h4>If the organization name is too long (BANA, verbatim)</h4>
+                        <blockquote>
+                            "Some indication of the name of the organization or company is usually desirable on a business card. However, this may be omitted, especially if the e-mail or web address contains the name of the company or organization. Other strategies, such as removing capital indicators, may also be used as needed. In the case of an organization or company name, abbreviating words such as 'lib' for 'library,' 'amer' for 'American,' or 'nat' for 'National' can work well."
+                        </blockquote>
+                        <p><small>BANA names only <code>lib</code>, <code>amer</code>, and <code>nat</code> by example. Use them as a pattern, not an exhaustive list.</small></p>
+
+                        <h4>BANA's general principles</h4>
+                        <ul>
+                            <li><em>"Follow The Rules of Unified English Braille."</em></li>
+                            <li><em>"Work with a UEB-certified transcriber."</em></li>
+                            <li><em>"Have a conversation with the owner of the business card so that they may decide which information is most important to convey."</em></li>
+                            <li><em>"When information needs to be pared down to fit within the available space, offer the client suggestions so that they can make an informed decision."</em></li>
+                        </ul>
+
                         <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-formatting')">How to format your chosen content →</button></p>
 
                         <div class="help-tab-sources">
-                            <p><small><strong>Source:</strong> Adapted from the <a href="https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf" target="_blank" rel="noopener noreferrer">BANA <em>Business Cards Fact Sheet</em></a> (approved March 2024).</small></p>
+                            <p><small><strong>Source:</strong> Quoted verbatim from the <a href="https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf" target="_blank" rel="noopener noreferrer">BANA <em>Business Cards Fact Sheet</em></a> (approved March 2024). The PDF is the authoritative source.</small></p>
                         </div>
                     </div>
 
                     <!-- Cylinder Guide Panel -->
                     <div class="help-panel" role="tabpanel" aria-labelledby="tab-cylinder" id="helpPanelCylinder" hidden>
                         <h3>Cylinder Guide</h3>
-                        
+
                         <p><strong>First:</strong> Decide <button type="button" class="btn-link" onclick="window.switchHelpTab('tab-whattoinclude')">what information to include</button>. Cylinder space is limited just like cards.</p>
-                        
+
                         <p>Cylinders let you create braille labels that wrap around curved surfaces like bottles, jars, and containers.</p>
 
                         <h4>Key Cylinder Parameters</h4>
@@ -7443,7 +7510,7 @@
                             <li><strong>Test fit:</strong> Print a small section first to verify the diameter matches your container</li>
                             <li><strong>Seam placement:</strong> Rotate the seam to the back or between words</li>
                         </ul>
-                        
+
                         <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-formatting')">Formatting tips for cylinder text →</button></p>
 
                         <div class="help-tab-sources">
@@ -7454,7 +7521,7 @@
                     <!-- How to Use Panel (tool mechanics) -->
                     <div class="help-panel" role="tabpanel" aria-labelledby="tab-howtouse" id="helpPanelHowToUse" hidden>
                         <h3>How to Use This Tool</h3>
-                        
+
                         <div class="help-notice help-notice-info">
                             <strong>Before you begin:</strong> Decide what information to include using the <button type="button" class="btn-link btn-link-bold" onclick="window.switchHelpTab('tab-whattoinclude')">What to Include</button> guide. The tool cannot help you if you try to include too much.
                         </div>
@@ -7489,38 +7556,39 @@
                                 <tr><td><strong>Language</strong></td><td>English (UEB) uncontracted — clearest for names/contact info</td></tr>
                             </tbody>
                         </table>
-                        
+
                         <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-cylinder')">Cylinder-specific settings →</button></p>
                         <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-expertmode')">Advanced options in Expert Mode →</button></p>
                     </div>
 
+                    <!--
+                        BANA-quoted blocks below — DO NOT EDIT.
+                        Verbatim from the BANA Business Cards Fact Sheet (approved March 2024).
+                        Source of truth: docs/guides/_bana_business_cards_verified_source.md
+                    -->
                     <!-- Formatting Rules Panel -->
                     <div class="help-panel" role="tabpanel" aria-labelledby="tab-formatting" id="helpPanelFormatting" hidden>
                         <h3>Formatting Your Content</h3>
-                        
-                        <p>Once you've decided <button type="button" class="btn-link" onclick="window.switchHelpTab('tab-whattoinclude')">what to include</button>, format it to maximize space efficiency.</p>
 
-                        <h4>Phone Numbers</h4>
-                        <p><strong>Best practice:</strong> Use periods as separators: <code>123.456.7890</code></p>
-                        <ul>
-                            <li>Periods preserve number groupings without extra braille markers</li>
-                            <li>Remove parentheses — they waste space</li>
-                            <li>The numeric indicator (#) is kept at the start</li>
-                        </ul>
-                        <p><strong>Example:</strong> <code>(123) 456-7890</code> → Enter as <code>123.456.7890</code></p>
+                        <p>Once you've decided <button type="button" class="btn-link" onclick="window.switchHelpTab('tab-whattoinclude')">what to include</button>, format it to maximize space efficiency. The rule statements below are quoted verbatim from BANA's March 2024 Fact Sheet.</p>
 
-                        <h4>Email Addresses</h4>
-                        <p>If an email must wrap to a second line:</p>
-                        <ol>
-                            <li><strong>Best:</strong> Split after punctuation (@, period, hyphen)</li>
-                            <li><strong>OK:</strong> Split between syllables</li>
-                            <li><strong>Avoid:</strong> Splitting in the middle of a syllable</li>
-                        </ol>
-                        <p>The continuation indicator (dot 5) should appear at the end of the first line. Start the continuation at cell 1.</p>
+                        <h4>Phone Numbers (BANA, verbatim)</h4>
+                        <blockquote>
+                            "If the telephone number has no extension, then it can be brailled as follows: #123.456.7890. Omit extra characters such as parentheses. Convert the hyphens to periods to retain the natural sub-units of the phone number. This will maintain the ease of readability, while eliminating the need to repeat numeric indicators. Do not remove the numeric indicator unless absolutely necessary."
+                        </blockquote>
+                        <p><strong>In this app:</strong> type <code>123.456.7890</code> (no parentheses, periods between groups). The numeric indicator is added by the translator.</p>
 
-                        <h4>Web Addresses</h4>
-                        <p>Same rules as email. Split after punctuation first (colon, period, slash).</p>
-                        <p><strong>Tip:</strong> Omit "https://" or "www." if the domain is clear without it.</p>
+                        <h4>E-mail Addresses (BANA, verbatim)</h4>
+                        <blockquote>
+                            "An e-mail address should be brailled according to The Rules of Unified English Braille. When an e-mail address must be divided over two lines, divide it after punctuation (e.g., the 'at' sign, a period, or a hyphen). An e-mail address may also be divided between syllables, or between alphabetic and numeric sub-units. The least desirable option is to divide an e-mail address between the letters of a syllable. Use the line continuation indicator (dot 5) at the end of the line to show that the e-mail address has been divided. As a last resort, omit the line continuation indicator. Begin the second line of the e-mail address in cell 1."
+                        </blockquote>
+                        <p><strong>In this app:</strong> Auto Placement applies BANA's punctuation-first division preference where it can. The dot-5 continuation indicator is added by the translator, not typed.</p>
+
+                        <h4>Web Addresses (BANA, verbatim)</h4>
+                        <blockquote>
+                            "A web address should be brailled according to The Rules of Unified English Braille. When a web address must be divided over two lines, divide it after punctuation (e.g., a colon, a period, or a slash). A web address may also be divided between syllables, or between alphabetic and numeric sub-units. The least desirable option is to divide a web address between the letters of a syllable. Use the line continuation indicator (dot 5) at the end of the line to show that the web address has been divided. As a last resort, omit the line continuation indicator. Begin the second line of the web address in cell 1."
+                        </blockquote>
+                        <p><strong>Tip (this app, not BANA):</strong> omit <code>https://</code> or <code>www.</code> if the domain is clear without it.</p>
 
                         <h4>Capitalization</h4>
                         <p>Each capital letter in braille adds a capitalization indicator (1 extra cell). The <strong>Capitalized Letters</strong> toggle controls how capitals are handled:</p>
@@ -7538,11 +7606,11 @@
                     <!-- Expert Mode Guide Panel -->
                     <div class="help-panel" role="tabpanel" aria-labelledby="tab-expertmode" id="helpPanelExpertMode" hidden>
                         <h3>Expert Mode Guide</h3>
-                        
+
                         <p>Expert Mode provides fine-grained control over braille generation. Click <strong>Show Expert Mode</strong> on the main page to access these options.</p>
 
                         <h4>What's Inside Expert Mode</h4>
-                        
+
                         <div class="help-notice help-notice-warning">
                             <strong>Important:</strong> The <strong>Preview Braille Translation</strong> button is located at the top of Expert Mode. Use it to verify your text before generating STL files.
                         </div>
@@ -7581,7 +7649,7 @@
 
                         <h4>Default Values</h4>
                         <p>The default settings follow BANA (Braille Authority of North America) guidelines and work well for most applications. Only modify if you have specific requirements or need to calibrate for your printer.</p>
-                        
+
                         <p><button type="button" class="btn-link" onclick="window.switchHelpTab('tab-resources')">See BANA resources →</button></p>
 
                         <div class="help-tab-sources">
@@ -7592,35 +7660,41 @@
                     <!-- Examples Panel -->
                     <div class="help-panel" role="tabpanel" aria-labelledby="tab-examples" id="helpPanelExamples" hidden>
                         <h3>Real-World Examples</h3>
-                        <p>These examples (adapted from BANA guidelines) show what decisions to make and what to type.</p>
-
-                        <h4>Example 1: Organization Redundant with Email</h4>
-                        <div class="example-box">
-                            <p><strong>Print card has:</strong> Harry Potter, Hogwarts School, harry@hogwarts.edu</p>
-                            <p><strong>Decision:</strong> Omit "Hogwarts School" — it appears in the email domain.</p>
-                            <p><strong>Type:</strong></p>
-                            <pre>harry potter
-harry@hogwarts.edu</pre>
-                            <p><strong>Result:</strong> 2-3 lines instead of 4. Email may wrap after @.</p>
+                        <div class="help-notice help-notice-info">
+                            <strong>About these business card examples:</strong> BANA's own worked examples are in <em>Grade 2 (contracted)</em> braille and use cell-level strategies that vary case by case. The "what to type" hints below take BANA's <em>content decisions</em> (which fields to omit, how to split a name) and translate them into Grade 1 input for this app, which defaults to uncontracted braille. <a href="https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf" target="_blank" rel="noopener noreferrer">Read BANA's original Grade 2 examples in the Fact Sheet (PDF) →</a>
                         </div>
 
-                        <h4>Example 2: Long Name, Omit Redundant Info</h4>
+                        <h4>Example 1: Organization redundant with e-mail (BANA Example 1)</h4>
                         <div class="example-box">
-                            <p><strong>Print card has:</strong> Liesel A. Schimmelfennig, US Army Corps of Engineers, email, phone</p>
-                            <p><strong>Decision:</strong> Name will span 2 lines. Omit organization (in email domain). Omit phone (email is sufficient).</p>
-                            <p><strong>Type:</strong></p>
-                            <pre>liesel a. schimmelfennig
+                            <p><strong>Print card has:</strong> Harry Potter / Hogwarts School / harry@hogwarts.edu</p>
+                            <p><strong>BANA strategy:</strong> omit capitals from organization; divide the e-mail address.</p>
+                            <p><strong>What to type in this app (Grade 1):</strong></p>
+                            <pre>harry potter
+harry@hogwarts.edu</pre>
+                            <p><strong>Result:</strong> 2-3 lines. E-mail may wrap after <code>@</code> with a dot-5 continuation indicator.</p>
+                        </div>
+
+                        <h4>Example 2: Long name spans two lines (BANA Example 4)</h4>
+                        <div class="example-box">
+                            <p><strong>Print card has:</strong> Liesel A. Schimmelfennig / US Army Corps of Engineers / l.schimmelfennig@usace.army / 1-520-670-6277</p>
+                            <p><strong>BANA strategy:</strong> continue the name onto a second line in cell 1; omit organization (in e-mail); omit phone; divide the e-mail with the dot-5 continuation indicator omitted as a last resort.</p>
+                            <p><strong>What to type in this app (Grade 1):</strong></p>
+                            <pre>liesel a.
+schimmelfennig
 l.schimmelfennig@usace.army</pre>
                             <p><strong>Result:</strong> 3-4 lines. Essential info only.</p>
                         </div>
 
-                        <h4>Example 3: Use Nickname to Save Space</h4>
+                        <h4>Example 3: Use nickname to save space (BANA Example 7)</h4>
                         <div class="example-box">
-                            <p><strong>Print card has:</strong> Francine (Fran) Rikard</p>
-                            <p><strong>Decision:</strong> Use "Fran" instead of "Francine" — saves several cells.</p>
-                            <p><strong>Type:</strong></p>
-                            <pre>fran rikard</pre>
-                            <p><strong>Result:</strong> Shorter name leaves room for more contact info.</p>
+                            <p><strong>Print card has:</strong> Francine (Fran) Rikard / Albuquerque AC / 505-312-4224 (cell) / 505-312-4225 (fax)</p>
+                            <p><strong>BANA strategy:</strong> the client chose the nickname "Fran" rather than removing capitals from "Francine"; convert phone hyphens to periods; tag cell/fax with a single-letter prefix.</p>
+                            <p><strong>What to type in this app (Grade 1):</strong></p>
+                            <pre>fran rikard
+albuquerque ac
+c 505.312.4224
+f 505.312.4225</pre>
+                            <p><strong>Result:</strong> 4 lines.</p>
                         </div>
 
                         <h4>Cylinder Examples</h4>
@@ -7654,11 +7728,12 @@ l.schimmelfennig@usace.army</pre>
                             <p><strong>Result:</strong> 2 rows on a 75mm cylinder (~13 cells per row). Initials save space.</p>
                         </div>
 
-                        <p><a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/blob/main/docs/guides/BUSINESS_CARD_TRANSLATION_GUIDE.md#worked-examples" target="_blank" rel="noopener noreferrer">See more business card examples in the full guide →</a></p>
+                        <p><a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/blob/main/docs/guides/BUSINESS_CARD_TRANSLATION_GUIDE.md#worked-examples--grade-1-what-to-type-hints" target="_blank" rel="noopener noreferrer">See Grade 1 "what to type" hints for all nine BANA examples in the full guide →</a></p>
+                        <p><a href="https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf" target="_blank" rel="noopener noreferrer">See BANA's original Grade 2 worked examples in the Fact Sheet (PDF) →</a></p>
                         <p><a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/blob/main/docs/guides/CYLINDER_GUIDE.md#worked-examples" target="_blank" rel="noopener noreferrer">See more cylinder examples in the full guide →</a></p>
 
                         <div class="help-tab-sources">
-                            <p><small><strong>Sources:</strong> Business card examples adapted from the <a href="https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf" target="_blank" rel="noopener noreferrer">BANA <em>Business Cards Fact Sheet</em></a>. Cylinder examples based on <a href="https://www.brailleauthority.org/size-and-spacing-braille-characters" target="_blank" rel="noopener noreferrer">BANA <em>Size and Spacing of Braille Characters</em></a>.</small></p>
+                            <p><small><strong>Sources:</strong> Business card examples take the content decisions from the <a href="https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf" target="_blank" rel="noopener noreferrer">BANA <em>Business Cards Fact Sheet</em></a> (approved March 2024) and translate them into Grade 1 input for this app; BANA's published examples are Grade 2 and live in the PDF. Cylinder examples are based on <a href="https://www.brailleauthority.org/size-and-spacing-braille-characters" target="_blank" rel="noopener noreferrer">BANA <em>Size and Spacing of Braille Characters</em></a>.</small></p>
                         </div>
                     </div>
 

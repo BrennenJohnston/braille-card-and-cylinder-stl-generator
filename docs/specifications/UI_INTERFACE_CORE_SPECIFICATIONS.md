@@ -1907,7 +1907,7 @@ if (window.visualViewport) {
 
 ### 8.1 Overview
 
-The Help Modal provides BANA-aligned business card guidance and application help through an accessible tabbed interface.
+The Help Modal provides business card guidance — with rule statements quoted verbatim from the BANA *Business Cards Fact Sheet* (approved March 2024) — and application help through an accessible tabbed interface. See [`docs/guides/_bana_business_cards_verified_source.md`](../guides/_bana_business_cards_verified_source.md) for the verified-source transcription that the quoted blocks are reproduced from.
 
 **Location:** `public/index.html` (added January 2026)
 

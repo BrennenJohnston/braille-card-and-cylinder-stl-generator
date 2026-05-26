@@ -214,7 +214,7 @@ rupert@galaxyprinting.com
 
 Notes: first name reduced to initial (`⠰⠗` = letter-sign r); surname wraps with a dot-5 continuation indicator at the end of line 1; `⠡` = ch, `⠌` = st, `⠔` = in, `⠢` = en, `⠻` = er, `⠬` = ing. Galaxy Printing Co. is dropped because it is in the e-mail; e-mail splits between alphabetic and numeric/punctuation sub-units, with `⠐` at the end of line 3.
 
-### Example 6 — Omission of capitals from name; division of surname; omission of company name (in e-mail)
+### Example 6 — Division of hyphenated name (client agreed to a shortened first name); omission of capitals from post-nominal letters/credentials; omission of organization name (in e-mail)
 
 **Print:**
 

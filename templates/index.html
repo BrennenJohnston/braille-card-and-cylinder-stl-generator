@@ -2229,7 +2229,7 @@
 
                         <p><strong>What to include (tiny space = tough choices)</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li>Aim for <strong>4 short lines</strong>, about <strong>13 braille cells per line</strong>.</li>
+                            <li>Aim for <strong>4 short lines</strong>, with <strong>13 or 14 braille cells per line</strong> (BANA cites both, depending on the equipment used to produce the cards; this app defaults to 13 with row-end indicators on).</li>
                             <li>Suggested layout:
                                 <ul style="margin: 0.3em 0; padding-left: 1.5em;">
                                     <li>Line 1: Your name</li>
@@ -2238,7 +2238,7 @@
                                     <li>Line 4: Email address</li>
                                 </ul>
                             </li>
-                            <li>If space runs out: shorten organization words (e.g., “Amer” for “American”), drop job title, or use lowercase to remove braille capitalization markers.</li>
+                            <li>If space runs out: shorten organization words (BANA's examples are <code>amer</code> for "American", <code>lib</code> for "library", <code>nat</code> for "National"), drop the job title, or use lowercase to remove braille capitalization indicators.</li>
                         </ul>
 
                         <!--
@@ -2253,10 +2253,12 @@
                             <li><strong>Names:</strong> <em>"In most cases, the person’s name is essential. If the name will not fit on a 13- or 14-cell line, one option is to remove the capital indicators. If it still does not fit, remove the middle initial, if there is one. If it still will not fit, use an initial for the person’s first name. Another option, if space is available, is to continue the person’s name onto a second braille line beginning in cell 1."</em>
                                 <br>In this app: type lowercase to drop capital indicators; remove the middle initial; use a first initial; or split the name across two lines.</li>
                             <li><strong>Organization:</strong> <em>"Abbreviating words such as 'lib' for 'library,' 'amer' for 'American,' or 'nat' for 'National' can work well."</em> These are the only abbreviations BANA names by example; use them as a pattern, not an exhaustive list.</li>
-                            <li><strong>Phone:</strong> <em>"Omit extra characters such as parentheses. Convert the hyphens to periods to retain the natural sub-units of the phone number… Do not remove the numeric indicator unless absolutely necessary."</em>
+                            <li><strong>Phone:</strong> <em>"If the telephone number has no extension, then it can be brailled as follows: #123.456.7890. Omit extra characters such as parentheses. Convert the hyphens to periods to retain the natural sub-units of the phone number. This will maintain the ease of readability, while eliminating the need to repeat numeric indicators. Do not remove the numeric indicator unless absolutely necessary."</em>
                                 <br>In this app: type <code>123.456.7890</code>, not <code>(123) 456‑7890</code>.</li>
-                            <li><strong>E‑mail / web:</strong> <em>"Divide it after punctuation (e.g., the 'at' sign, a period, or a hyphen)… may also be divided between syllables, or between alphabetic and numeric sub-units. The least desirable option is to divide … between the letters of a syllable. Use the line continuation indicator (dot 5) at the end of the line… As a last resort, omit the line continuation indicator. Begin the second line … in cell 1."</em>
+                            <li><strong>E‑mail address:</strong> <em>"An e-mail address should be brailled according to The Rules of Unified English Braille. When an e-mail address must be divided over two lines, divide it after punctuation (e.g., the 'at' sign, a period, or a hyphen). An e-mail address may also be divided between syllables, or between alphabetic and numeric sub-units. The least desirable option is to divide an e-mail address between the letters of a syllable. Use the line continuation indicator (dot 5) at the end of the line to show that the e-mail address has been divided. As a last resort, omit the line continuation indicator. Begin the second line of the e-mail address in cell 1."</em>
                                 <br>In this app: Auto Placement applies these division preferences for you; the dot‑5 continuation indicator is added by the translator and is not something you type.</li>
+                            <li><strong>Web address:</strong> <em>"A web address should be brailled according to The Rules of Unified English Braille. When a web address must be divided over two lines, divide it after punctuation (e.g., a colon, a period, or a slash). A web address may also be divided between syllables, or between alphabetic and numeric sub-units. The least desirable option is to divide a web address between the letters of a syllable. Use the line continuation indicator (dot 5) at the end of the line to show that the web address has been divided. As a last resort, omit the line continuation indicator. Begin the second line of the web address in cell 1."</em>
+                                <br>In this app: omit <code>https://</code> or <code>www.</code> when the domain is clear without it; Auto Placement handles the split rules.</li>
                             <li><strong>Grade choice:</strong> BANA’s worked examples are Grade 2. For clarity on names and contact info, this app defaults to <em>English (UEB) — uncontracted (grade 1)</em>; switch to Grade 2 only after the other space-saving strategies above are exhausted.</li>
                         </ul>
 
@@ -2295,17 +2297,25 @@
                             <li>Embossing tip: Press firmly and evenly with the card centered. Test on a spare card first.</li>
                         </ol>
 
-                        <p><strong>Common fixes if text won’t fit (BANA order)</strong></p>
+                        <p><strong>Common fixes if text won’t fit</strong></p>
+                        <p style="margin: 0.3em 0;"><em>BANA's name fall-through (page 2 of the Fact Sheet)</em> — apply in order; the second-line option is a parallel alternative, not a final fallback:</p>
                         <ol style="margin: 0.3em 0; padding-left: 1.5em;">
                             <li>Remove capital indicators — type the name in lowercase.</li>
-                            <li>Remove the middle initial.</li>
-                            <li>Use a first initial in place of the full first name.</li>
-                            <li>Continue the name onto a second braille line, beginning in cell 1.</li>
-                            <li>Omit the organization if it appears in the e-mail or web address.</li>
-                            <li>Abbreviate organization words (BANA names <code>lib</code>, <code>amer</code>, <code>nat</code>).</li>
-                            <li>Switch to Grade 2 (contracted) only after the steps above.</li>
+                            <li>Remove the middle initial, if there is one.</li>
+                            <li>Use an initial in place of the full first name.</li>
+                            <li><em>Alternatively, if space is available:</em> continue the name onto a second braille line, beginning in cell 1.</li>
                         </ol>
-                        <p><small><strong>Source:</strong> <a href="https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf" target="_blank" rel="noopener noreferrer">BANA <em>Business Cards Fact Sheet</em></a> (approved March 2024). The authoritative source is the PDF; this app paraphrases only the introductory framing.</small></p>
+                        <p style="margin: 0.3em 0;"><em>BANA's strategies for organization names (page 2)</em> — presented as parallel options, not a strict order:</p>
+                        <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                            <li>Omit the organization if it already appears in the e-mail or web address.</li>
+                            <li>Remove capital indicators from the organization name.</li>
+                            <li>Abbreviate organization words (BANA names <code>lib</code>, <code>amer</code>, <code>nat</code> as examples of the pattern).</li>
+                        </ul>
+                        <p style="margin: 0.3em 0;"><em>This app's recommendation (not part of BANA's order)</em>:</p>
+                        <ul style="margin: 0.3em 0; padding-left: 1.5em;">
+                            <li>Switch to Grade 2 (contracted) after the strategies above are exhausted. BANA's own worked examples are in Grade 2; this app defaults to Grade 1 for clarity on names and contact info.</li>
+                        </ul>
+                        <p><small><strong>Source:</strong> <a href="https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf" target="_blank" rel="noopener noreferrer">BANA <em>Business Cards Fact Sheet</em></a> (approved March 2024). The authoritative source is the PDF; this app paraphrases only the introductory framing and clearly marks its own recommendations.</small></p>
 
                         <p><strong>Acknowledgements:</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">

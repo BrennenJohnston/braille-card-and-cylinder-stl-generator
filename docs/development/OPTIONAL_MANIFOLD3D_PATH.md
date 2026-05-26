@@ -1,5 +1,11 @@
 # Optional: Client-Side manifold3d Path
 
+> **Status (2026-05-26): Not currently implemented.** This document is a forward-looking design note, not a description of the production code path.
+>
+> The runtime today loads Manifold from a CDN (pinned to `manifold-3d@2.5.1` via `https://cdn.jsdelivr.net/npm/manifold-3d@2.5.1/manifold.js`, with `unpkg` as a CDN-to-CDN fallback) inside [`static/workers/csg-worker-manifold.js`](../../static/workers/csg-worker-manifold.js) and [`static/workers/csg-worker.js`](../../static/workers/csg-worker.js). There is **no bundler** in this project (no vite/webpack/esbuild/rollup config) and `manifold-3d` is **not listed in `package.json`** — Dependabot bumps to the npm package therefore have no runtime effect. See [#61](https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator/pull/61) for context on why the npm dependency was removed.
+>
+> If you ever do want to vendor Manifold locally instead of fetching from CDN, the recipe in this document is the right starting point. The first step is restoring `manifold-3d` to `package.json`'s `dependencies`. The second step is to either set up a bundler (vite/webpack/esbuild) or to manually copy `node_modules/manifold-3d/manifold.{js,wasm}` into `static/vendor/manifold-3d/` (mirroring how `static/vendor/three-bvh-csg/` and `static/vendor/three-mesh-bvh/` are vendored today). The third step is to update the URLs inside the two CSG workers and the example in `docs/specifications/STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS.md`.
+
 This document outlines how to add client-side manifold3d (WASM) as an additional CSG engine for watertight mesh output, at the cost of a larger bundle size (~2-3 MB).
 
 ## Why Add manifold3d?

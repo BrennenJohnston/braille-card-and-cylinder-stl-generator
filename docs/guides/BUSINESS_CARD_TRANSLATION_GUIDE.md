@@ -1,263 +1,289 @@
 # Business Card Braille Translation Guide
 
-> **Note:** Flat business card generation is currently **temporarily disabled** while we improve this feature. This guide is preserved for when the feature returns. In the meantime, see [CYLINDER_GUIDE.md](CYLINDER_GUIDE.md) for creating braille cylinders (labels, containers).
-
-This guide helps you create effective braille business cards using the Braille STL Generator. It follows guidance from the Braille Authority of North America (BANA).
-
-## The Most Important Decision
-
-> **Before using any tool:** Decide what information to include. Braille takes far more space than print — you cannot include everything from your print card.
+> **Source:** BANA *Guidelines for Brailling Business Cards* — [Business Cards Fact Sheet](https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf), approved March 2024.
 >
-> **The test:** *"Can someone identify me and contact me with just this information?"* If yes, you have enough. If no, add the minimum needed — nothing more.
+> **Do not edit the quoted BANA blocks in this file.** They are reproduced verbatim from the verified transcription in [`docs/guides/_bana_business_cards_verified_source.md`](./_bana_business_cards_verified_source.md). If BANA publishes a revised Fact Sheet, update the verified-source file first, then propagate downstream.
 
-## Quick Reference
+> **Status:** Flat business card generation is currently temporarily disabled while we improve this feature. This guide is preserved for when the feature returns. In the meantime, see [CYLINDER_GUIDE.md](CYLINDER_GUIDE.md) for creating braille cylinders (labels, containers).
 
-| Constraint | Value |
-|------------|-------|
-| Lines available | ~4 |
-| Cells per line | ~13-14 |
-| Typical content | Name, org, phone, email |
+This guide helps you create effective braille business cards using the Braille STL Generator. It quotes the Braille Authority of North America (BANA) Fact Sheet for every normative rule, and gives Grade 1 *"what to type into this app"* hints for each BANA example. **BANA's own published examples are Grade 2 (contracted) braille and are not reproduced here — see the Fact Sheet PDF for the originals.**
 
-## What Fits on a Business Card
+## The most important decision
 
-Standard business card stock in the United States and Canada accommodates approximately **4 lines of braille with 13 or 14 cells each**, depending on the equipment used. This is significantly less space than what's typically on a print business card.
+> *"With only a few very short lines, it is often the transcriber's task to determine what will fit in the available space in order to help the client select which elements from the card will be brailled."* — BANA Fact Sheet, p. 2
 
-**Key insight:** Not everything from your print card will fit. You must prioritize.
+Braille takes far more space than print — you cannot include everything from your print card. Use this self-test: *"Can someone identify me and contact me with just this information?"* If yes, you have enough. If no, add the minimum needed, nothing more.
 
-### Typical Print Business Card Contains:
+## What fits on a card
 
-- Name
-- Job title
-- Organization/company
-- Mailing address
-- Phone (office, cell, fax)
-- Email address
-- Website
+> *"The typical business card stock used in the United States and Canada can accommodate 4 lines of braille with 13 or 14 cells each, depending on the equipment used to produce the cards. One strategy that can help is to use the fold-over style of business card stock that effectively doubles the writing surface of the card. In any event, there is usually far more print on the card than will fit in braille no matter how it is produced."* — BANA Fact Sheet, p. 1
 
-### What Usually Fits in Braille:
+| Constraint | BANA value |
+|------------|------------|
+| Lines available | 4 |
+| Cells per line | 13 or 14 |
+| Doubling option | Fold-over card stock |
 
-| Line | Content | Priority |
-|------|---------|----------|
-| 1 | Name | Essential |
-| 2 | Organization/company | High (can omit if in email) |
-| 3 | Phone number | High |
-| 4 | Email address | High |
+## Selecting what to braille
 
-## Step-by-Step Selection Process
+BANA lists the elements typically found on a business card:
 
-### Step 1: Identify Essential Information
+> - name
+> - job title
+> - organization/company
+> - mailing address
+> - phone
+> - fax
+> - cell
+> - e-mail address
+> - website
+>
+> *"There may be other elements as well, but those will almost certainly have to be omitted."* — BANA Fact Sheet, p. 1
 
-Ask yourself: *"What does someone need to identify me and contact me?"*
+The Fact Sheet's suggested four-line layout is:
 
-**Almost always include:**
-- Your name (essential)
-- One contact method (phone OR email)
+> - first line: name
+> - second line: organization/company
+> - third line: phone number
+> - fourth line: e-mail address
+>
+> *"The format of these lines should be planned considering the entire card, not just one line at a time."* — BANA Fact Sheet, p. 2
 
-**Include if space allows:**
-- Organization (unless clear from email/web address)
-- Second contact method
+## Principles to follow
 
-**Usually omit:**
-- Job title
-- Mailing address
-- Fax number
-- Website (unless critical to your work)
+BANA's general principles, verbatim:
 
-### Step 2: Check if It Fits
+> - Follow *The Rules of Unified English Braille*.
+> - Work with a UEB-certified transcriber.
+> - Have a conversation with the owner of the business card so that they may decide which information is most important to convey.
+> - When information needs to be pared down to fit within the available space, offer the client suggestions so that they can make an informed decision. — BANA Fact Sheet, p. 2
 
-1. Enter your text in the Braille STL Generator
-2. Use **Auto Placement** mode
-3. Click **Preview Braille Translation**
-4. Review warnings about line/cell limits
-
-### Step 3: Apply Space-Saving Strategies
-
-If your content doesn't fit, apply these strategies in order:
-
-| Strategy | How | Savings |
-|----------|-----|---------|
-| Remove capitals | Type in lowercase | ~1 cell per capital |
-| Remove middle initial | "Jane Smith" not "Jane M. Smith" | 3+ cells |
-| Use first initial only | "J. Smith" | Several cells |
-| Abbreviate common words | "Lib" for Library, "Amer" for American | Variable |
-| Omit organization | If in email/web address | Many cells |
-| Use fold-over card | Doubles available space | 4+ more lines |
-
-## Formatting Guidelines
-
-### Phone Numbers
-
-**Best practice:** Use periods as separators.
-
-| Format | Braille Efficiency |
-|--------|-------------------|
-| `(123) 456-7890` | Poor — parentheses waste space |
-| `123-456-7890` | OK |
-| `123.456.7890` | **Best** — periods preserve groupings without extra indicators |
-
-**Why periods?** In braille, periods between number groups maintain readability while avoiding repeated numeric indicators.
-
-**Example transformation:**
-- Print: `(123) 456-7890`
-- Enter as: `123.456.7890`
-- Braille: `#123.456.7890` (with one numeric indicator at start)
-
-### Email Addresses
-
-If an email must span two lines, split at a sensible point:
-
-**Best split points (in order of preference):**
-1. After `@` symbol
-2. After a period
-3. After a hyphen
-4. Between syllables
-5. Between alphabetic and numeric parts
-
-**Avoid:** Splitting in the middle of a syllable
-
-**How to handle wrapping:**
-- **Auto Placement mode:** The app handles wrapping automatically. It will split at appropriate points.
-- **Manual Placement mode:** If you need to control the split, put each portion on a separate line.
-
-**Example — manually splitting after @:**
-```
-harry@
-hogwarts.edu
-```
-
-*Note: In proper braille transcription, a continuation indicator (dot 5) appears at the end of a split line. This is a transcription detail — focus on choosing good split points.*
-
-### Web Addresses
-
-Same rules as email addresses. Split after:
-1. Colon (`:`)
-2. Period (`.`)
-3. Slash (`/`)
-
-**Space-saving tip:** Omit `https://` or `www.` if the domain is clear without it.
+## Formatting rules (BANA, verbatim)
 
 ### Names
 
-If a name is too long:
+> *"In most cases, the person's name is essential. If the name will not fit on a 13- or 14-cell line, one option is to remove the capital indicators. If it still does not fit, remove the middle initial, if there is one. If it still will not fit, use an initial for the person's first name. Another option, if space is available, is to continue the person's name onto a second braille line beginning in cell 1."* — BANA Fact Sheet, p. 2
 
-| Option | Example | Use When |
-|--------|---------|----------|
-| Remove capitals | `jane smith` | First attempt |
-| Remove middle initial | `Jane Smith` not `Jane M. Smith` | Still too long |
-| First initial only | `J. Smith` | Still too long |
-| Span two lines | Line 1: first name, Line 2: surname | Last resort |
+**In this app**, the order maps to typing decisions:
 
-**Client choice matters:** Some people prefer keeping capital indicators on their name and shortening elsewhere. Discuss options with the card owner.
+1. Remove capital indicators — type the name in lowercase, or leave the **Capitalized Letters** toggle disabled (default).
+2. Remove the middle initial — type `Jane Smith` rather than `Jane M. Smith`.
+3. Use an initial for the first name — type `J. Smith`.
+4. Continue onto a second line in cell 1 — split the name across two of the four available lines.
 
-### Organization Names
+### Organization or company
 
-Strategies for long organization names:
+> *"Some indication of the name of the organization or company is usually desirable on a business card. However, this may be omitted, especially if the e-mail or web address contains the name of the company or organization. Other strategies, such as removing capital indicators, may also be used as needed. In the case of an organization or company name, abbreviating words such as 'lib' for 'library,' 'amer' for 'American,' or 'nat' for 'National' can work well."* — BANA Fact Sheet, p. 2
 
-| Strategy | Example |
-|----------|---------|
-| Remove capitals | `national library association` |
-| Abbreviate common words | `nat lib assoc` |
-| Omit entirely | If appears in email/web address |
+The only abbreviations BANA explicitly names are **lib**, **amer**, and **nat**. Treat these as the pattern (drop trailing letters; keep the start of the word recognizable) rather than an exhaustive list. The Fact Sheet does not name "Assoc" or "Univ"; they are commonly used in practice but are not endorsed by name in BANA's text.
 
-**Common abbreviations:**
-- `Lib` for Library
-- `Amer` for American
-- `Nat` for National
-- `Assoc` for Association
-- `Univ` for University
+### Phone numbers
 
-## Worked Examples
+> *"If the telephone number has no extension, then it can be brailled as follows: #123.456.7890. Omit extra characters such as parentheses. Convert the hyphens to periods to retain the natural sub-units of the phone number. This will maintain the ease of readability, while eliminating the need to repeat numeric indicators. Do not remove the numeric indicator unless absolutely necessary."* — BANA Fact Sheet, p. 3
 
-These examples are adapted from the official BANA *Business Cards Fact Sheet*. They show **what to type** into the application, not braille output notation.
+**In this app**, type the phone number with period separators and no parentheses:
 
-### Example 1: Standard Business Card (Fits Well)
+- Print `(123) 456-7890` → enter `123.456.7890`.
+- Print `1-800-423-9826` → enter `1.800.423.9826`.
 
-**Print card:**
+The numeric indicator (`#`) is added by the braille translator; do not type it yourself.
+
+### E-mail addresses
+
+> *"An e-mail address should be brailled according to The Rules of Unified English Braille. When an e-mail address must be divided over two lines, divide it after punctuation (e.g., the 'at' sign, a period, or a hyphen). An e-mail address may also be divided between syllables, or between alphabetic and numeric sub-units. The least desirable option is to divide an e-mail address between the letters of a syllable. Use the line continuation indicator (dot 5) at the end of the line to show that the e-mail address has been divided. As a last resort, omit the line continuation indicator. Begin the second line of the e-mail address in cell 1."* — BANA Fact Sheet, p. 3
+
+BANA's three-tier division preference:
+
+1. **After punctuation** — at sign, period, or hyphen.
+2. **Between syllables, or between alphabetic and numeric sub-units.**
+3. **Between the letters of a syllable** — least desirable; only when nothing else works.
+
+The dot-5 line continuation indicator is preferred; omitting it is BANA's "last resort" fallback. The second line always begins in cell 1.
+
+**In this app:**
+
+- **Auto Placement** wraps your text. Where it splits is influenced by BANA's punctuation-first preference.
+- **Manual Placement** puts you in control of the split. To split after `@`, type:
+
+  ```
+  harry@
+  hogwarts.edu
+  ```
+
+  The dot-5 continuation indicator is a braille typographic detail the translator emits; you do not type it.
+
+### Web addresses
+
+> *"A web address should be brailled according to The Rules of Unified English Braille. When a web address must be divided over two lines, divide it after punctuation (e.g., a colon, a period, or a slash). A web address may also be divided between syllables, or between alphabetic and numeric sub-units. The least desirable option is to divide a web address between the letters of a syllable. Use the line continuation indicator (dot 5) at the end of the line to show that the web address has been divided. As a last resort, omit the line continuation indicator. Begin the second line of the web address in cell 1."* — BANA Fact Sheet, p. 3
+
+Same shape as the e-mail rule, with the preferred division points being colon, period, and slash. If the domain is clear without it, omit `https://` or `www.` to save cells.
+
+## Worked examples — BANA Grade 2 braille + Grade 1 "what to type"
+
+Each example below shows three things, in order:
+
+1. **Print card** — what was on the original print business card.
+2. **BANA Grade 2 braille** — the cells BANA published in the Fact Sheet, reproduced verbatim in Unicode (U+2800–U+28FF) from the verified visual transcription. **Best viewed in a system font that has good support for Unicode braille** (Segoe UI Symbol, Apple Symbols, DejaVu Sans, etc. — most modern OSes render these glyphs out of the box).
+3. **What to type in this app** — Grade 1 "what to type" hint that captures BANA's content decisions (which fields to omit, how to split a name); the app then translates this with liblouis.
+
+BANA's published braille is Grade 2 (contracted). This app defaults to Grade 1 (uncontracted) for clarity on names and contact info, so the cells the app emits will look different from BANA's even when the *content decisions* match.
+
+### Example 1 — Omit organization (appears in e-mail domain), wrap e-mail
+
+**Print card:** Harry Potter / Hogwarts School / harry@hogwarts.edu
+
+BANA strategy: omit capitals from the organization; divide the e-mail address.
+
+**BANA Grade 2 braille:**
+
 ```
-Jane Doe
-Acme Corporation
-555.123.4567
-jane.doe@acme.com
+⠠⠓⠜⠗⠽ ⠠⠏⠕⠞⠞⠻
+⠓⠕⠛⠺⠜⠞⠎ ⠎⠡⠕⠕⠇
+⠓⠜⠗⠽⠈⠁⠐
+⠓⠕⠛⠺⠜⠞⠎⠲⠫⠥
 ```
 
-**Strategy:** Standard 4-line layout.
+**Type into this app:**
 
-**What to type:**
-```
-jane doe
-acme corporation
-555.123.4567
-jane.doe@acme.com
-```
-
-**Result:** Fits in 4 lines with Capitalized Letters disabled (default).
-
----
-
-### Example 2: Organization in Email Domain
-
-**Print card:**
-```
-Harry Potter
-Hogwarts School
-harry@hogwarts.edu
-```
-
-**Strategy:** 
-- Omit organization entirely — "hogwarts" appears in email domain
-- This saves a full line for other content or shorter wrapping
-
-**What to type:**
 ```
 harry potter
 harry@hogwarts.edu
 ```
 
-**Result:** Fits in 2-3 lines (email may wrap). Organization omitted because it's redundant with email domain.
+### Example 2 — Abbreviate job title, modify phone
 
----
+**Print card:** Indra Jackson / AlcotteAmerica / Services Representative / 800-929-1733
 
-### Example 3: Long Name
+BANA strategy: omit capitals from organization; abbreviate job title; convert phone hyphens to periods.
 
-**Print card:**
+**BANA Grade 2 braille:**
+
 ```
-Liesel A. Schimmelfennig
-US Army Corps of Engineers
+⠠⠔⠙⠗⠁ ⠠⠚⠁⠉⠅⠎⠕⠝
+⠁⠇⠉⠕⠞⠞⠑⠁⠍⠻⠊⠉⠁
+⠠⠎⠻⠧⠊⠉⠑⠎ ⠠⠗⠑⠏⠲
+⠼⠓⠚⠚⠲⠊⠃⠊⠲⠁⠛⠉⠉
+```
+
+**Type into this app:**
+
+```
+indra jackson
+alcotteamerica
+services rep.
+800.929.1733
+```
+
+### Example 3 — Abbreviate organization, modify phone
+
+**Print card:** J. Christopher / Braille Instructor / Texas School for the Blind / (512) 454-8631
+
+BANA strategy: abbreviate organization (`tx sch for the bl`); convert phone format.
+
+**BANA Grade 2 braille:**
+
+```
+⠰⠠⠚ ⠠⠡⠗⠊⠌⠕⠏⠓⠻
+⠃⠗⠇ ⠔⠌⠗⠥⠉⠞⠕⠗
+⠞⠭ ⠎⠡⠇ ⠿ ⠮ ⠃⠇
+⠼⠑⠁⠃⠲⠙⠑⠙⠲⠓⠋⠉⠁
+```
+
+**Type into this app:**
+
+```
+j. christopher
+braille instructor
+tx sch for the bl
+512.454.8631
+```
+
+### Example 4 — Long name spans two lines, omit organization and phone
+
+**Print card:** Liesel A. Schimmelfennig / US Army Corps of Engineers / Southwest Division / l.schimmelfennig@usace.army / 1-520-670-6277
+
+BANA strategy: continue the name onto a second line in cell 1; omit organization (in e-mail); divide the e-mail address; omit the continuation indicator (last-resort fallback); omit phone.
+
+**BANA Grade 2 braille:**
+
+```
+⠠⠇⠊⠑⠎⠑⠇ ⠠⠁⠲
+⠠⠎⠡⠊⠍⠍⠑⠇⠋⠢⠝⠊⠛
+⠇⠲⠎⠡⠊⠍⠍⠑⠇⠋⠢⠝⠊⠛
+⠈⠁⠥⠎⠁⠉⠑⠲⠜⠍⠽
+```
+
+**Type into this app:**
+
+```
+liesel a.
+schimmelfennig
 l.schimmelfennig@usace.army
-1-520-670-6277
 ```
 
-**Strategy:**
-- Name is unavoidably long — will span 2 lines
-- Omit organization (appears in email domain "usace.army")
-- Omit phone (email provides sufficient contact)
+### Example 5 — Very long surname wraps, omit company
 
-**What to type:**
+**Print card:** Rupert Wolfeschlegelsteinhausen / Galaxy Printing Co. / rupert@galaxyprinting.com
+
+BANA strategy: first name reduced to an initial; surname wraps with the dot-5 continuation indicator; omit the company name (in e-mail).
+
+**BANA Grade 2 braille:**
+
 ```
-liesel a. schimmelfennig
-l.schimmelfennig@usace.army
-```
-
-**Result:** Fits in 3-4 lines. Organization and phone omitted.
-
----
-
-### Example 4: Nickname Option
-
-**Print card:**
-```
-Francine (Fran) Rikard
-Albuquerque AC
-505-312-4224 (cell)
-505-312-4225 (fax)
+⠰⠗ ⠺⠕⠇⠋⠑⠎⠡⠇⠑⠛⠑⠇⠐
+⠌⠑⠔⠓⠁⠥⠎⠢
+⠗⠥⠏⠻⠞⠈⠁⠛⠁⠇⠁⠭⠽⠐
+⠏⠗⠔⠞⠬⠲⠉⠕⠍
 ```
 
-**Strategy:**
-- Client chose nickname "Fran" to keep the name short
-- Convert phone hyphens to periods
-- Use `c` and `f` prefixes to distinguish cell/fax
+**Type into this app:**
 
-**What to type:**
+```
+r. wolfeschlegel
+steinhausen
+rupert@galaxyprinting.com
+```
+
+### Example 6 — Hyphenated surname split, omit company
+
+**Print card:** Jennifer Lynnzes-Sleightower, OD / Midwest Eye Center / sleightower@midwesteye.com
+
+BANA strategy: divide the hyphenated surname between lines 1 and 2; omit capitals from post-nominal credentials; omit the organization (in e-mail).
+
+**BANA Grade 2 braille:**
+
+```
+⠠⠚⠢ ⠠⠇⠽⠝⠝⠵⠑⠎⠤
+⠠⠎⠇⠑⠊⠣⠞⠪⠻⠂ ⠕⠙
+⠎⠇⠑⠊⠣⠞⠪⠻⠈⠁⠐
+⠍⠊⠙⠺⠑⠌⠑⠽⠑⠲⠉⠕⠍
+```
+
+**Type into this app:**
+
+```
+jen lynnzes-
+sleightower, od
+sleightower@midwesteye.com
+```
+
+### Example 7 — Nickname instead of capital-stripping; cell vs. fax
+
+**Print card:** Francine (Fran) Rikard / Albuquerque AC / 505-312-4224 (cell) / 505-312-4225 (fax)
+
+BANA strategy: client chose the nickname "Fran" rather than removing the capital indicators from "Francine"; convert phone format; tag cell/fax with a one-letter prefix.
+
+**BANA Grade 2 braille:**
+
+```
+⠠⠋⠗⠁⠝ ⠠⠗⠊⠅⠜⠙
+⠁⠇⠃⠥⠟⠥⠻⠟⠥⠑ ⠰⠁⠉
+⠉⠼⠑⠚⠑⠲⠉⠁⠃⠲⠙⠃⠃⠙
+⠋⠼⠑⠚⠑⠲⠉⠁⠃⠲⠙⠃⠃⠑
+```
+
+**Type into this app:**
+
 ```
 fran rikard
 albuquerque ac
@@ -265,46 +291,59 @@ c 505.312.4224
 f 505.312.4225
 ```
 
-**Result:** Fits in 4 lines. Full first name replaced with nickname per client preference.
+### Example 8 — International phone, abbreviated work title
 
----
+**Print card:** Timaru Brailleworks / Jody Day, Proprietor / cell: +64 3 027 864 536
 
-### Example 5: Abbreviation Strategy
+BANA strategy: omit job title; divide and modify the international phone number.
 
-**Print card:**
+**BANA Grade 2 braille:**
+
 ```
-J. Christopher
-Braille Instructor
-Texas School for the Blind
-(512) 454-8631
-```
-
-**Strategy:**
-- Abbreviate organization: "tx schl for the blind" or "tx sch bl"
-- Abbreviate job title if needed
-- Convert phone format
-
-**What to type:**
-```
-j. christopher
-braille instructor
-tx sch for the blind
-512.454.8631
+⠠⠞⠊⠍⠜⠥ ⠠⠃⠗⠇⠐⠺⠎
+⠠⠚⠕⠙⠽ ⠠⠐⠙
+⠉⠑⠇⠇⠒ ⠐⠖⠼⠋⠙ ⠼⠉
+⠼⠚⠃⠛⠲⠓⠋⠙⠲⠑⠉⠋
 ```
 
-**Result:** Fits in 4 lines using standard abbreviations.
+**Type into this app:**
 
----
+```
+timaru brailleworks
+jody day
+cell: +64 3 027
+864.536
+```
 
-### Notes on These Examples
+### Example 9 — Web address split between numeric and alphabetic units
 
-- **Capitalized Letters disabled (default):** The app automatically converts to lowercase for braille translation, so you can type naturally.
-- **Grade 1 uncontracted:** These examples assume Grade 1 (uncontracted) braille, which is recommended for names and contact info.
-- **BANA source examples use Grade 2:** The original BANA examples use contracted braille, which produces shorter output but is harder to read for names. We adapted them for Grade 1.
+**Print card:** Pablo Ruíz Pocket Calendars / DIY2023calendars.com / 1-800-423-9826
 
-## When to Seek Help
+BANA strategy: omit some capitals; divide the web address between the numeric and alphabetic units; omit the phone number.
 
-Consider consulting a **UEB-certified transcriber** for:
+**BANA Grade 2 braille:**
+
+```
+⠠⠏⠁⠃⠇⠕ ⠠⠗⠥⠘⠌⠊⠵
+⠏⠕⠉⠅⠑⠞ ⠉⠁⠇⠢⠙⠜⠎
+⠠⠠⠙⠊⠽⠼⠃⠚⠃⠉⠰⠄⠐
+⠉⠁⠇⠢⠙⠜⠎⠲⠉⠕⠍
+```
+
+**Type into this app:**
+
+```
+pablo ruiz
+pocket calendars
+diy2023
+calendars.com
+```
+
+(Note: the accented `í` in "Ruíz" is rendered by the translator according to UEB's accented-letter rules; type plain `ruiz` if your input method does not produce `í` and the translator falls back gracefully.)
+
+## When to seek help
+
+Consider consulting a UEB-certified transcriber for:
 
 - International phone numbers with complex formatting
 - Multiple languages on one card
@@ -312,62 +351,60 @@ Consider consulting a **UEB-certified transcriber** for:
 - Large organizations with formal naming requirements
 - Legal or medical contexts requiring exact formatting
 
-## Using the Application
+This restates BANA's "Work with a UEB-certified transcriber" principle (p. 2) in concrete terms.
 
-### Important: Preview Before Generating
+## Using the application
 
-The **Preview Braille Translation** button is located inside **Expert Mode**. To access it:
+### Preview before generating
 
-1. Click **Show Expert Mode** on the main page
-2. Click **Preview Braille Translation** at the top of the Expert Mode panel
-3. Review any warnings about text length or character issues
+The **Preview Braille Translation** button is inside Expert Mode:
 
-### Capitalized Letters Toggle
+1. Click **Show Expert Mode** on the main page.
+2. Click **Preview Braille Translation** at the top of the Expert Mode panel.
+3. Review any warnings about text length or character issues.
 
-The **Capitalized Letters** toggle controls how capitals are handled:
+### Capitalized Letters toggle
 
-- **Disabled (default):** Text is automatically converted to lowercase before translation. You can type normally — capitals are converted for you.
-- **Enabled:** Capital letters are preserved, adding indicator cells to the braille output.
+| State | Behaviour | When to use |
+|-------|-----------|-------------|
+| Disabled (default) | Text is converted to lowercase before translation; no braille capital indicators are inserted | Standard for space-constrained business cards (matches BANA's "remove the capital indicators" strategy) |
+| Enabled | Capitals are preserved; each adds one indicator cell | When the card owner has explicitly asked for capitalization |
 
-**Why disable capitals?** Saves approximately 1 braille cell per capital letter. Braille readers understand this is standard practice for space-limited applications.
+### Recommended settings
 
-### Recommended Settings
+| Setting | Value | Reason |
+|---------|-------|--------|
+| Placement Mode | Auto Placement | Handles wrapping automatically and applies BANA's punctuation-first division preference where it can |
+| Language | English (UEB) — uncontracted (grade 1) | Clearer for names, e-mail, and contact info |
+| Capitalized Letters | Disabled | Saves cells per BANA's "remove the capital indicators" strategy |
+| Braille Cells | 13 | Matches BANA's lower bound for typical card stock |
+| Braille Lines | 4 | BANA's typical layout |
+| Indicator Shapes | On | Reserves two cells so braille readers can locate row start/end |
 
-| Setting | Recommended Value | Reason |
-|---------|-------------------|--------|
-| Placement Mode | Auto Placement | Handles wrapping automatically |
-| Language | English (UEB) — uncontracted (grade 1) | Clearer for names and contact info |
-| Capitalized Letters | Disabled | Saves space (default; recommended) |
-| Braille Cells | 13 | Standard with indicators |
-| Braille Lines | 4 | Standard card |
-| Indicator Shapes | On | Helps readers find row start/end |
+### When to use Grade 2 (contracted)
 
-### When to Use Grade 2 (Contracted)
+BANA's worked examples are Grade 2. Use it only when:
 
-Use contracted braille only when:
-- You've exhausted all other space-saving strategies
+- You have exhausted the space-saving strategies in the "Names" and "Organization" sections above
 - The card owner understands contracted braille will be used
-- The content is mostly common English words (names may contract unexpectedly)
+- The content is mostly common English words
 
-**Caution:** Contracted braille can make names and email addresses harder to read.
+Contracted braille can make names, e-mail addresses, and web addresses harder to read because their letter sequences may collide with English contractions.
 
-## Resources & Credits
+## Resources
 
-### Official Standards
+### Official standards
 
 - [BANA Position Statements and Fact Sheets](https://www.brailleauthority.org/bana-position-statements-and-fact-sheets) — includes the official Business Cards Fact Sheet
-- [Business Cards Fact Sheet (PDF)](https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf) — official BANA guidance (approved March 2024)
+- [Business Cards Fact Sheet (PDF, approved March 2024)](https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf) — authoritative source for everything quoted in this guide
 - [BANA Braille Signage Guidelines](https://www.brailleauthority.org/braille-signage-guidelines)
 - [BANA Size and Spacing of Braille Characters](https://www.brailleauthority.org/size-and-spacing-braille-characters)
 - [The Rules of Unified English Braille (ICEB)](https://iceb.org/ueb.html)
 
-### Acknowledgments
+### Acknowledgements
 
-Business card guidance is adapted from the [*Business Cards Fact Sheet*](https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf) (approved March 2024) published by the Braille Authority of North America (BANA).
-
-Braille translation powered by [liblouis](https://liblouis.io/).
+Quoted material reproduced from the *Business Cards Fact Sheet* (approved March 2024) published by the Braille Authority of North America (BANA). Braille translation powered by [liblouis](https://liblouis.io/).
 
 ---
 
-*Document Version: 1.0*
-*Last Updated: January 2026*
+*Last verified against the BANA Fact Sheet: May 2026. The verified visual transcription is at [`_bana_business_cards_verified_source.md`](./_bana_business_cards_verified_source.md).*

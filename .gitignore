@@ -74,6 +74,9 @@ Vercel Runtime Logs/
 # OpenSCAD version (work in progress - to be revisited)
 OpenSCAD/
 
+# BANA Fact Sheet source artifacts (regenerated on demand by scripts/fetch_bana_business_cards.py)
+docs/guides/_bana_source/
+
 # Coding assistant tooling (tool-agnostic)
 .cursor/
 .cursorrules

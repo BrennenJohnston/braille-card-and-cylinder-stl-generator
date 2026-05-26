@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- BANA business card guidance is now reproduced verbatim from the *Business Cards Fact Sheet* (approved March 2024) in `docs/guides/BUSINESS_CARD_TRANSLATION_GUIDE.md`, the Directions dropdown in `templates/index.html`, and the "What to Include", "Formatting", and "Examples" help panels in `public/index.html`.
+- The Business Card Guide now shows BANA's published Grade 2 braille (in Unicode U+2800–U+28FF) alongside the app-specific Grade 1 "what to type" hint for each of BANA's nine worked examples, so users can see the source cells directly without needing to open the PDF.
+- The in-app Examples panel in `public/index.html` likewise shows the BANA Grade 2 braille verbatim for each of its three example cards, with an `aria-label` describing each rendering for screen readers.
+- README pointer to the Business Card Guide now cites the BANA source year (March 2024).
+
+### Added
+- `docs/guides/_bana_business_cards_verified_source.md` — verified visual transcription of the BANA Fact Sheet with verbatim prose, Unicode-braille (U+2800–U+28FF) renderings of all nine worked examples, and a deviation report driving the rewrite above.
+- `scripts/fetch_bana_business_cards.py` — one-shot script that downloads the BANA PDF and rasterizes each page to `docs/guides/_bana_source/page_NN.png` for future verification.
+- `scripts/_extract_bana_text.py` — working tool that pairs each NABA-ASCII-encoded line in the PDF with its Unicode-braille equivalent.
+
+### Fixed
+- Removed prior paraphrased BANA rule statements that drifted from the source. The drift was caused by previous rewrites being derived from the PDF's hidden NABA-ASCII text layer (which renders as `,h>ry ,pott]` to any PDF-to-text tool) instead of the visual layer. Specific corrections:
+  - Phone-number "Best/OK/Poor" table replaced by BANA's single prescriptive statement.
+  - E-mail and web-address division priorities replaced by BANA's three-tier statement, including the dot-5 continuation indicator and its "as a last resort, omit" fallback that was previously absent.
+  - "Common abbreviations" list trimmed to the three BANA names by example (`lib`, `amer`, `nat`); previously-invented entries (`Assoc`, `Univ`) removed.
+  - Removed the claim that we adapt BANA's worked examples to Grade 1 — we now keep our Grade 1 input hints but make explicit that BANA's published examples are Grade 2.
+- Second-pass audit of the Directions dropdown in `templates/index.html` against the BANA PDF page images caught additional drift, all now corrected:
+  - "Common fixes if text won't fit (BANA order)" was a single numbered list that conflated BANA's name fall-through (4 items, of which the last is BANA's parallel "if space is available" option, not a final fallback), BANA's organization-name strategies (presented in BANA as parallel options), and the app's own Grade 2 recommendation (not part of BANA's order at all). The list is now split into three clearly labeled sections.
+  - The abridged Phone, E‑mail, and Web quotes have been replaced with the full verbatim paragraphs from page 3 of the Fact Sheet. The previous "E‑mail / web" combined bullet only quoted the e‑mail punctuation list ("at" sign, period, hyphen) and silently dropped the web-address punctuation list (colon, period, slash).
+  - Restored BANA's "13 or 14 cells, depending on the equipment" cell-count caveat where the friendly intro had simplified to "about 13".
+  - Lowercased the "amer" abbreviation example to match BANA's own spelling.
+- `public/index.html` worked-example braille (`<pre>` blocks for BANA Examples 1, 4, and 7) now uses U+2800 BRAILLE PATTERN BLANK between words, matching the BANA PDF and the verified-source markdown, so the "verbatim from the Fact Sheet" label is honest at the codepoint level.
+- `docs/guides/_bana_business_cards_verified_source.md` Example 6 heading had inadvertently duplicated Example 5's title ("Omission of capitals from name; division of surname; omission of company name (in e-mail)"). Replaced with BANA's actual Example 6 heading ("Division of hyphenated name (client agreed to a shortened first name); omission of capitals from post-nominal letters/credentials; omission of organization name (in e-mail)").
+- Resynced the second "BANA-quoted blocks below — DO NOT EDIT" comment block in `public/index.html` (above the Formatting Rules panel) to match the propagation reminder in the first block, so future edits don't drift between the two panels.
+
 ## [2.1.0] - 2026-02-16
 
 Documentation overhaul. Rewrote all project docs to remove AI-generated language and match the tone of a small, single-maintainer open-source project.

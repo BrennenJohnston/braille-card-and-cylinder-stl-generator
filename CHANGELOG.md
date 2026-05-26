@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - BANA business card guidance is now reproduced verbatim from the *Business Cards Fact Sheet* (approved March 2024) in `docs/guides/BUSINESS_CARD_TRANSLATION_GUIDE.md`, the Directions dropdown in `templates/index.html`, and the "What to Include", "Formatting", and "Examples" help panels in `public/index.html`.
-- The Business Card Guide now keeps Grade 1 "what to type into this app" hints for each of BANA's nine worked examples and links out to the BANA PDF for the original Grade 2 cells, rather than implying we reproduce BANA's examples in Grade 1.
+- The Business Card Guide now shows BANA's published Grade 2 braille (in Unicode U+2800–U+28FF) alongside the app-specific Grade 1 "what to type" hint for each of BANA's nine worked examples, so users can see the source cells directly without needing to open the PDF.
+- The in-app Examples panel in `public/index.html` likewise shows the BANA Grade 2 braille verbatim for each of its three example cards, with an `aria-label` describing each rendering for screen readers.
 - README pointer to the Business Card Guide now cites the BANA source year (March 2024).
 
 ### Added

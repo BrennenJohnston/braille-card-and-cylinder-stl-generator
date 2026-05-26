@@ -118,11 +118,15 @@ The dot-5 line continuation indicator is preferred; omitting it is BANA's "last 
 
 Same shape as the e-mail rule, with the preferred division points being colon, period, and slash. If the domain is clear without it, omit `https://` or `www.` to save cells.
 
-## Worked examples — Grade 1 "what to type" hints
+## Worked examples — BANA Grade 2 braille + Grade 1 "what to type"
 
-BANA's worked examples are Grade 2 (contracted) braille. **Read them in the official PDF** ([Business Cards Fact Sheet, pages 4–7](https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf)).
+Each example below shows three things, in order:
 
-This section gives a parallel Grade 1 "what to type into this app" hint for each of BANA's nine examples, so the app produces the same *content* selection BANA recommends. The braille cells the app emits will differ from BANA's because BANA uses Grade 2.
+1. **Print card** — what was on the original print business card.
+2. **BANA Grade 2 braille** — the cells BANA published in the Fact Sheet, reproduced verbatim in Unicode (U+2800–U+28FF) from the verified visual transcription. **Best viewed in a system font that has good support for Unicode braille** (Segoe UI Symbol, Apple Symbols, DejaVu Sans, etc. — most modern OSes render these glyphs out of the box).
+3. **What to type in this app** — Grade 1 "what to type" hint that captures BANA's content decisions (which fields to omit, how to split a name); the app then translates this with liblouis.
+
+BANA's published braille is Grade 2 (contracted). This app defaults to Grade 1 (uncontracted) for clarity on names and contact info, so the cells the app emits will look different from BANA's even when the *content decisions* match.
 
 ### Example 1 — Omit organization (appears in e-mail domain), wrap e-mail
 
@@ -130,7 +134,16 @@ This section gives a parallel Grade 1 "what to type into this app" hint for each
 
 BANA strategy: omit capitals from the organization; divide the e-mail address.
 
-**Type:**
+**BANA Grade 2 braille:**
+
+```
+⠠⠓⠜⠗⠽ ⠠⠏⠕⠞⠞⠻
+⠓⠕⠛⠺⠜⠞⠎ ⠎⠡⠕⠕⠇
+⠓⠜⠗⠽⠈⠁⠐
+⠓⠕⠛⠺⠜⠞⠎⠲⠫⠥
+```
+
+**Type into this app:**
 
 ```
 harry potter
@@ -143,7 +156,16 @@ harry@hogwarts.edu
 
 BANA strategy: omit capitals from organization; abbreviate job title; convert phone hyphens to periods.
 
-**Type:**
+**BANA Grade 2 braille:**
+
+```
+⠠⠔⠙⠗⠁ ⠠⠚⠁⠉⠅⠎⠕⠝
+⠁⠇⠉⠕⠞⠞⠑⠁⠍⠻⠊⠉⠁
+⠠⠎⠻⠧⠊⠉⠑⠎ ⠠⠗⠑⠏⠲
+⠼⠓⠚⠚⠲⠊⠃⠊⠲⠁⠛⠉⠉
+```
+
+**Type into this app:**
 
 ```
 indra jackson
@@ -158,7 +180,16 @@ services rep.
 
 BANA strategy: abbreviate organization (`tx sch for the bl`); convert phone format.
 
-**Type:**
+**BANA Grade 2 braille:**
+
+```
+⠰⠠⠚ ⠠⠡⠗⠊⠌⠕⠏⠓⠻
+⠃⠗⠇ ⠔⠌⠗⠥⠉⠞⠕⠗
+⠞⠭ ⠎⠡⠇ ⠿ ⠮ ⠃⠇
+⠼⠑⠁⠃⠲⠙⠑⠙⠲⠓⠋⠉⠁
+```
+
+**Type into this app:**
 
 ```
 j. christopher
@@ -173,7 +204,16 @@ tx sch for the bl
 
 BANA strategy: continue the name onto a second line in cell 1; omit organization (in e-mail); divide the e-mail address; omit the continuation indicator (last-resort fallback); omit phone.
 
-**Type:**
+**BANA Grade 2 braille:**
+
+```
+⠠⠇⠊⠑⠎⠑⠇ ⠠⠁⠲
+⠠⠎⠡⠊⠍⠍⠑⠇⠋⠢⠝⠊⠛
+⠇⠲⠎⠡⠊⠍⠍⠑⠇⠋⠢⠝⠊⠛
+⠈⠁⠥⠎⠁⠉⠑⠲⠜⠍⠽
+```
+
+**Type into this app:**
 
 ```
 liesel a.
@@ -187,7 +227,16 @@ l.schimmelfennig@usace.army
 
 BANA strategy: first name reduced to an initial; surname wraps with the dot-5 continuation indicator; omit the company name (in e-mail).
 
-**Type:**
+**BANA Grade 2 braille:**
+
+```
+⠰⠗ ⠺⠕⠇⠋⠑⠎⠡⠇⠑⠛⠑⠇⠐
+⠌⠑⠔⠓⠁⠥⠎⠢
+⠗⠥⠏⠻⠞⠈⠁⠛⠁⠇⠁⠭⠽⠐
+⠏⠗⠔⠞⠬⠲⠉⠕⠍
+```
+
+**Type into this app:**
 
 ```
 r. wolfeschlegel
@@ -201,7 +250,16 @@ rupert@galaxyprinting.com
 
 BANA strategy: divide the hyphenated surname between lines 1 and 2; omit capitals from post-nominal credentials; omit the organization (in e-mail).
 
-**Type:**
+**BANA Grade 2 braille:**
+
+```
+⠠⠚⠢ ⠠⠇⠽⠝⠝⠵⠑⠎⠤
+⠠⠎⠇⠑⠊⠣⠞⠪⠻⠂ ⠕⠙
+⠎⠇⠑⠊⠣⠞⠪⠻⠈⠁⠐
+⠍⠊⠙⠺⠑⠌⠑⠽⠑⠲⠉⠕⠍
+```
+
+**Type into this app:**
 
 ```
 jen lynnzes-
@@ -215,7 +273,16 @@ sleightower@midwesteye.com
 
 BANA strategy: client chose the nickname "Fran" rather than removing the capital indicators from "Francine"; convert phone format; tag cell/fax with a one-letter prefix.
 
-**Type:**
+**BANA Grade 2 braille:**
+
+```
+⠠⠋⠗⠁⠝ ⠠⠗⠊⠅⠜⠙
+⠁⠇⠃⠥⠟⠥⠻⠟⠥⠑ ⠰⠁⠉
+⠉⠼⠑⠚⠑⠲⠉⠁⠃⠲⠙⠃⠃⠙
+⠋⠼⠑⠚⠑⠲⠉⠁⠃⠲⠙⠃⠃⠑
+```
+
+**Type into this app:**
 
 ```
 fran rikard
@@ -230,7 +297,16 @@ f 505.312.4225
 
 BANA strategy: omit job title; divide and modify the international phone number.
 
-**Type:**
+**BANA Grade 2 braille:**
+
+```
+⠠⠞⠊⠍⠜⠥ ⠠⠃⠗⠇⠐⠺⠎
+⠠⠚⠕⠙⠽ ⠠⠐⠙
+⠉⠑⠇⠇⠒ ⠐⠖⠼⠋⠙ ⠼⠉
+⠼⠚⠃⠛⠲⠓⠋⠙⠲⠑⠉⠋
+```
+
+**Type into this app:**
 
 ```
 timaru brailleworks
@@ -245,7 +321,16 @@ cell: +64 3 027
 
 BANA strategy: omit some capitals; divide the web address between the numeric and alphabetic units; omit the phone number.
 
-**Type:**
+**BANA Grade 2 braille:**
+
+```
+⠠⠏⠁⠃⠇⠕ ⠠⠗⠥⠘⠌⠊⠵
+⠏⠕⠉⠅⠑⠞ ⠉⠁⠇⠢⠙⠜⠎
+⠠⠠⠙⠊⠽⠼⠃⠚⠃⠉⠰⠄⠐
+⠉⠁⠇⠢⠙⠜⠎⠲⠉⠕⠍
+```
+
+**Type into this app:**
 
 ```
 pablo ruiz

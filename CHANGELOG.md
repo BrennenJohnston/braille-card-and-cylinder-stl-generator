@@ -24,6 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - E-mail and web-address division priorities replaced by BANA's three-tier statement, including the dot-5 continuation indicator and its "as a last resort, omit" fallback that was previously absent.
   - "Common abbreviations" list trimmed to the three BANA names by example (`lib`, `amer`, `nat`); previously-invented entries (`Assoc`, `Univ`) removed.
   - Removed the claim that we adapt BANA's worked examples to Grade 1 — we now keep our Grade 1 input hints but make explicit that BANA's published examples are Grade 2.
+- Second-pass audit of the Directions dropdown in `templates/index.html` against the BANA PDF page images caught additional drift, all now corrected:
+  - "Common fixes if text won't fit (BANA order)" was a single numbered list that conflated BANA's name fall-through (4 items, of which the last is BANA's parallel "if space is available" option, not a final fallback), BANA's organization-name strategies (presented in BANA as parallel options), and the app's own Grade 2 recommendation (not part of BANA's order at all). The list is now split into three clearly labeled sections.
+  - The abridged Phone, E‑mail, and Web quotes have been replaced with the full verbatim paragraphs from page 3 of the Fact Sheet. The previous "E‑mail / web" combined bullet only quoted the e‑mail punctuation list ("at" sign, period, hyphen) and silently dropped the web-address punctuation list (colon, period, slash).
+  - Restored BANA's "13 or 14 cells, depending on the equipment" cell-count caveat where the friendly intro had simplified to "about 13".
+  - Lowercased the "amer" abbreviation example to match BANA's own spelling.
+- `public/index.html` worked-example braille (`<pre>` blocks for BANA Examples 1, 4, and 7) now uses U+2800 BRAILLE PATTERN BLANK between words, matching the BANA PDF and the verified-source markdown, so the "verbatim from the Fact Sheet" label is honest at the codepoint level.
+- `docs/guides/_bana_business_cards_verified_source.md` Example 6 heading had inadvertently duplicated Example 5's title ("Omission of capitals from name; division of surname; omission of company name (in e-mail)"). Replaced with BANA's actual Example 6 heading ("Division of hyphenated name (client agreed to a shortened first name); omission of capitals from post-nominal letters/credentials; omission of organization name (in e-mail)").
+- Resynced the second "BANA-quoted blocks below — DO NOT EDIT" comment block in `public/index.html` (above the Formatting Rules panel) to match the propagation reminder in the first block, so future edits don't drift between the two panels.
 
 ## [2.1.0] - 2026-02-16
 

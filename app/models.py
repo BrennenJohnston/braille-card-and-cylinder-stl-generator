@@ -6,7 +6,7 @@ replacing magic numbers and untyped dictionaries with explicit, validated struct
 """
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import Enum, StrEnum
 
 from app.utils import get_logger
 
@@ -15,21 +15,21 @@ logger = get_logger(__name__)
 
 
 # Enums for typed models
-class ShapeType(str, Enum):
+class ShapeType(StrEnum):
     """Shape type for braille output."""
 
     CARD = 'card'
     CYLINDER = 'cylinder'
 
 
-class PlateType(str, Enum):
+class PlateType(StrEnum):
     """Plate type: positive (embossed) or negative (counter/recess)."""
 
     POSITIVE = 'positive'
     NEGATIVE = 'negative'
 
 
-class BrailleGrade(str, Enum):
+class BrailleGrade(StrEnum):
     """Braille grade: G1 (uncontracted) or G2 (contracted)."""
 
     G1 = 'g1'
@@ -44,7 +44,7 @@ class RecessShape(int, Enum):
     CONE = 2  # Frustum
 
 
-class PlacementMode(str, Enum):
+class PlacementMode(StrEnum):
     """Placement mode for braille text."""
 
     MANUAL = 'manual'

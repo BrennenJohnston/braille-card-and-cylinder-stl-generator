@@ -8,7 +8,7 @@ requires-python = ">=3.12"
 # Server only provides lightweight JSON geometry specs
 # Client-side CSG handles all heavy computation
 dependencies = [
-    "flask==3.1.2",
+    "flask==3.1.3",
     "flask-cors==6.0.2",
 ]
 
@@ -19,10 +19,10 @@ dependencies = [
 dev = [
     # Geometry processing (server-side generation)
     "numpy==2.4.2",
-    "trimesh==4.11.1",
+    "trimesh==4.11.2",
     "shapely==2.1.2",
     "mapbox_earcut==2.0.0",
-    "scipy==1.17.0",        # For mesh.fix_normals()
+    "scipy==1.17.1",        # For mesh.fix_normals()
     "matplotlib==3.10.8",    # For character markers
     "manifold3d==3.3.2",    # Boolean operations
 
@@ -31,7 +31,7 @@ dev = [
     "pytest-cov==7.0.0",
     "ruff==0.14.13",
     "mypy==1.19.1",
-    "pre-commit==3.5.0",
+    "pre-commit==4.5.1",
 ]
 
 test = [

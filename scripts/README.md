@@ -36,6 +36,21 @@ scripts\git_check.bat
 
 ---
 
+### `fetch_bana_business_cards.py`
+**Purpose**: Download and rasterize the BANA *Business Cards Fact Sheet* (approved March 2024) into `docs/guides/_bana_source/` so the verified-source transcription at `docs/guides/_bana_business_cards_verified_source.md` can be audited page-by-page.
+
+**Usage**:
+```bash
+pip install pypdfium2 Pillow
+python scripts/fetch_bana_business_cards.py
+```
+
+**When to use**: Once per BANA revision. If BANA publishes a revised Fact Sheet, re-run this script, update the verified-source file from the new pages, and then propagate changes to `docs/guides/BUSINESS_CARD_TRANSLATION_GUIDE.md`, `templates/index.html`, and `public/index.html`.
+
+The companion script `_extract_bana_text.py` (prefixed with `_` because it is internal to the BANA-source pipeline) pairs each NABA-ASCII-encoded line in the PDF text layer with its Unicode braille (U+2800–U+28FF) equivalent for cross-checking against the rendered page images.
+
+---
+
 ### `git_push.ps1`
 **Purpose**: Automated git stage, commit, and push workflow
 

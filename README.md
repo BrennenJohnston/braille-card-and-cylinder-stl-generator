@@ -89,7 +89,7 @@ Pre-commit hooks are included — run `pre-commit install` to set them up.
 **Using the app:**
 
 - [Cylinder Guide](docs/guides/CYLINDER_GUIDE.md) — measuring containers, setting parameters, worked examples
-- [Business Card Guide](docs/guides/BUSINESS_CARD_TRANSLATION_GUIDE.md) — what to include, formatting tips (flat cards are temporarily disabled)
+- [Business Card Guide](docs/guides/BUSINESS_CARD_TRANSLATION_GUIDE.md) — what to include and formatting rules, quoted verbatim from the BANA *Business Cards Fact Sheet* (approved March 2024). Flat cards are temporarily disabled.
 
 **Working on the code:**
 

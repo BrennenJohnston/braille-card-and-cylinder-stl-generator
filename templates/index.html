@@ -1910,12 +1910,12 @@
             .accessibility-controls-top {
                 gap: 0.6rem;
             }
-            
+
             .theme-label-box {
                 padding: 0.5em 0.8em;
                 font-size: 0.85em;
             }
-            
+
             .theme-toggle-btn {
                 padding: 0.5em 0.8em;
                 font-size: 0.85em;
@@ -1968,7 +1968,7 @@
                 font-size: 0.85em;
                 min-height: 2.2em;
             }
-            
+
             /* Ensure buttons don't overflow on mobile */
             .github-link,
             .btn-help {
@@ -2241,13 +2241,23 @@
                             <li>If space runs out: shorten organization words (e.g., “Amer” for “American”), drop job title, or use lowercase to remove braille capitalization markers.</li>
                         </ul>
 
-                        <p><strong>Smart formatting for tight space (BANA‑aligned)</strong></p>
+                        <!--
+                            BANA-quoted block — DO NOT EDIT.
+                            Verbatim from the BANA Business Cards Fact Sheet (approved March 2024).
+                            Source of truth: docs/guides/_bana_business_cards_verified_source.md
+                            If BANA publishes a revision, update the verified-source file first,
+                            then propagate to this block, the Business Card Guide, and public/index.html.
+                        -->
+                        <p><strong>BANA formatting rules (verbatim, March 2024 Fact Sheet)</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li><strong>Phone:</strong> Enter like <em>123.456.7890</em> (use periods; no parentheses) to minimize numeric markers.</li>
-                            <li><strong>Email:</strong> If it must wrap, split after punctuation (at, dot, hyphen). Avoid splitting inside a syllable. Start the next line at the left.</li>
-                            <li><strong>Web:</strong> If it must wrap, split after punctuation (colon, period, slash). Avoid splitting inside a syllable. Start the next line at the left.</li>
-                            <li><strong>Names:</strong> If a long name won’t fit, remove capitals (type lowercase), remove middle initial, or use a first initial plus surname.</li>
-                            <li><strong>Grade choice:</strong> Keep <em>English (UEB) — uncontracted (grade 1)</em> for clarity. Use contracted (grade 2) only if you absolutely need to save space.</li>
+                            <li><strong>Names:</strong> <em>"In most cases, the person’s name is essential. If the name will not fit on a 13- or 14-cell line, one option is to remove the capital indicators. If it still does not fit, remove the middle initial, if there is one. If it still will not fit, use an initial for the person’s first name. Another option, if space is available, is to continue the person’s name onto a second braille line beginning in cell 1."</em>
+                                <br>In this app: type lowercase to drop capital indicators; remove the middle initial; use a first initial; or split the name across two lines.</li>
+                            <li><strong>Organization:</strong> <em>"Abbreviating words such as 'lib' for 'library,' 'amer' for 'American,' or 'nat' for 'National' can work well."</em> These are the only abbreviations BANA names by example; use them as a pattern, not an exhaustive list.</li>
+                            <li><strong>Phone:</strong> <em>"Omit extra characters such as parentheses. Convert the hyphens to periods to retain the natural sub-units of the phone number… Do not remove the numeric indicator unless absolutely necessary."</em>
+                                <br>In this app: type <code>123.456.7890</code>, not <code>(123) 456‑7890</code>.</li>
+                            <li><strong>E‑mail / web:</strong> <em>"Divide it after punctuation (e.g., the 'at' sign, a period, or a hyphen)… may also be divided between syllables, or between alphabetic and numeric sub-units. The least desirable option is to divide … between the letters of a syllable. Use the line continuation indicator (dot 5) at the end of the line… As a last resort, omit the line continuation indicator. Begin the second line … in cell 1."</em>
+                                <br>In this app: Auto Placement applies these division preferences for you; the dot‑5 continuation indicator is added by the translator and is not something you type.</li>
+                            <li><strong>Grade choice:</strong> BANA’s worked examples are Grade 2. For clarity on names and contact info, this app defaults to <em>English (UEB) — uncontracted (grade 1)</em>; switch to Grade 2 only after the other space-saving strategies above are exhausted.</li>
                         </ul>
 
                         <p><strong>Using the controls (match these labels in the app)</strong></p>
@@ -2285,13 +2295,17 @@
                             <li>Embossing tip: Press firmly and evenly with the card centered. Test on a spare card first.</li>
                         </ol>
 
-                        <p><strong>Common fixes if text won’t fit</strong></p>
-                        <ul style="margin: 0.3em 0; padding-left: 1.5em;">
-                            <li>Use lowercase to remove capitalization indicators.</li>
-                            <li>Abbreviate organization words.</li>
-                            <li>Stick with Grade 1 (uncontracted) unless you must switch to Grade 2 (contracted) to save space.</li>
-                            <li>Prioritize the essentials: name + one contact (phone or email).</li>
-                        </ul>
+                        <p><strong>Common fixes if text won’t fit (BANA order)</strong></p>
+                        <ol style="margin: 0.3em 0; padding-left: 1.5em;">
+                            <li>Remove capital indicators — type the name in lowercase.</li>
+                            <li>Remove the middle initial.</li>
+                            <li>Use a first initial in place of the full first name.</li>
+                            <li>Continue the name onto a second braille line, beginning in cell 1.</li>
+                            <li>Omit the organization if it appears in the e-mail or web address.</li>
+                            <li>Abbreviate organization words (BANA names <code>lib</code>, <code>amer</code>, <code>nat</code>).</li>
+                            <li>Switch to Grade 2 (contracted) only after the steps above.</li>
+                        </ol>
+                        <p><small><strong>Source:</strong> <a href="https://www.brailleauthority.org/sites/default/files/2024-10/Business%20Cards%20Fact%20Sheet.pdf" target="_blank" rel="noopener noreferrer">BANA <em>Business Cards Fact Sheet</em></a> (approved March 2024). The authoritative source is the PDF; this app paraphrases only the introductory framing.</small></p>
 
                         <p><strong>Acknowledgements:</strong></p>
                         <ul style="margin: 0.3em 0; padding-left: 1.5em;">

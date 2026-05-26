@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- BANA business card guidance is now reproduced verbatim from the *Business Cards Fact Sheet* (approved March 2024) in `docs/guides/BUSINESS_CARD_TRANSLATION_GUIDE.md`, the Directions dropdown in `templates/index.html`, and the "What to Include", "Formatting", and "Examples" help panels in `public/index.html`.
+- The Business Card Guide now keeps Grade 1 "what to type into this app" hints for each of BANA's nine worked examples and links out to the BANA PDF for the original Grade 2 cells, rather than implying we reproduce BANA's examples in Grade 1.
+- README pointer to the Business Card Guide now cites the BANA source year (March 2024).
+
+### Added
+- `docs/guides/_bana_business_cards_verified_source.md` — verified visual transcription of the BANA Fact Sheet with verbatim prose, Unicode-braille (U+2800–U+28FF) renderings of all nine worked examples, and a deviation report driving the rewrite above.
+- `scripts/fetch_bana_business_cards.py` — one-shot script that downloads the BANA PDF and rasterizes each page to `docs/guides/_bana_source/page_NN.png` for future verification.
+- `scripts/_extract_bana_text.py` — working tool that pairs each NABA-ASCII-encoded line in the PDF with its Unicode-braille equivalent.
+
+### Fixed
+- Removed prior paraphrased BANA rule statements that drifted from the source. The drift was caused by previous rewrites being derived from the PDF's hidden NABA-ASCII text layer (which renders as `,h>ry ,pott]` to any PDF-to-text tool) instead of the visual layer. Specific corrections:
+  - Phone-number "Best/OK/Poor" table replaced by BANA's single prescriptive statement.
+  - E-mail and web-address division priorities replaced by BANA's three-tier statement, including the dot-5 continuation indicator and its "as a last resort, omit" fallback that was previously absent.
+  - "Common abbreviations" list trimmed to the three BANA names by example (`lib`, `amer`, `nat`); previously-invented entries (`Assoc`, `Univ`) removed.
+  - Removed the claim that we adapt BANA's worked examples to Grade 1 — we now keep our Grade 1 input hints but make explicit that BANA's published examples are Grade 2.
+
 ## [2.1.0] - 2026-02-16
 
 Documentation overhaul. Rewrote all project docs to remove AI-generated language and match the tone of a small, single-maintainer open-source project.

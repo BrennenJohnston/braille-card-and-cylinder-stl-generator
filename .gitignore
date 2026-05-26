@@ -36,6 +36,10 @@ htmlcov/
 *.swp
 *.swo
 *~
+*.code-workspace
+
+# Local-only working notes (not part of public program structure)
+tutorial_narration_rewrite.md
 
 # OS
 .DS_Store

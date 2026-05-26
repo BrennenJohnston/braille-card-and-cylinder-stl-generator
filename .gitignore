@@ -75,9 +75,6 @@ tmp_spec_direct.py
 # Vercel Runtime Logs (diagnostic exports - do not commit)
 Vercel Runtime Logs/
 
-# OpenSCAD version (work in progress - to be revisited)
-OpenSCAD/
-
 # BANA Fact Sheet source artifacts (regenerated on demand by scripts/fetch_bana_business_cards.py)
 docs/guides/_bana_source/
 

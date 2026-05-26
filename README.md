@@ -48,9 +48,12 @@ There's a **Help** button inside the app that walks you through choosing what to
 
 ## OpenSCAD version
 
-Prefer working offline or want full parametric control? There's a standalone OpenSCAD version of this tool:
+Prefer working offline or want full parametric control? An OpenSCAD version of this tool is included in the [`OpenSCAD/`](OpenSCAD/) folder.
 
-[braille-stl-generator-openscad](https://github.com/BrennenJohnston/braille-stl-generator-openscad)
+- [`OpenSCAD/Braille_Card_And_Cylinder_STL_Generator.scad`](OpenSCAD/Braille_Card_And_Cylinder_STL_Generator.scad) — the main script (open this in [OpenSCAD](https://openscad.org/) and use the Customizer panel)
+- [`OpenSCAD/README.md`](OpenSCAD/README.md) — quick start, parameters, troubleshooting
+- [`OpenSCAD/PARAMETER_MAPPING.md`](OpenSCAD/PARAMETER_MAPPING.md) — how OpenSCAD parameters correspond to the web UI controls
+- [`OpenSCAD/docs/`](OpenSCAD/docs/) — coordinate system reference, web-to-OpenSCAD porting guide, testing notes
 
 The web app translates automatically; the OpenSCAD version needs you to translate manually (using [Branah.com](https://www.branah.com/braille-translator)), but it works without an internet connection and integrates with existing CAD workflows.
 

@@ -19,7 +19,7 @@ dependencies = [
 dev = [
     # Geometry processing (server-side generation)
     "numpy==2.4.2",
-    "trimesh==4.11.1",
+    "trimesh==4.11.2",
     "shapely==2.1.2",
     "mapbox_earcut==2.0.0",
     "scipy==1.17.0",        # For mesh.fix_normals()

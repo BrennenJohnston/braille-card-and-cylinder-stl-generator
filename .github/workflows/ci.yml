@@ -95,7 +95,11 @@ jobs:
       run: npm ci
 
     - name: Install Playwright browsers
-      run: npx playwright install --with-deps chromium
+      # Install all browsers defined in playwright.config.ts (chromium, firefox, webkit).
+      # Firefox 114+ and Safari/WebKit 15+ are first-class targets per
+      # playwright.config.ts, so all three engines must be available in CI to
+      # catch regressions that don't reproduce on Chromium.
+      run: npx playwright install --with-deps chromium firefox webkit
 
     - name: Run Playwright E2E tests
       run: npm run test:e2e

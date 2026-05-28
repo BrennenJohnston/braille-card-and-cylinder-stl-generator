@@ -19,30 +19,51 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Silent Truncation Regression Gate', () => {
+  // WebKit on Linux under Playwright CI initializes this page noticeably
+  // slower than Chromium/Firefox (large inline script + vendored
+  // manifold-3d / three.js workers parse cold). Give the whole suite
+  // 120s so the safety-critical beforeEach setup can finish before the
+  // test logic even starts; Chromium/Firefox still complete well under
+  // the prior 60s budget.
+  test.describe.configure({ timeout: 120_000 });
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    // Wait for the inline initialization script to settle. The expert
+    // toggle's click listener is attached late in that script, so
+    // clicking before networkidle can race the listener on slower
+    // engines (observed on Playwright WebKit on Ubuntu) and the
+    // subsequent waitForSelector for #expert-settings then hangs.
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('networkidle');
     // Wait for the app to fully load
     await page.waitForSelector('#language-table');
-    
+
     // Expand Expert Mode to access grid_rows and grid_columns settings
     const expertToggle = page.locator('#expert-toggle');
     await expect(expertToggle).toBeVisible();
     // Check if expert settings are already expanded
     const isExpanded = await expertToggle.getAttribute('aria-expanded');
     if (isExpanded !== 'true') {
-      await expertToggle.click();
-      // Wait for expert settings to be visible
-      await page.waitForSelector('#expert-settings', { state: 'visible' });
+      // Use a JS click so the registered event listener fires even if
+      // an overlay (e.g. transient focus ring) would intercept a
+      // pointer click on WebKit. The handler at index.html line ~5517
+      // toggles #expert-settings visibility synchronously.
+      await expertToggle.evaluate((el: HTMLElement) => el.click());
+      // Wait for expert settings to be visible (explicit, short timeout
+      // so a regression here surfaces clearly instead of consuming the
+      // full suite timeout).
+      await page.waitForSelector('#expert-settings', { state: 'visible', timeout: 15_000 });
     }
-    
+
     // Expand the "Braille Spacing" submenu which contains grid_rows and grid_columns
     const spacingToggle = page.locator('button.expert-submenu-toggle:has-text("Braille Spacing")');
     await expect(spacingToggle).toBeVisible();
     const spacingExpanded = await spacingToggle.getAttribute('aria-expanded');
     if (spacingExpanded !== 'true') {
-      await spacingToggle.click();
+      await spacingToggle.evaluate((el: HTMLElement) => el.click());
       // Wait for the spacing panel to be visible
-      await page.waitForSelector('#expert-panel-spacing', { state: 'visible' });
+      await page.waitForSelector('#expert-panel-spacing', { state: 'visible', timeout: 15_000 });
     }
   });
 

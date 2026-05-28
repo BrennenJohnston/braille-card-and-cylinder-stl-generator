@@ -273,7 +273,7 @@ Index of all specification documents for the Braille Card and Cylinder STL Gener
 **Purpose:** Implementation details for Manifold WASM cylinder generation
 **Covers:**
 - Dual-worker architecture (three-bvh-csg for cards, Manifold for cylinders)
-- CDN-based WASM loading strategy
+- Same-origin vendored WASM loading (`/static/vendor/manifold-3d/`)
 - Mobile compatibility with lazy loading
 - Guaranteed manifold output for cylinders
 - Testing checklist

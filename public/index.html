@@ -3304,15 +3304,36 @@
 
         function showCapabilityWarning(issues) {
             const errorDiv = document.getElementById('error-message');
-            if (errorDiv) {
-                errorDiv.innerHTML = `
-                    <strong>Limited Browser Support</strong>
-                    <p>Your browser is missing features required for full functionality:</p>
-                    <ul>${issues.map(i => '<li>' + i + '</li>').join('')}</ul>
-                    <p>Some features may not work. Please update your browser for the best experience.</p>
-                `;
-                errorDiv.style.display = 'block';
+            if (!errorDiv) return;
+            // Do NOT replace errorDiv.innerHTML here — the inner spans
+            // #error-text-container, #error-text, #error-subtext are
+            // cached by reference later in the script and re-used by the
+            // form submit handler. Wiping them would orphan those
+            // references and break STL generation downstream. Instead,
+            // append the warning as a sibling that does not collide with
+            // the existing structure.
+            if (!errorDiv.querySelector('.capability-warning')) {
+                const warning = document.createElement('div');
+                warning.className = 'capability-warning';
+                const header = document.createElement('strong');
+                header.textContent = 'Limited Browser Support';
+                warning.appendChild(header);
+                const desc = document.createElement('p');
+                desc.textContent = 'Your browser is missing features required for full functionality:';
+                warning.appendChild(desc);
+                const list = document.createElement('ul');
+                for (const issue of issues) {
+                    const li = document.createElement('li');
+                    li.textContent = issue;
+                    list.appendChild(li);
+                }
+                warning.appendChild(list);
+                const footer = document.createElement('p');
+                footer.textContent = 'Some features may not work. Please update your browser for the best experience.';
+                warning.appendChild(footer);
+                errorDiv.appendChild(warning);
             }
+            errorDiv.style.display = 'block';
         }
 
         // Call early in initialization (after DOM is ready)
@@ -4119,7 +4140,20 @@
         // Add event handler for the action button
         actionBtn.addEventListener('click', () => {
             if (actionBtn.getAttribute('data-state') === 'generate') {
-                form.dispatchEvent(new Event('submit'));
+                // Use form.requestSubmit() instead of dispatching a synthetic
+                // 'submit' Event. The synthetic-event approach is unreliable
+                // across engines: Firefox processes the form's default action
+                // (native HTTP GET submission, which navigates away and wipes
+                // page state) even when the handler calls preventDefault on
+                // a non-cancelable synthetic event. requestSubmit() fires a
+                // cancelable submit event consistently, so the existing
+                // form.onsubmit handler's preventDefault() actually prevents
+                // navigation. Supported in Firefox 75+, Safari 16+, Chrome 76+.
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                } else {
+                    form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                }
             } else if (actionBtn.getAttribute('data-state') === 'download') {
                 // Download the generated STL
                 if (lastGeneratedSTLUrl) {
@@ -5806,37 +5840,86 @@
             braillePreview.style.display = 'block';
         });
 
-        // WebGL feature detection
+        // WebGL feature detection. Probes WebGL2 first (matching three.js's
+        // WebGLRenderer behavior), then falls back to WebGL1. Uses the same
+        // context attributes the real renderer will request so that a probe
+        // success is a strong signal the real ctor will succeed. The test
+        // context is released immediately via WEBGL_lose_context so it does
+        // not count against the page's per-document context budget.
         function checkWebGLSupport() {
-            try {
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                return !!context;
-            } catch (e) {
-                return false;
+            const isMobile = window.innerWidth <= 768;
+            const attrs = {
+                antialias: !isMobile,
+                powerPreference: isMobile ? 'low-power' : 'high-performance',
+                failIfMajorPerformanceCaveat: false,
+            };
+            const canvas = document.createElement('canvas');
+            for (const type of ['webgl2', 'webgl', 'experimental-webgl']) {
+                try {
+                    const ctx = canvas.getContext(type, attrs);
+                    if (ctx) {
+                        try { ctx.getExtension('WEBGL_lose_context')?.loseContext(); } catch (_) { /* ignore */ }
+                        return true;
+                    }
+                } catch (_) { /* try next type */ }
             }
+            return false;
+        }
+
+        // Append the .webgl-error notice into #viewer without destroying
+        // sibling children. The #viewer element hosts critical DOM nodes
+        // (#error-message, #error-text, #error-subtext, etc.) that the
+        // form submit handler caches at script-load time; replacing
+        // viewer.innerHTML would orphan those cached references and break
+        // the STL generation flow even though STL generation does not
+        // require WebGL. Idempotent: skips append if a notice is already
+        // present (init3D can be called more than once).
+        function showWebGLUnavailableNotice(message) {
+            if (viewer.querySelector('.webgl-error')) return;
+            const block = document.createElement('div');
+            block.className = 'webgl-error';
+            block.setAttribute('role', 'alert');
+            block.innerHTML = `
+                <strong>WebGL Not Available</strong>
+                <p>${message}</p>
+            `;
+            viewer.appendChild(block);
         }
 
         function init3D() {
             // Check WebGL support before initializing
             if (!checkWebGLSupport()) {
-                viewer.innerHTML = `
-                    <div class="webgl-error" role="alert">
-                        <strong>WebGL Not Available</strong>
-                        <p>Your browser does not support WebGL, which is required for the 3D preview.
-                        You can still generate and download STL files.</p>
-                        <p>Try updating your browser or enabling hardware acceleration in your browser settings.</p>
-                    </div>
-                `;
+                showWebGLUnavailableNotice(
+                    "Your browser does not support WebGL, which is required for the 3D preview. " +
+                    "You can still generate and download STL files. " +
+                    "Try updating your browser or enabling hardware acceleration in your browser settings."
+                );
                 return; // Skip rest of init3D
             }
 
             // Mobile-optimized renderer settings
             const isMobile = window.innerWidth <= 768;
-            renderer = new THREE.WebGLRenderer({
-                antialias: !isMobile, // Disable antialiasing on mobile for performance
-                powerPreference: isMobile ? "low-power" : "high-performance"
-            });
+            // Defensive renderer construction: even after checkWebGLSupport()
+            // returns true, three.js's WebGLRenderer can still throw on
+            // environments where WebGL2 is partially blocked (e.g. Firefox
+            // gfx.webrender.all=false with AllowWebgl2:false, RDP sessions,
+            // or GPU blocklist edge cases). Falling through to the existing
+            // .webgl-error block keeps the form interactive and preserves
+            // the STL download flow, which is fully independent of WebGL.
+            try {
+                renderer = new THREE.WebGLRenderer({
+                    antialias: !isMobile, // Disable antialiasing on mobile for performance
+                    powerPreference: isMobile ? "low-power" : "high-performance"
+                });
+            } catch (e) {
+                console.warn('WebGL renderer creation failed; 3D preview disabled:', e && e.message ? e.message : e);
+                renderer = null;
+                showWebGLUnavailableNotice(
+                    "Your browser's 3D preview is disabled (likely due to GPU drivers, remote desktop, " +
+                    "or a virtual machine). You can still generate and download STL files normally."
+                );
+                return;
+            }
             const initW = viewer.clientWidth;
             const initH = viewer.clientHeight || 420;
             renderer.setSize(initW, initH, false);
@@ -5984,6 +6067,8 @@
         }
 
         function onWindowResize() {
+            // Guard: a resize event can fire after init3D() bailed out (no WebGL).
+            if (!renderer || !camera) return;
             const targetW = viewer.clientWidth;
             const targetH = viewer.clientHeight || 420;
             camera.aspect = targetW / targetH;
@@ -6510,6 +6595,13 @@
 
         function loadSTL(url) {
             init3D();
+            // Preview disabled (init3D bailed out because WebGL is unavailable).
+            // The STL blob already exists at lastGeneratedSTLUrl, and the caller
+            // runs setToDownloadState() immediately after this returns, so the
+            // user can still download. We just skip the rotating 3D preview.
+            if (!renderer || !scene || !camera) {
+                return;
+            }
             const loader = new STLLoader();
             loader.load(url, function (geometry) {
                 if (mesh) scene.remove(mesh);

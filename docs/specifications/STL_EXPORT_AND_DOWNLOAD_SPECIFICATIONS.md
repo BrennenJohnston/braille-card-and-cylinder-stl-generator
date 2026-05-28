@@ -516,29 +516,28 @@ Manifold 3D WASM provides mesh repair capabilities to fix non-manifold edges tha
 
 **Source:** `static/workers/csg-worker.js` (lines 81-106)
 
+Manifold is vendored under `/static/vendor/manifold-3d/` (manifold.js + manifold.wasm) so it loads from the same origin as the app. This removes the dependency on `cdn.jsdelivr.net` / `unpkg.com`, which keeps the worker functional under Firefox Enhanced Tracking Protection (Strict), Safari content blockers, locked-down corporate networks, and offline use.
+
 ```javascript
 let ManifoldModule = null;
 let manifoldReady = false;
 
 async function initManifold() {
-    const cdnUrls = [
-        'https://cdn.jsdelivr.net/npm/manifold-3d@2.5.1/manifold.js',
-        'https://unpkg.com/manifold-3d@2.5.1/manifold.js'
-    ];
+    const manifoldJsUrl = '/static/vendor/manifold-3d/manifold.js';
+    const manifoldWasmUrl = '/static/vendor/manifold-3d/manifold.wasm';
 
-    for (const url of cdnUrls) {
-        try {
-            importScripts(url);
-            ManifoldModule = await Module();
-            manifoldReady = true;
-            console.log('CSG Worker: Manifold3D WASM loaded from', url);
-            return;
-        } catch (error) {
-            console.warn('Failed to load Manifold from', url);
-        }
+    try {
+        ManifoldModule = await import(manifoldJsUrl);
+        // Pin the .wasm sibling path so it resolves correctly even when the
+        // worker itself is loaded from a blob: URL or a different origin.
+        await ManifoldModule.default({
+            locateFile: (path) => path.endsWith('.wasm') ? manifoldWasmUrl : path,
+        });
+        manifoldReady = true;
+        console.log('CSG Worker: Manifold3D WASM loaded from', manifoldJsUrl);
+    } catch (error) {
+        console.warn('CSG Worker: Manifold3D not available, mesh repair disabled:', error.message);
     }
-
-    console.log('CSG Worker: Manifold3D not available, mesh repair disabled');
 }
 ```
 
@@ -1239,7 +1238,7 @@ async function handleGenerationError(error) {
 
 | Component | Size | Notes |
 |-----------|------|-------|
-| manifold.js | ~2.5 MB | Loaded from CDN |
+| manifold.js | ~2.5 MB | Vendored under `/static/vendor/manifold-3d/` (same-origin) |
 | WASM module | ~1.5 MB | Part of above |
 | Runtime memory | ~10-20 MB | During repair |
 
@@ -1288,7 +1287,7 @@ async function test_geometry_consistency() {
 | Library | three-bvh-csg | Manifold WASM |
 | Triangle count | May vary | Optimized |
 | Manifold guarantee | No | Yes |
-| Bundle size | ~200 KB | ~2.5 MB (CDN) |
+| Bundle size | ~200 KB | ~2.5 MB (vendored same-origin) |
 | Best for | Flat geometry | Curved surfaces |
 
 ---

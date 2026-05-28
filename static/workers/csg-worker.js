@@ -24,53 +24,38 @@ try {
     const exporterModule = await import('/static/examples/STLExporter.js');
     STLExporter = exporterModule.STLExporter;
 
-    // Try to load FontLoader and TextGeometry (local first, then CDN fallback)
+    // FontLoader / TextGeometry are vendored locally under /static/examples/.
+    // CDN fallbacks were removed so the worker works in Firefox ETP Strict,
+    // Safari content blockers, offline, and locked-down corporate networks.
     try {
         const fontLoaderModule = await import('/static/examples/jsm/loaders/FontLoader.js');
         FontLoader = fontLoaderModule.FontLoader;
-    } catch (e1) {
-        try {
-            const fontLoaderModule = await import('https://unpkg.com/three@0.152.2/examples/jsm/loaders/FontLoader.js');
-            FontLoader = fontLoaderModule.FontLoader;
-        } catch (e2) {
-            console.warn('CSG Worker: Failed to load FontLoader locally and from CDN');
-        }
+    } catch (e) {
+        console.warn('CSG Worker: Failed to load FontLoader from /static/examples/jsm/loaders/FontLoader.js:', e?.message);
     }
 
     try {
         const textGeomModule = await import('/static/examples/jsm/geometries/TextGeometry.js');
         TextGeometry = textGeomModule.TextGeometry;
-    } catch (e1) {
-        try {
-            const textGeomModule = await import('https://unpkg.com/three@0.152.2/examples/jsm/geometries/TextGeometry.js');
-            TextGeometry = textGeomModule.TextGeometry;
-        } catch (e2) {
-            console.warn('CSG Worker: Failed to load TextGeometry locally and from CDN');
-        }
+    } catch (e) {
+        console.warn('CSG Worker: Failed to load TextGeometry from /static/examples/jsm/geometries/TextGeometry.js:', e?.message);
     }
 
-    // Attempt to load a default font (local first, then CDN); non-fatal if it fails
+    // Attempt to load the bundled font (non-fatal). If absent, character
+    // markers fall back to a box approximation in createCylinderCharacterMarker.
     if (FontLoader) {
-        const fontUrls = [
-            '/static/fonts/helvetiker_regular.typeface.json',
-            'https://unpkg.com/three@0.152.2/examples/fonts/helvetiker_regular.typeface.json',
-        ];
-        for (const url of fontUrls) {
-            try {
-                const resp = await fetch(url, { mode: 'cors' });
-                if (resp && resp.ok) {
-                    const json = await resp.json();
-                    const loader = new FontLoader();
-                    LoadedFont = loader.parse(json);
-                    console.log('CSG Worker: Loaded font from', url);
-                    break;
-                }
-            } catch (e) {
-                // Try next
+        try {
+            const resp = await fetch('/static/fonts/helvetiker_regular.typeface.json');
+            if (resp && resp.ok) {
+                const json = await resp.json();
+                const loader = new FontLoader();
+                LoadedFont = loader.parse(json);
+                console.log('CSG Worker: Loaded font from /static/fonts/helvetiker_regular.typeface.json');
+            } else {
+                console.warn('CSG Worker: No local font available; character markers will fall back to rectangles');
             }
-        }
-        if (!LoadedFont) {
-            console.warn('CSG Worker: No font available; character markers will fall back to rectangles');
+        } catch (e) {
+            console.warn('CSG Worker: No local font available; character markers will fall back to rectangles:', e?.message);
         }
     }
 
@@ -79,27 +64,28 @@ try {
     stlExporter = new STLExporter();
 
     // Load manifold3d WASM for mesh repair (optional, non-fatal)
+    // Vendored under /static/vendor/manifold-3d/ - no network access required.
     try {
-        const manifoldUrls = [
-            'https://cdn.jsdelivr.net/npm/manifold-3d@2.5.1/manifold.js',
-            'https://unpkg.com/manifold-3d@2.5.1/manifold.js'
-        ];
+        const manifoldJsUrl = '/static/vendor/manifold-3d/manifold.js';
+        const manifoldWasmUrl = '/static/vendor/manifold-3d/manifold.wasm';
 
-        for (const url of manifoldUrls) {
-            try {
-                ManifoldModule = await import(url);
-                // Initialize WASM
-                await ManifoldModule.default();
-                manifoldReady = true;
-                console.log('CSG Worker: Manifold3D WASM loaded for mesh repair from', url);
-                break;
-            } catch (e) {
-                // Try next URL
-            }
-        }
-
-        if (!manifoldReady) {
-            console.warn('CSG Worker: Manifold3D not available from any CDN, mesh repair disabled');
+        try {
+            ManifoldModule = await import(manifoldJsUrl);
+            // Initialize WASM, pinning the .wasm sibling path so it resolves
+            // correctly when the worker itself is loaded from a blob: URL or
+            // from a different origin than this file.
+            await ManifoldModule.default({
+                locateFile: (path) => {
+                    if (path.endsWith('.wasm')) {
+                        return manifoldWasmUrl;
+                    }
+                    return path;
+                }
+            });
+            manifoldReady = true;
+            console.log('CSG Worker: Manifold3D WASM loaded for mesh repair from', manifoldJsUrl);
+        } catch (e) {
+            console.warn('CSG Worker: Manifold3D not available, mesh repair disabled:', e.message);
         }
     } catch (e) {
         console.warn('CSG Worker: Manifold3D not available, mesh repair disabled:', e.message);

@@ -69,7 +69,7 @@ Created a dedicated Manifold CSG worker (`csg-worker-manifold.js`) that uses **M
    - `cylinder` → Uses Manifold worker (REQUIRED - no fallback)
    - `card` → Uses standard three-bvh-csg worker
 
-2. **No Fallback**: If Manifold worker fails to load (CDN issue, timeout), cylinder generation will display an error message asking the user to refresh. There is NO fallback to the standard worker for cylinders because it produces non-manifold edges.
+2. **No Fallback**: If Manifold worker fails to load (vendored WASM file missing or server error), cylinder generation will display an error message asking the user to refresh. There is NO fallback to the standard worker for cylinders because it produces non-manifold edges.
 
 3. **Coordinate System**: Manifold uses Z-up natively, matching the STL/CAD convention
 
@@ -77,7 +77,7 @@ Created a dedicated Manifold CSG worker (`csg-worker-manifold.js`) that uses **M
 
 ### Successful Cylinder Generation (Manifold)
 ```
-Manifold CSG Worker: WASM loaded from https://cdn.jsdelivr.net/npm/manifold-3d@2.5.1/manifold.js
+Manifold CSG Worker: WASM loaded and initialized from /static/vendor/manifold-3d/manifold.js
 Manifold CSG Worker: Initialization complete
 Using Manifold CSG worker for cylinder generation
 Manifold CSG Worker: Processing cylinder negative with 500 dots and 2 markers
@@ -120,7 +120,7 @@ Client-side CSG generation successful
 ### Problem
 Mobile browsers (especially iOS Safari) were failing with "no manifold csg worker available" error because:
 1. Top-level `await` in the worker caused immediate failure on some mobile browsers
-2. WASM loading from CDN was timing out on slower mobile connections
+2. WASM loading was timing out on slower mobile connections (when the worker was still using CDN-hosted Manifold; resolved further by vendoring locally — see `OPTIONAL_MANIFOLD3D_PATH.md`)
 3. The 30-second timeout wasn't enough for mobile network conditions
 
 ### Solution
@@ -141,9 +141,9 @@ Implemented **lazy WASM loading** in `csg-worker-manifold.js`:
 ```
 Manifold CSG Worker ready (WASM loading in background)
 Manifold CSG Worker: WASM not ready, initializing on demand...
-Manifold CSG Worker: Attempting to load from https://cdn.jsdelivr.net/npm/manifold-3d@2.5.1/manifold.js
+Manifold CSG Worker: Loading from /static/vendor/manifold-3d/manifold.js
 Manifold CSG Worker: Module imported, initializing WASM...
-Manifold CSG Worker: WASM loaded and initialized
+Manifold CSG Worker: WASM loaded and initialized from /static/vendor/manifold-3d/manifold.js
 ```
 
 ## Rollback

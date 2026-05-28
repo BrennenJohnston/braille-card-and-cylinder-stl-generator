@@ -105,16 +105,20 @@ def set_security_headers(response):
     if response.status_code == 304:
         return response
 
-    # CSP: Allow client-side CSG workers and Manifold WASM CDNs
-    # NOTE: 'wasm-unsafe-eval' is preferred over 'unsafe-eval' for WASM-only code execution
-    # Both are included for backward compatibility with older browsers (Chrome <97, Firefox <102)
+    # CSP: All client-side dependencies (Three.js, three-bvh-csg, three-mesh-bvh,
+    # Manifold-3D WASM) are vendored under /static/, so no third-party CDN
+    # origins are needed in connect-src or script-src. 'wasm-unsafe-eval' is
+    # the modern directive for instantiating WebAssembly; 'unsafe-eval' is
+    # retained as a fallback for Safari 15.0-15.3 (March 2022 added
+    # 'wasm-unsafe-eval' support in Safari 15.4). Browsers that understand
+    # 'wasm-unsafe-eval' ignore 'unsafe-eval' for WASM instantiation.
     csp_directives = [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' 'unsafe-eval' blob: cdn.jsdelivr.net unpkg.com",
+        "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' 'unsafe-eval' blob:",
         "worker-src 'self' blob:",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
-        "connect-src 'self' blob: cdn.jsdelivr.net unpkg.com",
+        "connect-src 'self' blob:",
         "font-src 'self' data:",
         "object-src 'none'",
         "base-uri 'self'",

@@ -33,43 +33,46 @@ async function initManifold() {
 
     // Start initialization
     initPromise = (async () => {
-        const manifoldUrls = [
-            'https://cdn.jsdelivr.net/npm/manifold-3d@2.5.1/manifold.js',
-            'https://unpkg.com/manifold-3d@2.5.1/manifold.js'
-        ];
+        // Vendored locally under /static/vendor/manifold-3d/ so the worker works
+        // in Firefox (ETP Strict), Safari content blockers, offline, and locked-down
+        // networks. See docs/development/OPTIONAL_MANIFOLD3D_PATH.md for the recipe.
+        const manifoldJsUrl = '/static/vendor/manifold-3d/manifold.js';
+        const manifoldWasmUrl = '/static/vendor/manifold-3d/manifold.wasm';
 
-        let lastError = null;
+        try {
+            console.log('Manifold CSG Worker: Loading from', manifoldJsUrl);
 
-        for (const url of manifoldUrls) {
-            try {
-                console.log('Manifold CSG Worker: Attempting to load from', url);
+            const module = await import(/* webpackIgnore: true */ manifoldJsUrl);
+            console.log('Manifold CSG Worker: Module imported, initializing WASM...');
 
-                // Use dynamic import with explicit error handling
-                const module = await import(/* webpackIgnore: true */ url);
-                console.log('Manifold CSG Worker: Module imported, initializing WASM...');
+            // Initialize the WASM module. Emscripten resolves manifold.wasm
+            // relative to the JS file's URL by default, but a worker module
+            // can be hosted from any path (e.g. a blob: URL), so pin the
+            // .wasm location explicitly via locateFile.
+            wasm = await module.default({
+                locateFile: (path) => {
+                    if (path.endsWith('.wasm')) {
+                        return manifoldWasmUrl;
+                    }
+                    return path;
+                }
+            });
+            wasm.setup();
+            Manifold = wasm.Manifold;
+            CrossSection = wasm.CrossSection;
+            Mesh = wasm.Mesh;
+            manifoldReady = true;
+            initError = null;
 
-                // Initialize the WASM module
-                wasm = await module.default();
-                wasm.setup();
-                Manifold = wasm.Manifold;
-                CrossSection = wasm.CrossSection;
-                Mesh = wasm.Mesh;
-                manifoldReady = true;
-                initError = null;
-
-                console.log('Manifold CSG Worker: WASM loaded and initialized from', url);
-                console.log('Manifold CSG Worker: Available classes:', Object.keys(wasm).join(', '));
-                return true;
-            } catch (e) {
-                lastError = e;
-                console.warn('Manifold CSG Worker: Failed to load from', url, ':', e.message);
-                if (e.stack) console.warn('Manifold CSG Worker: Error stack:', e.stack);
-            }
+            console.log('Manifold CSG Worker: WASM loaded and initialized from', manifoldJsUrl);
+            console.log('Manifold CSG Worker: Available classes:', Object.keys(wasm).join(', '));
+            return true;
+        } catch (e) {
+            console.error('Manifold CSG Worker: Failed to load from', manifoldJsUrl, ':', e.message);
+            if (e.stack) console.error('Manifold CSG Worker: Error stack:', e.stack);
+            initError = e;
+            throw initError;
         }
-
-        // All CDNs failed
-        initError = lastError || new Error('Failed to load Manifold WASM from any CDN');
-        throw initError;
     })();
 
     try {
@@ -1672,7 +1675,7 @@ self.onmessage = async function(event) {
                 self.postMessage({
                     type: 'error',
                     requestId: requestId,
-                    error: 'Failed to load Manifold WASM. This may be due to a slow or restricted network connection. Please ensure you have internet access and try refreshing the page. Error: ' + e.message
+                    error: 'Failed to load Manifold WASM from /static/vendor/manifold-3d/. The vendored WASM file may be missing or the server returned an error. Please refresh the page and try again. Error: ' + e.message
                 });
                 return;
             }

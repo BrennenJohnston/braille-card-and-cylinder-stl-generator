@@ -37,21 +37,23 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
 
-  // Configure projects for different browsers
+  // Configure projects for different browsers.
+  // Firefox and WebKit are first-class targets per the project's stated browser
+  // minimums (Firefox 114+, Safari 15+). Keeping them in CI prevents regressions
+  // on those engines from slipping through Chromium-only runs.
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    // Additional browsers can be enabled for full compatibility testing
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+    },
   ],
 
   // Web server configuration

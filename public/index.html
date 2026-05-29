@@ -10,7 +10,19 @@
     <title>Custom Braille STL Generator</title>
     <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
     <link rel="alternate icon" href="/favicon.ico" sizes="any">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <!--
+        Google Fonts stylesheet removed (2026-05-28). The page's CSP
+        (style-src 'self' 'unsafe-inline') already blocks the request,
+        and the failed network attempt was the dominant cause of
+        WebKit-on-Linux Playwright CI hangs: each page load triggered
+        repeated TLS handshake retries to fonts.googleapis.com that
+        delayed networkidle by tens of seconds and starved the inline
+        init script. The Inter font is the first preference in the
+        body font-family, and the rule already declares the proper
+        fallbacks ('Inter', system-ui, Arial, sans-serif), so the page
+        gracefully renders in the platform's UI font with no visible
+        regression.
+    -->
 
     <!-- Unsupported browser fallback - runs only if ES6 modules are not supported -->
     <script nomodule>

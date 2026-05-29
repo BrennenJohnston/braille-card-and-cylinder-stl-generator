@@ -41,7 +41,7 @@ All planned features have been successfully implemented. The braille STL generat
 **Manifold Worker**: `static/workers/csg-worker-manifold.js`
 - Used for **cylinders**
 - Uses Manifold WASM primitives from start
-- ~2.5MB WASM bundle (loaded from CDN)
+- ~2.5MB WASM bundle (vendored under `/static/vendor/manifold-3d/`, loaded same-origin)
 - **Guarantees watertight/manifold output**
 
 **Worker Selection Logic**:

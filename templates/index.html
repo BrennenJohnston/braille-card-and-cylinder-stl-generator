@@ -29,7 +29,15 @@
     <title>Custom Braille STL Generator</title>
     <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
     <link rel="alternate icon" href="/favicon.ico" sizes="any">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <!--
+        Google Fonts stylesheet removed (2026-05-28). The page's CSP
+        already blocks the request, and the failed network attempt was
+        the dominant cause of WebKit-on-Linux Playwright CI hangs. The
+        Inter font is still the first preference in the body
+        font-family; the rule's existing fallbacks
+        ('Inter', system-ui, Arial, sans-serif) render gracefully when
+        Inter is not installed locally.
+    -->
     <style>
         /* WCAG 1.4.12 Text Spacing Support */
         * {

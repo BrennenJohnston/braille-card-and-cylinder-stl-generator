@@ -46,15 +46,26 @@ The Braille Card and Cylinder STL Generator is **fully compatible** with all mod
 
 ### Minimum Browser Versions Required
 
-| Browser | Minimum Version | Release Date |
-|---------|-----------------|--------------|
-| Chrome | 63+ | Dec 2017 |
-| Firefox | 67+ | May 2019 |
-| Safari | 14.1+ | April 2021 |
-| Edge | 79+ (Chromium) | Jan 2020 |
-| Chrome Android | 63+ | Dec 2017 |
-| Safari iOS | 14.5+ | April 2021 |
-| Samsung Internet | 8.2+ | Dec 2018 |
+The effective minimums are determined by **module workers** (`new Worker(url, { type: 'module' })`)
+used by the client-side CSG pipeline. Browsers without stable module worker support
+fall outside the supported set even if every other API would work.
+
+| Browser | Minimum Version | Release Date | Gated By |
+|---------|-----------------|--------------|----------|
+| Chrome | 80+ | Feb 2020 | Module workers |
+| Firefox | 114+ | June 2023 | Module workers (stable) |
+| Safari | 15+ | Sept 2021 | Module workers |
+| Edge | 80+ (Chromium) | Feb 2020 | Module workers |
+| Chrome Android | 80+ | Feb 2020 | Module workers |
+| Safari iOS | 15+ | Sept 2021 | Module workers |
+| Samsung Internet | 13.0+ | March 2021 | Module workers |
+
+> **Note:** Earlier rows in this document listed Firefox 67+ / Safari 14.1+ as
+> "minimum versions" based on individual JS features. Those values are accurate
+> for the underlying JS features in isolation, but the **app as a whole**
+> requires module workers, which raises the floor to Firefox 114+ and Safari
+> 15+. See also `docs/development/CLIENT_SIDE_CSG_DOCUMENTATION.md` lines 197-212
+> and `docs/specifications/STL_EXPORT_AND_DOWNLOAD_SPECIFICATIONS.md` line 1334.
 
 ---
 
@@ -65,7 +76,7 @@ The Braille Card and Cylinder STL Generator is **fully compatible** with all mod
 | Technology | Usage in App | Browser Support |
 |------------|--------------|-----------------|
 | **ES6 Modules** (`<script type="module">`) | Main application code | Chrome 61+, Firefox 60+, Safari 11+, Edge 16+ |
-| **Dynamic Imports** (`import()`) | CDN module loading | Chrome 63+, Firefox 67+, Safari 11.1+, Edge 79+ |
+| **Dynamic Imports** (`import()`) | Same-origin module loading from `/static/` | Chrome 63+, Firefox 67+, Safari 11.1+, Edge 79+ |
 | **async/await** | API calls, worker communication | Chrome 55+, Firefox 52+, Safari 10.1+, Edge 15+ |
 | **Arrow Functions** | Throughout codebase | Chrome 45+, Firefox 22+, Safari 10+, Edge 12+ |
 | **Template Literals** | String construction | Chrome 41+, Firefox 34+, Safari 9+, Edge 12+ |
@@ -133,13 +144,14 @@ The Braille Card and Cylinder STL Generator is **fully compatible** with all mod
 ### Mozilla Firefox (Windows, macOS, Linux)
 
 **Status:** ✅ Full Support
-**Minimum Version:** 67
+**Minimum Version:** 114 (June 2023) — gated by stable module worker support
+**CI Coverage:** Yes — Firefox runs in the Playwright suite alongside Chromium and WebKit (`playwright.config.ts`)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
 | 3D Preview | ✅ | Good WebGL support |
 | CSG Worker (Cards) | ✅ | Working |
-| CSG Worker (Cylinders) | ✅ | Working |
+| CSG Worker (Cylinders) | ✅ | Working — Manifold WASM loaded from `/static/vendor/manifold-3d/` (no CDN dependency, works with ETP Strict) |
 | Braille Translation | ✅ | Working |
 | Theme System | ✅ | Native scrollbar-width support |
 | File Download | ✅ | Working |
@@ -148,7 +160,7 @@ The Braille Card and Cylinder STL Generator is **fully compatible** with all mod
 ### Microsoft Edge (Chromium-based)
 
 **Status:** ✅ Full Support
-**Minimum Version:** 79
+**Minimum Version:** 80 (Feb 2020) — matches Chrome (module workers)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -157,12 +169,13 @@ The Braille Card and Cylinder STL Generator is **fully compatible** with all mod
 ### Apple Safari (macOS)
 
 **Status:** ✅ Full Support
-**Minimum Version:** 14.1
+**Minimum Version:** 15 (Sept 2021) — gated by module worker support (`new Worker(url, { type: 'module' })`)
+**CI Coverage:** Yes — WebKit runs in the Playwright suite (`playwright.config.ts`)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
 | 3D Preview | ✅ | Minor WebGL quirks on M-series chips |
-| CSG Worker | ✅ | May be slower than Chrome |
+| CSG Worker | ✅ | May be slower than Chrome; Manifold WASM loaded from `/static/vendor/manifold-3d/` (same-origin, works with content blockers) |
 | Braille Translation | ✅ | Working |
 | Theme System | ✅ | CSS variables supported |
 | File Download | ✅ | Working |
@@ -170,6 +183,7 @@ The Braille Card and Cylinder STL Generator is **fully compatible** with all mod
 **Safari-Specific Notes:**
 - WebGL context may be lost when tab is backgrounded (handled by app)
 - Some M3/M4 chips may experience occasional WebGL issues (rare)
+- `wasm-unsafe-eval` CSP directive is supported from Safari 15.4; for 15.0-15.3, the CSP also retains `unsafe-eval` as a fallback so WASM can still instantiate
 
 ---
 
@@ -178,7 +192,7 @@ The Braille Card and Cylinder STL Generator is **fully compatible** with all mod
 ### Safari iOS (iPhone, iPad)
 
 **Status:** ⚠️ Supported with Caveats
-**Minimum Version:** 14.5
+**Minimum Version:** 15 (Sept 2021) — gated by module worker support, matches desktop Safari
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -363,10 +377,13 @@ renderer.domElement.addEventListener('webglcontextrestored', () => {
 
 ### Feature Support Summary
 
-| Feature | Chrome 63+ | Firefox 67+ | Safari 14.1+ | Edge 79+ | Safari iOS 14.5+ | Chrome Android 63+ | IE/Legacy Edge |
-|---------|------------|-------------|--------------|----------|------------------|-------------------|----------------|
+Column headers reflect the **effective app-wide minimums** (driven by module workers), not the per-feature minimum versions. Individual rows that pre-date module workers are supported at lower versions in isolation, but those versions are not supported by the app as a whole.
+
+| Feature | Chrome 80+ | Firefox 114+ | Safari 15+ | Edge 80+ | Safari iOS 15+ | Chrome Android 80+ | IE/Legacy Edge |
+|---------|------------|--------------|------------|----------|----------------|--------------------|----------------|
 | ES6 Modules | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Dynamic Imports | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Module Workers | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | WebAssembly | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Web Workers | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (partial) |
 | WebGL | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | ❌ |

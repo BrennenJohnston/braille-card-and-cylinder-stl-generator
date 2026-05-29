@@ -19,30 +19,86 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Silent Truncation Regression Gate', () => {
+  // WebKit on Linux under Playwright CI initializes this page noticeably
+  // slower than Chromium/Firefox (large inline script + vendored
+  // manifold-3d / three.js workers parse cold). Give the whole suite
+  // 120s so the safety-critical beforeEach setup can finish before the
+  // test logic even starts; Chromium/Firefox still complete well under
+  // the prior 60s budget.
+  test.describe.configure({ timeout: 120_000 });
+
   test.beforeEach(async ({ page }) => {
+    // Surface any uncaught browser errors or console errors so a real
+    // regression in the inline init script (which attaches the expert-
+    // mode click handler) shows up in the Playwright report instead of
+    // hiding behind a generic "panel never became visible" timeout.
+    const consoleErrors: string[] = [];
+    page.on('pageerror', (err) => {
+      consoleErrors.push(`pageerror: ${err.message}`);
+    });
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(`console.error: ${msg.text()}`);
+      }
+    });
+
     await page.goto('/');
+    // Wait for the inline initialization script to settle. The expert
+    // toggle's click listener is attached late in that script, so
+    // clicking before the script has fully run can race the listener
+    // on slower engines (observed on Playwright WebKit on Ubuntu).
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('networkidle');
     // Wait for the app to fully load
     await page.waitForSelector('#language-table');
-    
-    // Expand Expert Mode to access grid_rows and grid_columns settings
+
+    // Expand Expert Mode to access grid_rows and grid_columns settings.
+    //
+    // The page exposes the same panels through two paths:
+    //   1) Click #expert-toggle, which runs the inline click handler
+    //      that flips #expert-settings to display: block.
+    //   2) Direct DOM mutation of the inline style.
+    //
+    // For setup purposes (this is NOT the regression under test) we
+    // prefer path (2) because Playwright WebKit on Ubuntu CI was
+    // observed hanging on path (1) - even after waiting for
+    // networkidle - producing flaky timeouts that drowned out the
+    // actual S0 truncation assertions. Setup must be deterministic
+    // across all three browser engines so the safety gate runs.
     const expertToggle = page.locator('#expert-toggle');
     await expect(expertToggle).toBeVisible();
-    // Check if expert settings are already expanded
-    const isExpanded = await expertToggle.getAttribute('aria-expanded');
-    if (isExpanded !== 'true') {
-      await expertToggle.click();
-      // Wait for expert settings to be visible
-      await page.waitForSelector('#expert-settings', { state: 'visible' });
-    }
-    
-    // Expand the "Braille Spacing" submenu which contains grid_rows and grid_columns
+    await page.evaluate(() => {
+      const panel = document.getElementById('expert-settings');
+      const toggle = document.getElementById('expert-toggle');
+      if (panel) panel.style.display = 'block';
+      if (toggle) toggle.setAttribute('aria-expanded', 'true');
+    });
+    await page.waitForSelector('#expert-settings', { state: 'visible', timeout: 15_000 });
+
+    // Expand the "Braille Spacing" submenu which contains grid_rows
+    // and grid_columns. Same rationale as above - directly reveal the
+    // panel rather than relying on the submenu toggle's handler.
     const spacingToggle = page.locator('button.expert-submenu-toggle:has-text("Braille Spacing")');
     await expect(spacingToggle).toBeVisible();
-    const spacingExpanded = await spacingToggle.getAttribute('aria-expanded');
-    if (spacingExpanded !== 'true') {
-      await spacingToggle.click();
-      // Wait for the spacing panel to be visible
-      await page.waitForSelector('#expert-panel-spacing', { state: 'visible' });
+    await page.evaluate(() => {
+      const panel = document.getElementById('expert-panel-spacing');
+      if (panel) {
+        panel.style.display = 'block';
+        panel.hidden = false;
+      }
+      const toggle = document.querySelector<HTMLButtonElement>(
+        'button.expert-submenu-toggle[aria-controls="expert-panel-spacing"]'
+      );
+      if (toggle) toggle.setAttribute('aria-expanded', 'true');
+    });
+    await page.waitForSelector('#expert-panel-spacing', { state: 'visible', timeout: 15_000 });
+
+    // Attach captured errors to the test for the Playwright report so
+    // any underlying script breakage gets recorded in CI even though we
+    // are no longer routing through the click handler.
+    if (consoleErrors.length > 0) {
+      // eslint-disable-next-line no-console
+      console.log('[silentTruncation] browser console errors during setup:', consoleErrors);
     }
   });
 

@@ -223,8 +223,8 @@ The Manifold worker now uses **lazy WASM loading** to improve mobile compatibili
 
 **Mobile Considerations:**
 - First cylinder generation may take longer due to WASM loading
-- Requires stable internet connection for CDN access
-- If WASM fails to load, users see helpful error with mobile-specific guidance
+- Manifold WASM is vendored under `/static/vendor/manifold-3d/`; no third-party CDN access is required. The app works offline and under Firefox Enhanced Tracking Protection (Strict), Safari content blockers, and locked-down corporate networks.
+- If WASM fails to load (vendored file missing or server error), users see a helpful error with mobile-specific guidance
 - Desktop browser recommended for best performance
 
 ### Not Supported (Will Show Error)
@@ -396,11 +396,11 @@ Copy-Item node_modules\three\examples\jsm\exporters\STLExporter.js static\exampl
 
 ## Future Enhancements (Optional)
 
-**COMPLETED (2024-12-08):** The Manifold worker has been fully integrated:
-- Manifold WASM loads from CDN (`manifold-3d@2.5.1`)
+**COMPLETED (2024-12-08, vendoring 2026-05-26):** The Manifold worker has been fully integrated:
+- Manifold WASM (`manifold-3d@2.5.1`) is vendored under `/static/vendor/manifold-3d/` and loaded same-origin (no third-party CDN; works under Firefox ETP Strict, Safari content blockers, and offline)
 - `static/workers/csg-worker-manifold.js` handles cylinder generation
 - **No fallback**: Cylinders MUST use Manifold worker; cards use standard worker
-- See `MANIFOLD_CYLINDER_FIX.md` for details
+- See `MANIFOLD_CYLINDER_FIX.md` and `OPTIONAL_MANIFOLD3D_PATH.md` for details
 
 ## Support & Troubleshooting
 

@@ -34,7 +34,7 @@ Open [http://localhost:5001](http://localhost:5001) in your browser.
 
 That's it. No Redis, no blob storage, no API keys to manage. The server just serves static files and a lightweight JSON endpoint — all the heavy geometry work happens in your browser.
 
-You can optionally set `SECRET_KEY` and `PRODUCTION_DOMAIN` as environment variables, but neither is required. See [Environment Variables](docs/security/ENVIRONMENT_VARIABLES.md) if you're curious.
+You can optionally set `PRODUCTION_DOMAIN` as an environment variable, but it's not required. See [Environment Variables](docs/security/ENVIRONMENT_VARIABLES.md) if you're curious.
 
 ## How to use it
 

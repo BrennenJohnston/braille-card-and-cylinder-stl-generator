@@ -24,16 +24,9 @@ No environment variables are required. Vercel auto-detects Python from `requirem
 
 | Variable | Purpose |
 |----------|---------|
-| `SECRET_KEY` | Flask session key (backend is stateless, so this is optional) |
 | `FLASK_ENV` | Set to `production` for strict security mode |
 | `PRODUCTION_DOMAIN` | Your domain for CORS (Vercel domains are allowed by default) |
 | `LOG_LEVEL` | Logging verbosity (default: INFO) |
-
-Generate a secret key if you want one:
-
-```bash
-python -c "import secrets; print(secrets.token_hex(32))"
-```
 
 ## Post-deployment testing
 

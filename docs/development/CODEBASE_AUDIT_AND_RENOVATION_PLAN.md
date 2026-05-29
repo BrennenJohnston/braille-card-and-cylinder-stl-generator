@@ -249,7 +249,7 @@ enormous-caribou-11905.upstash.io:6379. Device or resource busy.
 | Variable | Status | Purpose |
 |----------|--------|---------|
 | `REDIS_URL` | SET (broken) | Points to archived Upstash Redis |
-| `SECRET_KEY` | ? | Flask session key |
+| `SECRET_KEY` | REMOVED | Flask session key (backend is stateless; no longer used) |
 | `PRODUCTION_DOMAIN` | NOT SET | CORS configuration |
 | `BLOB_STORE_WRITE_TOKEN` | ? | Vercel Blob upload |
 | `BLOB_PUBLIC_BASE_URL` | ? | Blob CDN URL |
@@ -507,7 +507,6 @@ This ensures the app works even if someone accidentally sets `REDIS_URL`.
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `SECRET_KEY` | (generate with `python -c "import secrets; print(secrets.token_hex(32))"`) | Flask session security |
 | `PRODUCTION_DOMAIN` | Your Vercel domain (e.g., `https://your-app.vercel.app`) | CORS configuration |
 | `FLASK_ENV` | `production` | Disable debug mode |
 
@@ -584,7 +583,7 @@ This ensures the app works even if someone accidentally sets `REDIS_URL`.
 - [ ] Remove `/lookup_stl` endpoint
 - [ ] Remove `/debug/blob_upload` endpoint
 - [ ] Update `requirements.txt` to remove `redis` and `requests`
-- [ ] Set `SECRET_KEY` and `PRODUCTION_DOMAIN` in Vercel
+- [ ] Remove `SECRET_KEY` and set `PRODUCTION_DOMAIN`-only setup in Vercel
 
 ### Medium-term (This Month)
 

@@ -105,6 +105,8 @@ def set_security_headers(response):
     if response.status_code == 304:
         return response
 
+    is_development = os.environ.get('FLASK_ENV') == 'development'
+
     # CSP: All client-side dependencies (Three.js, three-bvh-csg, three-mesh-bvh,
     # Manifold-3D WASM) are vendored under /static/, so no third-party CDN
     # origins are needed in connect-src or script-src. 'wasm-unsafe-eval' is
@@ -124,15 +126,31 @@ def set_security_headers(response):
         "base-uri 'self'",
         "form-action 'self'",
         "frame-ancestors 'none'",
-        'upgrade-insecure-requests',
     ]
+    # Only emit `upgrade-insecure-requests` in production. In FLASK_ENV=development
+    # the app is served over plain HTTP on localhost (e.g. http://localhost:5001
+    # during Playwright e2e runs), and this directive forces the browser to
+    # rewrite same-origin http:// subresource URLs to https://. WebKit then
+    # attempts a TLS handshake against the plain-HTTP Werkzeug server, fails,
+    # logs `Failed to load resource: Error performing TLS handshake`, and
+    # blocks the inline ES-module imports long enough that the page's init
+    # script never finishes wiring up form-visibility handlers - which is
+    # exactly the WebKit-only hang observed in CI for the silentTruncation
+    # e2e suite.
+    if not is_development:
+        csp_directives.append('upgrade-insecure-requests')
     response.headers['Content-Security-Policy'] = '; '.join(csp_directives)
 
     # Additional security headers
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
-    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    # HSTS is meaningful only when the response itself was served over HTTPS;
+    # most browsers ignore it on plain-HTTP responses, but compliant ones
+    # warn (and some Playwright builds appear to honour it heuristically).
+    # Skip it entirely in development so localhost behaves as plain HTTP.
+    if not is_development:
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
 

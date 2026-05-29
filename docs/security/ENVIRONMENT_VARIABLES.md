@@ -9,20 +9,11 @@ For most deployments, you don't need to set anything. The app works out of the b
 If you want tighter security, set these:
 
 ```bash
-SECRET_KEY=<random-hex-string>
 FLASK_ENV=production
 PRODUCTION_DOMAIN=https://your-domain.vercel.app
 ```
 
 ## Variable reference
-
-### SECRET_KEY
-
-Flask session signing key. The backend is stateless and doesn't use sessions, so this is optional. Set it for defense-in-depth if you want.
-
-```bash
-python -c "import secrets; print(secrets.token_hex(32))"
-```
 
 ### FLASK_ENV
 
@@ -57,12 +48,14 @@ If you're migrating from v1.x, remove these from your Vercel config:
 - `BLOB_DIRECT_UPLOAD_URL`, `BLOB_API_BASE_URL`, `BLOB_CACHE_MAX_AGE`, `BLOB_URL_TTL_SEC`, `BLOB_STORE_ID`
 - `ENABLE_DEBUG_ENDPOINTS` — debug endpoints now return 410 Gone
 - `FORCE_CLIENT_CSG` — client-side CSG is the only method
+- `SECRET_KEY` — backend is stateless, no sessions or signed cookies in use
 
 ```bash
 vercel env rm REDIS_URL production
 vercel env rm BLOB_STORE_WRITE_TOKEN production
 vercel env rm BLOB_READ_WRITE_TOKEN production
 vercel env rm BLOB_PUBLIC_BASE_URL production
+vercel env rm SECRET_KEY production
 ```
 
 ## Troubleshooting
@@ -74,7 +67,6 @@ vercel env rm BLOB_PUBLIC_BASE_URL production
 ## Setting variables in Vercel
 
 ```bash
-vercel env add SECRET_KEY production
 vercel env add PRODUCTION_DOMAIN production
 ```
 

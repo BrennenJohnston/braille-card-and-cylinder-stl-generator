@@ -84,18 +84,6 @@ CORS(app, origins=allowed_origins, supports_credentials=cors_supports_credential
 # Typical requests: Braille text (~10KB), Geometry spec (~50KB)
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024  # 100KB max (reduced from 1MB)
 
-# SECRET_KEY configuration - optional for stateless backend
-SECRET_KEY = os.environ.get('SECRET_KEY')
-if not SECRET_KEY:
-    if os.environ.get('FLASK_ENV') == 'development':
-        SECRET_KEY = 'dev-key-change-in-production'
-        logger.warning('Using insecure development SECRET_KEY - DO NOT use in production!')
-    else:
-        # For stateless backend, SECRET_KEY is optional but recommended
-        SECRET_KEY = 'stateless-backend-no-sessions'
-        logger.warning('SECRET_KEY not set - using placeholder (backend is stateless)')
-app.config['SECRET_KEY'] = SECRET_KEY
-
 
 # Security headers middleware
 @app.after_request

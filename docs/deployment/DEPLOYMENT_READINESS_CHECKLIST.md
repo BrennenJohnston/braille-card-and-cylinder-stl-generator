@@ -117,7 +117,6 @@ REDIS_URL=redis://your-redis-url
 # Optional - for production
 FLASK_ENV=production
 LOG_LEVEL=INFO
-SECRET_KEY=your-secret-key-here
 ```
 
 ### Vercel Configuration

@@ -136,7 +136,6 @@ REDIS_URL=redis://your-redis-url
 ### For Security
 ```bash
 FLASK_ENV=production
-SECRET_KEY=your-secret-key-here
 ```
 
 ---

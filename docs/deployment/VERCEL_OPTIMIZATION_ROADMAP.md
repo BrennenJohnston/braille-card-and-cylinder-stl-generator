@@ -197,15 +197,11 @@ Implementation:
 
 **Optional (recommended for production):**
 
-1. **SECRET_KEY** (Flask)
-   - Generate: `python -c "import secrets; print(secrets.token_hex(32))"`
-   - Used for: Flask session security (optional for stateless backend)
-
-2. **PRODUCTION_DOMAIN** (CORS)
+1. **PRODUCTION_DOMAIN** (CORS)
    - Format: `https://your-domain.vercel.app`
    - Used for: CORS origin validation
 
-3. **FLASK_ENV** (Environment)
+2. **FLASK_ENV** (Environment)
    - Value: `production` or `development`
    - Used for: Debug mode control
 
@@ -226,10 +222,9 @@ Implementation:
    - Format: `rediss://default:<password>@<host>:<port>`
    - Used for: Rate limiting
 
-3. **SECRET_KEY** (Flask)
-   - Still optional but recommended
-   - Generate: Random string for session security
-   - Used for: Flask session management
+~~3. **SECRET_KEY** (Flask)~~
+   - **REMOVED** - Backend is stateless; no sessions or signed cookies in use
+   - Was used for: Flask session management
 
 ## Testing Guide
 

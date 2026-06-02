@@ -18,7 +18,7 @@ matplotlib==3.10.8         # For character markers (fallback: rectangles)
 manifold3d==3.3.2          # Boolean operations (not available on Vercel)
 
 # Development tools
-pytest==9.0.2
+pytest==9.0.3
 pytest-cov==7.0.0
 ruff==0.15.2               # Linting and formatting
 mypy==1.19.1               # Type checking

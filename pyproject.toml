@@ -18,7 +18,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     # Geometry processing (server-side generation)
-    "numpy==2.4.2",
+    "numpy==2.4.6",
     "trimesh==4.11.2",
     "shapely==2.1.2",
     "mapbox_earcut==2.0.0",

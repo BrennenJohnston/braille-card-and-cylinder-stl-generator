@@ -118,7 +118,7 @@ def test_geometry_spec_cylinder_positive(client):
     assert 'markers' in data and isinstance(data['markers'], list)
 
     settings = CardSettings(**payload['settings'])
-    reserved = 2 if settings.indicator_shapes else 0
+    reserved = 2 if settings.indicator_shapes else 1
     max_text_cols = settings.grid_columns - reserved
     assert len(data['markers']) == settings.grid_rows * 2
     assert len(data['dots']) == _count_raised_dots(lines, max_cols=max_text_cols)
@@ -145,7 +145,7 @@ def test_geometry_spec_cylinder_negative(client):
     assert 'markers' in data and isinstance(data['markers'], list)
 
     settings = CardSettings(**payload['settings'])
-    reserved = 2 if settings.indicator_shapes else 0
+    reserved = 2 if settings.indicator_shapes else 1
     num_text_cols = settings.grid_columns - reserved
     assert len(data['markers']) == settings.grid_rows * 2
     assert len(data['dots']) == settings.grid_rows * num_text_cols * 6
@@ -253,12 +253,13 @@ def test_validation_cylinder_column_overflow(client):
 
 def test_validation_cylinder_no_indicators_overflow(client):
     """
-    Test cylinder column overflow when indicators are disabled.
+    Test cylinder column overflow when indicator letters are disabled.
 
-    With indicators disabled, all grid_columns are available for text.
+    With indicator letters disabled, only 1 column (the always-present alignment
+    triangle) is reserved, so grid_columns - 1 cells are available for text.
     This test verifies the indicator_shapes=0 path.
     """
-    # 10 braille characters but only 4 columns allowed (no indicator reservation)
+    # 10 braille characters but only 3 columns available (1 reserved for the triangle)
     long_braille_line = '⠁⠃⠉⠙⠑⠋⠛⠓⠊⠚'  # 10 characters
     payload = {
         'lines': [long_braille_line, '', '', ''],
@@ -269,7 +270,7 @@ def test_validation_cylinder_no_indicators_overflow(client):
             'grid_rows': 4,
             'grid_columns': 4,
             'indicator_shapes': 0,
-        },  # No indicators, all 4 columns available
+        },  # Indicator letters off: 3 of 4 columns available for text
         'cylinder_params': {'diameter': 60.0, 'height': 40.0, 'wall_thickness': 2.0, 'seam_offset_deg': 0.0},
     }
 

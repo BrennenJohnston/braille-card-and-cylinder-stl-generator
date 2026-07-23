@@ -88,6 +88,10 @@ The only abbreviations BANA explicitly names are **lib**, **amer**, and **nat**.
 
 The numeric indicator (`#`) is added by the braille translator; do not type it yourself.
 
+**Why only one number sign?** In UEB, a period (or comma) inside a number keeps numeric mode active, so the digits after it do not need another number sign (`⠼`). For example, `206.616.7678` translates to `⠼⠃⠚⠋⠲⠋⠁⠋⠲⠛⠋⠛⠓` — exactly 13 braille cells, which fits a default 13-cell row. This is what BANA means by "eliminating the need to repeat numeric indicators." Some online translators repeat the number sign after each period; that output is non-standard and uses extra cells. The app has an off-by-default **"Repeat number sign after each period in numbers (non-standard)"** toggle under the text input area if you need to match such output.
+
+**Splitting a long number across two rows:** if a phone number will not fit on one row, divide it after a period and begin the next row with the remaining digits — the translator automatically adds a new number sign (`⠼`) at the start of the new row. For example, typing `206.616.` on one line and `7678` on the next produces `⠼⠃⠚⠋⠲⠋⠁⠋⠲` then `⠼⠛⠋⠛⠓`, the same pattern used in BANA's worked examples.
+
 ### E-mail addresses
 
 > *"An e-mail address should be brailled according to The Rules of Unified English Braille. When an e-mail address must be divided over two lines, divide it after punctuation (e.g., the 'at' sign, a period, or a hyphen). An e-mail address may also be divided between syllables, or between alphabetic and numeric sub-units. The least desirable option is to divide an e-mail address between the letters of a syllable. Use the line continuation indicator (dot 5) at the end of the line to show that the e-mail address has been divided. As a last resort, omit the line continuation indicator. Begin the second line of the e-mail address in cell 1."* — BANA Fact Sheet, p. 3
@@ -379,7 +383,7 @@ The **Preview Braille Translation** button is inside Expert Mode:
 | Capitalized Letters | Disabled | Saves cells per BANA's "remove the capital indicators" strategy |
 | Braille Cells | 13 | Matches BANA's lower bound for typical card stock |
 | Braille Lines | 4 | BANA's typical layout |
-| Indicator Shapes | On | Reserves two cells so braille readers can locate row start/end |
+| Indicator Letters | On | Reserves a second marker cell for the row's first letter; turning it Off frees 1 cell per row (the alignment triangle is always included) |
 
 ### When to use Grade 2 (contracted)
 

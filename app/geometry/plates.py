@@ -68,7 +68,8 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
         )
 
         if getattr(settings, 'indicator_shapes', 1):
-            # Add end-of-row text/number indicator at the first cell position (column 0)
+            # Add indicator letter at the first cell position (column 0), gated by the
+            # Indicator Letters toggle
             # Calculate X position for the first column
             x_pos_first = settings.left_margin + settings.braille_x_adjust
 
@@ -102,17 +103,15 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
 
             marker_meshes.append(line_end_mesh)
 
-            # Add triangle marker at the last cell position (grid_columns - 1)
-            # Calculate X position for the last column
-            x_pos_last = (
-                settings.left_margin + ((settings.grid_columns - 1) * settings.cell_spacing) + settings.braille_x_adjust
-            )
+        # Add triangle alignment marker at the last cell position (grid_columns - 1).
+        # Always created; the alignment triangles have no user-facing toggle.
+        x_pos_last = (
+            settings.left_margin + ((settings.grid_columns - 1) * settings.cell_spacing) + settings.braille_x_adjust
+        )
 
-            # Create triangle marker for this row (recessed for embossing plate)
-            triangle_mesh = create_card_triangle_marker_3d(
-                x_pos_last, y_pos, settings, height=0.6, for_subtraction=True
-            )
-            marker_meshes.append(triangle_mesh)
+        # Create triangle marker for this row (recessed for embossing plate)
+        triangle_mesh = create_card_triangle_marker_3d(x_pos_last, y_pos, settings, height=0.6, for_subtraction=True)
+        marker_meshes.append(triangle_mesh)
 
     # Process each line in top-down order
     for row_num in range(settings.grid_rows):
@@ -136,8 +135,9 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
             logger.error(f'{error_msg}')
             raise RuntimeError(error_msg)
 
-        # Check if braille text exceeds grid capacity
-        reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
+        # Check if braille text exceeds grid capacity.
+        # Reserved marker columns: indicator letter + triangle when on, triangle only when off.
+        reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 1
         available_columns = settings.grid_columns - reserved
         if len(braille_text) > available_columns:
             # Warn and truncate instead of failing hard
@@ -181,14 +181,16 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
 
     if getattr(settings, 'indicator_shapes', 1):
         logger.info(
-            f'Created positive plate with {len(meshes) - 1} braille dots, {settings.grid_rows} text/number indicators, and {settings.grid_rows} triangle markers'
+            f'Created positive plate with {len(meshes) - 1} braille dots, {settings.grid_rows} indicator letters, and {settings.grid_rows} triangle markers'
         )
     else:
-        logger.info(f'Created positive plate with {len(meshes) - 1} braille dots and no indicator shapes')
+        logger.info(
+            f'Created positive plate with {len(meshes) - 1} braille dots and {settings.grid_rows} triangle markers (indicator letters off)'
+        )
 
     # Indicator recess creation using 2D operations (works in all environments)
     # This approach creates recesses by doing 2D boolean operations then extruding
-    if getattr(settings, 'indicator_shapes', 1) and marker_meshes:
+    if marker_meshes:
         try:
             # 1) Build 2D base rectangle
             base_2d = Polygon(
@@ -218,26 +220,27 @@ def create_positive_plate_mesh(lines, grade='g1', settings=None, original_lines=
                     + settings.braille_x_adjust
                 )
 
-                # Determine which beginning-of-row indicator to use (character or rectangle)
-                # This logic matches lines 739-759 where 3D meshes are created
-                if original_lines and row_num < len(original_lines):
-                    orig = (original_lines[row_num] or '').strip()
-                    indicator_char = orig[0] if orig else ''
-                    if indicator_char and (indicator_char.isalpha() or indicator_char.isdigit()):
-                        # Use character shape
-                        char_polygon = create_character_shape_polygon(indicator_char, x_first, y_pos, settings)
-                        if char_polygon is not None:
-                            subtractors.append(char_polygon)
+                # Beginning-of-row indicator letter (character or rectangle fallback),
+                # gated by the Indicator Letters toggle. Matches the 3D mesh creation above.
+                if getattr(settings, 'indicator_shapes', 1):
+                    if original_lines and row_num < len(original_lines):
+                        orig = (original_lines[row_num] or '').strip()
+                        indicator_char = orig[0] if orig else ''
+                        if indicator_char and (indicator_char.isalpha() or indicator_char.isdigit()):
+                            # Use character shape
+                            char_polygon = create_character_shape_polygon(indicator_char, x_first, y_pos, settings)
+                            if char_polygon is not None:
+                                subtractors.append(char_polygon)
+                            else:
+                                subtractors.append(create_line_marker_polygon(x_first, y_pos, settings))
                         else:
+                            # Use rectangle
                             subtractors.append(create_line_marker_polygon(x_first, y_pos, settings))
                     else:
-                        # Use rectangle
+                        # No indicator info; default to rectangle
                         subtractors.append(create_line_marker_polygon(x_first, y_pos, settings))
-                else:
-                    # No indicator info; default to rectangle
-                    subtractors.append(create_line_marker_polygon(x_first, y_pos, settings))
 
-                # Add triangle marker at the end of row
+                # Triangle alignment marker at the end of row (always present)
                 subtractors.append(create_triangle_marker_polygon(x_last, y_pos, settings))
 
             subtractors_2d = _unary_union(subtractors)
@@ -509,10 +512,12 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
         # Calculate Y position for this row (same as embossing plate, using safe margin)
         y_pos = params.card_height - params.top_margin - (row * params.line_spacing) + params.braille_y_adjust
 
-        # Process columns (reserve two if indicators enabled)
-        reserved = 2 if getattr(params, 'indicator_shapes', 1) else 0
+        # Process columns (reserve 2 when indicator letters are on, 1 for the
+        # always-present alignment triangle when off)
+        reserved = 2 if getattr(params, 'indicator_shapes', 1) else 1
         for col in range(params.grid_columns - reserved):
-            # Calculate X position for this column (shift by one if indicators enabled)
+            # Calculate X position for this column (shift by one past the square marker
+            # when indicator letters are enabled)
             x_pos = (
                 params.left_margin
                 + ((col + (1 if getattr(params, 'indicator_shapes', 1) else 0)) * params.cell_spacing)
@@ -538,19 +543,21 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
 
     logger.debug(f'Created {total_spheres} hemispheres for counter plate')
 
-    # Create end of row line recesses and triangle marker recesses for ALL rows
+    # Create square marker recesses (gated by the Indicator Letters toggle) and
+    # triangle alignment marker recesses (always) for ALL rows
     line_end_meshes = []
     triangle_meshes = []
     for row_num in range(params.grid_rows):
         # Calculate Y position for this row
         y_pos = params.card_height - params.top_margin - (row_num * params.line_spacing) + params.braille_y_adjust
 
-        # Add end of row line marker at the first cell position (column 0) to match embossing plate layout
-        x_pos_first = params.left_margin + params.braille_x_adjust
+        if getattr(params, 'indicator_shapes', 1):
+            # Add square marker at the first cell position (column 0) to match embossing plate layout
+            x_pos_first = params.left_margin + params.braille_x_adjust
 
-        # Create line end marker for subtraction (will create recess)
-        line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, params, height=0.5, for_subtraction=True)
-        line_end_meshes.append(line_end_mesh)
+            # Create line end marker for subtraction (will create recess)
+            line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, params, height=0.5, for_subtraction=True)
+            line_end_meshes.append(line_end_mesh)
 
         # Add triangle marker at the last cell position (grid_columns - 1) to match embossing plate layout
         x_pos_last = params.left_margin + ((params.grid_columns - 1) * params.cell_spacing) + params.braille_x_adjust
@@ -724,7 +731,7 @@ def build_counter_plate_bowl(params: CardSettings) -> trimesh.Trimesh:
     total_spheres = 0
     for row in range(params.grid_rows):
         y_pos = params.card_height - params.top_margin - (row * params.line_spacing) + params.braille_y_adjust
-        reserved = 2 if getattr(params, 'indicator_shapes', 1) else 0
+        reserved = 2 if getattr(params, 'indicator_shapes', 1) else 1
         for col in range(params.grid_columns - reserved):
             x_pos = (
                 params.left_margin
@@ -745,14 +752,15 @@ def build_counter_plate_bowl(params: CardSettings) -> trimesh.Trimesh:
 
     logger.debug(f'Created {total_spheres} bowl caps for counter plate (a={a:.3f}mm, h={h:.3f}mm, R={R:.3f}mm)')
 
-    # Markers (same as hemispheres)
+    # Markers (same as hemispheres): square gated by Indicator Letters toggle, triangle always
     line_end_meshes = []
     triangle_meshes = []
     for row_num in range(params.grid_rows):
         y_pos = params.card_height - params.top_margin - (row_num * params.line_spacing) + params.braille_y_adjust
-        x_pos_first = params.left_margin + params.braille_x_adjust
-        line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, params, height=0.5, for_subtraction=True)
-        line_end_meshes.append(line_end_mesh)
+        if getattr(params, 'indicator_shapes', 1):
+            x_pos_first = params.left_margin + params.braille_x_adjust
+            line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, params, height=0.5, for_subtraction=True)
+            line_end_meshes.append(line_end_mesh)
         x_pos_last = params.left_margin + ((params.grid_columns - 1) * params.cell_spacing) + params.braille_x_adjust
         triangle_mesh = create_card_triangle_marker_3d(x_pos_last, y_pos, params, height=0.5, for_subtraction=True)
         triangle_meshes.append(triangle_mesh)
@@ -851,7 +859,7 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
     total_recess = 0
     for row in range(params.grid_rows):
         y_pos = params.card_height - params.top_margin - (row * params.line_spacing) + params.braille_y_adjust
-        reserved = 2 if getattr(params, 'indicator_shapes', 1) else 0
+        reserved = 2 if getattr(params, 'indicator_shapes', 1) else 1
         for col in range(params.grid_columns - reserved):
             x_pos = (
                 params.left_margin
@@ -907,14 +915,15 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
                 recess_meshes.append(frustum)
                 total_recess += 1
 
-    # Markers (same as hemispheres/bowl)
+    # Markers (same as hemispheres/bowl): square gated by Indicator Letters toggle, triangle always
     line_end_meshes = []
     triangle_meshes = []
     for row_num in range(params.grid_rows):
         y_pos = params.card_height - params.top_margin - (row_num * params.line_spacing) + params.braille_y_adjust
-        x_pos_first = params.left_margin + params.braille_x_adjust
-        line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, params, height=0.5, for_subtraction=True)
-        line_end_meshes.append(line_end_mesh)
+        if getattr(params, 'indicator_shapes', 1):
+            x_pos_first = params.left_margin + params.braille_x_adjust
+            line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, params, height=0.5, for_subtraction=True)
+            line_end_meshes.append(line_end_mesh)
         x_pos_last = params.left_margin + ((params.grid_columns - 1) * params.cell_spacing) + params.braille_x_adjust
         triangle_mesh = create_card_triangle_marker_3d(x_pos_last, y_pos, params, height=0.5, for_subtraction=True)
         triangle_meshes.append(triangle_mesh)

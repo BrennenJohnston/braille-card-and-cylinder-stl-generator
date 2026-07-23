@@ -2793,7 +2793,7 @@
                     <p>Generates custom braille embossing plates for cylinders (labels, containers) and flat cards.
                        <a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator" target="_blank" rel="noopener noreferrer">View on GitHub</a>
                     </p>
-                    <p style="font-size: 0.9em; color: #6b7280;"><em>Note: Cylinder shapes are currently available. Flat cards are temporarily disabled.</em></p>
+                    <p style="font-size: 0.9em;"><em>Note: Cylinder shapes are currently available. Flat cards are temporarily disabled.</em></p>
 
                     <p><strong>First Step: Decide What to Include</strong></p>
                     <p>Braille space is limited. Not everything from print will fit.</p>
@@ -2856,6 +2856,16 @@
                             <div id="caps-warning" class="grade-note" role="status" aria-live="polite"
                                  style="margin-top: 0.6em; color: #059669; display: none;">
                                 <strong>Note:</strong> Capital letters in your text will not be translated because "Capitalized Letters" is disabled. Enable it above if you need capitals in braille.
+                            </div>
+                            <!-- Repeat number sign toggle (non-standard UEB behavior, default off) -->
+                            <div class="line-input-mode-toggle" style="margin-top: 0.8em; display: flex; align-items: flex-start; gap: 0.5em; flex-wrap: wrap;">
+                                <label style="display: inline-flex; align-items: center; gap: 0.4em;" for="repeat_number_sign">
+                                    <input type="checkbox" id="repeat_number_sign" name="repeat_number_sign" aria-describedby="repeat-number-sign-note">
+                                    Repeat number sign after each period in numbers (non-standard)
+                                </label>
+                                <div id="repeat-number-sign-note" class="grade-note" style="margin: 0; font-size: 0.85em; flex-basis: 100%;">
+                                    Standard UEB uses one number sign per number because periods and commas keep numeric mode. Turning this on matches some online translators but uses extra braille cells.
+                                </div>
                             </div>
                         </fieldset>
                     </div>
@@ -2963,7 +2973,7 @@
                         </div>
 
                         <div id="braille-preview" class="braille-preview" style="display: none;" role="region" aria-label="Braille translation preview">
-                            <h3 class="preview-heading">Braille Translation Preview:</h3>
+                            <h2 class="preview-heading">Braille Translation Preview:</h2>
                             <div id="preview-content"></div>
                         </div>
 
@@ -2999,32 +3009,35 @@
                                         <legend class="grade-label">Braille Dot Shape (Emboss and Counter)</legend>
                                         <div class="radio-group" role="radiogroup" aria-required="true">
                                             <label class="radio-option">
-                                                <input type="radio" name="combined_shape" value="rounded" aria-describedby="rounded-combined-desc">
+                                                <input type="radio" name="combined_shape" value="rounded" checked aria-describedby="rounded-combined-desc">
                                                 <span class="radio-text">Rounded</span>
                                             </label>
                                             <span id="rounded-combined-desc" class="sr-only">Creates rounded dome dots for emboss plate and spherical-cap bowl recess for counter plate</span>
                                             <label class="radio-option">
-                                                <input type="radio" name="combined_shape" value="cone" checked aria-describedby="cone-combined-desc">
+                                                <input type="radio" name="combined_shape" value="cone" aria-describedby="cone-combined-desc">
                                                 <span class="radio-text">Cone</span>
                                             </label>
                                             <span id="cone-combined-desc" class="sr-only">Creates cone frustum dots for emboss plate and conical frustum recess for counter plate</span>
+                                        </div>
+                                        <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                            Rounded is the default for the 0.4mm and 0.3mm Card Thickness presets.
                                         </div>
                                     </fieldset>
                                 </div>
 
                                 <!-- Hidden radio buttons for backend compatibility -->
                                 <div style="display: none;">
-                                    <input type="radio" name="dot_shape" value="rounded">
-                                    <input type="radio" name="dot_shape" value="cone" checked>
-                                    <input type="radio" name="recess_shape" value="1">
-                                    <input type="radio" name="recess_shape" value="2" checked>
+                                    <input type="radio" name="dot_shape" value="rounded" checked>
+                                    <input type="radio" name="dot_shape" value="cone">
+                                    <input type="radio" name="recess_shape" value="1" checked>
+                                    <input type="radio" name="recess_shape" value="2">
                                 </div>
 
-                                <!-- Indicator Shape toggle -->
+                                <!-- Indicator Letters toggle -->
                                 <div class="grade-selection">
                                     <fieldset>
-                                        <legend class="grade-label" style="font-size: 1.2em; font-weight: 700;">Indicator Shapes (Emboss and Counter)</legend>
-                                        <div class="radio-group" role="radiogroup" aria-label="Indicator Shape toggle">
+                                        <legend class="grade-label" style="font-size: 1.2em; font-weight: 700;">Indicator Letters (Emboss and Counter)</legend>
+                                        <div class="radio-group" role="radiogroup" aria-label="Indicator Letters toggle">
                                             <label class="radio-option">
                                                 <input type="radio" name="indicator_shapes" id="indicator_on" value="1" checked>
                                                 <span class="radio-text">On</span>
@@ -3035,7 +3048,7 @@
                                             </label>
                                         </div>
                                         <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                            When On: 2 cells are reserved per row for start/end markers. When Off: all cells are available for text.
+                                            When On: each row includes an indicator letter in the indicator area (with a matching square on the counter plate), so 2 cells per row are reserved. When Off: the letter and square are removed, freeing 1 extra cell per row for braille text. The triangle alignment indicators are always included.
                                         </div>
                                     </fieldset>
                                 </div>
@@ -3053,9 +3066,9 @@
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
                                     <div>
                                         <label for="grid_columns" id="grid_columns_label">Number of Braille Cells (Characters):</label>
-                                        <input type="number" id="grid_columns" name="grid_columns" value="11" style="width: 110px;" autocomplete="off">
+                                        <input type="number" id="grid_columns" name="grid_columns" value="13" style="width: 110px;" autocomplete="off">
                                         <div id="grid_columns_note" class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                            For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 11 cells available for text.
+                                            For embossing plates: 2 cells per row are reserved for the indicator letter and alignment triangle, leaving 13 cells available for text.
                                         </div>
                                     </div>
                                     <div style="margin-top: 6px;">
@@ -4226,23 +4239,23 @@
                 const currentValue = parseInt(gridColumnsInput.value);
 
                 if (plateType === 'positive') {
-                    // Embossing plate - available cells depend on indicator toggle
+                    // Embossing plate - available cells depend on indicator letters toggle
                     gridColumnsLabel.textContent = 'Number of Available Braille Cells:';
                     gridColumnsNote.style.display = 'block';
                     gridColumnsNote.textContent = indicatorOn
-                        ? 'For embossing plates: 2 cells are reserved for row indicators (start/end markers).'
-                        : 'Indicators off: all columns are available for text.';
+                        ? 'For embossing plates: 2 cells per row are reserved for the indicator letter and alignment triangle.'
+                        : 'Indicator letters off: 1 cell per row is reserved for the alignment triangle; the freed cell is available for text.';
                     // Always normalize the dial to the recommended default to avoid drift
-                    gridColumnsInput.value = indicatorOn ? '13' : '15';
+                    gridColumnsInput.value = indicatorOn ? '13' : '14';
                 } else {
-                    // Counter plate - available cells depend on indicator toggle
+                    // Counter plate - available cells depend on indicator letters toggle
                     gridColumnsLabel.textContent = 'Available Braille Cells for Text:';
                     gridColumnsNote.textContent = indicatorOn
-                        ? 'For counter plates: 2 cells are reserved for row indicators (start/end markers), leaving 13 cells available for text.'
-                        : 'Indicators off: all columns are available for text.';
+                        ? 'For counter plates: 2 cells per row are reserved for the indicator square and alignment triangle, leaving 13 cells available for text.'
+                        : 'Indicator letters off: 1 cell per row is reserved for the alignment triangle, leaving 14 cells available for text.';
                     gridColumnsNote.style.display = 'block';
                     // Always normalize the dial to the recommended default to avoid drift
-                    gridColumnsInput.value = indicatorOn ? '13' : '15';
+                    gridColumnsInput.value = indicatorOn ? '13' : '14';
                 }
             }
             // Expose for other handlers safely
@@ -4313,7 +4326,7 @@
             document.querySelectorAll('input[name="combined_shape"]').forEach(r => {
                 r.addEventListener('change', () => {
                     resetToGenerateState();
-                    const combinedVal = document.querySelector('input[name="combined_shape"]:checked')?.value || 'cone';
+                    const combinedVal = document.querySelector('input[name="combined_shape"]:checked')?.value || 'rounded';
                     const isRounded = combinedVal === 'rounded';
                     const isCone = combinedVal === 'cone';
 
@@ -4645,6 +4658,34 @@
             return capsEnabled ? text : text.toLowerCase();
         }
 
+        // Whether the non-standard "repeat number sign after periods" toggle is on
+        function isRepeatNumberSignOn() {
+            return document.getElementById('repeat_number_sign')?.checked === true;
+        }
+
+        // Non-standard post-processing: re-insert a number sign (⠼) after a period
+        // or comma inside a number. Standard UEB keeps numeric mode across . and ,
+        // (numericmodechars), so liblouis emits one number sign per number; some
+        // online translators repeat it instead, and this toggle reproduces that.
+        function applyNumberSignRepeat(braille) {
+            if (!isRepeatNumberSignOn()) return braille;
+            const DIGITS = '\u2801\u2803\u2809\u2819\u2811\u280B\u281B\u2813\u280A\u281A'; // a-j cells
+            let out = '';
+            let numeric = false;
+            for (let i = 0; i < braille.length; i++) {
+                const ch = braille[i];
+                out += ch;
+                if (ch === '\u283C') { numeric = true; continue; }          // number sign
+                if (numeric && (ch === '\u2832' || ch === '\u2802')) {      // period, comma
+                    if (i + 1 < braille.length && DIGITS.includes(braille[i + 1])) out += '\u283C';
+                    else numeric = false;
+                    continue;
+                }
+                if (!DIGITS.includes(ch)) numeric = false;
+            }
+            return out;
+        }
+
         // Update the capitalization warning visibility based on toggle state and input content
         function updateCapsWarning() {
             const capsDisabled = document.querySelector('input[name="capitalize_letters"]:checked')?.value !== 'enabled';
@@ -4948,6 +4989,7 @@
                 'braille_prefs_placement_mode',
                 'braille_prefs_indicator_shapes',
                 'braille_prefs_capitalize_letters',
+                'braille_prefs_repeat_number_sign',
                 'braille_prefs_expert_visible',
                 'braille_prefs_grid_columns',
                 'braille_prefs_grid_rows',
@@ -5008,6 +5050,12 @@
                 const radio = document.querySelector(`input[name="capitalize_letters"][value="${savedCaps}"]`);
                 if (radio) radio.checked = true;
             }
+            // Repeat number sign toggle (default off)
+            const savedRepeatNumSign = readPersisted('braille_prefs_repeat_number_sign');
+            if (savedRepeatNumSign === '1' || savedRepeatNumSign === '0') {
+                const checkbox = document.getElementById('repeat_number_sign');
+                if (checkbox) checkbox.checked = savedRepeatNumSign === '1';
+            }
             // Shape type
             const savedShape = readPersisted('braille_prefs_shape_type');
             if (savedShape === 'card' || savedShape === 'cylinder') {
@@ -5020,8 +5068,8 @@
                 const radio = document.querySelector(`input[name="dot_shape"][value="${savedDot}"]`);
                 if (radio) radio.checked = true;
             }
-            // Combined shape - initialize based on saved dot shape or default to cone
-            const savedCombined = readPersisted('braille_prefs_combined_shape') || savedDot || 'cone';
+            // Combined shape - initialize based on saved dot shape or default to rounded
+            const savedCombined = readPersisted('braille_prefs_combined_shape') || savedDot || 'rounded';
             if (savedCombined === 'cone' || savedCombined === 'rounded') {
                 const radio = document.querySelector(`input[name="combined_shape"][value="${savedCombined}"]`);
                 if (radio) radio.checked = true;
@@ -5138,6 +5186,18 @@
                     }
                 });
             });
+            // Repeat number sign toggle
+            const repeatNumSignCheckbox = document.getElementById('repeat_number_sign');
+            if (repeatNumSignCheckbox) {
+                repeatNumSignCheckbox.addEventListener('change', () => {
+                    persistValue('braille_prefs_repeat_number_sign', repeatNumSignCheckbox.checked ? '1' : '0');
+                    resetToGenerateState();
+                    // Extra number signs change cell counts; recalc overflow in auto mode
+                    if (document.querySelector('input[name="placement_mode"]:checked')?.value === 'auto') {
+                        computeAutoOverflow();
+                    }
+                });
+            }
             // Shape type
             document.querySelectorAll('input[name="shape_type"]').forEach(r => {
                 r.addEventListener('change', () => persistValue('braille_prefs_shape_type', document.querySelector('input[name="shape_type"]:checked').value));
@@ -5149,7 +5209,7 @@
             // Combined shape (new primary control)
             document.querySelectorAll('input[name="combined_shape"]').forEach(r => {
                 r.addEventListener('change', () => {
-                    const val = document.querySelector('input[name="combined_shape"]:checked')?.value || 'cone';
+                    const val = document.querySelector('input[name="combined_shape"]:checked')?.value || 'rounded';
                     persistValue('braille_prefs_combined_shape', val);
                     // Also persist the individual values for backend compatibility
                     persistValue('braille_prefs_dot_shape', val);
@@ -5280,6 +5340,8 @@
         // ======================================================================
         // Define presets for each thickness option (0.4mm and 0.3mm layer heights)
         // These presets set all numeric inputs to optimized values for each thickness.
+        // Both presets also default the Braille Dot Shape to "Rounded" (applied when the
+        // user selects a preset; see applyThicknessPreset with applyShape=true).
         // Note: Text inputs (line1, line2, etc.) are NOT affected by presets.
         const THICKNESS_PRESETS = {
             '0.4': {
@@ -5408,8 +5470,11 @@
          * Apply a thickness preset by setting all input values to the preset values.
          * Does NOT affect text inputs (line1, line2, etc.)
          * @param {string} presetKey - '0.4' or '0.3'
+         * @param {boolean} applyShape - When true (explicit user selection), also set the
+         *        Braille Dot Shape to "Rounded" (the preset default). Left false on page-load
+         *        restore so a user's persisted shape choice is not overridden.
          */
-        function applyThicknessPreset(presetKey) {
+        function applyThicknessPreset(presetKey, applyShape = false) {
             const preset = THICKNESS_PRESETS[presetKey];
             if (!preset) {
                 log.debug('Unknown thickness preset:', presetKey);
@@ -5417,6 +5482,17 @@
             }
 
             log.debug('Applying thickness preset:', presetKey);
+
+            // Both presets default the dot shape to Rounded. Selecting the radio and
+            // dispatching 'change' runs the existing sync (dot_shape/recess_shape) and
+            // persistence handlers.
+            if (applyShape) {
+                const roundedRadio = document.querySelector('input[name="combined_shape"][value="rounded"]');
+                if (roundedRadio && !roundedRadio.checked) {
+                    roundedRadio.checked = true;
+                    roundedRadio.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
 
             // Apply each preset value to the corresponding input
             Object.entries(preset).forEach(([inputId, value]) => {
@@ -5457,14 +5533,14 @@
             radio.addEventListener('change', function() {
                 if (this.checked && this.value !== 'custom') {
                     // Only apply preset for 0.4 and 0.3, not for custom
-                    applyThicknessPreset(this.value);
+                    applyThicknessPreset(this.value, true);
                 }
             });
             // Add click listener to allow re-applying the currently selected preset
             radio.addEventListener('click', function() {
                 if (this.checked && this.value !== 'custom') {
                     // Only apply preset for 0.4 and 0.3, not for custom
-                    applyThicknessPreset(this.value);
+                    applyThicknessPreset(this.value, true);
                 }
             });
         });
@@ -5697,7 +5773,9 @@
             let numericMode = false;
             let pendingWordGap = false;
 
-            for (const ch of brailleStr) {
+            const cells = Array.from(brailleStr);
+            for (let cellIndex = 0; cellIndex < cells.length; cellIndex++) {
+                const ch = cells[cellIndex];
                 if (ch === ' ') {
                     // Word boundary
                     numericMode = false;
@@ -5752,7 +5830,14 @@
                     }
                     result += punctuationMap[ch];
                     pendingWordGap = false;
-                    numericMode = false;
+                    // UEB: a period or comma inside a number keeps numeric mode
+                    // (numericmodechars), so digits that follow are still digits.
+                    if (numericMode && (ch === '⠲' || ch === '⠂')) {
+                        const next = cells[cellIndex + 1];
+                        numericMode = next !== undefined && digitMap[next] !== undefined;
+                    } else {
+                        numericMode = false;
+                    }
                     continue;
                 }
 
@@ -6294,10 +6379,12 @@
                 log.debug('Counter plate selected - no text translation needed');
             }
             const settings = {
-                // Add 2 only if indicator shapes are ON; otherwise send exact cells
+                // The dial shows usable text cells. Add the marker columns on top:
+                // +2 when indicator letters are ON (letter + triangle), +1 when OFF
+                // (the alignment triangle column is always present).
                 grid_columns: (document.querySelector('input[name="indicator_shapes"]:checked')?.value === '1')
                     ? String(parseInt(document.getElementById('grid_columns').value) + 2)
-                    : String(parseInt(document.getElementById('grid_columns').value)),
+                    : String(parseInt(document.getElementById('grid_columns').value) + 1),
                 grid_rows: document.getElementById('grid_rows').value,
                 cell_spacing: document.getElementById('cell_spacing').value,
                 line_spacing: document.getElementById('line_spacing').value,
@@ -6312,14 +6399,14 @@
                 bowl_counter_dot_base_diameter: document.getElementById('bowl_counter_dot_base_diameter')?.value || '1.6',
                 // Back-compat: provide unified base diameter reflecting current recess selection
                 counter_dot_base_diameter: (() => {
-                    const recessVal = document.querySelector('input[name="recess_shape"]:checked')?.value || '2';
+                    const recessVal = document.querySelector('input[name="recess_shape"]:checked')?.value || '1';
                     if (recessVal === '1') return (document.getElementById('bowl_counter_dot_base_diameter')?.value || '1.6');
                     if (recessVal === '0') return (document.getElementById('hemi_counter_dot_base_diameter')?.value || '1.6');
                     return (document.getElementById('cone_counter_dot_base_diameter')?.value || '1.6');
                 })(),
                 counter_dot_depth: document.getElementById('counter_dot_depth')?.value || '0.6',
                 use_bowl_recess: (document.querySelector('input[name="recess_shape"]:checked')?.value === '1') ? 1 : 0,
-                recess_shape: parseInt(document.querySelector('input[name="recess_shape"]:checked')?.value || '2'),
+                recess_shape: parseInt(document.querySelector('input[name="recess_shape"]:checked')?.value || '1'),
                 // Cone parameters
                 cone_counter_dot_base_diameter: document.getElementById('cone_counter_dot_base_diameter')?.value || '1.6',
                 cone_counter_dot_height: document.getElementById('cone_counter_dot_height')?.value || '0.8',
@@ -6331,7 +6418,7 @@
                 braille_y_adjust: document.getElementById('braille_y_adjust').value,
                 // Rounded dome settings (optional)
                 use_rounded_dots: (document.querySelector('input[name="dot_shape"]:checked')?.value === 'rounded') ? 1 : 0,
-                dot_shape: document.querySelector('input[name="dot_shape"]:checked')?.value || 'cone',
+                dot_shape: document.querySelector('input[name="dot_shape"]:checked')?.value || 'rounded',
                 // Legacy fallbacks retained for backend compatibility
                 rounded_dot_diameter: document.getElementById('rounded_dot_dome_diameter')?.value || '1.5',
                 rounded_dot_height: document.getElementById('rounded_dot_dome_height')?.value || '0.6',
@@ -7150,7 +7237,10 @@
 
                 if (result.success && result.translation) {
                     log.debug('Translation successful:', result.translation);
-                    return result.translation;
+                    // Optional non-standard post-processing (repeat number sign toggle).
+                    // Applied here so preview, shorthand, auto-wrap measurement, and
+                    // STL generation all see the same braille string.
+                    return applyNumberSignRepeat(result.translation);
                 } else {
                     throw new Error('Translation failed: ' + (result.error || 'Unknown error'));
                 }
@@ -7601,11 +7691,11 @@
                         </ol>
 
                         <h4>Text Capacity</h4>
-                        <p>The number of braille cells that fit depends on your cylinder's circumference:</p>
+                        <p>Each row holds a fixed number of braille cells:</p>
                         <ul>
-                            <li>Standard braille cell width is ~2.5mm</li>
-                            <li>A 75mm diameter cylinder (235mm circumference) fits approximately <strong>13-14 cells per row</strong></li>
-                            <li>Larger diameter = more cells per row</li>
+                            <li>By default, each row holds <strong>13 braille cells of text</strong> (2 additional cells are reserved for the indicator letter and the triangle alignment indicator). With indicator letters turned off, up to <strong>14 cells</strong> are available — the alignment triangles are always included.</li>
+                            <li>Cells are spaced 6.5mm apart, so the default 13-cell layout needs about 91mm of circumference — the default 30.8mm-diameter cylinder (about 96.8mm around) fits it with room for the seam gap.</li>
+                            <li>A larger diameter gives more circumference, which adds margin around the seam rather than more cells per row.</li>
                         </ul>
 
                         <h4>Tips for Best Results</h4>
@@ -7657,6 +7747,7 @@
                             <tbody>
                                 <tr><td><strong>Placement Mode</strong></td><td>Auto Placement (handles wrapping)</td></tr>
                                 <tr><td><strong>Capitalized Letters</strong></td><td>Disabled (default) — saves space</td></tr>
+                                <tr><td><strong>Repeat number sign</strong></td><td>Off (default) — standard UEB uses one number sign per number; turn on only to match non-standard online translators</td></tr>
                                 <tr><td><strong>Language</strong></td><td>English (UEB) uncontracted — clearest for names/contact info</td></tr>
                             </tbody>
                         </table>
@@ -7683,6 +7774,9 @@
                             "If the telephone number has no extension, then it can be brailled as follows: #123.456.7890. Omit extra characters such as parentheses. Convert the hyphens to periods to retain the natural sub-units of the phone number. This will maintain the ease of readability, while eliminating the need to repeat numeric indicators. Do not remove the numeric indicator unless absolutely necessary."
                         </blockquote>
                         <p><strong>In this app:</strong> type <code>123.456.7890</code> (no parentheses, periods between groups). The numeric indicator is added by the translator.</p>
+                        <p><strong>Why only one number sign?</strong> In Unified English Braille, a period (or comma) inside a number keeps "numeric mode" active, so the digits after it do not need another number sign (<code lang="und-Brai">⠼</code>). For example, <code>206.616.7678</code> translates to <code lang="und-Brai">⠼⠃⠚⠋⠲⠋⠁⠋⠲⠛⠋⠛⠓</code> — exactly 13 braille cells, which fits a default row. This is correct UEB, matching BANA's guidance above. The Computer shorthand in the translation preview reflects this: digits after each period stay digits (<code>2 0 6 . 6 1 6 . 7 6 7 8</code>).</p>
+                        <p><strong>Some online translators repeat the number sign</strong> after each period. That output is non-standard and uses extra braille cells. If you need to match it, enable the <strong>"Repeat number sign after each period in numbers (non-standard)"</strong> checkbox under the text input area — but be aware the longer result may no longer fit on one row.</p>
+                        <p><strong>Splitting a long number across two rows:</strong> if a phone number will not fit on one row, divide it after a period, and begin the next row with a new number sign (<code lang="und-Brai">⠼</code>) — the translator adds it automatically when the row starts with digits. For example, <code>206.616.</code> on one row and <code>7678</code> on the next produces <code lang="und-Brai">⠼⠃⠚⠋⠲⠋⠁⠋⠲</code> then <code lang="und-Brai">⠼⠛⠋⠛⠓</code>, following the same pattern as BANA's worked examples.</p>
 
                         <h4>E-mail Addresses (BANA, verbatim)</h4>
                         <blockquote>
@@ -7728,7 +7822,7 @@
                             <tbody>
                                 <tr>
                                     <td><strong>Shape Selection</strong></td>
-                                    <td>Output shape (cylinder/card), braille dot shape (rounded/cone), and indicator markers on/off</td>
+                                    <td>Output shape (cylinder/card), braille dot shape (rounded/cone), and indicator letters on/off</td>
                                 </tr>
                                 <tr>
                                     <td><strong>Braille Spacing</strong></td>
@@ -7776,7 +7870,7 @@
                             <p><strong>BANA strategy:</strong> omit capitals from organization; divide the e-mail address.</p>
                             <!-- BANA Grade 2 braille — DO NOT EDIT. Verbatim from the BANA Fact Sheet (March 2024), verified against docs/guides/_bana_source/page_04.png. Source of truth: docs/guides/_bana_business_cards_verified_source.md -->
                             <p><strong>BANA Grade 2 braille (verbatim from the Fact Sheet):</strong></p>
-                            <pre lang="und-Brai" style="font-size: 1.6em; line-height: 1.3;" aria-label="BANA Grade 2 braille rendering of the Harry Potter business card example">⠠⠓⠜⠗⠽⠀⠠⠏⠕⠞⠞⠻
+                            <pre lang="und-Brai" style="font-size: 1.6em; line-height: 1.3;" role="img" aria-label="BANA Grade 2 braille rendering of the Harry Potter business card example">⠠⠓⠜⠗⠽⠀⠠⠏⠕⠞⠞⠻
 ⠓⠕⠛⠺⠜⠞⠎⠀⠎⠡⠕⠕⠇
 ⠓⠜⠗⠽⠈⠁⠐
 ⠓⠕⠛⠺⠜⠞⠎⠲⠫⠥</pre>
@@ -7792,7 +7886,7 @@ harry@hogwarts.edu</pre>
                             <p><strong>BANA strategy:</strong> continue the name onto a second line in cell 1; omit organization (in e-mail); omit phone; divide the e-mail with the dot-5 continuation indicator omitted as a last resort.</p>
                             <!-- BANA Grade 2 braille — DO NOT EDIT. Verbatim from the BANA Fact Sheet (March 2024), verified against docs/guides/_bana_source/page_05.png. -->
                             <p><strong>BANA Grade 2 braille (verbatim from the Fact Sheet):</strong></p>
-                            <pre lang="und-Brai" style="font-size: 1.6em; line-height: 1.3;" aria-label="BANA Grade 2 braille rendering of the Liesel A. Schimmelfennig business card example">⠠⠇⠊⠑⠎⠑⠇⠀⠠⠁⠲
+                            <pre lang="und-Brai" style="font-size: 1.6em; line-height: 1.3;" role="img" aria-label="BANA Grade 2 braille rendering of the Liesel A. Schimmelfennig business card example">⠠⠇⠊⠑⠎⠑⠇⠀⠠⠁⠲
 ⠠⠎⠡⠊⠍⠍⠑⠇⠋⠢⠝⠊⠛
 ⠇⠲⠎⠡⠊⠍⠍⠑⠇⠋⠢⠝⠊⠛
 ⠈⠁⠥⠎⠁⠉⠑⠲⠜⠍⠽</pre>
@@ -7809,7 +7903,7 @@ l.schimmelfennig@usace.army</pre>
                             <p><strong>BANA strategy:</strong> the client chose the nickname "Fran" rather than removing capitals from "Francine"; convert phone hyphens to periods; tag cell/fax with a single-letter prefix.</p>
                             <!-- BANA Grade 2 braille — DO NOT EDIT. Verbatim from the BANA Fact Sheet (March 2024), verified against docs/guides/_bana_source/page_06.png. -->
                             <p><strong>BANA Grade 2 braille (verbatim from the Fact Sheet):</strong></p>
-                            <pre lang="und-Brai" style="font-size: 1.6em; line-height: 1.3;" aria-label="BANA Grade 2 braille rendering of the Francine Fran Rikard business card example">⠠⠋⠗⠁⠝⠀⠠⠗⠊⠅⠜⠙
+                            <pre lang="und-Brai" style="font-size: 1.6em; line-height: 1.3;" role="img" aria-label="BANA Grade 2 braille rendering of the Francine Fran Rikard business card example">⠠⠋⠗⠁⠝⠀⠠⠗⠊⠅⠜⠙
 ⠁⠇⠃⠥⠟⠥⠻⠟⠥⠑⠀⠰⠁⠉
 ⠉⠼⠑⠚⠑⠲⠉⠁⠃⠲⠙⠃⠃⠙
 ⠋⠼⠑⠚⠑⠲⠉⠁⠃⠲⠙⠃⠃⠑</pre>
@@ -7835,11 +7929,11 @@ f 505.312.4225</pre>
                         <h4>Example 5: Medicine Bottle</h4>
                         <div class="example-box">
                             <p><strong>Goal:</strong> Label a prescription bottle (diameter ~40mm) with drug name and dosage.</p>
-                            <p><strong>Decision:</strong> Two key pieces of info — the medication name and dosage. Abbreviate to fit the smaller circumference (~9 cells per row).</p>
+                            <p><strong>Decision:</strong> Two key pieces of info — the medication name and dosage.</p>
                             <p><strong>Type:</strong></p>
                             <pre>amoxicillin
 500mg</pre>
-                            <p><strong>Result:</strong> 2 rows. Name may wrap depending on cell count; abbreviate to "amox 500mg" on a very small bottle.</p>
+                            <p><strong>Result:</strong> 2 rows. "amoxicillin" uses 11 braille cells, within the default 13-cell row; abbreviate to "amox" if you add more per-row content.</p>
                         </div>
 
                         <h4>Example 6: Water Bottle ID Tag</h4>

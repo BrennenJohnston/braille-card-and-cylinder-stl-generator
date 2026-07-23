@@ -147,13 +147,14 @@ def layout_cylindrical_cells(braille_lines, settings, cylinder_diameter_mm: floa
         # Calculate Y position for this row with vertical centering
         y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
 
-        # Process each character up to available columns (reserve 2 if indicators enabled)
-        # Indicators are at columns 0 (triangle) and 1 (letter/number), braille starts at column 2
-        reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
+        # Process each character up to available columns.
+        # The triangle alignment indicator always occupies column 0. When indicator
+        # letters are enabled, the letter occupies column 1 and braille starts at
+        # column 2; when disabled, braille starts at column 1.
+        reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 1
         max_cols = settings.grid_columns - reserved
         for col_num, braille_char in enumerate(line[:max_cols]):
-            # Calculate angular position for this column (shift by 2 if indicators enabled)
-            # Braille cells start at column 2 (after triangle at col 0 and letter at col 1)
+            # Shift braille cells past the reserved marker columns
             angle = start_angle + ((col_num + reserved) * cell_spacing_angle)
             x_pos = angle * radius  # Convert to arc length for compatibility
             cells.append((braille_char, x_pos, y_pos))
@@ -697,15 +698,17 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
         # Y position in local cylinder coordinates
         y_local = y_pos - (height / 2.0)
 
-        if getattr(settings, 'indicator_shapes', 1):
-            # Cell #1 (column 0): Triangle indicator - apex pointing right (default orientation)
-            triangle_x = start_angle * radius
-            triangle_mesh = create_cylinder_triangle_marker(
-                triangle_x, y_local, settings, diameter, 0, height_mm=0.6, for_subtraction=True
-            )
-            triangle_meshes.append(triangle_mesh)
+        # Cell #1 (column 0): Triangle alignment indicator - apex pointing right.
+        # Always created; the triangles are critical to the mechanical device the
+        # cylinder mounts into and have no user-facing toggle.
+        triangle_x = start_angle * radius
+        triangle_mesh = create_cylinder_triangle_marker(
+            triangle_x, y_local, settings, diameter, 0, height_mm=0.6, for_subtraction=True
+        )
+        triangle_meshes.append(triangle_mesh)
 
-            # Cell #2 (column 1): Letter/number indicator
+        if getattr(settings, 'indicator_shapes', 1):
+            # Cell #2 (column 1): Letter/number indicator (gated by the Indicator Letters toggle)
             cell_spacing_angle = settings.cell_spacing / radius
             text_number_angle = start_angle + cell_spacing_angle
             text_number_x = text_number_angle * radius
@@ -751,8 +754,10 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
         f'Creating {len(text_number_meshes)} text/number recesses and {len(triangle_meshes)} triangle recesses on emboss cylinder'
     )
 
-    # Combine all markers (text/number indicators and triangles) for efficient boolean operations
-    all_markers = (text_number_meshes + triangle_meshes) if getattr(settings, 'indicator_shapes', 1) else []
+    # Combine all markers (text/number indicators and triangles) for efficient boolean
+    # operations. Triangles are always present; the letter list is empty when the
+    # Indicator Letters toggle is off.
+    all_markers = text_number_meshes + triangle_meshes
 
     markers_applied = False
     if all_markers and _booleans_available():
@@ -789,9 +794,10 @@ def generate_cylinder_stl(lines, grade='g1', settings=None, cylinder_params=None
 
     meshes = [cylinder_shell]
 
-    # Check for overflow based on grid dimensions (accounting for reserved columns when indicators enabled)
+    # Check for overflow based on grid dimensions (accounting for reserved marker columns:
+    # 2 with indicator letters on, 1 for the always-present alignment triangle when off)
     total_cells_needed = sum(len(line.strip()) for line in lines if line.strip())
-    reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
+    reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 1
     total_cells_available = (settings.grid_columns - reserved) * settings.grid_rows
 
     if total_cells_needed > total_cells_available:
@@ -947,28 +953,31 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
         y_local = y_pos - (height / 2.0)
 
+        # For counter plate (mirrored from embossing plate):
+        # - Triangle at LAST column (grid_columns-1), apex pointing left (mirrored orientation)
+        # - Square placeholder at SECOND-TO-LAST column (grid_columns-2), only when
+        #   the Indicator Letters toggle is on
+        # This mirrors the embossing plate layout where the triangle is at column 0
+        # and the letter is at column 1
+
+        # Last column (triangle with 180-degree rotation for counter plate alignment).
+        # Always created; the alignment triangles have no user-facing toggle.
+        triangle_col_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle)
+        triangle_x = triangle_col_angle * radius
+        triangle_mesh = create_cylinder_triangle_marker(
+            triangle_x,
+            y_local,
+            settings,
+            diameter,
+            0,  # Braille content uses fixed position (seam_offset only affects polygon)
+            height_mm=0.5,
+            for_subtraction=True,
+            rotate_180=True,  # 180-degree rotation from center for counter plate
+        )
+        triangle_meshes.append(triangle_mesh)
+
         if getattr(settings, 'indicator_shapes', 1):
-            # For counter plate (mirrored from embossing plate):
-            # - Triangle at LAST column (grid_columns-1), apex pointing left (mirrored orientation)
-            # - Rectangle placeholder at SECOND-TO-LAST column (grid_columns-2)
-            # This mirrors the embossing plate layout where Triangle is at column 0 and Letter is at column 1
-
-            # Last column (triangle with 180-degree rotation for counter plate alignment):
-            triangle_col_angle = start_angle + ((settings.grid_columns - 1) * cell_spacing_angle)
-            triangle_x = triangle_col_angle * radius
-            triangle_mesh = create_cylinder_triangle_marker(
-                triangle_x,
-                y_local,
-                settings,
-                diameter,
-                0,  # Braille content uses fixed position (seam_offset only affects polygon)
-                height_mm=0.5,
-                for_subtraction=True,
-                rotate_180=True,  # 180-degree rotation from center for counter plate
-            )
-            triangle_meshes.append(triangle_mesh)
-
-            # Second-to-last column (rectangle placeholder):
+            # Second-to-last column (square placeholder mirroring the indicator letter):
             rect_col_angle = start_angle + ((settings.grid_columns - 2) * cell_spacing_angle)
             line_end_x = rect_col_angle * radius
             line_end_mesh = create_cylinder_line_end_marker(
@@ -984,8 +993,9 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
 
     # Process ALL cells in the grid (not just those with braille content)
     # Mirror horizontally (right-to-left) so the counter plate reads R→L when printed
-    # Check indicator_shapes setting to match embossing plate behavior
-    reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
+    # Reserved marker columns match the embossing plate: 2 with indicator letters on,
+    # 1 for the always-present alignment triangle when off
+    reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 1
     num_text_cols = settings.grid_columns - reserved
 
     logger.info(
@@ -997,9 +1007,9 @@ def generate_cylinder_counter_plate(lines, settings: CardSettings, cylinder_para
         y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
 
         # Process ALL columns mirrored
-        # Braille cells are at columns 0 to (num_text_cols-1) when indicators are at the rightmost positions
-        # When indicator_shapes is enabled: braille at cols 0 to grid_columns-3, indicators at grid_columns-2 and grid_columns-1
-        # When indicator_shapes is disabled: braille at cols 0 to grid_columns-1 (all columns)
+        # Braille cells are at columns 0 to (num_text_cols-1); markers occupy the rightmost positions
+        # Indicator letters ON: braille at cols 0 to grid_columns-3, square at grid_columns-2, triangle at grid_columns-1
+        # Indicator letters OFF: braille at cols 0 to grid_columns-2, triangle at grid_columns-1
         for col_num in range(num_text_cols):
             # Mirror column index across row so cells are placed right-to-left
             # This creates the mirror effect where embossing plate's first braille cell aligns with counter plate's last braille cell

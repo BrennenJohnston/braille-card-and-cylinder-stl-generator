@@ -476,6 +476,22 @@ The preset system controls **26 parameters** across 5 categories:
 - `card_height` — Card height (mm)
 - `card_thickness` — Card thickness (mm)
 
+### Braille Dot Shape Default (Rounded)
+
+Both the 0.4mm and 0.3mm presets default the **Braille Dot Shape to "Rounded"**:
+
+- When the user explicitly selects a preset (change or click on the 0.4/0.3 radio),
+  `applyThicknessPreset(presetKey, applyShape = true)` selects the Rounded
+  `combined_shape` radio and dispatches a `change` event so the existing sync
+  (`dot_shape` = rounded, `recess_shape` = 1/bowl) and persistence handlers run.
+- On page-load restore, `applyShape` stays `false` so a persisted user shape choice
+  (e.g. Cone) is not overridden.
+- The baseline HTML default (no persisted state) is also Rounded, matching
+  `settings.schema.json` (`combined_shape` default `"rounded"`, `recess_shape` default `1`)
+  and `app/models.py` (`use_rounded_dots` default `1`).
+- Preset **dimension values are unchanged** by this behavior; the presets continue to set
+  the same sizing/cutout numbers for both the rounded and cone parameter families.
+
 ### Parameters NOT Affected by Presets
 
 The following UI elements are **NOT** controlled by presets:
@@ -488,9 +504,13 @@ The following UI elements are **NOT** controlled by presets:
    - Language table dropdown
    - Shape type (Card/Cylinder)
    - Plate type (Emboss/Counter)
-   - Dot shape selection (Rounded/Cone radio)
-   - Recess shape selection (Bowl/Cone radio)
-   - Indicator shapes toggle
+   - Recess shape selection (Bowl/Cone radio) — set indirectly via the combined shape
+     when a preset is explicitly applied (see above), never forced on page load
+   - Indicator Letters toggle
+
+Note: the Dot shape selection (Rounded/Cone radio) is set to Rounded when a preset is
+explicitly applied (see "Braille Dot Shape Default" above), but remains freely
+changeable by the user afterward.
 
 3. **Export Options**:
    - Filename prefix

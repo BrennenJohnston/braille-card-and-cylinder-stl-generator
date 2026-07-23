@@ -160,9 +160,14 @@ See: `SURFACE_DIMENSIONS_SPECIFICATIONS.md`.
 ### 3.5 Braille Dot Shape & Dimensions
 
 Selection:
-- dots.combined_shape: "rounded" | "cone" (controls both emboss and counter selections)
+- dots.combined_shape: "rounded" | "cone" (controls both emboss and counter selections; default: "rounded")
 - dots.dot_shape: "rounded" | "cone" (compatibility alias, optional)
-- dots.recess_shape: 1 | 2 (bowl = 1, cone = 2; compatibility alias, optional)
+- dots.recess_shape: 1 | 2 (bowl = 1, cone = 2; compatibility alias, optional; default: 1)
+
+Defaults:
+- "Rounded" is the default Braille Dot Shape. Both the 0.4mm and 0.3mm Card Thickness
+  presets default to Rounded when applied (the presets change dimensions only; the shape
+  is set once when a preset is explicitly selected and can then be changed by the user).
 
 Emboss (rounded):
 - dots.rounded.base_diameter_mm: number (> 0)
@@ -190,12 +195,18 @@ Notes:
 See: `BRAILLE_DOT_ADJUSTMENTS_SPECIFICATIONS.md`, `BRAILLE_DOT_SHAPE_SPECIFICATIONS.md`.
 
 ### 3.6 Recess Indicators
-- indicators.enabled: boolean
+- indicators.enabled: boolean (gates ONLY the indicator letter on the emboss plate and
+  the matching square on the counter plate; the triangle alignment indicators are always
+  generated and have no user-facing toggle)
 - indicators.type: "triangle" | "rectangle" | "character"
 - indicators.depth_mm: number (default: 0.6)
 - indicators.character: string (single alphanumeric for character marker)
 - indicators.size_scale: number (scales relative to `spacing.dot_spacing_mm`)
 - indicators.rotate_180: boolean (applies for counter plate on cylinder)
+
+Reserved columns (flat `indicator_shapes` runtime field, 0 or 1):
+- indicator_shapes = 1 (On): 2 marker columns reserved per row (letter + triangle) — 13 text cells at defaults
+- indicator_shapes = 0 (Off): 1 marker column reserved per row (triangle only) — 14 text cells at defaults
 
 See: `RECESS_INDICATOR_SPECIFICATIONS.md`.
 

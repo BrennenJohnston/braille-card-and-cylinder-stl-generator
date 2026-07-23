@@ -369,8 +369,10 @@ def validate_line_lengths(
         ValidationError: If any line exceeds available columns
     """
     if shape_type == 'cylinder':
-        # Cylinders reserve 2 columns for indicators (triangle at col 0, character at col 1)
-        reserved = 2 if indicator_shapes else 0
+        # Cylinders reserve marker columns:
+        # - indicator letters ON: 2 columns (triangle at col 0, letter at col 1)
+        # - indicator letters OFF: 1 column (the alignment triangle is always present)
+        reserved = 2 if indicator_shapes else 1
         available_columns = max(0, grid_columns - reserved)
     else:
         # Cards: all grid_columns are available for braille

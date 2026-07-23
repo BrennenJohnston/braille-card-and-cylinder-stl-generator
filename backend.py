@@ -519,7 +519,9 @@ def geometry_spec():
         # grid_columns were silently dropped in geometry_spec.py
         if plate_type == 'positive':
             grid_columns = int(settings_data.get('grid_columns', 18))
-            indicator_shapes = int(settings_data.get('indicator_shapes', 0))
+            # Default matches CardSettings (indicator letters on). Geometry uses the
+            # same default, so validation must agree to avoid over/under-counting.
+            indicator_shapes = int(settings_data.get('indicator_shapes', 1))
             validate_line_lengths(lines, grid_columns, shape_type, indicator_shapes)
 
         # Extract geometry spec

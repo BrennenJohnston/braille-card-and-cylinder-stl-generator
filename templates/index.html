@@ -2282,7 +2282,7 @@
                                 <ul style="margin: 0.3em 0; padding-left: 1.5em;">
                                     <li><em>Number of Braille Cells (Characters):</em> Keep <strong>13</strong> with indicators On.</li>
                                     <li><em>Number of Braille Lines:</em> <strong>4</strong> is typical.</li>
-                                    <li><em>Indicator Shapes:</em> Keep <strong>On</strong> so users can feel row start/end; it reserves 2 cells per row.</li>
+                                    <li><em>Indicator Letters:</em> Keep <strong>On</strong> so users can identify each row by its first letter; it reserves 2 cells per row (Off frees 1 cell; the alignment triangles are always included).</li>
                                     <li><em>Card size and spacing:</em> Defaults target standard 3.5″ × 2″ cards; adjust only if your cards differ.</li>
                                     <li><em>Dot dimensions:</em> Leave defaults unless embossing is too shallow or too sharp.</li>
                                 </ul>
@@ -2522,32 +2522,35 @@
                                         <legend class="grade-label">Braille Dot Shape (Emboss and Counter)</legend>
                                         <div class="radio-group" role="radiogroup" aria-required="true">
                                             <label class="radio-option">
-                                                <input type="radio" name="combined_shape" value="rounded" aria-describedby="rounded-combined-desc">
+                                                <input type="radio" name="combined_shape" value="rounded" checked aria-describedby="rounded-combined-desc">
                                                 <span class="radio-text">Rounded</span>
                                             </label>
                                             <span id="rounded-combined-desc" class="sr-only">Creates rounded dome dots for emboss plate and spherical-cap bowl recess for counter plate</span>
                                             <label class="radio-option">
-                                                <input type="radio" name="combined_shape" value="cone" checked aria-describedby="cone-combined-desc">
+                                                <input type="radio" name="combined_shape" value="cone" aria-describedby="cone-combined-desc">
                                                 <span class="radio-text">Cone</span>
                                             </label>
                                             <span id="cone-combined-desc" class="sr-only">Creates cone frustum dots for emboss plate and conical frustum recess for counter plate</span>
+                                        </div>
+                                        <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
+                                            Rounded is the default for the 0.4mm and 0.3mm Card Thickness presets.
                                         </div>
                                     </fieldset>
                                 </div>
 
                                 <!-- Hidden radio buttons for backend compatibility -->
                                 <div style="display: none;">
-                                    <input type="radio" name="dot_shape" value="rounded">
-                                    <input type="radio" name="dot_shape" value="cone" checked>
-                                    <input type="radio" name="recess_shape" value="1">
-                                    <input type="radio" name="recess_shape" value="2" checked>
+                                    <input type="radio" name="dot_shape" value="rounded" checked>
+                                    <input type="radio" name="dot_shape" value="cone">
+                                    <input type="radio" name="recess_shape" value="1" checked>
+                                    <input type="radio" name="recess_shape" value="2">
                                 </div>
 
-                                <!-- Indicator Shape toggle -->
+                                <!-- Indicator Letters toggle -->
                                 <div class="grade-selection">
                                     <fieldset>
-                                        <legend class="grade-label" style="font-size: 1.2em; font-weight: 700;">Indicator Shapes (Emboss and Counter)</legend>
-                                        <div class="radio-group" role="radiogroup" aria-label="Indicator Shape toggle">
+                                        <legend class="grade-label" style="font-size: 1.2em; font-weight: 700;">Indicator Letters (Emboss and Counter)</legend>
+                                        <div class="radio-group" role="radiogroup" aria-label="Indicator Letters toggle">
                                             <label class="radio-option">
                                                 <input type="radio" name="indicator_shapes" id="indicator_on" value="1" checked>
                                                 <span class="radio-text">On</span>
@@ -2558,7 +2561,7 @@
                                             </label>
                                         </div>
                                         <div class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                            When On: 2 cells are reserved per row for start/end markers. When Off: all cells are available for text.
+                                            When On: each row includes an indicator letter in the indicator area (with a matching square on the counter plate), so 2 cells per row are reserved. When Off: the letter and square are removed, freeing 1 extra cell per row for braille text. The triangle alignment indicators are always included.
                                         </div>
                                     </fieldset>
                                 </div>
@@ -2576,9 +2579,9 @@
                                     <label class="grade-label" style="font-size: 1.2em; font-weight: 700;">Braille Dimensions</label>
                                     <div>
                                         <label for="grid_columns" id="grid_columns_label">Number of Braille Cells (Characters):</label>
-                                        <input type="number" id="grid_columns" name="grid_columns" value="11" style="width: 110px;" autocomplete="off">
+                                        <input type="number" id="grid_columns" name="grid_columns" value="13" style="width: 110px;" autocomplete="off">
                                         <div id="grid_columns_note" class="grade-note" style="margin-top: 4px; font-size: 0.85em;">
-                                            For embossing plates: 2 cells are reserved for row indicators (start/end markers), leaving 11 cells available for text.
+                                            For embossing plates: 2 cells per row are reserved for the indicator letter and alignment triangle, leaving 13 cells available for text.
                                         </div>
                                     </div>
                                     <div style="margin-top: 6px;">
@@ -3632,23 +3635,23 @@
                 const currentValue = parseInt(gridColumnsInput.value);
 
                 if (plateType === 'positive') {
-                    // Embossing plate - available cells depend on indicator toggle
+                    // Embossing plate - available cells depend on indicator letters toggle
                     gridColumnsLabel.textContent = 'Number of Available Braille Cells:';
                     gridColumnsNote.style.display = 'block';
                     gridColumnsNote.textContent = indicatorOn
-                        ? 'For embossing plates: 2 cells are reserved for row indicators (start/end markers).'
-                        : 'Indicators off: all columns are available for text.';
+                        ? 'For embossing plates: 2 cells per row are reserved for the indicator letter and alignment triangle.'
+                        : 'Indicator letters off: 1 cell per row is reserved for the alignment triangle; the freed cell is available for text.';
                     // Always normalize the dial to the recommended default to avoid drift
-                    gridColumnsInput.value = indicatorOn ? '13' : '15';
+                    gridColumnsInput.value = indicatorOn ? '13' : '14';
                 } else {
-                    // Counter plate - available cells depend on indicator toggle
+                    // Counter plate - available cells depend on indicator letters toggle
                     gridColumnsLabel.textContent = 'Available Braille Cells for Text:';
                     gridColumnsNote.textContent = indicatorOn
-                        ? 'For counter plates: 2 cells are reserved for row indicators (start/end markers), leaving 13 cells available for text.'
-                        : 'Indicators off: all columns are available for text.';
+                        ? 'For counter plates: 2 cells per row are reserved for the indicator square and alignment triangle, leaving 13 cells available for text.'
+                        : 'Indicator letters off: 1 cell per row is reserved for the alignment triangle, leaving 14 cells available for text.';
                     gridColumnsNote.style.display = 'block';
                     // Always normalize the dial to the recommended default to avoid drift
-                    gridColumnsInput.value = indicatorOn ? '13' : '15';
+                    gridColumnsInput.value = indicatorOn ? '13' : '14';
                 }
             }
             // Expose for other handlers safely
@@ -3719,7 +3722,7 @@
             document.querySelectorAll('input[name="combined_shape"]').forEach(r => {
                 r.addEventListener('change', () => {
                     resetToGenerateState();
-                    const combinedVal = document.querySelector('input[name="combined_shape"]:checked')?.value || 'cone';
+                    const combinedVal = document.querySelector('input[name="combined_shape"]:checked')?.value || 'rounded';
                     const isRounded = combinedVal === 'rounded';
                     const isCone = combinedVal === 'cone';
 
@@ -4388,7 +4391,7 @@
                 if (radio) radio.checked = true;
             }
             // Combined shape - initialize based on saved dot shape or default to cone
-            const savedCombined = readPersisted('braille_prefs_combined_shape') || savedDot || 'cone';
+            const savedCombined = readPersisted('braille_prefs_combined_shape') || savedDot || 'rounded';
             if (savedCombined === 'cone' || savedCombined === 'rounded') {
                 const radio = document.querySelector(`input[name="combined_shape"][value="${savedCombined}"]`);
                 if (radio) radio.checked = true;
@@ -4505,7 +4508,7 @@
             // Combined shape (new primary control)
             document.querySelectorAll('input[name="combined_shape"]').forEach(r => {
                 r.addEventListener('change', () => {
-                    const val = document.querySelector('input[name="combined_shape"]:checked')?.value || 'cone';
+                    const val = document.querySelector('input[name="combined_shape"]:checked')?.value || 'rounded';
                     persistValue('braille_prefs_combined_shape', val);
                     // Also persist the individual values for backend compatibility
                     persistValue('braille_prefs_dot_shape', val);
@@ -4636,6 +4639,8 @@
         // ======================================================================
         // Define presets for each thickness option (0.4mm and 0.3mm layer heights)
         // These presets set all numeric inputs to optimized values for each thickness.
+        // Both presets also default the Braille Dot Shape to "Rounded" (applied when the
+        // user selects a preset; see applyThicknessPreset with applyShape=true).
         // Note: Text inputs (line1, line2, etc.) are NOT affected by presets.
         const THICKNESS_PRESETS = {
             '0.4': {
@@ -4764,8 +4769,11 @@
          * Apply a thickness preset by setting all input values to the preset values.
          * Does NOT affect text inputs (line1, line2, etc.)
          * @param {string} presetKey - '0.4' or '0.3'
+         * @param {boolean} applyShape - When true (explicit user selection), also set the
+         *        Braille Dot Shape to "Rounded" (the preset default). Left false on page-load
+         *        restore so a user's persisted shape choice is not overridden.
          */
-        function applyThicknessPreset(presetKey) {
+        function applyThicknessPreset(presetKey, applyShape = false) {
             const preset = THICKNESS_PRESETS[presetKey];
             if (!preset) {
                 log.debug('Unknown thickness preset:', presetKey);
@@ -4773,6 +4781,17 @@
             }
 
             log.debug('Applying thickness preset:', presetKey);
+
+            // Both presets default the dot shape to Rounded. Selecting the radio and
+            // dispatching 'change' runs the existing sync (dot_shape/recess_shape) and
+            // persistence handlers.
+            if (applyShape) {
+                const roundedRadio = document.querySelector('input[name="combined_shape"][value="rounded"]');
+                if (roundedRadio && !roundedRadio.checked) {
+                    roundedRadio.checked = true;
+                    roundedRadio.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
 
             // Apply each preset value to the corresponding input
             Object.entries(preset).forEach(([inputId, value]) => {
@@ -4813,14 +4832,14 @@
             radio.addEventListener('change', function() {
                 if (this.checked && this.value !== 'custom') {
                     // Only apply preset for 0.4 and 0.3, not for custom
-                    applyThicknessPreset(this.value);
+                    applyThicknessPreset(this.value, true);
                 }
             });
             // Add click listener to allow re-applying the currently selected preset
             radio.addEventListener('click', function() {
                 if (this.checked && this.value !== 'custom') {
                     // Only apply preset for 0.4 and 0.3, not for custom
-                    applyThicknessPreset(this.value);
+                    applyThicknessPreset(this.value, true);
                 }
             });
         });
@@ -5051,7 +5070,9 @@
             let numericMode = false;
             let pendingWordGap = false;
 
-            for (const ch of brailleStr) {
+            const cells = Array.from(brailleStr);
+            for (let cellIndex = 0; cellIndex < cells.length; cellIndex++) {
+                const ch = cells[cellIndex];
                 if (ch === ' ') {
                     // Word boundary
                     numericMode = false;
@@ -5106,7 +5127,14 @@
                     }
                     result += punctuationMap[ch];
                     pendingWordGap = false;
-                    numericMode = false;
+                    // UEB: a period or comma inside a number keeps numeric mode
+                    // (numericmodechars), so digits that follow are still digits.
+                    if (numericMode && (ch === '⠲' || ch === '⠂')) {
+                        const next = cells[cellIndex + 1];
+                        numericMode = next !== undefined && digitMap[next] !== undefined;
+                    } else {
+                        numericMode = false;
+                    }
                     continue;
                 }
 
@@ -5445,10 +5473,12 @@
                 log.debug('Counter plate selected - no text translation needed');
             }
             const settings = {
-                // Add 2 only if indicator shapes are ON; otherwise send exact cells
+                // The dial shows usable text cells. Add the marker columns on top:
+                // +2 when indicator letters are ON (letter + triangle), +1 when OFF
+                // (the alignment triangle column is always present).
                 grid_columns: (document.querySelector('input[name="indicator_shapes"]:checked')?.value === '1')
                     ? String(parseInt(document.getElementById('grid_columns').value) + 2)
-                    : String(parseInt(document.getElementById('grid_columns').value)),
+                    : String(parseInt(document.getElementById('grid_columns').value) + 1),
                 grid_rows: document.getElementById('grid_rows').value,
                 cell_spacing: document.getElementById('cell_spacing').value,
                 line_spacing: document.getElementById('line_spacing').value,
@@ -5482,7 +5512,7 @@
                 braille_y_adjust: document.getElementById('braille_y_adjust').value,
                 // Rounded dome settings (optional)
                 use_rounded_dots: (document.querySelector('input[name="dot_shape"]:checked')?.value === 'rounded') ? 1 : 0,
-                dot_shape: document.querySelector('input[name="dot_shape"]:checked')?.value || 'cone',
+                dot_shape: document.querySelector('input[name="dot_shape"]:checked')?.value || 'rounded',
                 // Legacy fallbacks retained for backend compatibility
                 rounded_dot_diameter: document.getElementById('rounded_dot_dome_diameter')?.value || '1.5',
                 rounded_dot_height: document.getElementById('rounded_dot_dome_height')?.value || '0.6',

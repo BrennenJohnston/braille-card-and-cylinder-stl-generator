@@ -70,9 +70,7 @@ def extract_card_geometry_spec(
 
             x_pos_first = settings.left_margin + settings.braille_x_adjust
             x_pos_last = (
-                settings.left_margin
-                + ((settings.grid_columns - 1) * settings.cell_spacing)
-                + settings.braille_x_adjust
+                settings.left_margin + ((settings.grid_columns - 1) * settings.cell_spacing) + settings.braille_x_adjust
             )
 
             # Square (rectangle) marker at column 0, gated by the Indicator Letters toggle.
@@ -143,9 +141,7 @@ def extract_card_geometry_spec(
             # Indicator Letters toggle; the triangle (last column) is always created.
             x_pos_first = settings.left_margin + settings.braille_x_adjust
             x_pos_last = (
-                settings.left_margin
-                + ((settings.grid_columns - 1) * settings.cell_spacing)
-                + settings.braille_x_adjust
+                settings.left_margin + ((settings.grid_columns - 1) * settings.cell_spacing) + settings.braille_x_adjust
             )
 
             if getattr(settings, 'indicator_shapes', 1):

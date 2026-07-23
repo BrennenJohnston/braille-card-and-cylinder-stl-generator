@@ -556,9 +556,7 @@ def build_counter_plate_hemispheres(params: CardSettings) -> trimesh.Trimesh:
             x_pos_first = params.left_margin + params.braille_x_adjust
 
             # Create line end marker for subtraction (will create recess)
-            line_end_mesh = create_card_line_end_marker_3d(
-                x_pos_first, y_pos, params, height=0.5, for_subtraction=True
-            )
+            line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, params, height=0.5, for_subtraction=True)
             line_end_meshes.append(line_end_mesh)
 
         # Add triangle marker at the last cell position (grid_columns - 1) to match embossing plate layout
@@ -761,9 +759,7 @@ def build_counter_plate_bowl(params: CardSettings) -> trimesh.Trimesh:
         y_pos = params.card_height - params.top_margin - (row_num * params.line_spacing) + params.braille_y_adjust
         if getattr(params, 'indicator_shapes', 1):
             x_pos_first = params.left_margin + params.braille_x_adjust
-            line_end_mesh = create_card_line_end_marker_3d(
-                x_pos_first, y_pos, params, height=0.5, for_subtraction=True
-            )
+            line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, params, height=0.5, for_subtraction=True)
             line_end_meshes.append(line_end_mesh)
         x_pos_last = params.left_margin + ((params.grid_columns - 1) * params.cell_spacing) + params.braille_x_adjust
         triangle_mesh = create_card_triangle_marker_3d(x_pos_last, y_pos, params, height=0.5, for_subtraction=True)
@@ -926,9 +922,7 @@ def build_counter_plate_cone(params: CardSettings) -> trimesh.Trimesh:
         y_pos = params.card_height - params.top_margin - (row_num * params.line_spacing) + params.braille_y_adjust
         if getattr(params, 'indicator_shapes', 1):
             x_pos_first = params.left_margin + params.braille_x_adjust
-            line_end_mesh = create_card_line_end_marker_3d(
-                x_pos_first, y_pos, params, height=0.5, for_subtraction=True
-            )
+            line_end_mesh = create_card_line_end_marker_3d(x_pos_first, y_pos, params, height=0.5, for_subtraction=True)
             line_end_meshes.append(line_end_mesh)
         x_pos_last = params.left_margin + ((params.grid_columns - 1) * params.cell_spacing) + params.braille_x_adjust
         triangle_mesh = create_card_triangle_marker_3d(x_pos_last, y_pos, params, height=0.5, for_subtraction=True)

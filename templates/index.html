@@ -5051,7 +5051,9 @@
             let numericMode = false;
             let pendingWordGap = false;
 
-            for (const ch of brailleStr) {
+            const cells = Array.from(brailleStr);
+            for (let cellIndex = 0; cellIndex < cells.length; cellIndex++) {
+                const ch = cells[cellIndex];
                 if (ch === ' ') {
                     // Word boundary
                     numericMode = false;
@@ -5106,7 +5108,14 @@
                     }
                     result += punctuationMap[ch];
                     pendingWordGap = false;
-                    numericMode = false;
+                    // UEB: a period or comma inside a number keeps numeric mode
+                    // (numericmodechars), so digits that follow are still digits.
+                    if (numericMode && (ch === '⠲' || ch === '⠂')) {
+                        const next = cells[cellIndex + 1];
+                        numericMode = next !== undefined && digitMap[next] !== undefined;
+                    } else {
+                        numericMode = false;
+                    }
                     continue;
                 }
 

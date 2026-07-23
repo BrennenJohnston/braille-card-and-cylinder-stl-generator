@@ -29,6 +29,7 @@ This document specifies the "Enter Text for Braille Translation" text input syst
 5. [Select Language Menu](#5-select-language-menu)
 6. [Per-Line Language Selection (Manual Mode)](#6-per-line-language-selection-manual-mode)
    - 6.1 [Capitalized Letters Toggle](#61-capitalized-letters-toggle)
+   - 6.2 [Repeat Number Sign Toggle](#62-repeat-number-sign-toggle)
 7. [Translation Pipeline](#7-translation-pipeline)
 8. [Backend Request Structure](#8-backend-request-structure)
 9. [BANA Auto-Wrap Algorithm](#9-bana-auto-wrap-algorithm)
@@ -713,6 +714,83 @@ if (savedCaps === 'enabled' || savedCaps === 'disabled') {
 | "HELLO" | Enabled | `⠠⠠⠓⠑⠇⠇⠕` | Double capital indicator for all-caps word |
 | "hello" | Disabled | `⠓⠑⠇⠇⠕` | Already lowercase, no change |
 | "hello" | Enabled | `⠓⠑⠇⠇⠕` | Already lowercase, no change |
+
+---
+
+## 6.2. Repeat Number Sign Toggle
+
+### Purpose
+
+The **Repeat number sign after each period in numbers** toggle lets users force a number sign (`⠼`) to be re-inserted after every period or comma inside a number. This is **non-standard** behavior: it exists only to match the output of some online translators.
+
+### Rationale
+
+Standard UEB defines the period and comma as numeric-mode continuation characters (`numericmodechars .,` in `en-ueb-g1.ctb`), so a number like `206.616.7678` translates with a **single** number sign: `⠼⠃⠚⠋⠲⠋⠁⠋⠲⠛⠋⠛⠓` (13 cells). Some online translators instead repeat the number sign after each period, producing a longer, non-standard result. The toggle reproduces that output for users who need to match it, at the cost of extra braille cells.
+
+- **Default:** Unchecked (off) — standard UEB output.
+- The toggle is UI-only translation post-processing, exactly like the Capitalized Letters toggle: no settings schema or `CardSettings` change is involved.
+
+### UI Location and HTML Structure
+
+Located within the "Enter Text for Braille Translation" fieldset, immediately after the capitalization warning (`#caps-warning`):
+
+```html
+<!-- Repeat number sign toggle (non-standard UEB behavior, default off) -->
+<div class="line-input-mode-toggle" style="margin-top: 0.8em; display: flex; align-items: flex-start; gap: 0.5em; flex-wrap: wrap;">
+    <label style="display: inline-flex; align-items: center; gap: 0.4em;" for="repeat_number_sign">
+        <input type="checkbox" id="repeat_number_sign" name="repeat_number_sign" aria-describedby="repeat-number-sign-note">
+        Repeat number sign after each period in numbers (non-standard)
+    </label>
+    <div id="repeat-number-sign-note" class="grade-note" style="margin: 0; font-size: 0.85em; flex-basis: 100%;">
+        Standard UEB uses one number sign per number because periods and commas keep numeric mode. Turning this on matches some online translators but uses extra braille cells.
+    </div>
+</div>
+```
+
+### JavaScript Implementation
+
+```javascript
+function isRepeatNumberSignOn() {
+    return document.getElementById('repeat_number_sign')?.checked === true;
+}
+
+function applyNumberSignRepeat(braille) {
+    if (!isRepeatNumberSignOn()) return braille;
+    const DIGITS = '\u2801\u2803\u2809\u2819\u2811\u280B\u281B\u2813\u280A\u281A'; // a-j cells
+    let out = '';
+    let numeric = false;
+    for (let i = 0; i < braille.length; i++) {
+        const ch = braille[i];
+        out += ch;
+        if (ch === '\u283C') { numeric = true; continue; }          // number sign
+        if (numeric && (ch === '\u2832' || ch === '\u2802')) {      // period, comma
+            if (i + 1 < braille.length && DIGITS.includes(braille[i + 1])) out += '\u283C';
+            else numeric = false;
+            continue;
+        }
+        if (!DIGITS.includes(ch)) numeric = false;
+    }
+    return out;
+}
+```
+
+### Integration Point
+
+`applyNumberSignRepeat()` is applied to the translation result **inside `translateWithLiblouis()`** — a single central point — so the braille preview, computer shorthand, auto-wrap length measurement, overflow detection, and STL generation all see the same post-processed string. The existing post-translation cell-count validation then honestly flags results that no longer fit (e.g., the 14-cell repeated-sign phone number at 13 columns).
+
+### State Persistence
+
+- **Persistence key:** `braille_prefs_repeat_number_sign`
+- **Values:** `'1'` (on) or `'0'` (off)
+- Restored in `applyPersistedSettings()`, wired in `wirePersistenceListeners()`, and included in the `clearAllPersistence()` key list.
+- Changing the toggle calls `resetToGenerateState()` and recomputes auto-mode overflow (extra number signs change cell counts).
+
+### Example Behavior
+
+| Input | Toggle | Resulting Braille | Cells |
+|-------|--------|-------------------|-------|
+| `206.616.7678` | Off (default) | `⠼⠃⠚⠋⠲⠋⠁⠋⠲⠛⠋⠛⠓` | 13 (standard UEB) |
+| `206.616.7678` | On | `⠼⠃⠚⠋⠲⠼⠋⠁⠋⠲⠼⠛⠋⠛⠓` | 15 (non-standard) |
 
 ---
 

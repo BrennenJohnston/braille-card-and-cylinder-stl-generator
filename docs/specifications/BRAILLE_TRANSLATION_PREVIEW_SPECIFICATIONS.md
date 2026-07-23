@@ -296,8 +296,11 @@ function brailleToComputerShorthand(brailleStr) {
     let numericMode = false;
     let pendingWordGap = false;
 
-    for (const ch of brailleStr) {
+    const cells = Array.from(brailleStr);
+    for (let cellIndex = 0; cellIndex < cells.length; cellIndex++) {
+        const ch = cells[cellIndex];
         // Process each character according to current mode
+        // (indexed loop allows one-cell lookahead for numeric-mode continuation)
     }
 
     return result;
@@ -380,9 +383,21 @@ After a number indicator (⠼), letters become digits:
 3. Contraction → Add bracketed contraction, end numeric mode
 4. Digit (in numeric mode) → Add digit character
 5. Letter → Add letter, end numeric mode
-6. Punctuation → Add punctuation character, end numeric mode
+6. Punctuation → Add punctuation character; period (⠲) or comma (⠂) inside a
+   number KEEPS numeric mode when the next cell is a digit cell (⠁–⠚),
+   matching UEB's numericmodechars rule. All other punctuation (and a
+   period/comma not followed by a digit) ends numeric mode.
 7. Unknown → Show raw braille character as fallback
 ```
+
+### Numeric-Mode Continuation Rule
+
+UEB defines `.` and `,` as numeric-mode continuation characters
+(`numericmodechars .,` in `en-ueb-g1.ctb`). A number such as `206.616.7678`
+therefore translates with a **single** number sign: `⠼⠃⠚⠋⠲⠋⠁⠋⠲⠛⠋⠛⠓`
+(13 cells). The shorthand converter mirrors this: when a period or comma is
+encountered in numeric mode, it looks ahead one cell — if the next cell is a
+digit cell (⠁⠃⠉⠙⠑⠋⠛⠓⠊⠚), numeric mode continues; otherwise it ends.
 
 ### Example Output
 
@@ -392,6 +407,7 @@ After a number indicator (⠼), letters become digits:
 | "The" | ⠮ | [the] |
 | "123" | ⠼⠁⠃⠉ | [Number Symbol] 1 2 3 |
 | "John" | ⠠⠚⠕⠓⠝ | [Capital Symbol] j o h n |
+| "206.616.7678" | ⠼⠃⠚⠋⠲⠋⠁⠋⠲⠛⠋⠛⠓ | [Number Symbol] 2 0 6 . 6 1 6 . 7 6 7 8 |
 
 ---
 

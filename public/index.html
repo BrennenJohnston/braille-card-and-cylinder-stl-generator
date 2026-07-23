@@ -2793,7 +2793,7 @@
                     <p>Generates custom braille embossing plates for cylinders (labels, containers) and flat cards.
                        <a href="https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator" target="_blank" rel="noopener noreferrer">View on GitHub</a>
                     </p>
-                    <p style="font-size: 0.9em; color: #6b7280;"><em>Note: Cylinder shapes are currently available. Flat cards are temporarily disabled.</em></p>
+                    <p style="font-size: 0.9em;"><em>Note: Cylinder shapes are currently available. Flat cards are temporarily disabled.</em></p>
 
                     <p><strong>First Step: Decide What to Include</strong></p>
                     <p>Braille space is limited. Not everything from print will fit.</p>
@@ -2856,6 +2856,16 @@
                             <div id="caps-warning" class="grade-note" role="status" aria-live="polite"
                                  style="margin-top: 0.6em; color: #059669; display: none;">
                                 <strong>Note:</strong> Capital letters in your text will not be translated because "Capitalized Letters" is disabled. Enable it above if you need capitals in braille.
+                            </div>
+                            <!-- Repeat number sign toggle (non-standard UEB behavior, default off) -->
+                            <div class="line-input-mode-toggle" style="margin-top: 0.8em; display: flex; align-items: flex-start; gap: 0.5em; flex-wrap: wrap;">
+                                <label style="display: inline-flex; align-items: center; gap: 0.4em;" for="repeat_number_sign">
+                                    <input type="checkbox" id="repeat_number_sign" name="repeat_number_sign" aria-describedby="repeat-number-sign-note">
+                                    Repeat number sign after each period in numbers (non-standard)
+                                </label>
+                                <div id="repeat-number-sign-note" class="grade-note" style="margin: 0; font-size: 0.85em; flex-basis: 100%;">
+                                    Standard UEB uses one number sign per number because periods and commas keep numeric mode. Turning this on matches some online translators but uses extra braille cells.
+                                </div>
                             </div>
                         </fieldset>
                     </div>
@@ -2963,7 +2973,7 @@
                         </div>
 
                         <div id="braille-preview" class="braille-preview" style="display: none;" role="region" aria-label="Braille translation preview">
-                            <h3 class="preview-heading">Braille Translation Preview:</h3>
+                            <h2 class="preview-heading">Braille Translation Preview:</h2>
                             <div id="preview-content"></div>
                         </div>
 
@@ -4645,6 +4655,34 @@
             return capsEnabled ? text : text.toLowerCase();
         }
 
+        // Whether the non-standard "repeat number sign after periods" toggle is on
+        function isRepeatNumberSignOn() {
+            return document.getElementById('repeat_number_sign')?.checked === true;
+        }
+
+        // Non-standard post-processing: re-insert a number sign (⠼) after a period
+        // or comma inside a number. Standard UEB keeps numeric mode across . and ,
+        // (numericmodechars), so liblouis emits one number sign per number; some
+        // online translators repeat it instead, and this toggle reproduces that.
+        function applyNumberSignRepeat(braille) {
+            if (!isRepeatNumberSignOn()) return braille;
+            const DIGITS = '\u2801\u2803\u2809\u2819\u2811\u280B\u281B\u2813\u280A\u281A'; // a-j cells
+            let out = '';
+            let numeric = false;
+            for (let i = 0; i < braille.length; i++) {
+                const ch = braille[i];
+                out += ch;
+                if (ch === '\u283C') { numeric = true; continue; }          // number sign
+                if (numeric && (ch === '\u2832' || ch === '\u2802')) {      // period, comma
+                    if (i + 1 < braille.length && DIGITS.includes(braille[i + 1])) out += '\u283C';
+                    else numeric = false;
+                    continue;
+                }
+                if (!DIGITS.includes(ch)) numeric = false;
+            }
+            return out;
+        }
+
         // Update the capitalization warning visibility based on toggle state and input content
         function updateCapsWarning() {
             const capsDisabled = document.querySelector('input[name="capitalize_letters"]:checked')?.value !== 'enabled';
@@ -4948,6 +4986,7 @@
                 'braille_prefs_placement_mode',
                 'braille_prefs_indicator_shapes',
                 'braille_prefs_capitalize_letters',
+                'braille_prefs_repeat_number_sign',
                 'braille_prefs_expert_visible',
                 'braille_prefs_grid_columns',
                 'braille_prefs_grid_rows',
@@ -5007,6 +5046,12 @@
             if (savedCaps === 'enabled' || savedCaps === 'disabled') {
                 const radio = document.querySelector(`input[name="capitalize_letters"][value="${savedCaps}"]`);
                 if (radio) radio.checked = true;
+            }
+            // Repeat number sign toggle (default off)
+            const savedRepeatNumSign = readPersisted('braille_prefs_repeat_number_sign');
+            if (savedRepeatNumSign === '1' || savedRepeatNumSign === '0') {
+                const checkbox = document.getElementById('repeat_number_sign');
+                if (checkbox) checkbox.checked = savedRepeatNumSign === '1';
             }
             // Shape type
             const savedShape = readPersisted('braille_prefs_shape_type');
@@ -5138,6 +5183,18 @@
                     }
                 });
             });
+            // Repeat number sign toggle
+            const repeatNumSignCheckbox = document.getElementById('repeat_number_sign');
+            if (repeatNumSignCheckbox) {
+                repeatNumSignCheckbox.addEventListener('change', () => {
+                    persistValue('braille_prefs_repeat_number_sign', repeatNumSignCheckbox.checked ? '1' : '0');
+                    resetToGenerateState();
+                    // Extra number signs change cell counts; recalc overflow in auto mode
+                    if (document.querySelector('input[name="placement_mode"]:checked')?.value === 'auto') {
+                        computeAutoOverflow();
+                    }
+                });
+            }
             // Shape type
             document.querySelectorAll('input[name="shape_type"]').forEach(r => {
                 r.addEventListener('change', () => persistValue('braille_prefs_shape_type', document.querySelector('input[name="shape_type"]:checked').value));
@@ -5697,7 +5754,9 @@
             let numericMode = false;
             let pendingWordGap = false;
 
-            for (const ch of brailleStr) {
+            const cells = Array.from(brailleStr);
+            for (let cellIndex = 0; cellIndex < cells.length; cellIndex++) {
+                const ch = cells[cellIndex];
                 if (ch === ' ') {
                     // Word boundary
                     numericMode = false;
@@ -5752,7 +5811,14 @@
                     }
                     result += punctuationMap[ch];
                     pendingWordGap = false;
-                    numericMode = false;
+                    // UEB: a period or comma inside a number keeps numeric mode
+                    // (numericmodechars), so digits that follow are still digits.
+                    if (numericMode && (ch === '⠲' || ch === '⠂')) {
+                        const next = cells[cellIndex + 1];
+                        numericMode = next !== undefined && digitMap[next] !== undefined;
+                    } else {
+                        numericMode = false;
+                    }
                     continue;
                 }
 
@@ -7150,7 +7216,10 @@
 
                 if (result.success && result.translation) {
                     log.debug('Translation successful:', result.translation);
-                    return result.translation;
+                    // Optional non-standard post-processing (repeat number sign toggle).
+                    // Applied here so preview, shorthand, auto-wrap measurement, and
+                    // STL generation all see the same braille string.
+                    return applyNumberSignRepeat(result.translation);
                 } else {
                     throw new Error('Translation failed: ' + (result.error || 'Unknown error'));
                 }
@@ -7601,11 +7670,11 @@
                         </ol>
 
                         <h4>Text Capacity</h4>
-                        <p>The number of braille cells that fit depends on your cylinder's circumference:</p>
+                        <p>Each row holds a fixed number of braille cells:</p>
                         <ul>
-                            <li>Standard braille cell width is ~2.5mm</li>
-                            <li>A 75mm diameter cylinder (235mm circumference) fits approximately <strong>13-14 cells per row</strong></li>
-                            <li>Larger diameter = more cells per row</li>
+                            <li>By default, each row holds <strong>13 braille cells of text</strong> (2 additional cells are reserved for the start/end row indicators). With indicator shapes turned off, up to <strong>15 cells</strong> are available.</li>
+                            <li>Cells are spaced 6.5mm apart, so the default 13-cell layout needs about 91mm of circumference — the default 30.8mm-diameter cylinder (about 96.8mm around) fits it with room for the seam gap.</li>
+                            <li>A larger diameter gives more circumference, which adds margin around the seam rather than more cells per row.</li>
                         </ul>
 
                         <h4>Tips for Best Results</h4>
@@ -7657,6 +7726,7 @@
                             <tbody>
                                 <tr><td><strong>Placement Mode</strong></td><td>Auto Placement (handles wrapping)</td></tr>
                                 <tr><td><strong>Capitalized Letters</strong></td><td>Disabled (default) — saves space</td></tr>
+                                <tr><td><strong>Repeat number sign</strong></td><td>Off (default) — standard UEB uses one number sign per number; turn on only to match non-standard online translators</td></tr>
                                 <tr><td><strong>Language</strong></td><td>English (UEB) uncontracted — clearest for names/contact info</td></tr>
                             </tbody>
                         </table>
@@ -7683,6 +7753,9 @@
                             "If the telephone number has no extension, then it can be brailled as follows: #123.456.7890. Omit extra characters such as parentheses. Convert the hyphens to periods to retain the natural sub-units of the phone number. This will maintain the ease of readability, while eliminating the need to repeat numeric indicators. Do not remove the numeric indicator unless absolutely necessary."
                         </blockquote>
                         <p><strong>In this app:</strong> type <code>123.456.7890</code> (no parentheses, periods between groups). The numeric indicator is added by the translator.</p>
+                        <p><strong>Why only one number sign?</strong> In Unified English Braille, a period (or comma) inside a number keeps "numeric mode" active, so the digits after it do not need another number sign (<code lang="und-Brai">⠼</code>). For example, <code>206.616.7678</code> translates to <code lang="und-Brai">⠼⠃⠚⠋⠲⠋⠁⠋⠲⠛⠋⠛⠓</code> — exactly 13 braille cells, which fits a default row. This is correct UEB, matching BANA's guidance above. The Computer shorthand in the translation preview reflects this: digits after each period stay digits (<code>2 0 6 . 6 1 6 . 7 6 7 8</code>).</p>
+                        <p><strong>Some online translators repeat the number sign</strong> after each period. That output is non-standard and uses extra braille cells. If you need to match it, enable the <strong>"Repeat number sign after each period in numbers (non-standard)"</strong> checkbox under the text input area — but be aware the longer result may no longer fit on one row.</p>
+                        <p><strong>Splitting a long number across two rows:</strong> if a phone number will not fit on one row, divide it after a period, and begin the next row with a new number sign (<code lang="und-Brai">⠼</code>) — the translator adds it automatically when the row starts with digits. For example, <code>206.616.</code> on one row and <code>7678</code> on the next produces <code lang="und-Brai">⠼⠃⠚⠋⠲⠋⠁⠋⠲</code> then <code lang="und-Brai">⠼⠛⠋⠛⠓</code>, following the same pattern as BANA's worked examples.</p>
 
                         <h4>E-mail Addresses (BANA, verbatim)</h4>
                         <blockquote>
@@ -7776,7 +7849,7 @@
                             <p><strong>BANA strategy:</strong> omit capitals from organization; divide the e-mail address.</p>
                             <!-- BANA Grade 2 braille — DO NOT EDIT. Verbatim from the BANA Fact Sheet (March 2024), verified against docs/guides/_bana_source/page_04.png. Source of truth: docs/guides/_bana_business_cards_verified_source.md -->
                             <p><strong>BANA Grade 2 braille (verbatim from the Fact Sheet):</strong></p>
-                            <pre lang="und-Brai" style="font-size: 1.6em; line-height: 1.3;" aria-label="BANA Grade 2 braille rendering of the Harry Potter business card example">⠠⠓⠜⠗⠽⠀⠠⠏⠕⠞⠞⠻
+                            <pre lang="und-Brai" style="font-size: 1.6em; line-height: 1.3;" role="img" aria-label="BANA Grade 2 braille rendering of the Harry Potter business card example">⠠⠓⠜⠗⠽⠀⠠⠏⠕⠞⠞⠻
 ⠓⠕⠛⠺⠜⠞⠎⠀⠎⠡⠕⠕⠇
 ⠓⠜⠗⠽⠈⠁⠐
 ⠓⠕⠛⠺⠜⠞⠎⠲⠫⠥</pre>
@@ -7792,7 +7865,7 @@ harry@hogwarts.edu</pre>
                             <p><strong>BANA strategy:</strong> continue the name onto a second line in cell 1; omit organization (in e-mail); omit phone; divide the e-mail with the dot-5 continuation indicator omitted as a last resort.</p>
                             <!-- BANA Grade 2 braille — DO NOT EDIT. Verbatim from the BANA Fact Sheet (March 2024), verified against docs/guides/_bana_source/page_05.png. -->
                             <p><strong>BANA Grade 2 braille (verbatim from the Fact Sheet):</strong></p>
-                            <pre lang="und-Brai" style="font-size: 1.6em; line-height: 1.3;" aria-label="BANA Grade 2 braille rendering of the Liesel A. Schimmelfennig business card example">⠠⠇⠊⠑⠎⠑⠇⠀⠠⠁⠲
+                            <pre lang="und-Brai" style="font-size: 1.6em; line-height: 1.3;" role="img" aria-label="BANA Grade 2 braille rendering of the Liesel A. Schimmelfennig business card example">⠠⠇⠊⠑⠎⠑⠇⠀⠠⠁⠲
 ⠠⠎⠡⠊⠍⠍⠑⠇⠋⠢⠝⠊⠛
 ⠇⠲⠎⠡⠊⠍⠍⠑⠇⠋⠢⠝⠊⠛
 ⠈⠁⠥⠎⠁⠉⠑⠲⠜⠍⠽</pre>
@@ -7809,7 +7882,7 @@ l.schimmelfennig@usace.army</pre>
                             <p><strong>BANA strategy:</strong> the client chose the nickname "Fran" rather than removing capitals from "Francine"; convert phone hyphens to periods; tag cell/fax with a single-letter prefix.</p>
                             <!-- BANA Grade 2 braille — DO NOT EDIT. Verbatim from the BANA Fact Sheet (March 2024), verified against docs/guides/_bana_source/page_06.png. -->
                             <p><strong>BANA Grade 2 braille (verbatim from the Fact Sheet):</strong></p>
-                            <pre lang="und-Brai" style="font-size: 1.6em; line-height: 1.3;" aria-label="BANA Grade 2 braille rendering of the Francine Fran Rikard business card example">⠠⠋⠗⠁⠝⠀⠠⠗⠊⠅⠜⠙
+                            <pre lang="und-Brai" style="font-size: 1.6em; line-height: 1.3;" role="img" aria-label="BANA Grade 2 braille rendering of the Francine Fran Rikard business card example">⠠⠋⠗⠁⠝⠀⠠⠗⠊⠅⠜⠙
 ⠁⠇⠃⠥⠟⠥⠻⠟⠥⠑⠀⠰⠁⠉
 ⠉⠼⠑⠚⠑⠲⠉⠁⠃⠲⠙⠃⠃⠙
 ⠋⠼⠑⠚⠑⠲⠉⠁⠃⠲⠙⠃⠃⠑</pre>
@@ -7835,11 +7908,11 @@ f 505.312.4225</pre>
                         <h4>Example 5: Medicine Bottle</h4>
                         <div class="example-box">
                             <p><strong>Goal:</strong> Label a prescription bottle (diameter ~40mm) with drug name and dosage.</p>
-                            <p><strong>Decision:</strong> Two key pieces of info — the medication name and dosage. Abbreviate to fit the smaller circumference (~9 cells per row).</p>
+                            <p><strong>Decision:</strong> Two key pieces of info — the medication name and dosage.</p>
                             <p><strong>Type:</strong></p>
                             <pre>amoxicillin
 500mg</pre>
-                            <p><strong>Result:</strong> 2 rows. Name may wrap depending on cell count; abbreviate to "amox 500mg" on a very small bottle.</p>
+                            <p><strong>Result:</strong> 2 rows. "amoxicillin" uses 11 braille cells, within the default 13-cell row; abbreviate to "amox" if you add more per-row content.</p>
                         </div>
 
                         <h4>Example 6: Water Bottle ID Tag</h4>

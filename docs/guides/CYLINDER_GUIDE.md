@@ -69,19 +69,15 @@ Braille cylinders are commonly used for:
 
 ## Text Capacity
 
-The number of braille cells that fit depends on your cylinder's circumference:
+Each row holds a fixed number of braille cells in this app:
 
-- Standard braille cell width is ~2.5mm (with spacing)
-- Cell spacing is typically 6.5mm center-to-center
+- **13 text cells per row** by default (2 additional cells are reserved for the start/end row indicators)
+- **15 text cells per row** when Indicator Shapes is turned off
+- Cells are spaced 6.5mm center-to-center
 
-| Diameter (mm) | Circumference (mm) | Approximate Cells per Row |
-|---------------|-------------------|---------------------------|
-| 50 | 157 | ~9 |
-| 75 | 236 | ~13-14 |
-| 100 | 314 | ~18 |
-| 125 | 393 | ~22 |
+The cylinder's circumference determines whether that layout fits physically. The default 13-cell layout (plus indicators) needs about 91mm of circumference; the default 30.8mm-diameter cylinder (~96.8mm circumference) fits it with room left over for the seam gap. A larger diameter adds margin around the seam rather than more cells per row.
 
-**Note:** 2 cells are reserved for start/end indicators when Indicator Shapes is enabled.
+**Phone number tip:** a 10-digit phone number formatted per BANA guidance (`206.616.7678`) translates to exactly 13 cells — one number sign, ten digits, two periods — so it fits a default row. UEB keeps numeric mode across the periods, so only one number sign is needed. If a longer number will not fit, split it after a period and start the next row with the remaining digits; the translator adds a new number sign (`⠼`) automatically (e.g., `⠼⠃⠚⠋⠲⠋⠁⠋⠲` then `⠼⠛⠋⠛⠓`).
 
 ## Key Parameters Explained
 
@@ -201,7 +197,7 @@ These examples show **what to type** into the application for common cylinder us
 
 **Goal:** Label a spice jar (diameter ~55mm) so it can be identified by touch.
 
-**Container measurement:** Circumference ~173mm ÷ π ≈ 55mm diameter → approximately 9-10 cells per row.
+**Container measurement:** Circumference ~173mm ÷ π ≈ 55mm diameter — comfortably fits the default 13-cell rows.
 
 **Decision:** A single word is all that's needed — just the spice name.
 
@@ -225,9 +221,9 @@ cinnamon
 
 **Goal:** Label a prescription bottle (diameter ~40mm) with drug name and dosage.
 
-**Container measurement:** Circumference ~126mm ÷ π ≈ 40mm diameter → approximately 9 cells per row.
+**Container measurement:** Circumference ~126mm ÷ π ≈ 40mm diameter — fits the default 13-cell rows.
 
-**Decision:** Two key pieces — medication name and dosage. The small circumference means the name may wrap to a second row.
+**Decision:** Two key pieces — medication name and dosage.
 
 **What to type:**
 ```
@@ -242,7 +238,7 @@ amoxicillin
 | Placement Mode | Auto Placement |
 | Capitalized Letters | Disabled |
 
-**Result:** 2-3 rows. "amoxicillin" wraps because it exceeds 9 cells per row. For a very small bottle, abbreviate to "amox 500mg" on one line.
+**Result:** 2 rows. "amoxicillin" uses 11 braille cells, within the default 13-cell row; abbreviate to "amox" if you add more per-row content.
 
 ---
 
@@ -250,7 +246,7 @@ amoxicillin
 
 **Goal:** Identify a personal water bottle (diameter ~75mm) at a shared workplace.
 
-**Container measurement:** Circumference ~235mm ÷ π ≈ 75mm diameter → approximately 13-14 cells per row.
+**Container measurement:** Circumference ~235mm ÷ π ≈ 75mm diameter — fits the default 13-cell rows with generous seam margin.
 
 **Decision:** Name plus one contact method. Omit organization — not needed to identify a personal item.
 
@@ -267,7 +263,7 @@ j. smith
 | Placement Mode | Auto Placement |
 | Capitalized Letters | Disabled |
 
-**Result:** 2 rows on a 75mm cylinder. Using initial "J." instead of full first name saves cells. Phone formatted with periods per BANA guidance.
+**Result:** 2 rows on a 75mm cylinder. Using initial "J." instead of full first name saves cells. Phone formatted with periods per BANA guidance — `555.867.5309` is exactly 13 cells (one number sign, ten digits, two periods), so it just fits a default row.
 
 ---
 
@@ -275,7 +271,7 @@ j. smith
 
 - **Capitalized Letters disabled (default):** The app converts text to lowercase automatically.
 - **Grade 1 uncontracted:** These examples assume Grade 1 (uncontracted) braille, which is clearest for labels.
-- **Measure first, then type:** Always measure your container and check the text capacity table above before entering text.
+- **Measure first, then type:** Always measure your container and check the Text Capacity section above before entering text.
 
 ---
 

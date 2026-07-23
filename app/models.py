@@ -178,8 +178,8 @@ class CardSettings:
             'emboss_dot_base_diameter': 1.8,  # Updated default: 1.8 mm
             'emboss_dot_height': 1.0,  # Project brief default: 1.0 mm
             'emboss_dot_flat_hat': 0.4,  # Updated default: 0.4 mm
-            # Rounded dome dot parameters (optional alternative to cone)
-            'use_rounded_dots': 0,  # 0 = cone (default), 1 = rounded dome
+            # Rounded dome dot parameters (default; cone is the alternative)
+            'use_rounded_dots': 1,  # 1 = rounded dome (default), 0 = cone
             # Legacy names kept for backward compatibility
             'rounded_dot_diameter': 1.5,  # Legacy: base diameter for rounded dome (mm)
             'rounded_dot_height': 0.6,  # Legacy: total height or dome height
@@ -259,9 +259,11 @@ class CardSettings:
         except Exception:
             self.recess_shape = int(getattr(self, 'recess_shape', 2))
 
-        # Map dot_shape to use_rounded_dots for backend compatibility
+        # Map dot_shape to use_rounded_dots for backend compatibility.
+        # Only override when dot_shape is explicitly provided; otherwise keep the
+        # use_rounded_dots default (rounded).
         try:
-            dot_shape = kwargs.get('dot_shape', 'cone')
+            dot_shape = kwargs.get('dot_shape')
             if dot_shape == 'rounded':
                 self.use_rounded_dots = 1
             elif dot_shape == 'cone':

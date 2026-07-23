@@ -71,8 +71,8 @@ Braille cylinders are commonly used for:
 
 Each row holds a fixed number of braille cells in this app:
 
-- **13 text cells per row** by default (2 additional cells are reserved for the start/end row indicators)
-- **15 text cells per row** when Indicator Shapes is turned off
+- **13 text cells per row** by default (2 additional cells are reserved for the indicator letter and the triangle alignment indicator)
+- **14 text cells per row** when Indicator Letters is turned off (the alignment triangle is always included)
 - Cells are spaced 6.5mm center-to-center
 
 The cylinder's circumference determines whether that layout fits physically. The default 13-cell layout (plus indicators) needs about 91mm of circumference; the default 30.8mm-diameter cylinder (~96.8mm circumference) fits it with room left over for the seam gap. A larger diameter adds margin around the seam rather than more cells per row.
@@ -153,7 +153,7 @@ The **Capitalized Letters** toggle controls how capitals are handled:
 | Placement Mode | Auto Placement | Handles wrapping automatically |
 | Capitalized Letters | Disabled | Saves space (default) |
 | Language | English (UEB) — uncontracted | Clearest for labels |
-| Indicator Shapes | On | Helps find row start/end |
+| Indicator Letters | On | Adds the first letter of each row in the indicator area so readers can identify rows |
 
 ### Expert Mode Settings
 

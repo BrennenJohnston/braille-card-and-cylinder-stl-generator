@@ -383,7 +383,7 @@ The **Preview Braille Translation** button is inside Expert Mode:
 | Capitalized Letters | Disabled | Saves cells per BANA's "remove the capital indicators" strategy |
 | Braille Cells | 13 | Matches BANA's lower bound for typical card stock |
 | Braille Lines | 4 | BANA's typical layout |
-| Indicator Shapes | On | Reserves two cells so braille readers can locate row start/end |
+| Indicator Letters | On | Reserves a second marker cell for the row's first letter; turning it Off frees 1 cell per row (the alignment triangle is always included) |
 
 ### When to use Grade 2 (contracted)
 

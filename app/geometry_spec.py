@@ -68,18 +68,18 @@ def extract_card_geometry_spec(
                 + settings.braille_y_adjust
             )
 
-            # Add markers if enabled
-            if getattr(settings, 'indicator_shapes', 1):
-                x_pos_first = settings.left_margin + settings.braille_x_adjust
-                x_pos_last = (
-                    settings.left_margin
-                    + ((settings.grid_columns - 1) * settings.cell_spacing)
-                    + settings.braille_x_adjust
-                )
+            x_pos_first = settings.left_margin + settings.braille_x_adjust
+            x_pos_last = (
+                settings.left_margin
+                + ((settings.grid_columns - 1) * settings.cell_spacing)
+                + settings.braille_x_adjust
+            )
 
-                # Universal counter plates ALWAYS use rectangle markers at column 0
-                # (never character indicators) - this matches backend.py behavior
-                # in create_universal_counter_plate_2d() which uses create_line_marker_polygon()
+            # Square (rectangle) marker at column 0, gated by the Indicator Letters toggle.
+            # Universal counter plates ALWAYS use rectangle markers here
+            # (never character indicators) - this matches backend.py behavior
+            # in create_universal_counter_plate_2d() which uses create_line_marker_polygon()
+            if getattr(settings, 'indicator_shapes', 1):
                 spec['markers'].append(
                     {
                         'type': 'rect',
@@ -92,18 +92,18 @@ def extract_card_geometry_spec(
                     }
                 )
 
-                # Triangle marker at last column (grid_columns - 1)
-                # This matches backend.py create_universal_counter_plate_2d() behavior
-                spec['markers'].append(
-                    {
-                        'type': 'triangle',
-                        'x': x_pos_last,
-                        'y': y_pos,
-                        'z': settings.card_thickness,
-                        'size': settings.dot_spacing,
-                        'depth': 0.6,
-                    }
-                )
+            # Triangle alignment marker at last column (grid_columns - 1).
+            # Always created; the alignment triangles have no user-facing toggle.
+            spec['markers'].append(
+                {
+                    'type': 'triangle',
+                    'x': x_pos_last,
+                    'y': y_pos,
+                    'z': settings.card_thickness,
+                    'size': settings.dot_spacing,
+                    'depth': 0.6,
+                }
+            )
 
             # Add all dots for all columns
             for col_num in range(settings.grid_columns):
@@ -139,15 +139,16 @@ def extract_card_geometry_spec(
                 + settings.braille_y_adjust
             )
 
-            # Add markers for ALL rows when indicator_shapes is enabled
-            if getattr(settings, 'indicator_shapes', 1):
-                x_pos_first = settings.left_margin + settings.braille_x_adjust
-                x_pos_last = (
-                    settings.left_margin
-                    + ((settings.grid_columns - 1) * settings.cell_spacing)
-                    + settings.braille_x_adjust
-                )
+            # Add markers for ALL rows. The indicator letter (column 0) is gated by the
+            # Indicator Letters toggle; the triangle (last column) is always created.
+            x_pos_first = settings.left_margin + settings.braille_x_adjust
+            x_pos_last = (
+                settings.left_margin
+                + ((settings.grid_columns - 1) * settings.cell_spacing)
+                + settings.braille_x_adjust
+            )
 
+            if getattr(settings, 'indicator_shapes', 1):
                 # Character or rectangle indicator at first column (column 0)
                 if original_lines and row_num < len(original_lines):
                     orig = (original_lines[row_num] or '').strip()
@@ -189,17 +190,18 @@ def extract_card_geometry_spec(
                         }
                     )
 
-                # Triangle marker at last column (grid_columns - 1)
-                spec['markers'].append(
-                    {
-                        'type': 'triangle',
-                        'x': x_pos_last,
-                        'y': y_pos,
-                        'z': settings.card_thickness,
-                        'size': settings.dot_spacing,
-                        'depth': 0.6,
-                    }
-                )
+            # Triangle alignment marker at last column (grid_columns - 1).
+            # Always created; the alignment triangles have no user-facing toggle.
+            spec['markers'].append(
+                {
+                    'type': 'triangle',
+                    'x': x_pos_last,
+                    'y': y_pos,
+                    'z': settings.card_thickness,
+                    'size': settings.dot_spacing,
+                    'depth': 0.6,
+                }
+            )
 
             # Only process braille dots if the line has content
             if not line:
@@ -461,24 +463,26 @@ def extract_cylinder_geometry_spec(
             y_local = y_pos - (height / 2.0)
 
             # Add markers (same column positions as embossing, but mirrored direction)
-            if getattr(settings, 'indicator_shapes', 1):
-                # Triangle marker at column 0 (first position, same as embossing)
-                # Use rotate_180=True for counter plate to properly align with embosser plate
-                triangle_angle = apply_seam_mirrored(start_angle)
-                marker_spec = _create_cylinder_marker_spec(
-                    triangle_angle,
-                    y_local,
-                    radius,
-                    settings,
-                    'triangle',
-                    original_lines,
-                    row_num,
-                    plate_type='negative',
-                    rotate_180=True,
-                )
-                spec['markers'].append(marker_spec)
+            # Triangle marker at column 0 (first position, same as embossing).
+            # Always created; the alignment triangles have no user-facing toggle.
+            # Use rotate_180=True for counter plate to properly align with embosser plate
+            triangle_angle = apply_seam_mirrored(start_angle)
+            marker_spec = _create_cylinder_marker_spec(
+                triangle_angle,
+                y_local,
+                radius,
+                settings,
+                'triangle',
+                original_lines,
+                row_num,
+                plate_type='negative',
+                rotate_180=True,
+            )
+            spec['markers'].append(marker_spec)
 
-                # Rectangle placeholder marker at column 1 (second position)
+            if getattr(settings, 'indicator_shapes', 1):
+                # Rectangle (square) placeholder marker at column 1 (second position),
+                # gated by the Indicator Letters toggle.
                 # Counter plates ALWAYS use rectangle placeholders, not character indicators
                 # This matches the Python backend behavior in cylinder.py which uses
                 # create_cylinder_line_end_marker for this position
@@ -495,13 +499,14 @@ def extract_cylinder_geometry_spec(
                 )
                 spec['markers'].append(marker_spec)
 
-            # Generate all 6 dots for all TEXT cells (starting at column 2, same as embossing)
+            # Generate all 6 dots for all TEXT cells (same layout as embossing)
             # Uses mirrored angular direction so dots flow clockwise
-            reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
+            # Reserved marker columns: 2 with indicator letters on, 1 (triangle only) when off
+            reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 1
             num_text_cols = settings.grid_columns - reserved
             for col_num in range(num_text_cols):
-                # Braille cells start at column 2 (after triangle and character)
-                actual_col = col_num + (2 if getattr(settings, 'indicator_shapes', 1) else 0)
+                # Braille cells start after the reserved marker columns
+                actual_col = col_num + reserved
                 col_raw_angle = start_angle + (actual_col * cell_spacing_angle)
 
                 for dot_idx in range(6):
@@ -525,24 +530,24 @@ def extract_cylinder_geometry_spec(
             y_pos = first_row_center_y - (row_num * settings.line_spacing) + settings.braille_y_adjust
             y_local = y_pos - (height / 2.0)
 
-            # Add indicators when enabled:
-            # - Triangle at column 0 (first position)
-            # - Character indicator (or rectangle fallback) at column 1 (second position)
-            if getattr(settings, 'indicator_shapes', 1):
-                # Triangle at column 0 (first position)
-                triangle_angle = apply_seam(start_angle)
-                triangle_spec = _create_cylinder_marker_spec(
-                    triangle_angle,
-                    y_local,
-                    radius,
-                    settings,
-                    'triangle',
-                    original_lines,
-                    row_num,
-                    plate_type='positive',
-                )
-                spec['markers'].append(triangle_spec)
+            # Indicators:
+            # - Triangle at column 0 (first position) - ALWAYS created (no user toggle)
+            # - Character indicator (or rectangle fallback) at column 1 (second position),
+            #   gated by the Indicator Letters toggle
+            triangle_angle = apply_seam(start_angle)
+            triangle_spec = _create_cylinder_marker_spec(
+                triangle_angle,
+                y_local,
+                radius,
+                settings,
+                'triangle',
+                original_lines,
+                row_num,
+                plate_type='positive',
+            )
+            spec['markers'].append(triangle_spec)
 
+            if getattr(settings, 'indicator_shapes', 1):
                 # Character (or rectangle fallback) at column 1 (second position)
                 char_col_angle = apply_seam(start_angle + cell_spacing_angle)
                 if original_lines and row_num < len(original_lines):
@@ -595,15 +600,16 @@ def extract_cylinder_geometry_spec(
             if not has_braille:
                 continue
 
-            # Reserve 2 columns for indicators (triangle at col 0, character at col 1)
-            # Braille content starts at column 2 (shift by 2)
-            reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 0
+            # Reserved marker columns: triangle at col 0 (always) plus the indicator
+            # letter at col 1 when the Indicator Letters toggle is on.
+            # Braille content starts after the reserved columns.
+            reserved = 2 if getattr(settings, 'indicator_shapes', 1) else 1
             max_cols = max(0, settings.grid_columns - reserved)
             chars = list(line.strip())[:max_cols]
 
             for col_num, braille_char in enumerate(chars):
-                # Shift by 2 columns to leave room for triangle (col 0) and character (col 1)
-                actual_col = col_num + (2 if getattr(settings, 'indicator_shapes', 1) else 0)
+                # Shift braille cells past the reserved marker columns
+                actual_col = col_num + reserved
                 col_raw_angle = start_angle + (actual_col * cell_spacing_angle)
 
                 # Get dot pattern for this braille character

@@ -9,6 +9,24 @@ The indicators serve as tactile guides for visually impaired users and must main
 - Standard CSG Worker (`csg-worker.js` using three-bvh-csg)
 - Manifold CSG Worker (`csg-worker-manifold.js` using Manifold WASM)
 
+### Indicator Letters Toggle (`indicator_shapes`)
+
+The user-facing **"Indicator Letters (Emboss and Counter)"** toggle (runtime field
+`indicator_shapes`, 0 or 1, default 1) gates ONLY:
+- the **character (letter) indicator** on the emboss plate (column 1 on cylinders,
+  column 0 on cards), and
+- the matching **rectangle (square) placeholder** on the counter plate.
+
+The **triangle alignment indicators are ALWAYS generated** regardless of the toggle.
+They are critical to the mechanical device the part mounts into and have no
+user-facing option to disable.
+
+Reserved marker columns per row:
+| Toggle | Reserved columns | Text cells at defaults |
+|--------|------------------|------------------------|
+| On (1) | 2 (letter + triangle) | 13 |
+| Off (0) | 1 (triangle only) | 14 |
+
 ---
 
 ## Coordinate Systems

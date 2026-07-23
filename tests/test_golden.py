@@ -52,7 +52,9 @@ def _expected_counts(payload: dict) -> tuple[int, int]:
     lines = payload.get('lines', ['', '', '', ''])
 
     indicator_shapes = bool(getattr(settings, 'indicator_shapes', 1))
-    expected_markers = settings.grid_rows * 2 if indicator_shapes else 0
+    # Triangle alignment markers are always created (1 per row); the indicator
+    # letter/square marker (1 per row) is gated by the indicator_shapes toggle.
+    expected_markers = settings.grid_rows * 2 if indicator_shapes else settings.grid_rows
 
     if shape_type == 'card':
         if plate_type == 'negative':
@@ -61,8 +63,8 @@ def _expected_counts(payload: dict) -> tuple[int, int]:
             expected_dots = _count_raised_dots(lines, max_cols=settings.grid_columns)
         return expected_dots, expected_markers
 
-    # cylinder
-    reserved = 2 if indicator_shapes else 0
+    # cylinder: 2 reserved columns with indicator letters on, 1 (triangle) when off
+    reserved = 2 if indicator_shapes else 1
     max_text_cols = settings.grid_columns - reserved
 
     if plate_type == 'negative':

@@ -36,12 +36,12 @@
   ],
   "dependencies": {
     "liblouis": "^0.4.0",
-    "manifold-3d": "^2.5.1",
+    "manifold-3d": "^3.5.1",
     "three-bvh-csg": "^0.0.18",
-    "three-mesh-bvh": "^0.9.10"
+    "three-mesh-bvh": "^0.9.13"
   },
   "devDependencies": {
-    "@playwright/test": "^1.60.0",
-    "vitest": "^4.1.7"
+    "@playwright/test": "^1.61.1",
+    "vitest": "^4.1.10"
   }
 }
